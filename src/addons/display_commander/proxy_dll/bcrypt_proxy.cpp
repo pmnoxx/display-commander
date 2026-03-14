@@ -15,13 +15,20 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "../utils/detour_call_tracker.hpp"
 #include "../utils/timing.hpp"
+#include "bcrypt.hpp"
 
 // Libraries <standard C++>
 #include <string>
 
-static HMODULE g_bcrypt_module = nullptr;
+#ifndef STATUS_NOT_IMPLEMENTED
+#define STATUS_NOT_IMPLEMENTED ((NTSTATUS)0xC0000002L)
+#endif
 
-static bool LoadRealBcrypt() {
+namespace {
+
+HMODULE g_bcrypt_module = nullptr;
+
+bool LoadRealBcrypt() {
     if (g_bcrypt_module != nullptr) return true;
     WCHAR system_path[MAX_PATH];
     if (GetSystemDirectoryW(system_path, MAX_PATH) == 0) return false;
@@ -30,468 +37,534 @@ static bool LoadRealBcrypt() {
     return g_bcrypt_module != nullptr;
 }
 
-extern "C" LONG WINAPI BCryptAddContextFunction(LONG p0, LPCWSTR p1, LONG p2, LPCWSTR p3, LONG p4) {
+}  // namespace
+
+extern "C" LONG WINAPI BCryptAddContextFunction(ULONG dwTable, LPCWSTR pszContext, ULONG dwInterface, LPCWSTR pszFunction, ULONG dwPosition) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LONG, LPCWSTR, LONG, LPCWSTR, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptAddContextFunction") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3, p4);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptAddContextFunction)GetProcAddress(g_bcrypt_module, "BCryptAddContextFunction");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(dwTable, pszContext, dwInterface, pszFunction, dwPosition);
 }
 
-extern "C" LONG WINAPI BCryptAddContextFunctionProvider(LONG p0, LPCWSTR p1, LONG p2, LPCWSTR p3, LPCWSTR p4, LONG p5) {
+extern "C" LONG WINAPI BCryptAddContextFunctionProvider(ULONG dwTable, LPCWSTR pszContext, ULONG dwInterface, LPCWSTR pszFunction, LPCWSTR pszProvider, ULONG dwPosition) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LONG, LPCWSTR, LONG, LPCWSTR, LPCWSTR, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptAddContextFunctionProvider") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3, p4, p5);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptAddContextFunctionProvider)GetProcAddress(g_bcrypt_module, "BCryptAddContextFunctionProvider");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(dwTable, pszContext, dwInterface, pszFunction, pszProvider, dwPosition);
 }
 
-extern "C" LONG WINAPI BCryptCloseAlgorithmProvider(LPVOID p0, LONG p1) {
+extern "C" LONG WINAPI BCryptCloseAlgorithmProvider(void* hAlgorithm, ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptCloseAlgorithmProvider") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptCloseAlgorithmProvider)GetProcAddress(g_bcrypt_module, "BCryptCloseAlgorithmProvider");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hAlgorithm, dwFlags);
 }
 
-extern "C" LONG WINAPI BCryptConfigureContext(void) {
+extern "C" LONG WINAPI BCryptConfigureContext(ULONG dwTable, LPCWSTR pszContext, void* pConfig) {
     CALL_GUARD(utils::get_now_ns());
-    return 0;
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptConfigureContext)GetProcAddress(g_bcrypt_module, "BCryptConfigureContext");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(dwTable, pszContext, pConfig);
 }
 
-extern "C" LONG WINAPI BCryptConfigureContextFunction(void) {
+extern "C" LONG WINAPI BCryptConfigureContextFunction(ULONG dwTable, LPCWSTR pszContext, ULONG dwInterface,
+                                                      LPCWSTR pszFunction, void* pConfig) {
     CALL_GUARD(utils::get_now_ns());
-    return 0;
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptConfigureContextFunction)GetProcAddress(g_bcrypt_module, "BCryptConfigureContextFunction");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(dwTable, pszContext, dwInterface, pszFunction, pConfig);
 }
 
-extern "C" LONG WINAPI BCryptCreateContext(void) {
+extern "C" LONG WINAPI BCryptCreateContext(ULONG dwTable, LPCWSTR pszContext, void* pConfig) {
     CALL_GUARD(utils::get_now_ns());
-    return 0;
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptCreateContext)GetProcAddress(g_bcrypt_module, "BCryptCreateContext");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(dwTable, pszContext, pConfig);
 }
 
-extern "C" LONG WINAPI BCryptCreateHash(LPVOID p0, LPVOID p1, LPVOID p2, LONG p3, LPVOID p4, LONG p5, LONG p6) {
+extern "C" LONG WINAPI BCryptCreateHash(void* hAlgorithm, void* phHash, void* pbHashObject, ULONG cbHashObject,
+                                        void* pbSecret, ULONG cbSecret, ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LONG, LPVOID, LONG, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptCreateHash") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3, p4, p5, p6);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptCreateHash)GetProcAddress(g_bcrypt_module, "BCryptCreateHash");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hAlgorithm, phHash, pbHashObject, cbHashObject, pbSecret, cbSecret, dwFlags);
 }
 
-extern "C" LONG WINAPI BCryptDecrypt(LPVOID p0, LPVOID p1, LONG p2, LPVOID p3, LPVOID p4, LONG p5, LPVOID p6, LONG p7, LPVOID p8, LONG p9) {
+extern "C" LONG WINAPI BCryptDecrypt(void* hKey, void* pbInput, ULONG cbInput, void* pPaddingInfo, void* pbIV,
+                                     ULONG cbIV, void* pbOutput, ULONG cbOutput, ULONG* pcbResult, ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID, LPVOID, LONG, LPVOID, LPVOID, LONG, LPVOID, LONG, LPVOID, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptDecrypt") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3, p4, p5, p6, p7, p8, p9);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptDecrypt)GetProcAddress(g_bcrypt_module, "BCryptDecrypt");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hKey, pbInput, cbInput, pPaddingInfo, pbIV, cbIV, pbOutput, cbOutput, pcbResult, dwFlags);
 }
 
-extern "C" LONG WINAPI BCryptDeleteContext(void) {
+extern "C" LONG WINAPI BCryptDeleteContext(ULONG dwTable, LPCWSTR pszContext) {
     CALL_GUARD(utils::get_now_ns());
-    return 0;
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptDeleteContext)GetProcAddress(g_bcrypt_module, "BCryptDeleteContext");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(dwTable, pszContext);
 }
 
-extern "C" LONG WINAPI BCryptDeriveKey(LPVOID p0, LPCWSTR p1, LPVOID p2, LPVOID p3, LONG p4, LPVOID p5, LONG p6) {
+extern "C" LONG WINAPI BCryptDeriveKey(void* hSecret, LPCWSTR pwszKdf, void* pParameterList, void* pbDerivedKey,
+                                       ULONG cbDerivedKey, ULONG* pcbResult, ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID, LPCWSTR, LPVOID, LPVOID, LONG, LPVOID, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptDeriveKey") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3, p4, p5, p6);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptDeriveKey)GetProcAddress(g_bcrypt_module, "BCryptDeriveKey");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hSecret, pwszKdf, pParameterList, pbDerivedKey, cbDerivedKey, pcbResult, dwFlags);
 }
 
-extern "C" LONG WINAPI BCryptDeriveKeyCapi(LPVOID p0, LPVOID p1, LPVOID p2, LONG p3, LONG p4) {
+extern "C" LONG WINAPI BCryptDeriveKeyCapi(void* hHash, void* hAlg, void* pbDerivedKey, ULONG cbDerivedKey,
+                                           ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LONG, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptDeriveKeyCapi") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3, p4);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptDeriveKeyCapi)GetProcAddress(g_bcrypt_module, "BCryptDeriveKeyCapi");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hHash, hAlg, pbDerivedKey, cbDerivedKey, dwFlags);
 }
 
-extern "C" LONG WINAPI BCryptDeriveKeyPBKDF2(LPVOID p0, LPVOID p1, LONG p2, LPVOID p3, LONG p4, DWORD64 p5, LPVOID p6, LONG p7, LONG p8) {
+extern "C" LONG WINAPI BCryptDeriveKeyPBKDF2(void* hPrf, void* pbPassword, ULONG cbPassword, void* pbSalt, ULONG cbSalt,
+                                             ULONGLONG cIterations, void* pbDerivedKey, ULONG cbDerivedKey,
+                                             ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID, LPVOID, LONG, LPVOID, LONG, DWORD64, LPVOID, LONG, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptDeriveKeyPBKDF2") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3, p4, p5, p6, p7, p8);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptDeriveKeyPBKDF2)GetProcAddress(g_bcrypt_module, "BCryptDeriveKeyPBKDF2");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hPrf, pbPassword, cbPassword, pbSalt, cbSalt, cIterations, pbDerivedKey, cbDerivedKey, dwFlags);
 }
 
-extern "C" LONG WINAPI BCryptDestroyHash(LPVOID p0) {
+extern "C" LONG WINAPI BCryptDestroyHash(void* hHash) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptDestroyHash") : nullptr);
-    if (!fn) return 0;
-    return fn(p0);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptDestroyHash)GetProcAddress(g_bcrypt_module, "BCryptDestroyHash");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hHash);
 }
 
-extern "C" LONG WINAPI BCryptDestroyKey(LPVOID p0) {
+extern "C" LONG WINAPI BCryptDestroyKey(void* hKey) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptDestroyKey") : nullptr);
-    if (!fn) return 0;
-    return fn(p0);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptDestroyKey)GetProcAddress(g_bcrypt_module, "BCryptDestroyKey");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hKey);
 }
 
-extern "C" LONG WINAPI BCryptDestroySecret(LPVOID p0) {
+extern "C" LONG WINAPI BCryptDestroySecret(void* hSecret) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptDestroySecret") : nullptr);
-    if (!fn) return 0;
-    return fn(p0);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptDestroySecret)GetProcAddress(g_bcrypt_module, "BCryptDestroySecret");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hSecret);
 }
 
-extern "C" LONG WINAPI BCryptDuplicateHash(LPVOID p0, LPVOID p1, LPVOID p2, LONG p3, LONG p4) {
+extern "C" LONG WINAPI BCryptDuplicateHash(void* hHash, void* phNewHash, void* pbHashObject, ULONG cbHashObject,
+                                           ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LONG, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptDuplicateHash") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3, p4);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptDuplicateHash)GetProcAddress(g_bcrypt_module, "BCryptDuplicateHash");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hHash, phNewHash, pbHashObject, cbHashObject, dwFlags);
 }
 
-extern "C" LONG WINAPI BCryptDuplicateKey(LPVOID p0, LPVOID p1, LPVOID p2, LONG p3, LONG p4) {
+extern "C" LONG WINAPI BCryptDuplicateKey(void* hKey, void* phNewKey, void* pbKeyObject, ULONG cbKeyObject,
+                                          ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LONG, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptDuplicateKey") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3, p4);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptDuplicateKey)GetProcAddress(g_bcrypt_module, "BCryptDuplicateKey");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hKey, phNewKey, pbKeyObject, cbKeyObject, dwFlags);
 }
 
-extern "C" LONG WINAPI BCryptEncrypt(LPVOID p0, LPVOID p1, LONG p2, LPVOID p3, LPVOID p4, LONG p5, LPVOID p6, LONG p7, LPVOID p8, LONG p9) {
+extern "C" LONG WINAPI BCryptEncrypt(void* hKey, void* pbInput, ULONG cbInput, void* pPaddingInfo, void* pbIV,
+                                     ULONG cbIV, void* pbOutput, ULONG cbOutput, ULONG* pcbResult, ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID, LPVOID, LONG, LPVOID, LPVOID, LONG, LPVOID, LONG, LPVOID, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptEncrypt") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3, p4, p5, p6, p7, p8, p9);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptEncrypt)GetProcAddress(g_bcrypt_module, "BCryptEncrypt");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hKey, pbInput, cbInput, pPaddingInfo, pbIV, cbIV, pbOutput, cbOutput, pcbResult, dwFlags);
 }
 
-extern "C" LONG WINAPI BCryptEnumAlgorithms(LONG p0, LPVOID p1, LPVOID p2, LONG p3) {
+extern "C" LONG WINAPI BCryptEnumAlgorithms(ULONG dwAlgOperations, ULONG* pAlgCount, void* ppAlgList, ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LONG, LPVOID, LPVOID, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptEnumAlgorithms") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptEnumAlgorithms)GetProcAddress(g_bcrypt_module, "BCryptEnumAlgorithms");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(dwAlgOperations, pAlgCount, ppAlgList, dwFlags);
 }
 
-extern "C" LONG WINAPI BCryptEnumContextFunctionProviders(void) {
+extern "C" LONG WINAPI BCryptEnumContextFunctionProviders(ULONG dwTable, LPCWSTR pszContext, ULONG dwInterface,
+                                                          LPCWSTR pszFunction, ULONG* pcbBuffer, void* ppBuffer) {
     CALL_GUARD(utils::get_now_ns());
-    return 0;
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn =
+        (PFN_BCryptEnumContextFunctionProviders)GetProcAddress(g_bcrypt_module, "BCryptEnumContextFunctionProviders");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(dwTable, pszContext, dwInterface, pszFunction, pcbBuffer, ppBuffer);
 }
 
-extern "C" LONG WINAPI BCryptEnumContextFunctions(LONG p0, LPCWSTR p1, LONG p2, LPVOID p3, LPVOID p4) {
+extern "C" LONG WINAPI BCryptEnumContextFunctions(ULONG dwTable, LPCWSTR pszContext, ULONG dwInterface,
+                                                  ULONG* pcbBuffer, void* ppBuffer) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LONG, LPCWSTR, LONG, LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptEnumContextFunctions") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3, p4);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptEnumContextFunctions)GetProcAddress(g_bcrypt_module, "BCryptEnumContextFunctions");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(dwTable, pszContext, dwInterface, pcbBuffer, ppBuffer);
 }
 
-extern "C" LONG WINAPI BCryptEnumContexts(void) {
+extern "C" LONG WINAPI BCryptEnumContexts(ULONG dwTable, ULONG* pcbBuffer, void* ppBuffer) {
     CALL_GUARD(utils::get_now_ns());
-    return 0;
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptEnumContexts)GetProcAddress(g_bcrypt_module, "BCryptEnumContexts");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(dwTable, pcbBuffer, ppBuffer);
 }
 
-extern "C" LONG WINAPI BCryptEnumProviders(void) {
+extern "C" LONG WINAPI BCryptEnumProviders(ULONG dwAlgOperations, ULONG* pImplCount, void* ppImplList, ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    return 0;
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptEnumProviders)GetProcAddress(g_bcrypt_module, "BCryptEnumProviders");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(dwAlgOperations, pImplCount, ppImplList, dwFlags);
 }
 
-extern "C" LONG WINAPI BCryptEnumRegisteredProviders(void) {
+extern "C" LONG WINAPI BCryptEnumRegisteredProviders(ULONG* pcbBuffer, void* ppBuffer) {
     CALL_GUARD(utils::get_now_ns());
-    return 0;
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptEnumRegisteredProviders)GetProcAddress(g_bcrypt_module, "BCryptEnumRegisteredProviders");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(pcbBuffer, ppBuffer);
 }
 
-extern "C" LONG WINAPI BCryptExportKey(LPVOID p0, LPVOID p1, LPCWSTR p2, LPVOID p3, LONG p4, LPVOID p5, LONG p6) {
+extern "C" LONG WINAPI BCryptExportKey(void* hKey, void* hExportKey, LPCWSTR pszBlobType, void* pParameterList,
+                                       ULONG cbOutput, void* pbOutput, ULONG* pcbResult, ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID, LPVOID, LPCWSTR, LPVOID, LONG, LPVOID, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptExportKey") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3, p4, p5, p6);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptExportKey)GetProcAddress(g_bcrypt_module, "BCryptExportKey");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hKey, hExportKey, pszBlobType, pParameterList, pbOutput, cbOutput, pcbResult, dwFlags);
 }
 
-extern "C" LONG WINAPI BCryptFinalizeKeyPair(LPVOID p0, LONG p1) {
+extern "C" LONG WINAPI BCryptFinalizeKeyPair(void* hKey, ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptFinalizeKeyPair") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptFinalizeKeyPair)GetProcAddress(g_bcrypt_module, "BCryptFinalizeKeyPair");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hKey, dwFlags);
 }
 
-extern "C" LONG WINAPI BCryptFinishHash(LPVOID p0, LPVOID p1, LONG p2, LONG p3) {
+extern "C" LONG WINAPI BCryptFinishHash(void* hHash, void* pbOutput, ULONG cbOutput, ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID, LPVOID, LONG, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptFinishHash") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptFinishHash)GetProcAddress(g_bcrypt_module, "BCryptFinishHash");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hHash, pbOutput, cbOutput, dwFlags);
 }
 
-extern "C" void WINAPI BCryptFreeBuffer(LPVOID p0) {
+extern "C" void WINAPI BCryptFreeBuffer(void* pvBuffer) {
     CALL_GUARD(utils::get_now_ns());
     if (!LoadRealBcrypt()) return;
-    typedef void (WINAPI *PFN)(LPVOID);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptFreeBuffer") : nullptr);
-    if (!fn) return;
-    fn(p0);
+    auto fn = (PFN_BCryptFreeBuffer)GetProcAddress(g_bcrypt_module, "BCryptFreeBuffer");
+    if (fn == nullptr) return;
+    fn(pvBuffer);
 }
 
-extern "C" LONG WINAPI BCryptGenRandom(LPVOID p0, LPVOID p1, LONG p2, LONG p3) {
+extern "C" LONG WINAPI BCryptGenRandom(void* hAlgorithm, void* pbBuffer, ULONG cbBuffer, ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID, LPVOID, LONG, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptGenRandom") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptGenRandom)GetProcAddress(g_bcrypt_module, "BCryptGenRandom");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hAlgorithm, pbBuffer, cbBuffer, dwFlags);
 }
 
-extern "C" LONG WINAPI BCryptGenerateKeyPair(LPVOID p0, LPVOID p1, LONG p2, LONG p3) {
+extern "C" LONG WINAPI BCryptGenerateKeyPair(void* hAlgorithm, void* phKey, ULONG dwLength, ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID, LPVOID, LONG, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptGenerateKeyPair") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptGenerateKeyPair)GetProcAddress(g_bcrypt_module, "BCryptGenerateKeyPair");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hAlgorithm, phKey, dwLength, dwFlags);
 }
 
-extern "C" LONG WINAPI BCryptGenerateSymmetricKey(LPVOID p0, LPVOID p1, LPVOID p2, LONG p3, LPVOID p4, LONG p5, LONG p6) {
+extern "C" LONG WINAPI BCryptGenerateSymmetricKey(void* hAlgorithm, void* phKey, void* pbKeyObject, ULONG cbKeyObject,
+                                                  void* pbSecret, ULONG cbSecret, ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LONG, LPVOID, LONG, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptGenerateSymmetricKey") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3, p4, p5, p6);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptGenerateSymmetricKey)GetProcAddress(g_bcrypt_module, "BCryptGenerateSymmetricKey");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hAlgorithm, phKey, pbKeyObject, cbKeyObject, pbSecret, cbSecret, dwFlags);
 }
 
-extern "C" LONG WINAPI BCryptGetFipsAlgorithmMode(LPVOID p0) {
+extern "C" LONG WINAPI BCryptGetFipsAlgorithmMode(void* pfEnabled) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptGetFipsAlgorithmMode") : nullptr);
-    if (!fn) return 0;
-    return fn(p0);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptGetFipsAlgorithmMode)GetProcAddress(g_bcrypt_module, "BCryptGetFipsAlgorithmMode");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(pfEnabled);
 }
 
-extern "C" LONG WINAPI BCryptGetProperty(LPVOID p0, LPCWSTR p1, LPVOID p2, LONG p3, LPVOID p4, LONG p5) {
+extern "C" LONG WINAPI BCryptGetProperty(void* hObject, LPCWSTR pszProperty, void* pbOutput, ULONG cbOutput,
+                                         ULONG* pcbResult, ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID, LPCWSTR, LPVOID, LONG, LPVOID, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptGetProperty") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3, p4, p5);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptGetProperty)GetProcAddress(g_bcrypt_module, "BCryptGetProperty");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hObject, pszProperty, pbOutput, cbOutput, pcbResult, dwFlags);
 }
 
-extern "C" LONG WINAPI BCryptHash(LPVOID p0, LPVOID p1, LONG p2, LPVOID p3, LONG p4, LPVOID p5, LONG p6) {
+extern "C" LONG WINAPI BCryptHash(void* hAlgorithm, void* pbInput, ULONG cbInput, void* pbHashObject,
+                                  ULONG cbHashObject, void* pbOutput, ULONG cbOutput, ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID, LPVOID, LONG, LPVOID, LONG, LPVOID, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptHash") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3, p4, p5, p6);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptHash)GetProcAddress(g_bcrypt_module, "BCryptHash");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hAlgorithm, pbInput, cbInput, pbHashObject, cbHashObject, pbOutput, cbOutput, dwFlags);
 }
 
-extern "C" LONG WINAPI BCryptHashData(LPVOID p0, LPVOID p1, LONG p2, LONG p3) {
+extern "C" LONG WINAPI BCryptHashData(void* hHash, void* pbInput, ULONG cbInput, ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID, LPVOID, LONG, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptHashData") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptHashData)GetProcAddress(g_bcrypt_module, "BCryptHashData");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hHash, pbInput, cbInput, dwFlags);
 }
 
-extern "C" LONG WINAPI BCryptImportKey(LPVOID p0, LPVOID p1, LPCWSTR p2, LPVOID p3, LPVOID p4, LONG p5, LPVOID p6, LONG p7, LONG p8) {
+extern "C" LONG WINAPI BCryptImportKey(void* hAlgorithm, void* hImportKey, LPCWSTR pszBlobType, void* phKey,
+                                       void* pbKeyObject, ULONG cbKeyObject, void* pbInput, ULONG cbInput,
+                                       ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID, LPVOID, LPCWSTR, LPVOID, LPVOID, LONG, LPVOID, LONG, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptImportKey") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3, p4, p5, p6, p7, p8);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptImportKey)GetProcAddress(g_bcrypt_module, "BCryptImportKey");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hAlgorithm, hImportKey, pszBlobType, phKey, pbKeyObject, cbKeyObject, pbInput, cbInput, dwFlags);
 }
 
-extern "C" LONG WINAPI BCryptImportKeyPair(LPVOID p0, LPVOID p1, LPCWSTR p2, LPVOID p3, LPVOID p4, LONG p5, LONG p6) {
+extern "C" LONG WINAPI BCryptImportKeyPair(void* hAlgorithm, void* hImportKey, LPCWSTR pszBlobType, void* phKey,
+                                           void* pbInput, ULONG cbInput, ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID, LPVOID, LPCWSTR, LPVOID, LPVOID, LONG, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptImportKeyPair") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3, p4, p5, p6);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptImportKeyPair)GetProcAddress(g_bcrypt_module, "BCryptImportKeyPair");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hAlgorithm, hImportKey, pszBlobType, phKey, pbInput, cbInput, dwFlags);
 }
 
-extern "C" LONG WINAPI BCryptKeyDerivation(LPVOID p0, LPVOID p1, LPVOID p2, LONG p3, LPVOID p4, LONG p5) {
+extern "C" LONG WINAPI BCryptKeyDerivation(void* hKey, void* pParameterList, void* pbDerivedKey, ULONG cbDerivedKey,
+                                           ULONG* pcbResult, ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LONG, LPVOID, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptKeyDerivation") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3, p4, p5);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptKeyDerivation)GetProcAddress(g_bcrypt_module, "BCryptKeyDerivation");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hKey, pParameterList, pbDerivedKey, cbDerivedKey, pcbResult, dwFlags);
 }
 
-extern "C" LONG WINAPI BCryptOpenAlgorithmProvider(LPVOID p0, LPCWSTR p1, LPCWSTR p2, LONG p3) {
+extern "C" LONG WINAPI BCryptOpenAlgorithmProvider(void* phAlgorithm, LPCWSTR pszAlgId, LPCWSTR pszImplementation,
+                                                   ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID, LPCWSTR, LPCWSTR, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptOpenAlgorithmProvider") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptOpenAlgorithmProvider)GetProcAddress(g_bcrypt_module, "BCryptOpenAlgorithmProvider");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(phAlgorithm, pszAlgId, pszImplementation, dwFlags);
 }
 
-extern "C" LONG WINAPI BCryptQueryContextConfiguration(void) {
+extern "C" LONG WINAPI BCryptQueryContextConfiguration(ULONG dwTable, LPCWSTR pszContext, ULONG* pcbBuffer,
+                                                       void* ppBuffer) {
     CALL_GUARD(utils::get_now_ns());
-    return 0;
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptQueryContextConfiguration)GetProcAddress(g_bcrypt_module, "BCryptQueryContextConfiguration");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(dwTable, pszContext, pcbBuffer, ppBuffer);
 }
 
-extern "C" LONG WINAPI BCryptQueryContextFunctionConfiguration(void) {
+extern "C" LONG WINAPI BCryptQueryContextFunctionConfiguration(ULONG dwTable, LPCWSTR pszContext, ULONG dwInterface,
+                                                               ULONG* pcbBuffer, void* ppBuffer) {
     CALL_GUARD(utils::get_now_ns());
-    return 0;
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptQueryContextFunctionConfiguration)GetProcAddress(g_bcrypt_module,
+                                                                          "BCryptQueryContextFunctionConfiguration");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(dwTable, pszContext, dwInterface, pcbBuffer, ppBuffer);
 }
 
-extern "C" LONG WINAPI BCryptQueryContextFunctionProperty(void) {
+extern "C" LONG WINAPI BCryptQueryContextFunctionProperty(ULONG dwTable, LPCWSTR pszContext, ULONG dwInterface,
+                                                          LPCWSTR pszFunction, LPCWSTR pszProperty, ULONG* pcbValue,
+                                                          void* ppValue) {
     CALL_GUARD(utils::get_now_ns());
-    return 0;
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn =
+        (PFN_BCryptQueryContextFunctionProperty)GetProcAddress(g_bcrypt_module, "BCryptQueryContextFunctionProperty");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(dwTable, pszContext, dwInterface, pszFunction, pszProperty, pcbValue, ppValue);
 }
 
-extern "C" LONG WINAPI BCryptQueryProviderRegistration(void) {
+extern "C" LONG WINAPI BCryptQueryProviderRegistration(LPCWSTR pszProvider, ULONG dwMode, ULONG dwInterface,
+                                                       ULONG* pcbBuffer, void* ppBuffer) {
     CALL_GUARD(utils::get_now_ns());
-    return 0;
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptQueryProviderRegistration)GetProcAddress(g_bcrypt_module, "BCryptQueryProviderRegistration");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(pszProvider, dwMode, dwInterface, pcbBuffer, ppBuffer);
 }
 
-extern "C" LONG WINAPI BCryptRegisterConfigChangeNotify(void) {
+extern "C" LONG WINAPI BCryptRegisterConfigChangeNotify(HANDLE* pEvent) {
     CALL_GUARD(utils::get_now_ns());
-    return 0;
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptRegisterConfigChangeNotify)GetProcAddress(g_bcrypt_module, "BCryptRegisterConfigChangeNotify");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(pEvent);
 }
 
-extern "C" LONG WINAPI BCryptRegisterProvider(LPCWSTR p0, LONG p1, LPVOID p2) {
+extern "C" LONG WINAPI BCryptRegisterProvider(LPCWSTR pszProvider, ULONG dwMode, void* pRegistration) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPCWSTR, LONG, LPVOID);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptRegisterProvider") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptRegisterProvider)GetProcAddress(g_bcrypt_module, "BCryptRegisterProvider");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(pszProvider, dwMode, pRegistration);
 }
 
-extern "C" LONG WINAPI BCryptRemoveContextFunction(LONG p0, LPCWSTR p1, LONG p2, LPCWSTR p3) {
+extern "C" LONG WINAPI BCryptRemoveContextFunction(ULONG dwTable, LPCWSTR pszContext, ULONG dwInterface, LPCWSTR pszFunction) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LONG, LPCWSTR, LONG, LPCWSTR);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptRemoveContextFunction") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptRemoveContextFunction)GetProcAddress(g_bcrypt_module, "BCryptRemoveContextFunction");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(dwTable, pszContext, dwInterface, pszFunction);
 }
 
-extern "C" LONG WINAPI BCryptRemoveContextFunctionProvider(LONG p0, LPCWSTR p1, LONG p2, LPCWSTR p3, LPCWSTR p4) {
+extern "C" LONG WINAPI BCryptRemoveContextFunctionProvider(ULONG dwTable, LPCWSTR pszContext, ULONG dwInterface, LPCWSTR pszFunction, LPCWSTR pszProvider) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LONG, LPCWSTR, LONG, LPCWSTR, LPCWSTR);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptRemoveContextFunctionProvider") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3, p4);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn =
+        (PFN_BCryptRemoveContextFunctionProvider)GetProcAddress(g_bcrypt_module, "BCryptRemoveContextFunctionProvider");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(dwTable, pszContext, dwInterface, pszFunction, pszProvider);
 }
 
-extern "C" LONG WINAPI BCryptResolveProviders(void) {
+extern "C" LONG WINAPI BCryptResolveProviders(LPCWSTR pszContext, ULONG dwInterface, LPCWSTR pszFunction,
+                                              LPCWSTR pszProvider, ULONG* pcbBuffer, void* ppBuffer) {
     CALL_GUARD(utils::get_now_ns());
-    return 0;
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptResolveProviders)GetProcAddress(g_bcrypt_module, "BCryptResolveProviders");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(pszContext, dwInterface, pszFunction, pszProvider, pcbBuffer, ppBuffer);
 }
 
-extern "C" LONG WINAPI BCryptSecretAgreement(LPVOID p0, LPVOID p1, LPVOID p2, LONG p3) {
+extern "C" LONG WINAPI BCryptSecretAgreement(void* hPrivKey, void* hPubKey, void* phSecret, ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptSecretAgreement") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptSecretAgreement)GetProcAddress(g_bcrypt_module, "BCryptSecretAgreement");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hPrivKey, hPubKey, phSecret, dwFlags);
 }
 
-extern "C" LONG WINAPI BCryptSetAuditingInterface(void) {
+extern "C" LONG WINAPI BCryptSetAuditingInterface(void* pAuditingInterface) {
     CALL_GUARD(utils::get_now_ns());
-    return 0;
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptSetAuditingInterface)GetProcAddress(g_bcrypt_module, "BCryptSetAuditingInterface");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(pAuditingInterface);
 }
 
-extern "C" LONG WINAPI BCryptSetContextFunctionProperty(void) {
+extern "C" LONG WINAPI BCryptSetContextFunctionProperty(ULONG dwTable, LPCWSTR pszContext, ULONG dwInterface,
+                                                        LPCWSTR pszFunction, LPCWSTR pszProperty, void* pbValue,
+                                                        ULONG cbValue) {
     CALL_GUARD(utils::get_now_ns());
-    return 0;
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptSetContextFunctionProperty)GetProcAddress(g_bcrypt_module, "BCryptSetContextFunctionProperty");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(dwTable, pszContext, dwInterface, pszFunction, pszProperty, pbValue, cbValue);
 }
 
-extern "C" LONG WINAPI BCryptSetProperty(LPVOID p0, LPCWSTR p1, LPVOID p2, LONG p3, LONG p4) {
+extern "C" LONG WINAPI BCryptSetProperty(void* hObject, LPCWSTR pszProperty, void* pbInput, ULONG cbInput, ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID, LPCWSTR, LPVOID, LONG, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptSetProperty") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3, p4);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptSetProperty)GetProcAddress(g_bcrypt_module, "BCryptSetProperty");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hObject, pszProperty, pbInput, cbInput, dwFlags);
 }
 
-extern "C" LONG WINAPI BCryptSignHash(LPVOID p0, LPVOID p1, LPVOID p2, LONG p3, LPVOID p4, LONG p5, LPVOID p6, LONG p7) {
+extern "C" LONG WINAPI BCryptSignHash(void* hKey, void* pPaddingInfo, void* pbInput, ULONG cbInput, void* pbOutput, ULONG cbOutput, ULONG* pcbResult, ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LONG, LPVOID, LONG, LPVOID, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptSignHash") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3, p4, p5, p6, p7);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptSignHash)GetProcAddress(g_bcrypt_module, "BCryptSignHash");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hKey, pPaddingInfo, pbInput, cbInput, pbOutput, cbOutput, pcbResult, dwFlags);
 }
 
-extern "C" LONG WINAPI BCryptUnregisterConfigChangeNotify(void) {
+extern "C" LONG WINAPI BCryptUnregisterConfigChangeNotify(HANDLE hEvent) {
     CALL_GUARD(utils::get_now_ns());
-    return 0;
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn =
+        (PFN_BCryptUnregisterConfigChangeNotify)GetProcAddress(g_bcrypt_module, "BCryptUnregisterConfigChangeNotify");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hEvent);
 }
 
-extern "C" LONG WINAPI BCryptUnregisterProvider(LPCWSTR p0) {
+extern "C" LONG WINAPI BCryptUnregisterProvider(LPCWSTR pszProvider) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPCWSTR);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptUnregisterProvider") : nullptr);
-    if (!fn) return 0;
-    return fn(p0);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptUnregisterProvider)GetProcAddress(g_bcrypt_module, "BCryptUnregisterProvider");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(pszProvider);
 }
 
-extern "C" LONG WINAPI BCryptVerifySignature(LPVOID p0, LPVOID p1, LPVOID p2, LONG p3, LPVOID p4, LONG p5, LONG p6) {
+extern "C" LONG WINAPI BCryptVerifySignature(void* hKey, void* pPaddingInfo, void* pbHash, ULONG cbHash, void* pbSignature, ULONG cbSignature, ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
-    if (!LoadRealBcrypt()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LONG, LPVOID, LONG, LONG);
-    PFN fn = (PFN)(LoadRealBcrypt() ? GetProcAddress(g_bcrypt_module, "BCryptVerifySignature") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3, p4, p5, p6);
+    if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
+    auto fn = (PFN_BCryptVerifySignature)GetProcAddress(g_bcrypt_module, "BCryptVerifySignature");
+    if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
+    return (LONG)fn(hKey, pPaddingInfo, pbHash, cbHash, pbSignature, cbSignature, dwFlags);
 }
 
-extern "C" LONG WINAPI GetAsymmetricEncryptionInterface(void) {
+extern "C" void* WINAPI GetAsymmetricEncryptionInterface(void) {
     CALL_GUARD(utils::get_now_ns());
-    return 0;
+    if (!LoadRealBcrypt()) return nullptr;
+    auto fn = (PFN_GetAsymmetricEncryptionInterface)GetProcAddress(g_bcrypt_module, "GetAsymmetricEncryptionInterface");
+    if (fn == nullptr) return nullptr;
+    return fn();
 }
 
-extern "C" LONG WINAPI GetCipherInterface(void) {
+extern "C" void* WINAPI GetCipherInterface(void) {
     CALL_GUARD(utils::get_now_ns());
-    return 0;
+    if (!LoadRealBcrypt()) return nullptr;
+    auto fn = (PFN_GetCipherInterface)GetProcAddress(g_bcrypt_module, "GetCipherInterface");
+    if (fn == nullptr) return nullptr;
+    return fn();
 }
 
-extern "C" LONG WINAPI GetHashInterface(void) {
+extern "C" void* WINAPI GetHashInterface(void) {
     CALL_GUARD(utils::get_now_ns());
-    return 0;
+    if (!LoadRealBcrypt()) return nullptr;
+    auto fn = (PFN_GetHashInterface)GetProcAddress(g_bcrypt_module, "GetHashInterface");
+    if (fn == nullptr) return nullptr;
+    return fn();
 }
 
-extern "C" LONG WINAPI GetRngInterface(void) {
+extern "C" void* WINAPI GetRngInterface(void) {
     CALL_GUARD(utils::get_now_ns());
-    return 0;
+    if (!LoadRealBcrypt()) return nullptr;
+    auto fn = (PFN_GetRngInterface)GetProcAddress(g_bcrypt_module, "GetRngInterface");
+    if (fn == nullptr) return nullptr;
+    return fn();
 }
 
-extern "C" LONG WINAPI GetSecretAgreementInterface(void) {
+extern "C" void* WINAPI GetSecretAgreementInterface(void) {
     CALL_GUARD(utils::get_now_ns());
-    return 0;
+    if (!LoadRealBcrypt()) return nullptr;
+    auto fn = (PFN_GetSecretAgreementInterface)GetProcAddress(g_bcrypt_module, "GetSecretAgreementInterface");
+    if (fn == nullptr) return nullptr;
+    return fn();
 }
 
-extern "C" LONG WINAPI GetSignatureInterface(void) {
+extern "C" void* WINAPI GetSignatureInterface(void) {
     CALL_GUARD(utils::get_now_ns());
-    return 0;
+    if (!LoadRealBcrypt()) return nullptr;
+    auto fn = (PFN_GetSignatureInterface)GetProcAddress(g_bcrypt_module, "GetSignatureInterface");
+    if (fn == nullptr) return nullptr;
+    return fn();
 }

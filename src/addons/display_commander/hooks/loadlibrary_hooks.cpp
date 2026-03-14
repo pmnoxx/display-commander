@@ -309,6 +309,14 @@ std::string WideToNarrow(const std::wstring& wstr) {
     return strTo;
 }
 
+// Caller module path for LoadLibrary/LdrLoadDll log lines (returns "(unknown)" if unavailable).
+static std::string GetCallerModulePathForLog(HMODULE h) {
+    if (h == nullptr) return "(unknown)";
+    WCHAR buf[MAX_PATH] = {};
+    if (GetModuleFileNameW(h, buf, MAX_PATH) == 0) return "(unknown)";
+    return WideToNarrow(buf);
+}
+
 // Helper function to get file time from module
 FILETIME GetModuleFileTime(HMODULE hModule) {
     FILETIME ft = {0};
@@ -370,19 +378,21 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
     CALL_GUARD(utils::get_now_ns());
     TryStartStandaloneUIFromSafeContext();
     const HMODULE load_caller = GetCallingDLL();
+    const std::string caller_str = GetCallerModulePathForLog(load_caller);
     std::string timestamp = GetCurrentTimestamp();
     std::string dll_name = lpLibFileName ? lpLibFileName : "NULL";
 
     const bool already_loaded = (lpLibFileName && GetModuleHandleA(lpLibFileName) != nullptr);
     if (!already_loaded) {
-        LogInfo("[%s] LoadLibraryA called: %s", timestamp.c_str(), dll_name.c_str());
+        LogInfo("[%s] LoadLibraryA called: %s (caller: %s)", timestamp.c_str(), dll_name.c_str(), caller_str.c_str());
     }
 
     // Check for SpecialK blocking (incompatible with Display Commander)
     if (lpLibFileName) {
         std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
         if (ShouldBlockSpecialKDLL(w_dll_name)) {
-            LogInfo("[%s] SpecialK Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
+            LogInfo("[%s] SpecialK Block: Blocking %s from loading (caller: %s)", timestamp.c_str(), dll_name.c_str(),
+                    caller_str.c_str());
             SetLastError(ERROR_ACCESS_DENIED);
             return nullptr;
         }
@@ -392,7 +402,8 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
     if (lpLibFileName) {
         std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
         if (ShouldBlockAnselDLL(w_dll_name)) {
-            LogInfo("[%s] Ansel Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
+            LogInfo("[%s] Ansel Block: Blocking %s from loading (caller: %s)", timestamp.c_str(), dll_name.c_str(),
+                    caller_str.c_str());
             return nullptr;  // Return nullptr to indicate failure to load
         }
     }
@@ -401,7 +412,8 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
     if (lpLibFileName) {
         std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
         if (ShouldBlockDLL(w_dll_name)) {
-            LogInfo("[%s] DLL Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
+            LogInfo("[%s] DLL Block: Blocking %s from loading (caller: %s)", timestamp.c_str(), dll_name.c_str(),
+                    caller_str.c_str());
             return nullptr;  // Return nullptr to indicate failure to load
         }
     }
@@ -420,11 +432,11 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
                 std::string narrow_override_path = WideToNarrow(override_path);
                 actual_lib_file_name = narrow_override_path.c_str();
                 used_dlss_override = true;
-                LogInfo("[%s] DLSS Override: Redirecting %s to %s", timestamp.c_str(), dll_name.c_str(),
-                        narrow_override_path.c_str());
+                LogInfo("[%s] DLSS Override: Redirecting %s to %s (caller: %s)", timestamp.c_str(), dll_name.c_str(),
+                        narrow_override_path.c_str(), caller_str.c_str());
             } else {
-                LogInfo("[%s] DLSS Override: Override file not found: %s", timestamp.c_str(),
-                        WideToNarrow(override_path).c_str());
+                LogInfo("[%s] DLSS Override: Override file not found: %s (caller: %s)", timestamp.c_str(),
+                        WideToNarrow(override_path).c_str(), caller_str.c_str());
             }
         }
     }
@@ -439,7 +451,8 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
 
     if (result) {
         if (!already_loaded) {
-            LogInfo("[%s] LoadLibraryA success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
+            LogInfo("[%s] LoadLibraryA success: %s -> HMODULE: 0x%p (caller: %s)", timestamp.c_str(), dll_name.c_str(),
+                    result, caller_str.c_str());
         }
 
         std::wstring module_name_wide(dll_name.begin(), dll_name.end());
@@ -458,7 +471,8 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
         }
     } else {
         DWORD error = GetLastError();
-        LogInfo("[%s] LoadLibraryA failed: %s -> Error: %lu", timestamp.c_str(), dll_name.c_str(), error);
+        LogInfo("[%s] LoadLibraryA failed: %s -> Error: %lu (caller: %s)", timestamp.c_str(), dll_name.c_str(), error,
+                caller_str.c_str());
     }
 
     return result;
@@ -475,19 +489,21 @@ HMODULE WINAPI LoadLibraryW_Direct(LPCWSTR lpLibFileName) {
 HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
     CALL_GUARD(utils::get_now_ns());
     const HMODULE load_caller = GetCallingDLL();
+    const std::string caller_str = GetCallerModulePathForLog(load_caller);
     std::string timestamp = GetCurrentTimestamp();
     std::string dll_name = lpLibFileName ? WideToNarrow(lpLibFileName) : "NULL";
 
     const bool already_loaded = (lpLibFileName && GetModuleHandleW(lpLibFileName) != nullptr);
     if (!already_loaded) {
-        LogInfo("[%s] LoadLibraryW called: %s", timestamp.c_str(), dll_name.c_str());
+        LogInfo("[%s] LoadLibraryW called: %s (caller: %s)", timestamp.c_str(), dll_name.c_str(), caller_str.c_str());
     }
 
     // Check for SpecialK blocking (incompatible with Display Commander)
     if (lpLibFileName) {
         std::wstring w_dll_name = lpLibFileName;
         if (ShouldBlockSpecialKDLL(w_dll_name)) {
-            LogInfo("[%s] SpecialK Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
+            LogInfo("[%s] SpecialK Block: Blocking %s from loading (caller: %s)", timestamp.c_str(), dll_name.c_str(),
+                    caller_str.c_str());
             SetLastError(ERROR_ACCESS_DENIED);
             return nullptr;
         }
@@ -497,7 +513,8 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
     if (lpLibFileName) {
         std::wstring w_dll_name = lpLibFileName;
         if (ShouldBlockAnselDLL(w_dll_name)) {
-            LogInfo("[%s] Ansel Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
+            LogInfo("[%s] Ansel Block: Blocking %s from loading (caller: %s)", timestamp.c_str(), dll_name.c_str(),
+                    caller_str.c_str());
             return nullptr;  // Return nullptr to indicate failure to load
         }
     }
@@ -506,7 +523,8 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
     if (lpLibFileName) {
         std::wstring w_dll_name = lpLibFileName;
         if (ShouldBlockDLL(w_dll_name)) {
-            LogInfo("[%s] DLL Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
+            LogInfo("[%s] DLL Block: Blocking %s from loading (caller: %s)", timestamp.c_str(), dll_name.c_str(),
+                    caller_str.c_str());
             return nullptr;  // Return nullptr to indicate failure to load
         }
     }
@@ -523,11 +541,11 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
             // Check if override file exists
             if (std::filesystem::exists(override_path)) {
                 actual_lib_file_name = override_path.c_str();
-                LogInfo("[%s] DLSS Override: Redirecting %s to %s", timestamp.c_str(), dll_name.c_str(),
-                        WideToNarrow(override_path).c_str());
+                LogInfo("[%s] DLSS Override: Redirecting %s to %s (caller: %s)", timestamp.c_str(), dll_name.c_str(),
+                        WideToNarrow(override_path).c_str(), caller_str.c_str());
             } else {
-                LogInfo("[%s] DLSS Override: Override file not found: %s", timestamp.c_str(),
-                        WideToNarrow(override_path).c_str());
+                LogInfo("[%s] DLSS Override: Override file not found: %s (caller: %s)", timestamp.c_str(),
+                        WideToNarrow(override_path).c_str(), caller_str.c_str());
             }
         }
     }
@@ -542,7 +560,8 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
 
     if (result) {
         if (!already_loaded) {
-            LogInfo("[%s] LoadLibraryW success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
+            LogInfo("[%s] LoadLibraryW success: %s -> HMODULE: 0x%p (caller: %s)", timestamp.c_str(), dll_name.c_str(),
+                    result, caller_str.c_str());
         }
 
         std::wstring module_name_wide(dll_name.begin(), dll_name.end());
@@ -561,7 +580,8 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
         }
     } else {
         DWORD error = GetLastError();
-        LogInfo("[%s] LoadLibraryW failed: %s -> Error: %lu", timestamp.c_str(), dll_name.c_str(), error);
+        LogInfo("[%s] LoadLibraryW failed: %s -> Error: %lu (caller: %s)", timestamp.c_str(), dll_name.c_str(), error,
+                caller_str.c_str());
     }
 
     return result;
@@ -571,17 +591,19 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
 HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD dwFlags) {
     CALL_GUARD(utils::get_now_ns());
     const HMODULE load_caller = GetCallingDLL();
+    const std::string caller_str = GetCallerModulePathForLog(load_caller);
     std::string timestamp = GetCurrentTimestamp();
     std::string dll_name = lpLibFileName ? lpLibFileName : "NULL";
 
-    LogInfo("[%s] LoadLibraryExA called: %s, hFile: 0x%p, dwFlags: 0x%08X", timestamp.c_str(), dll_name.c_str(), hFile,
-            dwFlags);
+    LogInfo("[%s] LoadLibraryExA called: %s, hFile: 0x%p, dwFlags: 0x%08X (caller: %s)", timestamp.c_str(), dll_name.c_str(),
+            hFile, dwFlags, caller_str.c_str());
 
     // Check for SpecialK blocking (incompatible with Display Commander)
     if (lpLibFileName) {
         std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
         if (ShouldBlockSpecialKDLL(w_dll_name)) {
-            LogInfo("[%s] SpecialK Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
+            LogInfo("[%s] SpecialK Block: Blocking %s from loading (caller: %s)", timestamp.c_str(), dll_name.c_str(),
+                    caller_str.c_str());
             SetLastError(ERROR_ACCESS_DENIED);
             return nullptr;
         }
@@ -591,7 +613,8 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
     if (lpLibFileName) {
         std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
         if (ShouldBlockAnselDLL(w_dll_name)) {
-            LogInfo("[%s] Ansel Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
+            LogInfo("[%s] Ansel Block: Blocking %s from loading (caller: %s)", timestamp.c_str(), dll_name.c_str(),
+                    caller_str.c_str());
             return nullptr;  // Return nullptr to indicate failure to load
         }
     }
@@ -600,7 +623,8 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
     if (lpLibFileName) {
         std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
         if (ShouldBlockDLL(w_dll_name)) {
-            LogInfo("[%s] DLL Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
+            LogInfo("[%s] DLL Block: Blocking %s from loading (caller: %s)", timestamp.c_str(), dll_name.c_str(),
+                    caller_str.c_str());
             return nullptr;  // Return nullptr to indicate failure to load
         }
     }
@@ -619,11 +643,11 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
                 std::string narrow_override_path = WideToNarrow(override_path);
                 actual_lib_file_name = narrow_override_path.c_str();
                 used_dlss_override_exa = true;
-                LogInfo("[%s] DLSS Override: Redirecting %s to %s", timestamp.c_str(), dll_name.c_str(),
-                        narrow_override_path.c_str());
+                LogInfo("[%s] DLSS Override: Redirecting %s to %s (caller: %s)", timestamp.c_str(), dll_name.c_str(),
+                        narrow_override_path.c_str(), caller_str.c_str());
             } else {
-                LogInfo("[%s] DLSS Override: Override file not found: %s", timestamp.c_str(),
-                        WideToNarrow(override_path).c_str());
+                LogInfo("[%s] DLSS Override: Override file not found: %s (caller: %s)", timestamp.c_str(),
+                        WideToNarrow(override_path).c_str(), caller_str.c_str());
             }
         }
     }
@@ -637,7 +661,8 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
     }
 
     if (result) {
-        LogInfo("[%s] LoadLibraryExA success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
+        LogInfo("[%s] LoadLibraryExA success: %s -> HMODULE: 0x%p (caller: %s)", timestamp.c_str(), dll_name.c_str(),
+                result, caller_str.c_str());
 
         std::wstring wideModuleName;
         if (lpLibFileName) {
@@ -663,7 +688,8 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
         }
     } else {
         DWORD error = GetLastError();
-        LogInfo("[%s] LoadLibraryExA failed: %s -> Error: %lu", timestamp.c_str(), dll_name.c_str(), error);
+        LogInfo("[%s] LoadLibraryExA failed: %s -> Error: %lu (caller: %s)", timestamp.c_str(), dll_name.c_str(), error,
+                caller_str.c_str());
     }
 
     return result;
@@ -673,17 +699,19 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
 HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags) {
     CALL_GUARD(utils::get_now_ns());
     const HMODULE load_caller = GetCallingDLL();
+    const std::string caller_str = GetCallerModulePathForLog(load_caller);
     std::string timestamp = GetCurrentTimestamp();
     std::string dll_name = lpLibFileName ? WideToNarrow(lpLibFileName) : "NULL";
 
-    LogInfo("[%s] LoadLibraryExW called: %s, hFile: 0x%p, dwFlags: 0x%08X", timestamp.c_str(), dll_name.c_str(), hFile,
-            dwFlags);
+    LogInfo("[%s] LoadLibraryExW called: %s, hFile: 0x%p, dwFlags: 0x%08X (caller: %s)", timestamp.c_str(), dll_name.c_str(),
+            hFile, dwFlags, caller_str.c_str());
 
     // Check for SpecialK blocking (incompatible with Display Commander)
     if (lpLibFileName) {
         std::wstring w_dll_name = lpLibFileName;
         if (ShouldBlockSpecialKDLL(w_dll_name)) {
-            LogInfo("[%s] SpecialK Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
+            LogInfo("[%s] SpecialK Block: Blocking %s from loading (caller: %s)", timestamp.c_str(), dll_name.c_str(),
+                    caller_str.c_str());
             SetLastError(ERROR_ACCESS_DENIED);
             return nullptr;
         }
@@ -693,7 +721,8 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
     if (lpLibFileName) {
         std::wstring w_dll_name = lpLibFileName;
         if (ShouldBlockAnselDLL(w_dll_name)) {
-            LogInfo("[%s] Ansel Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
+            LogInfo("[%s] Ansel Block: Blocking %s from loading (caller: %s)", timestamp.c_str(), dll_name.c_str(),
+                    caller_str.c_str());
             return nullptr;  // Return nullptr to indicate failure to load
         }
     }
@@ -702,7 +731,8 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
     if (lpLibFileName) {
         std::wstring w_dll_name = lpLibFileName;
         if (ShouldBlockDLL(w_dll_name)) {
-            LogInfo("[%s] DLL Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
+            LogInfo("[%s] DLL Block: Blocking %s from loading (caller: %s)", timestamp.c_str(), dll_name.c_str(),
+                    caller_str.c_str());
             return nullptr;  // Return nullptr to indicate failure to load
         }
     }
@@ -719,11 +749,11 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
             // Check if override file exists
             if (std::filesystem::exists(override_path)) {
                 actual_lib_file_name = override_path.c_str();
-                LogInfo("[%s] DLSS Override: Redirecting %s to %s", timestamp.c_str(), dll_name.c_str(),
-                        WideToNarrow(override_path).c_str());
+                LogInfo("[%s] DLSS Override: Redirecting %s to %s (caller: %s)", timestamp.c_str(), dll_name.c_str(),
+                        WideToNarrow(override_path).c_str(), caller_str.c_str());
             } else {
-                LogInfo("[%s] DLSS Override: Override file not found: %s", timestamp.c_str(),
-                        WideToNarrow(override_path).c_str());
+                LogInfo("[%s] DLSS Override: Override file not found: %s (caller: %s)", timestamp.c_str(),
+                        WideToNarrow(override_path).c_str(), caller_str.c_str());
             }
         }
     }
@@ -737,7 +767,8 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
     }
 
     if (result) {
-        LogInfo("[%s] LoadLibraryExW success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
+        LogInfo("[%s] LoadLibraryExW success: %s -> HMODULE: 0x%p (caller: %s)", timestamp.c_str(), dll_name.c_str(),
+                result, caller_str.c_str());
 
         std::wstring module_name_wide = lpLibFileName ? lpLibFileName : L"Unknown";
         ModuleInfo moduleInfo;
@@ -755,7 +786,8 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
         }
     } else {
         DWORD error = GetLastError();
-        LogInfo("[%s] LoadLibraryExW failed: %s -> Error: %lu", timestamp.c_str(), dll_name.c_str(), error);
+        LogInfo("[%s] LoadLibraryExW failed: %s -> Error: %lu (caller: %s)", timestamp.c_str(), dll_name.c_str(), error,
+                caller_str.c_str());
     }
 
     return result;
@@ -766,24 +798,29 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
 HMODULE WINAPI LoadPackagedLibrary_Detour(LPCWSTR lpwszPackageFullName, DWORD Reserved) {
     CALL_GUARD(utils::get_now_ns());
     const HMODULE load_caller = GetCallingDLL();
+    const std::string caller_str = GetCallerModulePathForLog(load_caller);
     std::string timestamp = GetCurrentTimestamp();
     std::string name_str = lpwszPackageFullName ? WideToNarrow(lpwszPackageFullName) : "NULL";
 
-    LogInfo("[%s] LoadPackagedLibrary called: %s, Reserved: 0x%08X", timestamp.c_str(), name_str.c_str(), Reserved);
+    LogInfo("[%s] LoadPackagedLibrary called: %s, Reserved: 0x%08X (caller: %s)", timestamp.c_str(), name_str.c_str(),
+            Reserved, caller_str.c_str());
 
     if (lpwszPackageFullName) {
         std::wstring w_name = lpwszPackageFullName;
         if (ShouldBlockSpecialKDLL(w_name)) {
-            LogInfo("[%s] SpecialK Block: Blocking packaged lib %s from loading", timestamp.c_str(), name_str.c_str());
+            LogInfo("[%s] SpecialK Block: Blocking packaged lib %s from loading (caller: %s)", timestamp.c_str(),
+                    name_str.c_str(), caller_str.c_str());
             SetLastError(ERROR_ACCESS_DENIED);
             return nullptr;
         }
         if (ShouldBlockAnselDLL(w_name)) {
-            LogInfo("[%s] Ansel Block: Blocking packaged lib %s from loading", timestamp.c_str(), name_str.c_str());
+            LogInfo("[%s] Ansel Block: Blocking packaged lib %s from loading (caller: %s)", timestamp.c_str(),
+                    name_str.c_str(), caller_str.c_str());
             return nullptr;
         }
         if (ShouldBlockDLL(w_name)) {
-            LogInfo("[%s] DLL Block: Blocking packaged lib %s from loading", timestamp.c_str(), name_str.c_str());
+            LogInfo("[%s] DLL Block: Blocking packaged lib %s from loading (caller: %s)", timestamp.c_str(),
+                    name_str.c_str(), caller_str.c_str());
             return nullptr;
         }
     }
@@ -793,7 +830,8 @@ HMODULE WINAPI LoadPackagedLibrary_Detour(LPCWSTR lpwszPackageFullName, DWORD Re
         LoadPackagedLibrary_Original ? LoadPackagedLibrary_Original(lpwszPackageFullName, Reserved) : nullptr;
 
     if (result) {
-        LogInfo("[%s] LoadPackagedLibrary success: %s -> HMODULE: 0x%p", timestamp.c_str(), name_str.c_str(), result);
+        LogInfo("[%s] LoadPackagedLibrary success: %s -> HMODULE: 0x%p (caller: %s)", timestamp.c_str(), name_str.c_str(),
+                result, caller_str.c_str());
         std::wstring module_name_wide(name_str.begin(), name_str.end());
         ModuleInfo moduleInfo;
         FillModuleInfoFromHandle(result, module_name_wide, moduleInfo);
@@ -807,7 +845,8 @@ HMODULE WINAPI LoadPackagedLibrary_Detour(LPCWSTR lpwszPackageFullName, DWORD Re
         }
     } else {
         DWORD error = GetLastError();
-        LogInfo("[%s] LoadPackagedLibrary failed: %s -> Error: %lu", timestamp.c_str(), name_str.c_str(), error);
+        LogInfo("[%s] LoadPackagedLibrary failed: %s -> Error: %lu (caller: %s)", timestamp.c_str(), name_str.c_str(),
+                error, caller_str.c_str());
     }
 
     return result;
@@ -818,6 +857,7 @@ HMODULE WINAPI LoadPackagedLibrary_Detour(LPCWSTR lpwszPackageFullName, DWORD Re
 LONG NTAPI LdrLoadDll_Detour(PWSTR DllPath, PULONG DllCharacteristics, const void* DllName, PVOID* DllHandle) {
     CALL_GUARD(utils::get_now_ns());
     const HMODULE load_caller = GetCallingDLL();
+    const std::string caller_str = GetCallerModulePathForLog(load_caller);
     const auto* name = static_cast<const UnicodeStringNtdll*>(DllName);
     std::wstring dll_name_wide;
     if (name != nullptr && name->Buffer != nullptr && name->Length > 0) {
@@ -829,26 +869,30 @@ LONG NTAPI LdrLoadDll_Detour(PWSTR DllPath, PULONG DllCharacteristics, const voi
     // Only log "called" when the library is not already in our tracked set (avoids spam for e.g. gdi32.dll)
     const bool already_loaded = !dll_name_wide.empty() && IsModuleLoaded(dll_name_wide);
     if (!already_loaded) {
-        LogInfo("[%s] LdrLoadDll called: %s", timestamp.c_str(), dll_name.empty() ? "(no name)" : dll_name.c_str());
+        LogInfo("[%s] LdrLoadDll called: %s (caller: %s)", timestamp.c_str(),
+                dll_name.empty() ? "(no name)" : dll_name.c_str(), caller_str.c_str());
     }
 
     if (!dll_name_wide.empty()) {
         if (ShouldBlockSpecialKDLL(dll_name_wide)) {
-            LogInfo("[%s] SpecialK Block (LdrLoadDll): Blocking %s", timestamp.c_str(), dll_name.c_str());
+            LogInfo("[%s] SpecialK Block (LdrLoadDll): Blocking %s (caller: %s)", timestamp.c_str(), dll_name.c_str(),
+                    caller_str.c_str());
             if (DllHandle != nullptr) {
                 *DllHandle = nullptr;
             }
             return STATUS_ACCESS_DENIED_NT;
         }
         if (ShouldBlockAnselDLL(dll_name_wide)) {
-            LogInfo("[%s] Ansel Block (LdrLoadDll): Blocking %s", timestamp.c_str(), dll_name.c_str());
+            LogInfo("[%s] Ansel Block (LdrLoadDll): Blocking %s (caller: %s)", timestamp.c_str(), dll_name.c_str(),
+                    caller_str.c_str());
             if (DllHandle != nullptr) {
                 *DllHandle = nullptr;
             }
             return STATUS_ACCESS_DENIED_NT;
         }
         if (ShouldBlockDLL(dll_name_wide)) {
-            LogInfo("[%s] DLL Block (LdrLoadDll): Blocking %s", timestamp.c_str(), dll_name.c_str());
+            LogInfo("[%s] DLL Block (LdrLoadDll): Blocking %s (caller: %s)", timestamp.c_str(), dll_name.c_str(),
+                    caller_str.c_str());
             if (DllHandle != nullptr) {
                 *DllHandle = nullptr;
             }
@@ -876,12 +920,13 @@ LONG NTAPI LdrLoadDll_Detour(PWSTR DllPath, PULONG DllCharacteristics, const voi
                     dll_name.empty() ? "Unknown" : dll_name.c_str(), base_addr);
             RecordHostLoadedApiIfAppropriate(load_caller, callback_module_name);
             OnModuleLoaded(callback_module_name, callback_hmodule);
-            LogInfo("[%s] LdrLoadDll success: %s -> 0x%p", timestamp.c_str(),
-                    dll_name.empty() ? "(no name)" : dll_name.c_str(), base);
+            LogInfo("[%s] LdrLoadDll success: %s -> 0x%p (caller: %s)", timestamp.c_str(),
+                    dll_name.empty() ? "(no name)" : dll_name.c_str(), base, caller_str.c_str());
         }
     } else if (status != 0) {
-        LogInfo("[%s] LdrLoadDll failed: %s -> NTSTATUS 0x%08lX", timestamp.c_str(),
-                dll_name.empty() ? "(no name)" : dll_name.c_str(), static_cast<unsigned long>(status));
+        LogInfo("[%s] LdrLoadDll failed: %s -> NTSTATUS 0x%08lX (caller: %s)", timestamp.c_str(),
+                dll_name.empty() ? "(no name)" : dll_name.c_str(), static_cast<unsigned long>(status),
+                caller_str.c_str());
     }
 
     return status;

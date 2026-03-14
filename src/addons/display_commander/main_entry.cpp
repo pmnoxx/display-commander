@@ -7,6 +7,7 @@
 #include "display/dpi_management.hpp"
 #include "exit_handler.hpp"
 #include "globals.hpp"
+#include "hooks/dbghelp/dbghelp_private_loader.hpp"
 #include "hooks/input/hid_suppression_hooks.hpp"
 #include "hooks/input/xinput_hooks.hpp"
 #include "hooks/loadlibrary_hooks.hpp"
@@ -2580,6 +2581,9 @@ static void CaptureDllLoadCallerPath(HMODULE h_our_module) {
         void* backtrace[256] = {};
         const USHORT n = CaptureStackBackTrace(0, static_cast<ULONG>(sizeof(backtrace) / sizeof(backtrace[0])),
                                               backtrace, nullptr);
+        g_dll_main_backtrace_count = (n <= static_cast<USHORT>(kDllMainBacktraceMax)) ? n : static_cast<USHORT>(kDllMainBacktraceMax);
+        for (USHORT i = 0; i < g_dll_main_backtrace_count; ++i)
+            g_dll_main_backtrace[i] = backtrace[i];
         wchar_t path_buf[MAX_PATH] = {};
         std::string fallback;
         bool fallback_is_loader = false;
@@ -2639,22 +2643,9 @@ static void EnsureDisplayCommanderLogWithModulePath(HMODULE h_module) {
         snprintf(dbg_buf + dbg_len, sizeof(dbg_buf) - static_cast<size_t>(dbg_len), "\n");
         OutputDebugStringA(dbg_buf);
     }
-    if (!g_dll_load_call_stack_list.empty()) {
-        OutputDebugStringA("[DisplayCommander] Call stack (outer first):\n");
-        for (size_t pos = 0; pos < g_dll_load_call_stack_list.size();) {
-            size_t end = g_dll_load_call_stack_list.find('\n', pos);
-            if (end == std::string::npos) end = g_dll_load_call_stack_list.size();
-            std::string line = g_dll_load_call_stack_list.substr(pos, end - pos);
-            if (!line.empty()) {
-                OutputDebugStringA("[DisplayCommander]   ");
-                OutputDebugStringA(line.c_str());
-                OutputDebugStringA("\n");
-            }
-            pos = (end < g_dll_load_call_stack_list.size()) ? end + 1 : end;
-        }
-    }
     try {
         std::filesystem::path log_path = std::filesystem::path(module_path_buf).parent_path() / "DisplayCommander.log";
+        g_dll_main_log_path = log_path.string();
         std::ofstream f(log_path, std::ios::app);
         if (f) {
             f << "DisplayCommander module path: " << module_path_narrow;
@@ -2662,13 +2653,90 @@ static void EnsureDisplayCommanderLogWithModulePath(HMODULE h_module) {
                 f << " Caller: " << g_dll_load_caller_path;
             }
             f << "\n";
-            if (!g_dll_load_call_stack_list.empty()) {
-                f << "Call stack (outer first):\n" << g_dll_load_call_stack_list << "\n";
-            }
+            f << "(DLL load function call stack will follow after init)\n";
             f.flush();
         }
     } catch (...) {
         // avoid crashing DllMain
+    }
+}
+
+// Resolves g_dll_main_backtrace to function names via DbgHelp and appends to log + DebugView. Call after init (no loader lock).
+void ResolveAndLogDllMainFunctionStack() {
+    if (g_dll_main_backtrace_count == 0)
+        return;
+    const USHORT count = g_dll_main_backtrace_count;
+    g_dll_main_backtrace_count = 0;
+
+    auto emit_line = [](const std::string& line, std::ofstream* f) {
+        OutputDebugStringA("[DisplayCommander]   ");
+        OutputDebugStringA(line.c_str());
+        OutputDebugStringA("\n");
+        if (f && f->is_open())
+            *f << "  " << line << "\n";
+    };
+
+    OutputDebugStringA("[DisplayCommander] DLL load call stack (functions, outer first):\n");
+    std::ofstream f;
+    if (!g_dll_main_log_path.empty()) {
+        f.open(g_dll_main_log_path, std::ios::app);
+        if (f)
+            f << "DLL load call stack (functions, outer first):\n";
+    }
+
+    if (!dbghelp_loader::LoadDbgHelp() || !dbghelp_loader::IsDbgHelpAvailable()) {
+        for (USHORT i = 0; i < count; ++i) {
+            HMODULE hmod = nullptr;
+            wchar_t path_buf[MAX_PATH] = {};
+            if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                                   static_cast<LPCWSTR>(g_dll_main_backtrace[i]), &hmod) && hmod != nullptr
+                && GetModuleFileNameW(hmod, path_buf, MAX_PATH) != 0) {
+                char narrow[MAX_PATH] = {};
+                if (WideCharToMultiByte(CP_UTF8, 0, path_buf, -1, narrow, static_cast<int>(sizeof(narrow)), nullptr, nullptr) > 0)
+                    emit_line(narrow, &f);
+            } else {
+                char addr_buf[32];
+                snprintf(addr_buf, sizeof(addr_buf), "0x%p", g_dll_main_backtrace[i]);
+                emit_line(std::string(addr_buf), &f);
+            }
+        }
+        return;
+    }
+
+    HANDLE process = GetCurrentProcess();
+    dbghelp_loader::EnsureSymbolsInitialized(process);
+
+    constexpr size_t kSymBufSize = 512;
+    char symbol_buffer[sizeof(SYMBOL_INFO) + kSymBufSize] = {};
+    IMAGEHLP_MODULE64 mod_info = {};
+    mod_info.SizeOfStruct = sizeof(IMAGEHLP_MODULE64);
+
+    for (USHORT i = 0; i < count; ++i) {
+        const DWORD64 addr = reinterpret_cast<DWORD64>(g_dll_main_backtrace[i]);
+        PSYMBOL_INFO sym_info = reinterpret_cast<PSYMBOL_INFO>(symbol_buffer);
+        sym_info->SizeOfStruct = sizeof(SYMBOL_INFO);
+        sym_info->MaxNameLen = kSymBufSize;
+        DWORD64 displacement = 0;
+
+        std::string module_name = "?";
+        if (dbghelp_loader::SymGetModuleInfo64(process, addr, &mod_info) != FALSE)
+            module_name = mod_info.ModuleName;
+
+        std::string line;
+        if (dbghelp_loader::SymFromAddr(process, addr, &displacement, sym_info) != FALSE) {
+            line = module_name + "!" + sym_info->Name;
+            if (displacement != 0) {
+                char disp_buf[24];
+                snprintf(disp_buf, sizeof(disp_buf), "+0x%llx", static_cast<unsigned long long>(displacement));
+                line += disp_buf;
+            }
+        } else {
+            line = module_name + "!0x";
+            char addr_hex[20];
+            snprintf(addr_hex, sizeof(addr_hex), "%llx", static_cast<unsigned long long>(addr));
+            line += addr_hex;
+        }
+        emit_line(line, &f);
     }
 }
 
@@ -2682,6 +2750,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             static const char* reason = "";
             if (DllDetectorCopyToLoadedIfEnabled(h_module)) return TRUE;
             auto set_process_attached_on_exit = [h_module]() {
+                ResolveAndLogDllMainFunctionStack();
                 g_dll_initialization_complete.store(true);
                 // log
                 g_dll_initialization_complete.store(true);

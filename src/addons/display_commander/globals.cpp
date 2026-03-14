@@ -48,6 +48,9 @@ HMODULE g_hmodule = nullptr;
 // Path of the module that caused this DLL to load (set during DLL_PROCESS_ATTACH).
 std::string g_dll_load_caller_path;
 std::string g_dll_load_call_stack_list;
+void* g_dll_main_backtrace[kDllMainBacktraceMax] = {};
+USHORT g_dll_main_backtrace_count = 0;
+std::string g_dll_main_log_path;
 
 // Our addon DLL module handle (set in AddonInit; atomic for lock-free caller checks in hooks).
 std::atomic<HMODULE> g_module{nullptr};

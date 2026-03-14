@@ -5,9 +5,13 @@
 
 ## Unreleased
 
+---
+## v0.12.503
 - **Caller shows who requested the load** - The "Caller" in DisplayCommander.log and DebugView now reports the module that requested the DLL load (e.g. game exe or another DLL), not the loader. The stack walk skips loader modules (ntdll, kernel32, KernelBase, wow64, wow64win, wow64cpu), uses a 256-frame backtrace to reach the requestor, and leaves Caller empty when only loader frames are present (no longer shows ntdll). Details: main_entry.cpp CaptureDllLoadCallerPath, IsLoaderModule.
 
 - **Load call stack list** - On each DLL load, DisplayCommander.log and DebugView now print a full "Call stack (outer first)" list of all module paths seen in the backtrace (consecutive duplicates merged). Helps debug who loaded the DLL when Caller is empty. Details: g_dll_load_call_stack_list, EnsureDisplayCommanderLogWithModulePath.
+
+- **DLL load function call stack** - The load call stack is now shown as function names (e.g. `ntdll!LdrpCallInitRoutine+0x123`) instead of module paths only. The backtrace is captured in DllMain; symbol resolution runs after init (no loader lock) via DbgHelp (SymFromAddr, SymGetModuleInfo64). Output is appended to DisplayCommander.log and DebugView. If DbgHelp is unavailable, module paths are written as fallback. Details: main_entry.cpp ResolveAndLogDllMainFunctionStack, CaptureDllLoadCallerPath, g_dll_main_backtrace, g_dll_main_log_path.
 
 ---
 ## v0.12.502

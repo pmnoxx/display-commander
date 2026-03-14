@@ -5,6 +5,8 @@
 
 ## Unreleased
 
+- [cleanup] **copy_addon_to_dc_proxies scripts** - Pure CMD scripts that copy the Display Commander addon to the 11 proxy DLL names DC supports (d3d9, d3d11, d3d12, ddraw, dinput8, opengl32, dxgi, version, winmm, dbghelp, vulkan-1). Use when deploying the addon as proxy DLLs in a game folder. Separate 32-bit and 64-bit scripts; optional target folder as first argument. Details: scripts/copy_addon_to_dc_proxies/.
+
 - [cleanup] **try_all_proxies scripts reorganized**
 
 ---

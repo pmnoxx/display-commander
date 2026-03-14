@@ -6,6 +6,10 @@
 ## Unreleased
 
 ---
+## v0.12.483
+- [cleanup] [hooks] **DbgHelp SymLoadModule64 via table-driven loader** - SymLoadModule64 is now loaded through the same table-driven DbgHelp loader as the other symbol APIs (enum, function table, wrapper). PreloadSymbolsForAllModules uses the SymLoadModule64 wrapper instead of ad-hoc GetProcAddress, and UnloadDbgHelp clears the trampoline. Details: dbghelp_private_loader.hpp/cpp.
+
+---
 ## v0.12.482
 - [ui] **HDR10 / scRGB color fix checkbox only when applicable** - The "HDR10 / scRGB color fix" checkbox on the Main tab is shown only when it can be applied to the current swapchain (e.g. DXGI), so the UI stays relevant to the active display/game state. Details: globals.cpp/hpp (`g_show_auto_colorspace_fix_in_main_tab`), main_new_tab.cpp.
 

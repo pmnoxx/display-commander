@@ -34,6 +34,7 @@ SymGetModuleBase64_pfn SymGetModuleBase64_Original = nullptr;
 SymFromAddr_pfn SymFromAddr_Original = nullptr;
 SymGetLineFromAddr64_pfn SymGetLineFromAddr64_Original = nullptr;
 SymGetModuleInfo64_pfn SymGetModuleInfo64_Original = nullptr;
+SymLoadModule64_pfn SymLoadModule64_Original = nullptr;
 SymSetSearchPathW_pfn SymSetSearchPathW_Original = nullptr;
 SymGetSearchPathW_pfn SymGetSearchPathW_Original = nullptr;
 
@@ -108,6 +109,11 @@ const std::array<DbgHelpFunctionEntry, static_cast<size_t>(DbgHelpFunction::Coun
         .name     = "SymGetModuleInfo64",
         .target   = reinterpret_cast<void**>(&SymGetModuleInfo64_Original),
         .required = true,
+    },
+    {
+        .name     = "SymLoadModule64",
+        .target   = reinterpret_cast<void**>(&SymLoadModule64_Original),
+        .required = false,
     },
     {
         .name     = "SymSetSearchPathW",
@@ -255,10 +261,7 @@ void PreloadSymbolsForAllModules(HANDLE process) {
         return;
     }
 
-    using SymLoadModule64_pfn =
-        decltype(&SymLoadModule64);  // signature from <dbghelp.h>, uses the private dbghelp we loaded
-    auto sym_load_module64 = reinterpret_cast<SymLoadModule64_pfn>(GetProcAddress(g_dbghelp_module, "SymLoadModule64"));
-    if (!sym_load_module64) {
+    if (!SymLoadModule64_Original) {
         return;
     }
 
@@ -282,7 +285,7 @@ void PreloadSymbolsForAllModules(HANDLE process) {
 
         const DWORD64 base = reinterpret_cast<DWORD64>(mod);
         // SizeOfImage is optional for SymLoadModule64; passing 0 lets DbgHelp query it.
-        sym_load_module64(process, nullptr, module_path, nullptr, base, 0);
+        SymLoadModule64(process, nullptr, module_path, nullptr, base, 0);
     }
 }
 
@@ -303,6 +306,7 @@ void UnloadDbgHelp() {
     SymFromAddr_Original = nullptr;
     SymGetLineFromAddr64_Original = nullptr;
     SymGetModuleInfo64_Original = nullptr;
+    SymLoadModule64_Original = nullptr;
     SymSetSearchPathW_Original = nullptr;
     SymGetSearchPathW_Original = nullptr;
 
@@ -351,6 +355,12 @@ BOOL SymGetLineFromAddr64(HANDLE process, DWORD64 address, PDWORD displacement, 
 }
 BOOL SymGetModuleInfo64(HANDLE process, DWORD64 address, PIMAGEHLP_MODULE64 module_info) {
     return SymGetModuleInfo64_Original ? SymGetModuleInfo64_Original(process, address, module_info) : FALSE;
+}
+DWORD64 SymLoadModule64(HANDLE process, HANDLE file, PCSTR image_name, PCSTR module_name, DWORD64 base_of_dll,
+                        DWORD dll_size) {
+    return SymLoadModule64_Original ? SymLoadModule64_Original(process, file, image_name, module_name, base_of_dll,
+                                                               dll_size)
+                                   : 0;
 }
 BOOL SymSetSearchPathW(HANDLE process, PCWSTR search_path) {
     return SymSetSearchPathW_Original ? SymSetSearchPathW_Original(process, search_path) : FALSE;

@@ -3,7 +3,8 @@
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 
-## Unreleased
+## v0.12.506
+- [ui] [compatibility] **Multiple swapchains warning hidden when RenoDX is loaded** - The "WARNING: Multiple swapchains detected (N ReShade runtimes)" message on the Main tab is no longer shown when a RenoDX addon is detected. Multiple runtimes are expected with RenoDX, so the warning was misleading. Details: main_new_tab.cpp uses `g_is_renodx_loaded` to skip the warning.
 
 ---
 

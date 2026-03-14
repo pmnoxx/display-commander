@@ -357,7 +357,7 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
 
             // Validate window handle
             if (IsWindow(hwnd) == FALSE) {
-                LogWarn("ApplyWindowChange: Invalid window handle 0x%p, skipping SetWindowPos", hwnd);
+                LogWarnThrottled(10, "ApplyWindowChange: Invalid window handle 0x%p, skipping SetWindowPos", hwnd);
                 return;
             }
 

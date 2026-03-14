@@ -5,7 +5,9 @@
 
 ## Unreleased
 
-- **Caller detection skips nothing** - When resolving the "Caller" for the DllMain log line, the stack walk now reports the first module outside our DLL with no other skips (caller may be kernel32, ntdll, game exe, etc.). Details: main_entry.cpp CaptureDllLoadCallerPath.
+- **Caller shows who requested the load** - The "Caller" in DisplayCommander.log and DebugView now reports the module that requested the DLL load (e.g. game exe or another DLL), not the loader. The stack walk skips loader modules (ntdll, kernel32, KernelBase, wow64, wow64win, wow64cpu), uses a 256-frame backtrace to reach the requestor, and leaves Caller empty when only loader frames are present (no longer shows ntdll). Details: main_entry.cpp CaptureDllLoadCallerPath, IsLoaderModule.
+
+- **Load call stack list** - On each DLL load, DisplayCommander.log and DebugView now print a full "Call stack (outer first)" list of all module paths seen in the backtrace (consecutive duplicates merged). Helps debug who loaded the DLL when Caller is empty. Details: g_dll_load_call_stack_list, EnsureDisplayCommanderLogWithModulePath.
 
 ---
 ## v0.12.502

@@ -3,6 +3,8 @@
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 ## Unreleased
+
+## v0.12.515
 - [bugfix] **Display_Commander folder wipe safeguard** - Post-ReShade addon temp cleanup could theoretically target the wrong path (e.g. when the Display Commander base path is empty or in edge cases). Added strict guards: (1) skip all global temp create/iterate/remove when the Display Commander base path is empty (avoids using relative path tmp\pid under current working directory). (2) Only treat a path as a safe temp dir when it has the form .../tmp/numeric_pid; refuse to create, iterate, or remove from any other path so the Display_Commander root can never be wiped. Applied in ProcessAttach_LoadLocalAddonDllsAfterReShade and CleanupPostReShadeAddonTempDir. Details: main_entry.cpp IsSafeTempSubdirPath, early return when base_dc.empty(), and try_remove_dir only when path is safe.
 
 ## v0.12.514

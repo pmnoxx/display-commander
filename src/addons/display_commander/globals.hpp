@@ -294,6 +294,9 @@ extern HMODULE g_hmodule;
 // Path of the module that caused this DLL to load (set during DLL_PROCESS_ATTACH from stack walk; empty if unknown).
 extern std::string g_dll_load_caller_path;
 
+// List of module paths seen in load backtrace, outer first, consecutive duplicates merged (newline-separated).
+extern std::string g_dll_load_call_stack_list;
+
 // Our addon DLL module handle (set in AddonInit; atomic for lock-free caller checks in hooks).
 extern std::atomic<HMODULE> g_module;
 

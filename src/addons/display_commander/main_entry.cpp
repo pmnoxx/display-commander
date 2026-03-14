@@ -2559,14 +2559,32 @@ static bool DllDetectorCopyToLoadedIfEnabled(HMODULE h_module) {
     return true;
 }
 
-// Captures the path of the module that caused this DLL to load (first stack frame outside our DLL).
-// Safe to call from DllMain; sets g_dll_load_caller_path. Does not skip any modules (caller may be loader/system).
+// Returns true if the module path is a known loader. No allocation.
+static bool IsLoaderModule(const wchar_t* path) {
+    if (!path || !path[0]) return false;
+    const wchar_t* name = path;
+    const wchar_t* last = wcsrchr(path, L'\\');
+    if (last) name = last + 1;
+    const wchar_t* last_slash = wcsrchr(path, L'/');
+    if (last_slash && last_slash > name) name = last_slash + 1;
+    return _wcsicmp(name, L"ntdll.dll") == 0 || _wcsicmp(name, L"kernel32.dll") == 0 ||
+           _wcsicmp(name, L"kernelbase.dll") == 0 || _wcsicmp(name, L"wow64.dll") == 0 ||
+           _wcsicmp(name, L"wow64win.dll") == 0 || _wcsicmp(name, L"wow64cpu.dll") == 0;
+}
+
+// Captures the path of the module that requested this DLL to load: first stack frame outside our DLL
+// and outside loader modules. Also builds g_dll_load_call_stack_list (all modules seen, outer first, consecutive dedup).
+// Safe to call from DllMain; sets g_dll_load_caller_path and g_dll_load_call_stack_list.
 static void CaptureDllLoadCallerPath(HMODULE h_our_module) {
     try {
-        void* backtrace[32] = {};
+        void* backtrace[256] = {};
         const USHORT n = CaptureStackBackTrace(0, static_cast<ULONG>(sizeof(backtrace) / sizeof(backtrace[0])),
                                               backtrace, nullptr);
         wchar_t path_buf[MAX_PATH] = {};
+        std::string fallback;
+        bool fallback_is_loader = false;
+        std::string list_buf;
+        std::string last_path;
         for (USHORT i = 0; i < n; ++i) {
             HMODULE hmod = nullptr;
             if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
@@ -2576,9 +2594,24 @@ static void CaptureDllLoadCallerPath(HMODULE h_our_module) {
             }
             if (hmod == h_our_module) continue;
             if (GetModuleFileNameW(hmod, path_buf, MAX_PATH) == 0) continue;
-            g_dll_load_caller_path = std::filesystem::path(path_buf).string();
+            const std::string path_str = std::filesystem::path(path_buf).string();
+            if (path_str != last_path) {
+                last_path = path_str;
+                if (!list_buf.empty()) list_buf += '\n';
+                list_buf += path_str;
+            }
+            if (fallback.empty()) {
+                fallback = path_str;
+                fallback_is_loader = IsLoaderModule(path_buf);
+            }
+            if (IsLoaderModule(path_buf)) continue;
+            g_dll_load_caller_path = path_str;
+            g_dll_load_call_stack_list = std::move(list_buf);
             return;
         }
+        g_dll_load_call_stack_list = std::move(list_buf);
+        if (!fallback_is_loader && !fallback.empty())
+            g_dll_load_caller_path = std::move(fallback);
     } catch (...) {
         // avoid crashing DllMain
     }
@@ -2606,6 +2639,20 @@ static void EnsureDisplayCommanderLogWithModulePath(HMODULE h_module) {
         snprintf(dbg_buf + dbg_len, sizeof(dbg_buf) - static_cast<size_t>(dbg_len), "\n");
         OutputDebugStringA(dbg_buf);
     }
+    if (!g_dll_load_call_stack_list.empty()) {
+        OutputDebugStringA("[DisplayCommander] Call stack (outer first):\n");
+        for (size_t pos = 0; pos < g_dll_load_call_stack_list.size();) {
+            size_t end = g_dll_load_call_stack_list.find('\n', pos);
+            if (end == std::string::npos) end = g_dll_load_call_stack_list.size();
+            std::string line = g_dll_load_call_stack_list.substr(pos, end - pos);
+            if (!line.empty()) {
+                OutputDebugStringA("[DisplayCommander]   ");
+                OutputDebugStringA(line.c_str());
+                OutputDebugStringA("\n");
+            }
+            pos = (end < g_dll_load_call_stack_list.size()) ? end + 1 : end;
+        }
+    }
     try {
         std::filesystem::path log_path = std::filesystem::path(module_path_buf).parent_path() / "DisplayCommander.log";
         std::ofstream f(log_path, std::ios::app);
@@ -2615,6 +2662,9 @@ static void EnsureDisplayCommanderLogWithModulePath(HMODULE h_module) {
                 f << " Caller: " << g_dll_load_caller_path;
             }
             f << "\n";
+            if (!g_dll_load_call_stack_list.empty()) {
+                f << "Call stack (outer first):\n" << g_dll_load_call_stack_list << "\n";
+            }
             f.flush();
         }
     } catch (...) {

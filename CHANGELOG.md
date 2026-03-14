@@ -6,6 +6,10 @@
 ## Unreleased
 
 ---
+## v0.12.491
+- **Logger prints full DC path** - The "DisplayCommander Logger initialized" log line now includes the full path of the Display Commander addon DLL (e.g. the .addon64 file), so you can see which binary is logging at a glance. Details: display_commander_logger.cpp Initialize().
+
+---
 ## v0.12.490
 - [cleanup] **README proxy list corrected** - The "Proxy loading" bullet in README.md now matches the proxy DLL names supported at runtime: dxgi, d3d11, d3d12, dinput8, version, opengl32, dbghelp, vulkan-1. Removed d3d9, ddraw, winmm (not in proxy_dlls); added dinput8, version, vulkan-1.
 

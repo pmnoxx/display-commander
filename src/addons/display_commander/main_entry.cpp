@@ -2588,36 +2588,38 @@ static void CaptureDllLoadCallerPath(HMODULE h_our_module) {
     }
 }
 
-// Append current module path (and caller if known) to DisplayCommander.log in the process exe dir on every load.
-// No-throw; safe to call from DllMain.
+// Append current module path (and caller if known) to DisplayCommander.log next to our DLL on every load.
+// No-throw; safe to call from DllMain. Does not create directories; only writes if the DLL's dir exists (it always does).
 static void EnsureDisplayCommanderLogWithModulePath(HMODULE h_module) {
-    wchar_t exe_path_buf[MAX_PATH] = {};
-    if (GetModuleFileNameW(h_module, exe_path_buf, MAX_PATH) == 0) return;
-    std::filesystem::path exe_dir = std::filesystem::path(exe_path_buf).parent_path();
-    std::filesystem::path log_path = exe_dir / "DisplayCommander.log";
     wchar_t module_path_buf[MAX_PATH] = {};
     if (GetModuleFileNameW(h_module, module_path_buf, MAX_PATH) == 0) return;
+    char module_path_narrow[MAX_PATH] = {};
+    if (WideCharToMultiByte(CP_ACP, 0, module_path_buf, -1, module_path_narrow,
+                             static_cast<int>(sizeof(module_path_narrow)), nullptr, nullptr) == 0) {
+        return;
+    }
+    // Always emit to DebugView so the message is visible even when the file cannot be written
+    char dbg_buf[MAX_PATH + 128];
+    int dbg_len = snprintf(dbg_buf, sizeof(dbg_buf), "[DisplayCommander] DisplayCommander module path: %s",
+                           module_path_narrow);
+    if (!g_dll_load_caller_path.empty() && dbg_len >= 0 && static_cast<size_t>(dbg_len) < sizeof(dbg_buf) - 32) {
+        dbg_len += snprintf(dbg_buf + dbg_len, sizeof(dbg_buf) - static_cast<size_t>(dbg_len),
+                            " Caller: %s", g_dll_load_caller_path.c_str());
+    }
+    if (dbg_len >= 0 && static_cast<size_t>(dbg_len) < sizeof(dbg_buf)) {
+        snprintf(dbg_buf + dbg_len, sizeof(dbg_buf) - static_cast<size_t>(dbg_len), "\n");
+        OutputDebugStringA(dbg_buf);
+    }
     try {
-        std::error_code ec;
-        if (!exe_dir.empty() && !std::filesystem::exists(exe_dir, ec)) {
-            std::filesystem::create_directories(exe_dir, ec);
-        }
+        std::filesystem::path log_path = std::filesystem::path(module_path_buf).parent_path() / "DisplayCommander.log";
         std::ofstream f(log_path, std::ios::app);
         if (f) {
-            char module_path_narrow[MAX_PATH] = {};
-            WideCharToMultiByte(CP_ACP, 0, module_path_buf, -1, module_path_narrow,
-                                static_cast<int>(sizeof(module_path_narrow)), nullptr, nullptr);
             f << "DisplayCommander module path: " << module_path_narrow;
             if (!g_dll_load_caller_path.empty()) {
                 f << " Caller: " << g_dll_load_caller_path;
             }
             f << "\n";
             f.flush();
-            // Also visible in DebugView
-            char dbg_buf[MAX_PATH + 64];
-            (void)snprintf(dbg_buf, sizeof(dbg_buf), "[DisplayCommander] DisplayCommander module path: %s\n",
-                           module_path_narrow);
-            OutputDebugStringA(dbg_buf);
         }
     } catch (...) {
         // avoid crashing DllMain

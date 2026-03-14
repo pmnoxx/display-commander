@@ -6,6 +6,10 @@
 ## Unreleased
 
 ---
+## v0.12.502
+- [bugfix] **DllMain log message and file write** - The "[DisplayCommander] DisplayCommander module path: ..." line is now always sent to DebugView on every load, even when the log file cannot be created or written. Removed create_directories from DllMain so directory creation no longer runs during process attach (avoids exceptions/failures that prevented any message or file write). File append still happens when the DLL directory is writable. Details: main_entry.cpp EnsureDisplayCommanderLogWithModulePath.
+
+---
 ## v0.12.501
 - **Logger shows load caller** - The "DisplayCommander Logger initialized" line now includes the path of the module that caused this DLL to load (e.g. the game exe or DbgHelp.dll) when available: "Path: ... Caller: ...". Helps see which binary triggered the load. Caller is determined during DLL_PROCESS_ATTACH via a short stack walk (first frame outside our DLL and the loader). Details: main_entry.cpp CaptureDllLoadCallerPath, g_dll_load_caller_path, display_commander_logger.cpp Initialize().
 

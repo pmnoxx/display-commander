@@ -9,6 +9,8 @@
 
 // System volume (not a main-tab setting; used for volume sync)
 extern std::atomic<float> s_system_volume_percent;
+// Game/process volume from WASAPI (not persisted; queried/updated by continuous monitoring)
+extern std::atomic<float> s_game_volume_percent;
 
 namespace settings {
 
@@ -82,7 +84,6 @@ class MainTabSettings {
     ui::new_ui::BoolSetting force_flip_discard_upgrade;
 
     // Audio Settings
-    ui::new_ui::FloatSetting audio_volume_percent;
     ui::new_ui::BoolSetting audio_mute;
     ui::new_ui::BoolSetting mute_in_background;
     ui::new_ui::BoolSetting mute_in_background_if_other_audio;

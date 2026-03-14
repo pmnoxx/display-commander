@@ -7232,7 +7232,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     if (show_volume) {
         perf_measurement::ScopedTimer overlay_show_volume_timer(perf_measurement::Metric::OverlayShowVolume);
         // Get volume values from atomic variables (updated by continuous monitoring thread)
-        float current_volume = settings::g_mainTabSettings.audio_volume_percent.GetValue();
+        float current_volume = s_game_volume_percent.load();
         float system_volume = s_system_volume_percent.load();
 
         // Check if audio is muted
@@ -7641,12 +7641,15 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
     }
 
     g_rendering_ui_section.store("ui:tab:main_new:audio:game_volume", std::memory_order_release);
-    // Audio Volume slider
-    float volume = settings::g_mainTabSettings.audio_volume_percent.GetValue();
+    // Audio Volume slider (value from WASAPI; not persisted)
+    float volume = 0.0f;
+    if (::GetVolumeForCurrentProcess(&volume)) {
+        s_game_volume_percent.store(volume);
+    } else {
+        volume = s_game_volume_percent.load();
+    }
     if (imgui.SliderFloat("Game Volume (%)", &volume, 0.0f, 100.0f, "%.0f%%")) {
-        settings::g_mainTabSettings.audio_volume_percent.SetValue(volume);
-
-        // Apply immediately only if Auto-apply is enabled
+        s_game_volume_percent.store(volume);
         if (settings::g_mainTabSettings.audio_volume_auto_apply.GetValue()) {
             if (::SetVolumeForCurrentProcess(volume)) {
                 std::ostringstream oss;

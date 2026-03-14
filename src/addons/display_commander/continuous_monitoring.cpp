@@ -380,7 +380,7 @@ static void Every1sVolume() {
     float current_volume = 0.0f;
     g_continuous_monitoring_section.store("every1s_tasks:volume:game", std::memory_order_release);
     if (GetVolumeForCurrentProcess(&current_volume)) {
-        settings::g_mainTabSettings.audio_volume_percent.SetValue(current_volume);
+        s_game_volume_percent.store(current_volume);
     }
     float system_volume = 0.0f;
     g_continuous_monitoring_section.store("every1s_tasks:volume:system", std::memory_order_release);

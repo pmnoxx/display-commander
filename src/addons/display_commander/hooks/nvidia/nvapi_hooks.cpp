@@ -119,6 +119,7 @@ NvAPI_Status __cdecl NvAPI_Disp_GetHdrCapabilities_Detour(NvU32 displayId, NV_HD
 int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint64_t frame_id,
                                   const ReflexMarkerTypes& marker_types,
                                   const std::function<int()>& send_present_end_to_driver) {
+    CALL_GUARD(utils::get_now_ns());
     bool reflex_marker_sent = false;
     NotifyGameSetLatencyMarkerCall();
     g_native_reflex_detected.store(true, std::memory_order_relaxed);
@@ -203,7 +204,7 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
 
             // wait until the previous frame is ready to be shown to display based on
             // reflex_fps_limiter_max_queued_frames setting
-            if (reflex_fps_limiter_max_queued_frames > 0) {
+            if (marker_type == marker_types.simulation_start && reflex_fps_limiter_max_queued_frames > 0) {
                 const size_t prevSlot = static_cast<size_t>(
                     (frame_id + kFrameDataBufferSize - reflex_fps_limiter_max_queued_frames) % kFrameDataBufferSize);
                 const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);

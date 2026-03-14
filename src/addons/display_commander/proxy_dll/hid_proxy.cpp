@@ -6,6 +6,8 @@
  */
 
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
+#include "../utils/detour_call_tracker.hpp"
+#include "../utils/timing.hpp"
 
 // Libraries <standard C++>
 #include <string>
@@ -28,6 +30,7 @@ static bool LoadRealHid() {
 }
 
 extern "C" BOOL WINAPI HidD_FlushQueue(LPVOID p0) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return FALSE;
     typedef BOOL (WINAPI *PFN)(LPVOID);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidD_FlushQueue") : nullptr);
@@ -36,6 +39,7 @@ extern "C" BOOL WINAPI HidD_FlushQueue(LPVOID p0) {
 }
 
 extern "C" BOOL WINAPI HidD_FreePreparsedData(LPVOID p0) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return FALSE;
     typedef BOOL (WINAPI *PFN)(LPVOID);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidD_FreePreparsedData") : nullptr);
@@ -44,6 +48,7 @@ extern "C" BOOL WINAPI HidD_FreePreparsedData(LPVOID p0) {
 }
 
 extern "C" BOOL WINAPI HidD_GetAttributes(HANDLE p0, LPVOID p1) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return FALSE;
     typedef BOOL (WINAPI *PFN)(HANDLE, LPVOID);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidD_GetAttributes") : nullptr);
@@ -52,10 +57,12 @@ extern "C" BOOL WINAPI HidD_GetAttributes(HANDLE p0, LPVOID p1) {
 }
 
 extern "C" BOOL WINAPI HidD_GetConfiguration(void) {
+    CALL_GUARD(utils::get_now_ns());
     return FALSE;
 }
 
 extern "C" BOOL WINAPI HidD_GetFeature(HANDLE p0, LPVOID p1, LONG p2) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return FALSE;
     typedef BOOL (WINAPI *PFN)(HANDLE, LPVOID, LONG);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidD_GetFeature") : nullptr);
@@ -64,6 +71,7 @@ extern "C" BOOL WINAPI HidD_GetFeature(HANDLE p0, LPVOID p1, LONG p2) {
 }
 
 extern "C" void WINAPI HidD_GetHidGuid(LPVOID p0) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return;
     typedef void (WINAPI *PFN)(LPVOID);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidD_GetHidGuid") : nullptr);
@@ -72,6 +80,7 @@ extern "C" void WINAPI HidD_GetHidGuid(LPVOID p0) {
 }
 
 extern "C" BOOL WINAPI HidD_GetIndexedString(LPVOID p0, LONG p1, LPVOID p2, LONG p3) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return FALSE;
     typedef BOOL (WINAPI *PFN)(LPVOID, LONG, LPVOID, LONG);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidD_GetIndexedString") : nullptr);
@@ -80,6 +89,7 @@ extern "C" BOOL WINAPI HidD_GetIndexedString(LPVOID p0, LONG p1, LPVOID p2, LONG
 }
 
 extern "C" BOOL WINAPI HidD_GetInputReport(HANDLE p0, LPVOID p1, LONG p2) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return FALSE;
     typedef BOOL (WINAPI *PFN)(HANDLE, LPVOID, LONG);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidD_GetInputReport") : nullptr);
@@ -88,6 +98,7 @@ extern "C" BOOL WINAPI HidD_GetInputReport(HANDLE p0, LPVOID p1, LONG p2) {
 }
 
 extern "C" BOOL WINAPI HidD_GetManufacturerString(HANDLE p0, LPVOID p1, LONG p2) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return FALSE;
     typedef BOOL (WINAPI *PFN)(HANDLE, LPVOID, LONG);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidD_GetManufacturerString") : nullptr);
@@ -96,10 +107,12 @@ extern "C" BOOL WINAPI HidD_GetManufacturerString(HANDLE p0, LPVOID p1, LONG p2)
 }
 
 extern "C" BOOL WINAPI HidD_GetMsGenreDescriptor(void) {
+    CALL_GUARD(utils::get_now_ns());
     return FALSE;
 }
 
 extern "C" BOOL WINAPI HidD_GetNumInputBuffers(HANDLE p0, LPVOID p1) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return FALSE;
     typedef BOOL (WINAPI *PFN)(HANDLE, LPVOID);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidD_GetNumInputBuffers") : nullptr);
@@ -108,6 +121,7 @@ extern "C" BOOL WINAPI HidD_GetNumInputBuffers(HANDLE p0, LPVOID p1) {
 }
 
 extern "C" BOOL WINAPI HidD_GetPhysicalDescriptor(HANDLE p0, LPVOID p1, LONG p2) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return FALSE;
     typedef BOOL (WINAPI *PFN)(HANDLE, LPVOID, LONG);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidD_GetPhysicalDescriptor") : nullptr);
@@ -116,6 +130,7 @@ extern "C" BOOL WINAPI HidD_GetPhysicalDescriptor(HANDLE p0, LPVOID p1, LONG p2)
 }
 
 extern "C" BOOL WINAPI HidD_GetPreparsedData(LPVOID p0, LPVOID p1) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return FALSE;
     typedef BOOL (WINAPI *PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidD_GetPreparsedData") : nullptr);
@@ -124,6 +139,7 @@ extern "C" BOOL WINAPI HidD_GetPreparsedData(LPVOID p0, LPVOID p1) {
 }
 
 extern "C" BOOL WINAPI HidD_GetProductString(HANDLE p0, LPVOID p1, LONG p2) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return FALSE;
     typedef BOOL (WINAPI *PFN)(HANDLE, LPVOID, LONG);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidD_GetProductString") : nullptr);
@@ -132,6 +148,7 @@ extern "C" BOOL WINAPI HidD_GetProductString(HANDLE p0, LPVOID p1, LONG p2) {
 }
 
 extern "C" BOOL WINAPI HidD_GetSerialNumberString(HANDLE p0, LPVOID p1, LONG p2) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return FALSE;
     typedef BOOL (WINAPI *PFN)(HANDLE, LPVOID, LONG);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidD_GetSerialNumberString") : nullptr);
@@ -140,14 +157,17 @@ extern "C" BOOL WINAPI HidD_GetSerialNumberString(HANDLE p0, LPVOID p1, LONG p2)
 }
 
 extern "C" BOOL WINAPI HidD_Hello(void) {
+    CALL_GUARD(utils::get_now_ns());
     return FALSE;
 }
 
 extern "C" BOOL WINAPI HidD_SetConfiguration(void) {
+    CALL_GUARD(utils::get_now_ns());
     return FALSE;
 }
 
 extern "C" BOOL WINAPI HidD_SetFeature(HANDLE p0, LPVOID p1, LONG p2) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return FALSE;
     typedef BOOL (WINAPI *PFN)(HANDLE, LPVOID, LONG);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidD_SetFeature") : nullptr);
@@ -156,6 +176,7 @@ extern "C" BOOL WINAPI HidD_SetFeature(HANDLE p0, LPVOID p1, LONG p2) {
 }
 
 extern "C" BOOL WINAPI HidD_SetNumInputBuffers(HANDLE p0, LONG p1) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return FALSE;
     typedef BOOL (WINAPI *PFN)(HANDLE, LONG);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidD_SetNumInputBuffers") : nullptr);
@@ -164,6 +185,7 @@ extern "C" BOOL WINAPI HidD_SetNumInputBuffers(HANDLE p0, LONG p1) {
 }
 
 extern "C" BOOL WINAPI HidD_SetOutputReport(HANDLE p0, LPVOID p1, LONG p2) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return FALSE;
     typedef BOOL (WINAPI *PFN)(HANDLE, LPVOID, LONG);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidD_SetOutputReport") : nullptr);
@@ -172,6 +194,7 @@ extern "C" BOOL WINAPI HidD_SetOutputReport(HANDLE p0, LPVOID p1, LONG p2) {
 }
 
 extern "C" LONG WINAPI HidP_GetButtonCaps(LONG p0, LPVOID p1, LPVOID p2, LPVOID p3) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return 0;
     typedef LONG (WINAPI *PFN)(LONG, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidP_GetButtonCaps") : nullptr);
@@ -180,6 +203,7 @@ extern "C" LONG WINAPI HidP_GetButtonCaps(LONG p0, LPVOID p1, LPVOID p2, LPVOID 
 }
 
 extern "C" LONG WINAPI HidP_GetCaps(LPVOID p0, LPVOID p1) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return 0;
     typedef LONG (WINAPI *PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidP_GetCaps") : nullptr);
@@ -188,6 +212,7 @@ extern "C" LONG WINAPI HidP_GetCaps(LPVOID p0, LPVOID p1) {
 }
 
 extern "C" LONG WINAPI HidP_GetData(LONG p0, LPVOID p1, LPVOID p2, LPVOID p3, LPVOID p4, LONG p5) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return 0;
     typedef LONG (WINAPI *PFN)(LONG, LPVOID, LPVOID, LPVOID, LPVOID, LONG);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidP_GetData") : nullptr);
@@ -196,10 +221,12 @@ extern "C" LONG WINAPI HidP_GetData(LONG p0, LPVOID p1, LPVOID p2, LPVOID p3, LP
 }
 
 extern "C" LONG WINAPI HidP_GetExtendedAttributes(void) {
+    CALL_GUARD(utils::get_now_ns());
     return 0;
 }
 
 extern "C" LONG WINAPI HidP_GetLinkCollectionNodes(LPVOID p0, LPVOID p1, LPVOID p2) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return 0;
     typedef LONG (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidP_GetLinkCollectionNodes") : nullptr);
@@ -208,6 +235,7 @@ extern "C" LONG WINAPI HidP_GetLinkCollectionNodes(LPVOID p0, LPVOID p1, LPVOID 
 }
 
 extern "C" LONG WINAPI HidP_GetScaledUsageValue(LONG p0, LONG p1, LONG p2, LONG p3, LPVOID p4, LPVOID p5, LPVOID p6, LONG p7) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return 0;
     typedef LONG (WINAPI *PFN)(LONG, LONG, LONG, LONG, LPVOID, LPVOID, LPVOID, LONG);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidP_GetScaledUsageValue") : nullptr);
@@ -216,6 +244,7 @@ extern "C" LONG WINAPI HidP_GetScaledUsageValue(LONG p0, LONG p1, LONG p2, LONG 
 }
 
 extern "C" LONG WINAPI HidP_GetSpecificButtonCaps(LONG p0, LONG p1, LONG p2, LONG p3, LPVOID p4, LPVOID p5, LPVOID p6) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return 0;
     typedef LONG (WINAPI *PFN)(LONG, LONG, LONG, LONG, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidP_GetSpecificButtonCaps") : nullptr);
@@ -224,6 +253,7 @@ extern "C" LONG WINAPI HidP_GetSpecificButtonCaps(LONG p0, LONG p1, LONG p2, LON
 }
 
 extern "C" LONG WINAPI HidP_GetSpecificValueCaps(LONG p0, LONG p1, LONG p2, LONG p3, LPVOID p4, LPVOID p5, LPVOID p6) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return 0;
     typedef LONG (WINAPI *PFN)(LONG, LONG, LONG, LONG, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidP_GetSpecificValueCaps") : nullptr);
@@ -232,6 +262,7 @@ extern "C" LONG WINAPI HidP_GetSpecificValueCaps(LONG p0, LONG p1, LONG p2, LONG
 }
 
 extern "C" LONG WINAPI HidP_GetUsageValue(LONG p0, LONG p1, LONG p2, LONG p3, LPVOID p4, LPVOID p5, LPVOID p6, LONG p7) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return 0;
     typedef LONG (WINAPI *PFN)(LONG, LONG, LONG, LONG, LPVOID, LPVOID, LPVOID, LONG);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidP_GetUsageValue") : nullptr);
@@ -240,6 +271,7 @@ extern "C" LONG WINAPI HidP_GetUsageValue(LONG p0, LONG p1, LONG p2, LONG p3, LP
 }
 
 extern "C" LONG WINAPI HidP_GetUsageValueArray(LONG p0, LONG p1, LONG p2, LONG p3, LPVOID p4, LONG p5, LPVOID p6, LPVOID p7, LONG p8) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return 0;
     typedef LONG (WINAPI *PFN)(LONG, LONG, LONG, LONG, LPVOID, LONG, LPVOID, LPVOID, LONG);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidP_GetUsageValueArray") : nullptr);
@@ -248,6 +280,7 @@ extern "C" LONG WINAPI HidP_GetUsageValueArray(LONG p0, LONG p1, LONG p2, LONG p
 }
 
 extern "C" LONG WINAPI HidP_GetUsages(LONG p0, LONG p1, LONG p2, LPVOID p3, LPVOID p4, LPVOID p5, LPVOID p6, LONG p7) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return 0;
     typedef LONG (WINAPI *PFN)(LONG, LONG, LONG, LPVOID, LPVOID, LPVOID, LPVOID, LONG);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidP_GetUsages") : nullptr);
@@ -256,6 +289,7 @@ extern "C" LONG WINAPI HidP_GetUsages(LONG p0, LONG p1, LONG p2, LPVOID p3, LPVO
 }
 
 extern "C" LONG WINAPI HidP_GetUsagesEx(LONG p0, LONG p1, LPVOID p2, LPVOID p3, LPVOID p4, LPVOID p5, LONG p6) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return 0;
     typedef LONG (WINAPI *PFN)(LONG, LONG, LPVOID, LPVOID, LPVOID, LPVOID, LONG);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidP_GetUsagesEx") : nullptr);
@@ -264,6 +298,7 @@ extern "C" LONG WINAPI HidP_GetUsagesEx(LONG p0, LONG p1, LPVOID p2, LPVOID p3, 
 }
 
 extern "C" LONG WINAPI HidP_GetValueCaps(LONG p0, LPVOID p1, LPVOID p2, LPVOID p3) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return 0;
     typedef LONG (WINAPI *PFN)(LONG, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidP_GetValueCaps") : nullptr);
@@ -272,6 +307,7 @@ extern "C" LONG WINAPI HidP_GetValueCaps(LONG p0, LPVOID p1, LPVOID p2, LPVOID p
 }
 
 extern "C" LONG WINAPI HidP_InitializeReportForID(LONG p0, LONG p1, LPVOID p2, LPVOID p3, LONG p4) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return 0;
     typedef LONG (WINAPI *PFN)(LONG, LONG, LPVOID, LPVOID, LONG);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidP_InitializeReportForID") : nullptr);
@@ -280,6 +316,7 @@ extern "C" LONG WINAPI HidP_InitializeReportForID(LONG p0, LONG p1, LPVOID p2, L
 }
 
 extern "C" LONG WINAPI HidP_MaxDataListLength(LONG p0, LPVOID p1) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return 0;
     typedef LONG (WINAPI *PFN)(LONG, LPVOID);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidP_MaxDataListLength") : nullptr);
@@ -288,6 +325,7 @@ extern "C" LONG WINAPI HidP_MaxDataListLength(LONG p0, LPVOID p1) {
 }
 
 extern "C" LONG WINAPI HidP_MaxUsageListLength(LONG p0, LONG p1, LPVOID p2) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return 0;
     typedef LONG (WINAPI *PFN)(LONG, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidP_MaxUsageListLength") : nullptr);
@@ -296,6 +334,7 @@ extern "C" LONG WINAPI HidP_MaxUsageListLength(LONG p0, LONG p1, LPVOID p2) {
 }
 
 extern "C" LONG WINAPI HidP_SetData(LONG p0, LPVOID p1, LPVOID p2, LPVOID p3, LPVOID p4, LONG p5) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return 0;
     typedef LONG (WINAPI *PFN)(LONG, LPVOID, LPVOID, LPVOID, LPVOID, LONG);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidP_SetData") : nullptr);
@@ -304,6 +343,7 @@ extern "C" LONG WINAPI HidP_SetData(LONG p0, LPVOID p1, LPVOID p2, LPVOID p3, LP
 }
 
 extern "C" LONG WINAPI HidP_SetScaledUsageValue(LONG p0, LONG p1, LONG p2, LONG p3, LONG p4, LPVOID p5, LPVOID p6, LONG p7) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return 0;
     typedef LONG (WINAPI *PFN)(LONG, LONG, LONG, LONG, LONG, LPVOID, LPVOID, LONG);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidP_SetScaledUsageValue") : nullptr);
@@ -312,6 +352,7 @@ extern "C" LONG WINAPI HidP_SetScaledUsageValue(LONG p0, LONG p1, LONG p2, LONG 
 }
 
 extern "C" LONG WINAPI HidP_SetUsageValue(LONG p0, LONG p1, LONG p2, LONG p3, LONG p4, LPVOID p5, LPVOID p6, LONG p7) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return 0;
     typedef LONG (WINAPI *PFN)(LONG, LONG, LONG, LONG, LONG, LPVOID, LPVOID, LONG);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidP_SetUsageValue") : nullptr);
@@ -320,6 +361,7 @@ extern "C" LONG WINAPI HidP_SetUsageValue(LONG p0, LONG p1, LONG p2, LONG p3, LO
 }
 
 extern "C" LONG WINAPI HidP_SetUsageValueArray(LONG p0, LONG p1, LONG p2, LONG p3, LPVOID p4, LONG p5, LPVOID p6, LPVOID p7, LONG p8) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return 0;
     typedef LONG (WINAPI *PFN)(LONG, LONG, LONG, LONG, LPVOID, LONG, LPVOID, LPVOID, LONG);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidP_SetUsageValueArray") : nullptr);
@@ -328,6 +370,7 @@ extern "C" LONG WINAPI HidP_SetUsageValueArray(LONG p0, LONG p1, LONG p2, LONG p
 }
 
 extern "C" LONG WINAPI HidP_SetUsages(LONG p0, LONG p1, LONG p2, LPVOID p3, LPVOID p4, LPVOID p5, LPVOID p6, LONG p7) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return 0;
     typedef LONG (WINAPI *PFN)(LONG, LONG, LONG, LPVOID, LPVOID, LPVOID, LPVOID, LONG);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidP_SetUsages") : nullptr);
@@ -336,6 +379,7 @@ extern "C" LONG WINAPI HidP_SetUsages(LONG p0, LONG p1, LONG p2, LPVOID p3, LPVO
 }
 
 extern "C" LONG WINAPI HidP_TranslateUsagesToI8042ScanCodes(LPVOID p0, LONG p1, LONG p2, LPVOID p3, LPVOID p4, LPVOID p5) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return 0;
     typedef LONG (WINAPI *PFN)(LPVOID, LONG, LONG, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidP_TranslateUsagesToI8042ScanCodes") : nullptr);
@@ -344,6 +388,7 @@ extern "C" LONG WINAPI HidP_TranslateUsagesToI8042ScanCodes(LPVOID p0, LONG p1, 
 }
 
 extern "C" LONG WINAPI HidP_UnsetUsages(LONG p0, LONG p1, LONG p2, LPVOID p3, LPVOID p4, LPVOID p5, LPVOID p6, LONG p7) {
+    CALL_GUARD(utils::get_now_ns());
     if (!LoadRealHid()) return 0;
     typedef LONG (WINAPI *PFN)(LONG, LONG, LONG, LPVOID, LPVOID, LPVOID, LPVOID, LONG);
     PFN fn = (PFN)(LoadRealHid() ? GetProcAddress(g_hid_module, "HidP_UnsetUsages") : nullptr);
@@ -352,5 +397,6 @@ extern "C" LONG WINAPI HidP_UnsetUsages(LONG p0, LONG p1, LONG p2, LPVOID p3, LP
 }
 
 extern "C" LONG WINAPI HidP_UsageListDifference(void) {
+    CALL_GUARD(utils::get_now_ns());
     return 0;
 }

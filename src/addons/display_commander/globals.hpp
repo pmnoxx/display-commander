@@ -594,6 +594,8 @@ extern std::atomic<std::shared_ptr<reshade::api::swapchain_desc>> g_last_swapcha
 extern std::atomic<std::shared_ptr<reshade::api::swapchain_desc>> g_last_swapchain_desc_post;
 /** True when Force Flip Discard upgrade (FLIP_SEQUENTIAL → FLIP_DISCARD) was applied on last create_swapchain. */
 extern std::atomic<bool> g_force_flip_discard_upgrade_done;
+/** When true, show the "HDR10 / scRGB color fix" checkbox in the main tab. Default true. */
+extern std::atomic<bool> g_show_auto_colorspace_fix_in_main_tab;
 extern std::atomic<HWND> g_last_swapchain_hwnd;
 /** HWND of the standalone settings UI window (No ReShade). Set by standalone UI; used to exclude it when inferring game
  * window from foreground. */

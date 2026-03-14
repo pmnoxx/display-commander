@@ -161,6 +161,7 @@ std::atomic<uint32_t> g_last_api_version{0};
 std::atomic<std::shared_ptr<reshade::api::swapchain_desc>> g_last_swapchain_desc_pre{nullptr};
 std::atomic<std::shared_ptr<reshade::api::swapchain_desc>> g_last_swapchain_desc_post{nullptr};
 std::atomic<bool> g_force_flip_discard_upgrade_done{false};
+std::atomic<bool> g_show_auto_colorspace_fix_in_main_tab{true};
 std::atomic<HWND> g_last_swapchain_hwnd{nullptr};
 std::atomic<HWND> g_standalone_ui_hwnd{nullptr};
 std::atomic<bool> g_shutdown{false};

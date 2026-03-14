@@ -6,6 +6,10 @@
 ## Unreleased
 
 ---
+## v0.12.482
+- [ui] **Optional visibility of HDR10 / scRGB color fix in Main tab** - The "HDR10 / scRGB color fix" checkbox on the Main tab can be hidden to reduce clutter when the fix is already enabled; if hidden, the checkbox still appears when the fix is off so you can turn it on. Details: globals.cpp/hpp (`g_show_auto_colorspace_fix_in_main_tab`), main_new_tab.cpp.
+
+---
 ## v0.12.481
 - [bugfix] [hooks] **Reflex/native frame pacing: FG toggling and deadlock (Wuthering Waves)** - Fixed frame generation (FG) turning on and off unexpectedly and a deadlock when using native frame pacing. Present-path and delay logic no longer depend on the FPS limiter being enabled: SIMULATION_START handling and PRESENT_START delay run consistently, avoiding inconsistent state that could cause FG toggling or a deadlock in games such as Wuthering Waves. Details: nvapi_hooks.cpp ProcessReflexMarkerFpsLimiter.
 

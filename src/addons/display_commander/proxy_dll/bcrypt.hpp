@@ -48,7 +48,7 @@ typedef NTSTATUS (WINAPI *PFN_BCryptEnumContextFunctions)(ULONG dwTable, LPCWSTR
 typedef NTSTATUS (WINAPI *PFN_BCryptEnumContexts)(ULONG dwTable, ULONG* pcbBuffer, void* ppBuffer);
 typedef NTSTATUS (WINAPI *PFN_BCryptEnumProviders)(ULONG dwAlgOperations, ULONG* pImplCount, void* ppImplList, ULONG dwFlags);
 typedef NTSTATUS (WINAPI *PFN_BCryptEnumRegisteredProviders)(ULONG* pcbBuffer, void* ppBuffer);
-typedef NTSTATUS (WINAPI *PFN_BCryptExportKey)(void* hKey, void* hExportKey, LPCWSTR pszBlobType, void* pParameterList, void* pbOutput, ULONG cbOutput, ULONG* pcbResult, ULONG dwFlags);
+typedef NTSTATUS (WINAPI *PFN_BCryptExportKey)(void* hKey, void* hExportKey, LPCWSTR pszBlobType, void* pbOutput, ULONG cbOutput, ULONG* pcbResult, ULONG dwFlags);
 typedef NTSTATUS (WINAPI *PFN_BCryptFinalizeKeyPair)(void* hKey, ULONG dwFlags);
 typedef NTSTATUS (WINAPI *PFN_BCryptFinishHash)(void* hHash, void* pbOutput, ULONG cbOutput, ULONG dwFlags);
 typedef void (WINAPI *PFN_BCryptFreeBuffer)(void* pvBuffer);
@@ -57,7 +57,7 @@ typedef NTSTATUS (WINAPI *PFN_BCryptGenerateKeyPair)(void* hAlgorithm, void* phK
 typedef NTSTATUS (WINAPI *PFN_BCryptGenerateSymmetricKey)(void* hAlgorithm, void* phKey, void* pbKeyObject, ULONG cbKeyObject, void* pbSecret, ULONG cbSecret, ULONG dwFlags);
 typedef NTSTATUS (WINAPI *PFN_BCryptGetFipsAlgorithmMode)(void* pfEnabled);
 typedef NTSTATUS (WINAPI *PFN_BCryptGetProperty)(void* hObject, LPCWSTR pszProperty, void* pbOutput, ULONG cbOutput, ULONG* pcbResult, ULONG dwFlags);
-typedef NTSTATUS (WINAPI *PFN_BCryptHash)(void* hAlgorithm, void* pbInput, ULONG cbInput, void* pbHashObject, ULONG cbHashObject, void* pbOutput, ULONG cbOutput, ULONG dwFlags);
+typedef NTSTATUS (WINAPI *PFN_BCryptHash)(void* hAlgorithm, void* pbSecret, ULONG cbSecret, void* pbInput, ULONG cbInput, void* pbOutput, ULONG cbOutput);
 typedef NTSTATUS (WINAPI *PFN_BCryptHashData)(void* hHash, void* pbInput, ULONG cbInput, ULONG dwFlags);
 typedef NTSTATUS (WINAPI *PFN_BCryptImportKey)(void* hAlgorithm, void* hImportKey, LPCWSTR pszBlobType, void* phKey, void* pbKeyObject, ULONG cbKeyObject, void* pbInput, ULONG cbInput, ULONG dwFlags);
 typedef NTSTATUS (WINAPI *PFN_BCryptImportKeyPair)(void* hAlgorithm, void* hImportKey, LPCWSTR pszBlobType, void* phKey, void* pbInput, ULONG cbInput, ULONG dwFlags);

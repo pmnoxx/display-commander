@@ -5,6 +5,7 @@
 
 ## v0.12.509
 - [bugfix] **BCryptResolveProviders crash in bcrypt proxy** - The proxy’s signature was missing two parameters (`dwMode`, `dwFlags`) that the real Windows API has. Callers passed 8 arguments but the proxy only accepted 6 and forwarded 6, so the real bcrypt.dll saw misaligned arguments (e.g. buffer pointer in the `dwMode` slot) and crashed. The proxy and typedef now match the official 8-parameter signature. Details: bcrypt_proxy.cpp, bcrypt.hpp PFN_BCryptResolveProviders.
+- [bugfix] **BCryptHash wrong signature in bcrypt proxy** - The proxy used 8 parameters (pbInput, cbInput, pbHashObject, cbHashObject, pbOutput, cbOutput, dwFlags) but the official API has 7: (pbSecret, cbSecret, pbInput, cbInput, pbOutput, cbOutput) with no dwFlags. Corrected typedef and proxy to match the official BCryptHash signature to avoid crashes. Details: bcrypt.hpp PFN_BCryptHash, bcrypt_proxy.cpp BCryptHash.
 
 ---
 

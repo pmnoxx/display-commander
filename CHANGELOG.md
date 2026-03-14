@@ -8,6 +8,10 @@
 - [cleanup] **try_all_proxies scripts reorganized**
 
 ---
+## v0.12.493
+- **DisplayCommander.log created in exe folder when missing** - On DLL load, if DisplayCommander.log does not exist in the game executable's folder, it is created and the full path of the loaded Display Commander module is written into it. Helps confirm which DLL is loaded when debugging. Details: main_entry.cpp DllMain (before the logger is initialized).
+
+---
 ## v0.12.492
 - **Message box when loaded as .dll (unsupported)** - If Display Commander is loaded as a .dll file (e.g. renamed as dxgi.dll in a game folder) and load is refused (e.g. SpecialK present, helper process, version too old, multiple instances), a message box now shows the full path of the loaded DLL so you can see exactly which file was loaded. Title: "Display Commander - loaded as .dll (unsupported loader)". Details: main_entry.cpp DllMain RefuseLoad branch, only when IsLoadedWithDLLExtension is true.
 

@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
 """
-Copy dc64.dll to all Wine/Proton proxy DLL names that don't already exist in the
-target directory. Use this to discover which libraries a game loads: place dc64.dll
-(Display Commander 64-bit proxy) in the game folder, run this script, then run the game.
-Whichever DLL names get loaded will use dc64.dll (you can add logging in the proxy to see).
+Copy Display Commander addon to all Wine/Proton proxy DLL names that don't already exist
+in the target directory. Use this to discover which libraries a game loads: place
+zzz_display_commander.addon64 (64-bit) or zzz_display_commander.addon32 (32-bit) in the
+game folder, run this script, then run the game. Whichever DLL names get loaded will
+use the addon (you can add logging in the proxy to see).
 
 Wine dlls list: https://github.com/wine-mirror/wine/tree/master/dlls
 Excludes non-.dll outputs: .tlb, .cpl, .msstyles, .sys, .drv16, .dll16.
 
 Usage:
-  python copy_dc64_to_wine_proxies.py [target_dir]
-  python copy_dc64_to_wine_proxies.py "C:\Program Files (x86)\Steam\steamapps\common\STEINS;GATE"
+  python try_all_proxies.py [target_dir]        # 64-bit: use zzz_display_commander.addon64
+  python try_all_proxies.py --32 [target_dir]   # 32-bit: use zzz_display_commander.addon32
+  python try_all_proxies.py "C:\...\STEINS;GATE"
 
 If target_dir is omitted, uses current directory.
-Source DLL is target_dir/dc64.dll (must exist).
+Source is target_dir/zzz_display_commander.addon64 or .addon32 (must exist).
 """
 
 from __future__ import print_function
@@ -131,16 +133,24 @@ xpssvcs.dll xtajit64.dll
 """.strip().split()
 
 
-def main():
-    if len(sys.argv) > 1:
-        target_dir = os.path.abspath(sys.argv[1])
-    else:
-        target_dir = os.getcwd()
+ADDON64 = "zzz_display_commander.addon64"
+ADDON32 = "zzz_display_commander.addon32"
 
-    source_dll = os.path.join(target_dir, "zzz_display_commander.addon64")
+
+def main():
+    argv = sys.argv[1:]
+    use_32 = False
+    if argv and argv[0] == "--32":
+        use_32 = True
+        argv = argv[1:]
+    target_dir = os.path.abspath(argv[0]) if argv else os.getcwd()
+
+    source_name = ADDON32 if use_32 else ADDON64
+    source_dll = os.path.join(target_dir, source_name)
     if not os.path.isfile(source_dll):
-        print("Error: dc64.dll not found in", target_dir, file=sys.stderr)
-        print("Place dc64.dll in the target directory first.", file=sys.stderr)
+        print("Error: {} not found in {}".format(source_name, target_dir), file=sys.stderr)
+        print("Place {} (64-bit) or {} (32-bit with --32) in the target directory.".format(
+            ADDON64, ADDON32), file=sys.stderr)
         sys.exit(1)
 
     copied = []
@@ -157,8 +167,8 @@ def main():
             print("Warning: could not copy to {}: {}".format(name, e), file=sys.stderr)
 
     print("Target directory:", target_dir)
-    print("Source:", source_dll)
-    print("Copied dc64.dll to {} proxy name(s).".format(len(copied)))
+    print("Source ({}): {}".format("32-bit" if use_32 else "64-bit", source_dll))
+    print("Copied to {} proxy name(s).".format(len(copied)))
     print("Skipped {} (already exist).".format(len(skipped)))
     if copied:
         print("\nCreated (first 30):", ", ".join(copied[:30]))

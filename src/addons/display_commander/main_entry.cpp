@@ -2599,6 +2599,13 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             ProcessAttachEarlyResult early = ProcessAttach_EarlyChecksAndInit(h_module);
             if (early == ProcessAttachEarlyResult::RefuseLoad) {
                 reason = "RefuseLoad";
+                if (display_commander::utils::IsLoadedWithDLLExtension(static_cast<void*>(h_module))) {
+                    WCHAR module_path[MAX_PATH] = {};
+                    if (GetModuleFileNameW(h_module, module_path, MAX_PATH) > 0) {
+                        MessageBoxW(nullptr, module_path,
+                                    L"Display Commander - loaded as .dll (unsupported loader)", MB_OK | MB_ICONWARNING);
+                    }
+                }
                 return TRUE;
             }
             if (early == ProcessAttachEarlyResult::EarlySuccess) {

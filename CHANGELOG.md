@@ -5,6 +5,12 @@
 
 ## Unreleased
 
+- [cleanup] **try_all_proxies scripts reorganized**
+
+---
+## v0.12.492
+- **Message box when loaded as .dll (unsupported)** - If Display Commander is loaded as a .dll file (e.g. renamed as dxgi.dll in a game folder) and load is refused (e.g. SpecialK present, helper process, version too old, multiple instances), a message box now shows the full path of the loaded DLL so you can see exactly which file was loaded. Title: "Display Commander - loaded as .dll (unsupported loader)". Details: main_entry.cpp DllMain RefuseLoad branch, only when IsLoadedWithDLLExtension is true.
+
 ---
 ## v0.12.491
 - **Logger prints full DC path** - The "DisplayCommander Logger initialized" log line now includes the full path of the Display Commander addon DLL (e.g. the .addon64 file), so you can see which binary is logging at a glance. Details: display_commander_logger.cpp Initialize().

@@ -4,6 +4,9 @@
 
 ## Unreleased
 
+## v0.12.517
+- [ui] **winhttp.dll proxy warning on Main tab** - When Display Commander is loaded as winhttp.dll (proxy in the game folder), the Main tab now shows a warning that the DLL is not signed by Microsoft and may cause network connection issues (e.g. blocked traffic, login failures). Tooltip explains the risk and suggests using another proxy (e.g. dxgi.dll) if network problems occur. Details: utils/dc_load_path.hpp IsLoadedAsWinHttpProxy, main_new_tab.cpp warning block.
+
 ## v0.12.516
 - [cleanup] **Safe directory removal wrapper** - All recursive directory removal now goes through a whitelist: `utils/safe_remove.hpp` exposes `SafeRemoveAll(path, ec)` and `IsSafeTempSubdirPath(path)`. Only these paths may be removed: `.../tmp/<numeric_pid>` (post-ReShade addon temp), `<GetTempPath()>/dc_reshade_update`, `<GetTempPath()>/dc_reshade_download`, and `<GetDownloadDirectory()>/Debug/_staging_latest_debug`. Direct `std::filesystem::remove_all` calls were replaced in `main_entry.cpp`, `cli_standalone_ui.cpp`, `version_check.cpp`, and `reshade_version_download.cpp`. Reduces risk of deleting wrong directories.
 

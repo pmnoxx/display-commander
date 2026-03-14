@@ -80,7 +80,7 @@ Note: Applying window operations from the main thread can crash some apps. This 
 
 - **Continue rendering in background**: Game keeps rendering when alt-tabbed (no minimize/focus spoofing)
 - **Standalone / independent UI**: Run settings in a separate window or without ReShade (.NO_RESHADE, SetupDC)
-- **Proxy loading**: Load as dxgi.dll, d3d11.dll, d3d12.dll, dinput8.dll, hid.dll, bcrypt.dll, version.dll, opengl32.dll, dbghelp.dll, or vulkan-1.dll proxy when needed
+- **Proxy loading**: Load as dxgi.dll, d3d11.dll, d3d12.dll, dinput8.dll, hid.dll, bcrypt.dll, version.dll, opengl32.dll, dbghelp.dll, vulkan-1.dll, or winhttp.dll proxy when needed. When loaded as **winhttp.dll**, the Main tab shows a warning: the proxy is not signed by Microsoft and may cause network connection issues (blocked traffic, login failures); consider using another proxy (e.g. dxgi.dll) if you see network problems.
 - **Expert – flag files**: Optional files in the game exe directory (e.g. `.NO_RESHADE`, `.GET_PROC_ADDRESS`) enable standalone mode, GetProcAddress logging, block-exit debugging, and more. See [Expert: Flag files in the game directory](docs/EXPERT_FLAG_FILES.md).
 - **Addon directory DLL loading**: From the same folder as the addon, **.dc64 / .dc32 / .dc / .asi** are loaded before ReShade; **.dc64r / .dc32r / .dcr** are loaded after ReShade (for addons that need the ReShade API). Post-ReShade addons use a temp copy so originals can be updated while the game runs.
 - **NVIDIA Profile (Inspector)**: View and edit driver profile for the current game; apply as administrator

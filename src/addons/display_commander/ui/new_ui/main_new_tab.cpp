@@ -2385,6 +2385,22 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         imgui.Spacing();
     }
 
+    g_rendering_ui_section.store("ui:tab:main_new:warnings:winhttp", std::memory_order_release);
+    // winhttp.dll proxy warning: unsigned DLL may cause network connection issues
+    if (display_commander::utils::IsLoadedAsWinHttpProxy()) {
+        imgui.Spacing();
+        imgui.TextColored(ui::colors::TEXT_WARNING,
+                          ICON_FK_WARNING " WARNING: Display Commander is loaded as winhttp.dll");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "The proxy DLL is not signed by Microsoft. Some applications or security software may block or "
+                "alter network traffic when using an unsigned winhttp.dll, which can cause connection failures, "
+                "login issues, or broken online features. If you experience network problems, consider using "
+                "Display Commander as a ReShade addon (e.g. dxgi.dll proxy) instead.");
+        }
+        imgui.Spacing();
+    }
+
     g_rendering_ui_section.store("ui:tab:main_new:version_build", std::memory_order_release);
     // Version and build information at the top
     {

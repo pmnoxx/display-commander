@@ -28,6 +28,10 @@ std::filesystem::path GetLocalDcAddonDirectory();
 // used for "Local Proxy DC version".
 std::filesystem::path GetDcProxyModulePath();
 
+// True if DC was loaded as winhttp.dll proxy (game folder). Used to show a warning: unsigned proxy may cause
+// network connection issues.
+bool IsLoadedAsWinHttpProxy();
+
 // Config get/set (section DisplayCommander.DC). use_global_version: when true, load DC from global folder only.
 bool GetUseGlobalDcVersionFromConfig();
 void SetUseGlobalDcVersionInConfig(bool use_global);

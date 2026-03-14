@@ -240,6 +240,16 @@ static std::filesystem::path GetDcProxyModulePathImpl(std::filesystem::path* out
 
 std::filesystem::path GetDcProxyModulePath() { return GetDcProxyModulePathImpl(nullptr); }
 
+bool IsLoadedAsWinHttpProxy() {
+    std::filesystem::path proxy_path = GetDcProxyModulePath();
+    if (proxy_path.empty() || !proxy_path.has_filename()) return false;
+    std::wstring name = proxy_path.filename().wstring();
+    for (auto& c : name) {
+        if (c >= L'A' && c <= L'Z') c += (L'a' - L'A');
+    }
+    return name == L"winhttp.dll";
+}
+
 bool IsLoadedWithDLLExtension(void* h_module) {
     if (h_module == nullptr) return false;
     WCHAR path[MAX_PATH] = {};

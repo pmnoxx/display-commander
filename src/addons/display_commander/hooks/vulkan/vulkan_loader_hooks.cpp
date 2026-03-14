@@ -78,7 +78,7 @@ void VKAPI_CALL vkSetLatencyMarkerNV_Detour(VkDevice device, VkSwapchainKHR swap
                                             const VkSetLatencyMarkerInfoNV* pLatencyMarkerInfo);
 
 /** Table-driven hook install: name, detour, original. All hooks installed from vulkan-1.dll exports (no
- * vkGetDeviceProcAddr). */
+ * vkGetDeviceProcAddr). Order must match VulkanLoaderHook enum. */
 struct VulkanLoaderHookEntry {
     const char* name;
     LPVOID detour;
@@ -116,14 +116,6 @@ static std::vector<std::string> g_vulkan_enabled_extensions;
 /** True once vkCreateDevice_Detour has been entered at least once (so UI can show "not called yet" vs "no extensions").
  */
 static std::atomic<bool> g_vkCreateDevice_detour_ever_called{false};
-
-// VK_NV_low_latency2 marker enum (same order as NvLL): 0=SIMULATION_START, 4=PRESENT_START, 5=PRESENT_END
-static constexpr int VK_LATENCY_MARKER_SIMULATION_START_NV = 0;
-static constexpr int VK_LATENCY_MARKER_SIMULATION_END_NV = 1;
-static constexpr int VK_LATENCY_MARKER_RENDERSUBMIT_START_NV = 2;
-static constexpr int VK_LATENCY_MARKER_RENDERSUBMIT_END_NV = 3;
-static constexpr int VK_LATENCY_MARKER_PRESENT_START_NV = 4;
-static constexpr int VK_LATENCY_MARKER_PRESENT_END_NV = 5;
 
 /** Walk pNext chain to find VkPresentIdKHR; returns nullptr if not found. Used for stats only. */
 static const VkPresentIdKHR* FindPresentIdInPresentInfo(const VkPresentInfoKHR* pPresentInfo) {
@@ -266,52 +258,10 @@ void VKAPI_CALL vkSetLatencyMarkerNV_Detour(VkDevice device, VkSwapchainKHR swap
     CALL_GUARD(utils::get_now_ns());
     g_loader_hook_call_counts[static_cast<std::size_t>(VulkanLoaderHook::SetLatencyMarkerNV)].fetch_add(1);
     g_loader_marker_count.fetch_add(1);
-    const bool disabled = true;
-    if (disabled) {
-        if (g_real_vkSetLatencyMarkerNV != nullptr) {
-            g_real_vkSetLatencyMarkerNV(device, swapchain, pLatencyMarkerInfo);
-        }
-        return;
-    }
-    (void)swapchain;
-    LogInfo("VulkanLoader: vkSetLatencyMarkerNV_Detour called marker=%d presentID=%llu", pLatencyMarkerInfo->marker,
-            pLatencyMarkerInfo->presentID);
     if (pLatencyMarkerInfo != nullptr) {
         g_loader_last_marker_type.store(static_cast<int>(pLatencyMarkerInfo->marker));
         g_loader_last_present_id.store(pLatencyMarkerInfo->presentID);
     }
-
-    const uint64_t now_ns = static_cast<uint64_t>(utils::get_now_ns());
-    if (pLatencyMarkerInfo != nullptr
-        && static_cast<int>(pLatencyMarkerInfo->marker) == VK_LATENCY_MARKER_PRESENT_START_NV) {
-        ChooseFpsLimiter(now_ns, FpsLimiterCallSite::reflex_marker_vk_loader);
-    }
-
-    const bool native_pacing_sim_start_only = settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue();
-    const bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::reflex_marker_vk_loader);
-
-    if (native_pacing_sim_start_only) {
-        if (use_fps_limiter && pLatencyMarkerInfo != nullptr) {
-            if (static_cast<int>(pLatencyMarkerInfo->marker) == VK_LATENCY_MARKER_SIMULATION_START_NV) {
-                OnPresentFlags2(false, true);
-                RecordNativeFrameTime();
-            }
-            if (static_cast<int>(pLatencyMarkerInfo->marker) == VK_LATENCY_MARKER_SIMULATION_START_NV) {
-                display_commanderhooks::dxgi::HandlePresentAfter(true);
-            }
-        }
-    } else {
-        if (use_fps_limiter && pLatencyMarkerInfo != nullptr) {
-            if (static_cast<int>(pLatencyMarkerInfo->marker) == VK_LATENCY_MARKER_PRESENT_START_NV) {
-                OnPresentFlags2(false, true);
-                RecordNativeFrameTime();
-            }
-            if (static_cast<int>(pLatencyMarkerInfo->marker) == VK_LATENCY_MARKER_PRESENT_END_NV) {
-                display_commanderhooks::dxgi::HandlePresentAfter(true);
-            }
-        }
-    }
-
     if (g_real_vkSetLatencyMarkerNV != nullptr) {
         g_real_vkSetLatencyMarkerNV(device, swapchain, pLatencyMarkerInfo);
     }
@@ -364,8 +314,8 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr_Detour(VkInstance
 }
 
 static void RollbackVulkanLoaderHooks() {
-    for (std::size_t j = 0; j < static_cast<std::size_t>(VulkanLoaderHook::Count); ++j) {
-        LPVOID* const orig = kVulkanLoaderHooks[j].original;
+    for (const auto& entry : kVulkanLoaderHooks) {
+        LPVOID* const orig = entry.original;
         if (orig != nullptr && *orig != nullptr) {
             MH_DisableHook(*orig);
             MH_RemoveHook(*orig);
@@ -397,8 +347,7 @@ static bool InstallVulkanLoaderHooksImpl(void* vulkan1_module) {
         return false;
     }
 
-    for (std::size_t i = 0; i < static_cast<std::size_t>(VulkanLoaderHook::Count); ++i) {
-        const VulkanLoaderHookEntry& entry = kVulkanLoaderHooks[i];
+    for (const auto& entry : kVulkanLoaderHooks) {
         FARPROC target = GetProcAddress(module, entry.name);
         if (target == nullptr) {
             LogInfo("VulkanLoader: %s not exported by vulkan-1.dll, skipping", entry.name);
@@ -414,39 +363,35 @@ static bool InstallVulkanLoaderHooksImpl(void* vulkan1_module) {
     g_loader_hooks_installed.store(true);
     display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
         display_commanderhooks::HookType::VULKAN_LOADER);
-    LogInfo(
-        "VulkanLoader: hooks installed (vkGetInstanceProcAddr, vkCreateDevice, vkCreateSwapchainKHR, "
-        "vkQueuePresentKHR, vkBeginCommandBuffer, vkSetLatencyMarkerNV from exports)");
+    std::string hook_list;
+    for (std::size_t i = 0; i < static_cast<std::size_t>(VulkanLoaderHook::Count); ++i) {
+        if (i != 0) hook_list += ", ";
+        hook_list += kVulkanLoaderHooks[i].name;
+    }
+    LogInfo("VulkanLoader: hooks installed (%s from exports)", hook_list.c_str());
     return true;
 }
 
 void GetVulkanLoaderHookCallCountsImpl(uint64_t* out_counts, std::size_t count) {
-    if (out_counts == nullptr) {
-        return;
-    }
-    const std::size_t n = (count < static_cast<std::size_t>(VulkanLoaderHook::Count)) ? count : static_cast<std::size_t>(VulkanLoaderHook::Count);
+    if (out_counts == nullptr) return;
+    const std::size_t n = (count < static_cast<std::size_t>(VulkanLoaderHook::Count))
+                          ? count
+                          : static_cast<std::size_t>(VulkanLoaderHook::Count);
     for (std::size_t i = 0; i < n; ++i) {
         out_counts[i] = g_loader_hook_call_counts[i].load();
     }
 }
 
+const char* GetVulkanLoaderHookNameImpl(VulkanLoaderHook hook) {
+    const std::size_t idx = static_cast<std::size_t>(hook);
+    if (idx >= static_cast<std::size_t>(VulkanLoaderHook::Count)) return "(unknown)";
+    return kVulkanLoaderHooks[idx].name;
+}
+
 }  // namespace
 
 const char* GetVulkanLoaderHookName(VulkanLoaderHook hook) {
-    static const char* const kNames[] = {
-        "vkGetInstanceProcAddr",
-        "vkCreateDevice",
-        "vkCreateSwapchainKHR",
-        "vkQueuePresentKHR",
-        "vkBeginCommandBuffer",
-        "vkSetLatencyMarkerNV",
-    };
-    const std::size_t idx = static_cast<std::size_t>(hook);
-    const std::size_t max_hook = static_cast<std::size_t>(VulkanLoaderHook::Count);
-    if (idx >= max_hook) {
-        return "(unknown)";
-    }
-    return kNames[idx];
+    return GetVulkanLoaderHookNameImpl(hook);
 }
 
 void GetVulkanLoaderHookCallCounts(uint64_t* out_counts, std::size_t count) {

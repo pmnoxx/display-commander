@@ -6,6 +6,12 @@
 ## Unreleased
 
 ---
+## v0.12.489
+- [hooks] **slUpgradeInterface detour bypass** - The slUpgradeInterface detour now returns the original result immediately (`disabled = true`), skipping DXGI proxy factory/swapchain vtable hooking, event counter, and config-driven prevent flag. The detour remains installed; re-enabling the logic is a single flag change. Details: streamline_hooks.cpp slUpgradeInterface_Detour.
+- [cleanup] [hooks] **Vulkan loader hooks table-driven** - Vulkan loader hook install/rollback and names now use a single table (`kVulkanLoaderHooks`); `GetVulkanLoaderHookName` indexes the table; install success log is built from the table; range-for used for rollback and install; dead code and unused constants removed from `vkSetLatencyMarkerNV_Detour`; hook count uses `VulkanLoaderHook::Count` directly. Details: vulkan_loader_hooks.cpp/hpp.
+- [cleanup] [hooks] **Streamline loader hooks table-driven** - The five sl.interposer exports (slInit, slUpgradeInterface, slIsFeatureSupported, slGetNativeInterface, slGetFeatureFunction) are now installed via a single table (`kStreamlineLoaderHooks`); added `RollbackStreamlineLoaderHooks` and call it on any install failure; `g_streamline_hooks_installed` is set only after all hooks succeed. Details: streamline_hooks.cpp.
+
+---
 ## v0.12.488
 - [bugfix] **FPS limiter post-sleep 100 ms failsafe** - The On-Present FPS limiter now caps the post-sleep wait in HandleFpsLimiterPost at 100 ms (same as pre-sleep). If the requested wait would exceed 100 ms, the wait is limited to 100 ms and a warning is logged ("Post-sleep capped at 100 ms (requested wait was longer); timing may be off."). Avoids long freezes after present. Details: swapchain_events.cpp HandleFpsLimiterPost.
 

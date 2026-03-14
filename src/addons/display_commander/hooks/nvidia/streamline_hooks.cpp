@@ -39,6 +39,45 @@ static slGetNativeInterface_pfn slGetNativeInterface_Original = nullptr;
 static slUpgradeInterface_pfn slUpgradeInterface_Original = nullptr;
 static slGetFeatureFunction_pfn slGetFeatureFunction_Original = nullptr;
 
+// Forward declarations for table-driven hook install
+static int slInit_Detour(void* pref, uint64_t sdkVersion);
+static int slUpgradeInterface_Detour(void** baseInterface);
+static int slIsFeatureSupported_Detour(int feature, const void* adapterInfo);
+static int slGetNativeInterface_Detour(void* proxyInterface, void** baseInterface);
+static int slGetFeatureFunction_Detour(int feature, const char* functionName, void*& function);
+
+/** Table-driven install for sl.interposer.dll exports. Order matches StreamlineLoaderHook enum. */
+enum class StreamlineLoaderHook : std::size_t {
+    slInit = 0,
+    slUpgradeInterface,
+    slIsFeatureSupported,
+    slGetNativeInterface,
+    slGetFeatureFunction,
+    Count
+};
+struct StreamlineLoaderHookEntry {
+    const char* name;
+    LPVOID detour;
+    LPVOID* original;
+};
+static const StreamlineLoaderHookEntry kStreamlineLoaderHooks[static_cast<std::size_t>(StreamlineLoaderHook::Count)] = {
+    {.name = "slInit",
+     .detour = reinterpret_cast<LPVOID>(&slInit_Detour),
+     .original = reinterpret_cast<LPVOID*>(&slInit_Original)},
+    {.name = "slUpgradeInterface",
+     .detour = reinterpret_cast<LPVOID>(&slUpgradeInterface_Detour),
+     .original = reinterpret_cast<LPVOID*>(&slUpgradeInterface_Original)},
+    {.name = "slIsFeatureSupported",
+     .detour = reinterpret_cast<LPVOID>(&slIsFeatureSupported_Detour),
+     .original = reinterpret_cast<LPVOID*>(&slIsFeatureSupported_Original)},
+    {.name = "slGetNativeInterface",
+     .detour = reinterpret_cast<LPVOID>(&slGetNativeInterface_Detour),
+     .original = reinterpret_cast<LPVOID*>(&slGetNativeInterface_Original)},
+    {.name = "slGetFeatureFunction",
+     .detour = reinterpret_cast<LPVOID>(&slGetFeatureFunction_Detour),
+     .original = reinterpret_cast<LPVOID*>(&slGetFeatureFunction_Original)},
+};
+
 // slDLSSGetOptimalSettings: Result(options, settings) - hooked when game requests it via slGetFeatureFunction
 using slDLSSGetOptimalSettings_pfn = int (*)(const sl::DLSSOptions& options, sl::DLSSOptimalSettings& settings);
 static slDLSSGetOptimalSettings_pfn slDLSSGetOptimalSettings_Original = nullptr;
@@ -526,6 +565,10 @@ static int slGetFeatureFunction_Detour(int feature, const char* functionName, vo
 // Reference: external/Streamline/source/core/sl.api/sl.cpp slUpgradeInterface()
 int slUpgradeInterface_Detour(void** baseInterface) {
     CALL_GUARD(utils::get_now_ns());
+    const bool disabled = true;
+    if (disabled) {
+        return slUpgradeInterface_Original(baseInterface);
+    }
     // Increment counter
     g_streamline_event_counters[STREAMLINE_EVENT_SL_UPGRADE_INTERFACE].fetch_add(1);
 
@@ -560,6 +603,17 @@ int slUpgradeInterface_Detour(void** baseInterface) {
         LogError("[slUpgradeInterface] Unknown interface not hooked TODO");
     }
     return result;
+}
+
+static void RollbackStreamlineLoaderHooks() {
+    for (const auto& entry : kStreamlineLoaderHooks) {
+        LPVOID* const orig = entry.original;
+        if (orig != nullptr && *orig != nullptr) {
+            MH_DisableHook(*orig);
+            MH_RemoveHook(*orig);
+            *orig = nullptr;
+        }
+    }
 }
 
 // Initialize config-driven prevent_slupgrade_interface flag
@@ -603,47 +657,27 @@ bool InstallStreamlineHooks(HMODULE streamline_module) {
         LogInfo("Streamline hooks already installed");
         return true;
     }
-    g_streamline_hooks_installed = true;
 
     // Initialize prevent_slupgrade_interface from config
     InitializePreventSLUpgradeInterface();
 
     LogInfo("Installing Streamline hooks...");
 
-    // Hook slInit
-    if (!CreateAndEnableHook(GetProcAddress(sl_interposer, "slInit"), reinterpret_cast<LPVOID>(slInit_Detour),
-                             reinterpret_cast<LPVOID*>(&slInit_Original), "slInit")) {
-        LogError("Failed to create and enable slInit hook");
+    for (const auto& entry : kStreamlineLoaderHooks) {
+        FARPROC target = GetProcAddress(sl_interposer, entry.name);
+        if (target == nullptr) {
+            LogError("Streamline: %s not exported by sl.interposer.dll", entry.name);
+            RollbackStreamlineLoaderHooks();
+            return false;
+        }
+        if (!CreateAndEnableHook(reinterpret_cast<LPVOID>(target), entry.detour, entry.original, entry.name)) {
+            LogError("Failed to create and enable %s hook", entry.name);
+            RollbackStreamlineLoaderHooks();
+            return false;
+        }
     }
 
-    // Hook slUpgradeInterface to vtable-hook the Streamline proxy DXGI factory (CreateSwapChain*)
-    if (!CreateAndEnableHook(GetProcAddress(sl_interposer, "slUpgradeInterface"),
-                             reinterpret_cast<LPVOID>(slUpgradeInterface_Detour),
-                             reinterpret_cast<LPVOID*>(&slUpgradeInterface_Original), "slUpgradeInterface")) {
-        LogError("Failed to create and enable slUpgradeInterface hook");
-    }
-
-    // Hook slIsFeatureSupported
-    if (!CreateAndEnableHook(GetProcAddress(sl_interposer, "slIsFeatureSupported"),
-                             reinterpret_cast<LPVOID>(slIsFeatureSupported_Detour),
-                             reinterpret_cast<LPVOID*>(&slIsFeatureSupported_Original), "slIsFeatureSupported")) {
-        LogError("Failed to create and enable slIsFeatureSupported hook");
-    }
-
-    // Hook slGetNativeInterface
-    if (!CreateAndEnableHook(GetProcAddress(sl_interposer, "slGetNativeInterface"),
-                             reinterpret_cast<LPVOID>(slGetNativeInterface_Detour),
-                             reinterpret_cast<LPVOID*>(&slGetNativeInterface_Original), "slGetNativeInterface")) {
-        LogError("Failed to create and enable slGetNativeInterface hook");
-    }
-
-    // Hook slGetFeatureFunction to install DLSS-G/DLSS feature detours
-    if (!CreateAndEnableHook(GetProcAddress(sl_interposer, "slGetFeatureFunction"),
-                             reinterpret_cast<LPVOID>(slGetFeatureFunction_Detour),
-                             reinterpret_cast<LPVOID*>(&slGetFeatureFunction_Original), "slGetFeatureFunction")) {
-        LogError("Failed to create and enable slGetFeatureFunction hook");
-    }
-
+    g_streamline_hooks_installed = true;
     LogInfo("Streamline hooks installed successfully");
 
     // Mark Streamline hooks as installed

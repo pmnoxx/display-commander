@@ -21,6 +21,7 @@
 #include "utils/general_utils.hpp"
 #include "utils/reshade_load_path.hpp"
 #include "utils/steam_library.hpp"
+#include "utils/safe_remove.hpp"
 #include "utils/version_check.hpp"
 #include "version.hpp"
 #include "widgets/remapping_widget/remapping_widget.hpp"
@@ -298,7 +299,7 @@ static DWORD WINAPI ReshadeUpdateWorker(LPVOID param) {
     }
 
     std::error_code ec;
-    std::filesystem::remove_all(tempDir, ec);
+    display_commander::utils::SafeRemoveAll(tempDir, ec);
     std::string msg;
     if (params->forGameDetails) {
         if (proxyOnlyInstall)

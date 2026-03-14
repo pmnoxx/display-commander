@@ -1,13 +1,21 @@
+// Source Code <Display Commander>
 #include "reshade_version_download.hpp"
-#include <ShlObj.h>
-#include <Windows.h>
+#include "../config/display_commander_config.hpp"
+#include "reshade_load_path.hpp"
+#include "safe_remove.hpp"
+#include "version_check.hpp"
+
+// Libraries <standard C++>
 #include <filesystem>
 #include <memory>
 #include <string>
 #include <thread>
-#include "../config/display_commander_config.hpp"
-#include "reshade_load_path.hpp"
-#include "version_check.hpp"
+
+// Libraries <Windows.h>
+#include <Windows.h>
+
+// Libraries <Windows>
+#include <ShlObj.h>
 
 namespace display_commander::utils {
 
@@ -121,7 +129,7 @@ static void ReshadeVersionDownloadWorker(std::string version, bool to_global_roo
         return;
     }
 
-    std::filesystem::remove_all(temp_dir, ec);
+    SafeRemoveAll(temp_dir, ec);
     g_status.store(ReshadeDownloadStatus::Ready, std::memory_order_release);
 }
 

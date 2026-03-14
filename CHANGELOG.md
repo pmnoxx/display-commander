@@ -6,6 +6,10 @@
 ## Unreleased
 
 ---
+## v0.12.504
+- (placeholder)
+
+---
 ## v0.12.503
 - **Caller shows who requested the load** - The "Caller" in DisplayCommander.log and DebugView now reports the module that requested the DLL load (e.g. game exe or another DLL), not the loader. The stack walk skips loader modules (ntdll, kernel32, KernelBase, wow64, wow64win, wow64cpu), uses a 256-frame backtrace to reach the requestor, and leaves Caller empty when only loader frames are present (no longer shows ntdll). Details: main_entry.cpp CaptureDllLoadCallerPath, IsLoaderModule.
 

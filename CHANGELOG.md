@@ -6,6 +6,10 @@
 ## Unreleased
 
 ---
+## v0.12.480
+- [ui] **HDR10 / scRGB color fix independent of Load DC's shaders** - The "HDR10 / scRGB color fix" checkbox in Brightness and AutoHDR is no longer disabled when "Load DC's shaders (Brightness, AutoHDR)" is off. The fix only sets DXGI swap chain and ReShade color space and does not require DC's ReShade effects. Details: main_new_tab.cpp (temporary EndDisabled/BeginDisabled around the fix checkbox).
+
+---
 ## v0.12.479
 - [cleanup] [hooks] **Call guards on Vulkan and NvLL detours** - All Vulkan loader (vkGetInstanceProcAddr, vkCreateDevice, vkCreateSwapchainKHR, vkQueuePresentKHR, vkBeginCommandBuffer, vkSetLatencyMarkerNV) and NvLowLatencyVk (InitLowLatencyDevice, SetLatencyMarker, SetSleepMode, Sleep) detours now use CALL_GUARD for crash detection; undestroyed guards will appear in exit/crash reports. Details: vulkan_loader_hooks.cpp, nvlowlatencyvk_hooks.cpp, detour_call_tracker.
 

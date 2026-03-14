@@ -101,6 +101,17 @@ bool ShouldBlockAnselDLL(const std::wstring& dll_path) {
     return false;
 }
 
+// Helper function to check if a DLL should be blocked (Steam overlay - GameOverlayRenderer)
+bool ShouldBlockGameOverlayRendererDLL(const std::wstring& dll_path) {
+    if (!settings::g_advancedTabSettings.block_gameoverlayrenderer.GetValue()) {
+        return false;
+    }
+    std::filesystem::path path(dll_path);
+    std::wstring filename = path.filename().wstring();
+    std::transform(filename.begin(), filename.end(), filename.begin(), ::towlower);
+    return (filename == L"gameoverlayrenderer.dll" || filename == L"gameoverlayrenderer64.dll");
+}
+
 // Helper function to check if a DLL should be overridden and get the override path (per-DLL checkbox + subfolder)
 std::wstring GetDLSSOverridePath(const std::wstring& dll_path) {
     if (!settings::g_streamlineTabSettings.dlss_override_enabled.GetValue()) {
@@ -408,6 +419,17 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
         }
     }
 
+    // Check for GameOverlayRenderer (Steam overlay) blocking
+    if (lpLibFileName) {
+        std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
+        if (ShouldBlockGameOverlayRendererDLL(w_dll_name)) {
+            LogInfo("[%s] GameOverlayRenderer Block: Blocking %s from loading (caller: %s)", timestamp.c_str(),
+                    dll_name.c_str(), caller_str.c_str());
+            SetLastError(ERROR_ACCESS_DENIED);
+            return nullptr;
+        }
+    }
+
     // Check for user-defined DLL blocking
     if (lpLibFileName) {
         std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
@@ -519,6 +541,17 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
         }
     }
 
+    // Check for GameOverlayRenderer (Steam overlay) blocking
+    if (lpLibFileName) {
+        std::wstring w_dll_name = lpLibFileName;
+        if (ShouldBlockGameOverlayRendererDLL(w_dll_name)) {
+            LogInfo("[%s] GameOverlayRenderer Block: Blocking %s from loading (caller: %s)", timestamp.c_str(),
+                    dll_name.c_str(), caller_str.c_str());
+            SetLastError(ERROR_ACCESS_DENIED);
+            return nullptr;
+        }
+    }
+
     // Check for user-defined DLL blocking
     if (lpLibFileName) {
         std::wstring w_dll_name = lpLibFileName;
@@ -616,6 +649,17 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
             LogInfo("[%s] Ansel Block: Blocking %s from loading (caller: %s)", timestamp.c_str(), dll_name.c_str(),
                     caller_str.c_str());
             return nullptr;  // Return nullptr to indicate failure to load
+        }
+    }
+
+    // Check for GameOverlayRenderer (Steam overlay) blocking
+    if (lpLibFileName) {
+        std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
+        if (ShouldBlockGameOverlayRendererDLL(w_dll_name)) {
+            LogInfo("[%s] GameOverlayRenderer Block: Blocking %s from loading (caller: %s)", timestamp.c_str(),
+                    dll_name.c_str(), caller_str.c_str());
+            SetLastError(ERROR_ACCESS_DENIED);
+            return nullptr;
         }
     }
 
@@ -724,6 +768,17 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
             LogInfo("[%s] Ansel Block: Blocking %s from loading (caller: %s)", timestamp.c_str(), dll_name.c_str(),
                     caller_str.c_str());
             return nullptr;  // Return nullptr to indicate failure to load
+        }
+    }
+
+    // Check for GameOverlayRenderer (Steam overlay) blocking
+    if (lpLibFileName) {
+        std::wstring w_dll_name = lpLibFileName;
+        if (ShouldBlockGameOverlayRendererDLL(w_dll_name)) {
+            LogInfo("[%s] GameOverlayRenderer Block: Blocking %s from loading (caller: %s)", timestamp.c_str(),
+                    dll_name.c_str(), caller_str.c_str());
+            SetLastError(ERROR_ACCESS_DENIED);
+            return nullptr;
         }
     }
 
@@ -885,6 +940,14 @@ LONG NTAPI LdrLoadDll_Detour(PWSTR DllPath, PULONG DllCharacteristics, const voi
         if (ShouldBlockAnselDLL(dll_name_wide)) {
             LogInfo("[%s] Ansel Block (LdrLoadDll): Blocking %s (caller: %s)", timestamp.c_str(), dll_name.c_str(),
                     caller_str.c_str());
+            if (DllHandle != nullptr) {
+                *DllHandle = nullptr;
+            }
+            return STATUS_ACCESS_DENIED_NT;
+        }
+        if (ShouldBlockGameOverlayRendererDLL(dll_name_wide)) {
+            LogInfo("[%s] GameOverlayRenderer Block (LdrLoadDll): Blocking %s (caller: %s)", timestamp.c_str(),
+                    dll_name.c_str(), caller_str.c_str());
             if (DllHandle != nullptr) {
                 *DllHandle = nullptr;
             }

@@ -68,6 +68,9 @@ class AdvancedTabSettings {
     // Safemode setting
     BoolSetting safemode;
 
+    /** When true, block loading of Steam overlay DLL (gameoverlayrenderer.dll / gameoverlayrenderer64.dll). */
+    BoolSetting block_gameoverlayrenderer;
+
     // DLL loading delay setting (milliseconds)
     IntSetting dll_loading_delay_ms;
 

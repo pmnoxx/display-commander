@@ -21,18 +21,22 @@ std::string GetStaticImportDllNamesSingleLineImpl(HMODULE base) {
         reinterpret_cast<const IMAGE_NT_HEADERS*>(reinterpret_cast<const BYTE*>(base) + dos->e_lfanew);
     if (nt->Signature != IMAGE_NT_SIGNATURE) return {};
 
+    // Optional header layout depends on PE machine type, not on build architecture.
+    const void* const optional_header = &nt->OptionalHeader;
+    const bool is_64bit_pe = (nt->FileHeader.Machine == IMAGE_FILE_MACHINE_AMD64);
     DWORD import_rva = 0;
     DWORD size_of_image = 0;
-    if (nt->FileHeader.Machine == IMAGE_FILE_MACHINE_AMD64) {
-        const auto* const oh = &nt->OptionalHeader;
+    if (is_64bit_pe) {
+        const auto* const oh = static_cast<const IMAGE_OPTIONAL_HEADER64*>(optional_header);
         import_rva = oh->DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress;
         size_of_image = oh->SizeOfImage;
     } else {
-        const auto* const oh = reinterpret_cast<const IMAGE_OPTIONAL_HEADER32*>(&nt->OptionalHeader);
+        const auto* const oh = static_cast<const IMAGE_OPTIONAL_HEADER32*>(optional_header);
         import_rva = oh->DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress;
         size_of_image = oh->SizeOfImage;
     }
     if (import_rva == 0 || size_of_image == 0) return {};
+    if (import_rva >= size_of_image) return {};
 
     const auto* desc =
         reinterpret_cast<const IMAGE_IMPORT_DESCRIPTOR*>(reinterpret_cast<const BYTE*>(base) + import_rva);

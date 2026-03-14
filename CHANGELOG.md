@@ -2,6 +2,9 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
+## v0.12.511
+- [bugfix] **Static imports logging in 32-bit** - The "[OnModuleLoaded] … static imports: …" line was only produced for 64-bit; in 32-bit builds it returned empty. PE optional header layout is now chosen from the module’s Machine field (IMAGE_FILE_MACHINE_AMD64 vs 32-bit) and the optional header is cast explicitly to IMAGE_OPTIONAL_HEADER64 or IMAGE_OPTIONAL_HEADER32, matching the pattern used in addon.cpp. An out-of-bounds check for the import directory RVA was added. Details: utils/pe_static_imports.cpp GetStaticImportDllNamesSingleLineImpl.
+
 ## v0.12.510
 - [bugfix] **BCryptHash wrong signature in bcrypt proxy** - The proxy used 8 parameters (pbInput, cbInput, pbHashObject, cbHashObject, pbOutput, cbOutput, dwFlags) but the official API has 7: (pbSecret, cbSecret, pbInput, cbInput, pbOutput, cbOutput) with no dwFlags. Corrected typedef and proxy to match the official BCryptHash signature to avoid crashes. Details: bcrypt.hpp PFN_BCryptHash, bcrypt_proxy.cpp BCryptHash.
 - [cleanup] **Remove Wine bcrypt.spec** - The Wine bcrypt.spec was wrong for several functions (e.g. BCryptResolveProviders, BCryptExportKey, BCryptHash). Removed `scripts/specs/bcrypt.spec`; the bcrypt proxy is maintained manually against the official Windows API only. Updated gen_proxy_from_spec.py, bcrypt_proxy.cpp header, verification plan, and docs/uptodate/bcrypt_proxy_official_comparison.md.

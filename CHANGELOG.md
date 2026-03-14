@@ -6,6 +6,10 @@
 ## Unreleased
 
 ---
+## v0.12.481
+- [bugfix] [hooks] **Reflex/native frame pacing: FG toggling and deadlock (Wuthering Waves)** - Fixed frame generation (FG) turning on and off unexpectedly and a deadlock when using native frame pacing. Present-path and delay logic no longer depend on the FPS limiter being enabled: SIMULATION_START handling and PRESENT_START delay run consistently, avoiding inconsistent state that could cause FG toggling or a deadlock in games such as Wuthering Waves. Details: nvapi_hooks.cpp ProcessReflexMarkerFpsLimiter.
+
+---
 ## v0.12.480
 - [ui] **HDR10 / scRGB color fix independent of Load DC's shaders** - The "HDR10 / scRGB color fix" checkbox in Brightness and AutoHDR is no longer disabled when "Load DC's shaders (Brightness, AutoHDR)" is off. The fix only sets DXGI swap chain and ReShade color space and does not require DC's ReShade effects. Details: main_new_tab.cpp (temporary EndDisabled/BeginDisabled around the fix checkbox).
 
@@ -61,15 +65,15 @@
 
 ---
 ## v0.12.467
-- [cleanup] [hooks] **DbgHelp: use private copy only under AppData** - DbgHelp is now always loaded from a private copy `dbghelp_dc.dll` under `%LocalAppData%\Programs\Display_Commander\dbghelp`, copied once from `dbghelp.dll` next to the addon if present. If the private DLL is missing or fails to load, DbgHelp is treated as unavailable; we do not fall back to the game’s or system `dbghelp.dll`, so stack tracing uses only Display Commander’s own instance. 
+- [cleanup] [hooks] **DbgHelp: use private copy only under AppData** - DbgHelp is now always loaded from a private copy `dbghelp_dc.dll` under `%LocalAppData%\Programs\Display_Commander\dbghelp`, copied once from `dbghelp.dll` next to the addon if present. If the private DLL is missing or fails to load, DbgHelp is treated as unavailable; we do not fall back to the game’s or system `dbghelp.dll`, so stack tracing uses only Display Commander’s own instance.
 
 ---
 ## v0.12.466
-- [cleanup] [hooks] **Stack trace: helpers + log symbol search path** - Stack trace generation now uses small helpers to initialize DbgHelp symbols once and to configure the symbol search path / PDB warning, reducing duplication and making the code easier to maintain. The effective DbgHelp symbol search path is logged (UTF-8) each time a stack trace is generated so missing or incorrect paths can be diagnosed more easily; behavior of crash logs and traces is otherwise unchanged. 
+- [cleanup] [hooks] **Stack trace: helpers + log symbol search path** - Stack trace generation now uses small helpers to initialize DbgHelp symbols once and to configure the symbol search path / PDB warning, reducing duplication and making the code easier to maintain. The effective DbgHelp symbol search path is logged (UTF-8) each time a stack trace is generated so missing or incorrect paths can be diagnosed more easily; behavior of crash logs and traces is otherwise unchanged.
 
 ---
 ## v0.12.465
-- [cleanup] [hooks] **DbgHelp loader and hooks moved and table-driven** - The DbgHelp loader code is now under `hooks/dbghelp/` next to the DbgHelp hook implementation, with all consumers updated to include the new path. Loading of DbgHelp APIs uses a small enum + `std::array` table so `LoadDbgHelp()` iterates over entries instead of hardcoding calls to `GetProcAddress`, and optional search-path helpers are marked non-required. Behavior of stack tracing and symbol lookup is unchanged; this is an internal cleanup for organization and maintainability. 
+- [cleanup] [hooks] **DbgHelp loader and hooks moved and table-driven** - The DbgHelp loader code is now under `hooks/dbghelp/` next to the DbgHelp hook implementation, with all consumers updated to include the new path. Loading of DbgHelp APIs uses a small enum + `std::array` table so `LoadDbgHelp()` iterates over entries instead of hardcoding calls to `GetProcAddress`, and optional search-path helpers are marked non-required. Behavior of stack tracing and symbol lookup is unchanged; this is an internal cleanup for organization and maintainability.
 
 ---
 ## v0.12.464

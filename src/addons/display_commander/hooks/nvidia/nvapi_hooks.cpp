@@ -173,18 +173,14 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
                                         && reflex_fps_limiter_max_queued_frames == 0;  // game default
 
     if (native_pacing_sim_start_only) {
-        if (use_fps_limiter) {
-            if (marker_type == marker_types.simulation_start) {
-                OnPresentFlags2(false,
-                                true);  // Called from wrapper, not present_detour
+        if (marker_type == marker_types.simulation_start) {
+            OnPresentFlags2(false,
+                            true);  // Called from wrapper, not present_detour
 
-                // Record native frame time for frames shown to display
-                RecordNativeFrameTime();
-                // display_commanderhooks::dxgi::HandlePresentBefore2();
-            }
-            if (marker_type == marker_types.simulation_start) {
-                display_commanderhooks::dxgi::HandlePresentAfter(true);
-            }
+            // Record native frame time for frames shown to display
+            RecordNativeFrameTime();
+            // display_commanderhooks::dxgi::HandlePresentBefore2();
+            display_commanderhooks::dxgi::HandlePresentAfter(true);
         }
     } else {
         if (marker_type == marker_types.present_end
@@ -192,7 +188,7 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
             result = send_present_end_to_driver();
             reflex_marker_sent = true;
         }
-        if (use_fps_limiter) {
+        {
             if (marker_type == marker_types.present_start) {
                 OnPresentFlags2(false,
                                 true);  // Called from wrapper, not present_detour
@@ -236,46 +232,46 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
                 }
             }
         }
-    }
-
-    if (use_fps_limiter) {
-        // Delay PRESENT_START until (SIMULATION_START + delay_present_start_frames * frame_time) when enabled
-        if (marker_type == marker_types.present_start && frame_id > 300) {
-            const bool delay_enabled = settings::g_mainTabSettings.delay_present_start_after_sim_enabled.GetValue();
-            const float delay_frames = settings::g_mainTabSettings.delay_present_start_frames.GetValue();
-            if (delay_enabled && delay_frames > 0.0f) {
-                const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);
-                const LONGLONG sim_start_ns =
-                    g_latency_marker_buffer[slot].marker_time_ns[marker_types.simulation_start].load(
-                        std::memory_order_relaxed);
-                // Prefer frame time derived from FPS limit (and FG mode) when set; otherwise Reflex/OnPresentSync or
-                // measured
-                float effective_fps = settings::g_mainTabSettings.fps_limit.GetValue();
-                if (effective_fps > 0.0f) {
-                    const DLSSGSummaryLite lite = GetDLSSGSummaryLite();
-                    switch (lite.fg_mode) {
-                        case DLSSGFgMode::k2x: effective_fps /= 2.0f; break;
-                        case DLSSGFgMode::k3x: effective_fps /= 3.0f; break;
-                        case DLSSGFgMode::k4x: effective_fps /= 4.0f; break;
-                        default:               break;
+        {
+            // Delay PRESENT_START until (SIMULATION_START + delay_present_start_frames * frame_time) when enabled
+            if (marker_type == marker_types.present_start && frame_id > 300) {
+                const bool delay_enabled = settings::g_mainTabSettings.delay_present_start_after_sim_enabled.GetValue();
+                const float delay_frames = settings::g_mainTabSettings.delay_present_start_frames.GetValue();
+                if (delay_enabled && delay_frames > 0.0f) {
+                    const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);
+                    const LONGLONG sim_start_ns =
+                        g_latency_marker_buffer[slot].marker_time_ns[marker_types.simulation_start].load(
+                            std::memory_order_relaxed);
+                    // Prefer frame time derived from FPS limit (and FG mode) when set; otherwise Reflex/OnPresentSync
+                    // or measured
+                    float effective_fps = settings::g_mainTabSettings.fps_limit.GetValue();
+                    if (effective_fps > 0.0f) {
+                        const DLSSGSummaryLite lite = GetDLSSGSummaryLite();
+                        switch (lite.fg_mode) {
+                            case DLSSGFgMode::k2x: effective_fps /= 2.0f; break;
+                            case DLSSGFgMode::k3x: effective_fps /= 3.0f; break;
+                            case DLSSGFgMode::k4x: effective_fps /= 4.0f; break;
+                            default:               break;
+                        }
+                        static bool logged = false;
+                        if (!logged
+                            && (lite.fg_mode == DLSSGFgMode::k2x || lite.fg_mode == DLSSGFgMode::k3x
+                                || lite.fg_mode == DLSSGFgMode::k4x)) {
+                            LogInfo("DLSS-G FG mode: %d", static_cast<int>(lite.fg_mode));
+                            logged = true;
+                        }
                     }
-                    static bool logged = false;
-                    if (!logged
-                        && (lite.fg_mode == DLSSGFgMode::k2x || lite.fg_mode == DLSSGFgMode::k3x
-                            || lite.fg_mode == DLSSGFgMode::k4x)) {
-                        LogInfo("DLSS-G FG mode: %d", static_cast<int>(lite.fg_mode));
-                        logged = true;
+                    LONGLONG frame_time_ns =
+                        (effective_fps > 0.0f)
+                            ? static_cast<LONGLONG>(1'000'000'000.0 / static_cast<double>(effective_fps))
+                            : 0;
+                    frame_time_ns = (std::max)(frame_time_ns, static_cast<LONGLONG>(1));
+                    const LONGLONG delay_ns = static_cast<LONGLONG>(delay_frames * static_cast<float>(frame_time_ns));
+                    const LONGLONG target_ns = sim_start_ns + delay_ns;
+                    const LONGLONG now_ns = utils::get_now_ns();
+                    if (sim_start_ns > 0 && target_ns > now_ns) {
+                        utils::wait_until_ns(target_ns, g_timer_handle_delay_present_start);
                     }
-                }
-                LONGLONG frame_time_ns =
-                    (effective_fps > 0.0f) ? static_cast<LONGLONG>(1'000'000'000.0 / static_cast<double>(effective_fps))
-                                           : 0;
-                frame_time_ns = (std::max)(frame_time_ns, static_cast<LONGLONG>(1));
-                const LONGLONG delay_ns = static_cast<LONGLONG>(delay_frames * static_cast<float>(frame_time_ns));
-                const LONGLONG target_ns = sim_start_ns + delay_ns;
-                const LONGLONG now_ns = utils::get_now_ns();
-                if (sim_start_ns > 0 && target_ns > now_ns) {
-                    utils::wait_until_ns(target_ns, g_timer_handle_delay_present_start);
                 }
             }
         }

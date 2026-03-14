@@ -3,6 +3,11 @@
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 
+## v0.12.509
+- [bugfix] **BCryptResolveProviders crash in bcrypt proxy** - The proxy’s signature was missing two parameters (`dwMode`, `dwFlags`) that the real Windows API has. Callers passed 8 arguments but the proxy only accepted 6 and forwarded 6, so the real bcrypt.dll saw misaligned arguments (e.g. buffer pointer in the `dwMode` slot) and crashed. The proxy and typedef now match the official 8-parameter signature. Details: bcrypt_proxy.cpp, bcrypt.hpp PFN_BCryptResolveProviders.
+
+---
+
 ## v0.12.508
 - **Static imports on each OnModuleLoaded** - For every module that triggers OnModuleLoaded (LoadLibrary, LdrLoadDll, or enumeration), the log now prints one line with that module's statically imported DLLs (e.g. `[OnModuleLoaded] d3d11.dll static imports: kernel32.dll, user32.dll, ...`). Uses in-memory PE import directory via utils/pe_static_imports. Details: loadlibrary_hooks.cpp OnModuleLoaded, utils/pe_static_imports.hpp and .cpp.
 

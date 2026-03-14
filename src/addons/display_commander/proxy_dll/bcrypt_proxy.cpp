@@ -450,12 +450,13 @@ extern "C" LONG WINAPI BCryptRemoveContextFunctionProvider(ULONG dwTable, LPCWST
 }
 
 extern "C" LONG WINAPI BCryptResolveProviders(LPCWSTR pszContext, ULONG dwInterface, LPCWSTR pszFunction,
-                                              LPCWSTR pszProvider, ULONG* pcbBuffer, void* ppBuffer) {
+                                              LPCWSTR pszProvider, ULONG dwMode, ULONG dwFlags, ULONG* pcbBuffer,
+                                              void* ppBuffer) {
     CALL_GUARD(utils::get_now_ns());
     if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
     auto fn = (PFN_BCryptResolveProviders)GetProcAddress(g_bcrypt_module, "BCryptResolveProviders");
     if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
-    return (LONG)fn(pszContext, dwInterface, pszFunction, pszProvider, pcbBuffer, ppBuffer);
+    return (LONG)fn(pszContext, dwInterface, pszFunction, pszProvider, dwMode, dwFlags, pcbBuffer, ppBuffer);
 }
 
 extern "C" LONG WINAPI BCryptSecretAgreement(void* hPrivKey, void* hPubKey, void* phSecret, ULONG dwFlags) {

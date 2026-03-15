@@ -13,9 +13,9 @@
 #include "../../utils.hpp"
 #include "../../utils/detour_call_tracker.hpp"
 #include "../../utils/logging.hpp"
-#include "api_hooks.hpp"  // For GetGameWindow and other functions
 #include "../hook_suppression_manager.hpp"
 #include "../input/input_activity_stats.hpp"
+#include "api_hooks.hpp"          // For GetGameWindow and other functions
 #include "window_proc_hooks.hpp"  // For ProcessWindowMessage
 
 namespace display_commanderhooks {
@@ -851,17 +851,20 @@ BOOL WINAPI GetKeyboardState_Detour(PBYTE lpKeyState) {
 
 // Function to call ClipCursor directly without going through the hook
 BOOL ClipCursor_Direct(const RECT* lpRect) {
+    CALL_GUARD_NO_TS();
     // Call the original Windows API directly, bypassing our hook
     return ClipCursor_Original ? ClipCursor_Original(lpRect) : ClipCursor(lpRect);
 }
 
 // Function to call GetAsyncKeyState directly without going through the hook
 SHORT GetAsyncKeyState_Direct(int vKey) {
+    CALL_GUARD_NO_TS();
     return GetAsyncKeyState_Original ? GetAsyncKeyState_Original(vKey) : GetAsyncKeyState(vKey);
 }
 
 // Function to restore cursor clipping when input blocking is disabled
 void RestoreClipCursor() {
+    CALL_GUARD_NO_TS();
     // Only restore if we have a valid clipping rectangle stored
     if ((s_last_clip_cursor.right - s_last_clip_cursor.left) != 0
         && (s_last_clip_cursor.bottom - s_last_clip_cursor.top) != 0) {
@@ -872,6 +875,7 @@ void RestoreClipCursor() {
 
 // Function to clip cursor to game window rectangle
 void ClipCursorToGameWindow() {
+    CALL_GUARD_NO_TS();
     HWND hwnd = g_last_swapchain_hwnd.load();
     if (hwnd != nullptr && IsWindow(hwnd)) {
         RECT window_rect;
@@ -2427,7 +2431,7 @@ void Update() {
             continue;
         }
         // Use the original GetAsyncKeyState to get real keyboard state
-        SHORT state = GetAsyncKeyState_Original ? GetAsyncKeyState_Original(vKey) : GetAsyncKeyState(vKey);
+        SHORT state = GetAsyncKeyState_Direct(vKey);
         if (g_global_frame_id.load() > 500 && first_reshade_runtime != nullptr) {
             state |= first_reshade_runtime->is_key_down(vKey) ? 0x8000 : 0;
         }

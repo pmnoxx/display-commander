@@ -204,6 +204,7 @@ LONG ChangeDisplaySettingsExW_Direct(LPCWSTR lpszDeviceName, DEVMODEW* lpDevMode
 }
 
 BOOL ShowWindow_Direct(HWND hWnd, int nCmdShow) {
+    CALL_GUARD_NO_TS();
     // Throttle per message type: no more than once per 100 ms for minimize or restore
     constexpr LONGLONG throttle_ns = 100 * 1000000;  // 100 ms
     static LONGLONG s_last_minimize_ns = 0;

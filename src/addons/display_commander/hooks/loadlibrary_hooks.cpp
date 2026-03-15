@@ -502,6 +502,7 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
 }
 
 HMODULE WINAPI LoadLibraryW_Direct(LPCWSTR lpLibFileName) {
+    CALL_GUARD_NO_TS();
     if (LoadLibraryW_Original) {
         return LoadLibraryW_Original(lpLibFileName);
     }
@@ -998,6 +999,7 @@ LONG NTAPI LdrLoadDll_Detour(PWSTR DllPath, PULONG DllCharacteristics, const voi
 
 // Hooked GetModuleHandleW: return DLSS override module when we loaded it via redirect (so hooks and version use it)
 HMODULE WINAPI GetModuleHandleW_Detour(LPCWSTR lpModuleName) {
+    CALL_GUARD_NO_TS();
     HMODULE override_handle = GetDlssOverrideHandle(lpModuleName ? lpModuleName : L"");
     if (override_handle != nullptr) {
         return override_handle;
@@ -1007,6 +1009,7 @@ HMODULE WINAPI GetModuleHandleW_Detour(LPCWSTR lpModuleName) {
 
 // Hooked GetModuleHandleA: same for ANSI
 HMODULE WINAPI GetModuleHandleA_Detour(LPCSTR lpModuleName) {
+    CALL_GUARD_NO_TS();
     if (lpModuleName && *lpModuleName) {
         std::wstring wkey = ToLowerModuleName(lpModuleName);
         HMODULE override_handle = GetDlssOverrideHandle(wkey);
@@ -1019,6 +1022,7 @@ HMODULE WINAPI GetModuleHandleA_Detour(LPCSTR lpModuleName) {
 
 // Hooked GetModuleHandleExW: return override when querying by name (not by FROM_ADDRESS)
 BOOL WINAPI GetModuleHandleExW_Detour(DWORD dwFlags, LPCWSTR lpModuleName, HMODULE* phModule) {
+    CALL_GUARD_NO_TS();
     constexpr DWORD k_from_address = 0x00000004;  // GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
     if (phModule == nullptr) {
         SetLastError(ERROR_INVALID_PARAMETER);
@@ -1037,6 +1041,7 @@ BOOL WINAPI GetModuleHandleExW_Detour(DWORD dwFlags, LPCWSTR lpModuleName, HMODU
 
 // Hooked GetModuleHandleExA: same for ANSI
 BOOL WINAPI GetModuleHandleExA_Detour(DWORD dwFlags, LPCSTR lpModuleName, HMODULE* phModule) {
+    CALL_GUARD_NO_TS();
     constexpr DWORD k_from_address = 0x00000004;  // GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
     if (phModule == nullptr) {
         SetLastError(ERROR_INVALID_PARAMETER);
@@ -1179,6 +1184,7 @@ static bool IsOurProxyModule(const std::wstring& module_path) {
 }
 
 FARPROC WINAPI GetProcAddress_Detour(HMODULE hModule, LPCSTR lpProcName) {
+    CALL_GUARD_NO_TS();
     FARPROC result =
         GetProcAddress_Original ? GetProcAddress_Original(hModule, lpProcName) : GetProcAddress(hModule, lpProcName);
     // When someone resolved a proc from our proxy and it was found, log each lpProcName once.

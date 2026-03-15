@@ -5,6 +5,7 @@
 #include <string>
 #include "../../globals.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
+#include "../../utils/detour_call_tracker.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/srwlock_registry.hpp"
 #include "../../utils/srwlock_wrapper.hpp"
@@ -59,6 +60,7 @@ static bool LooksLikeHIDRead(HANDLE hFile, DWORD nNumberOfBytesToRead) {
 // Hooked ReadFile function - suppresses HID input reading for games
 BOOL WINAPI ReadFile_Detour(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead,
                             LPOVERLAPPED lpOverlapped) {
+    CALL_GUARD_NO_TS();
     display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_HID_ReadFile].increment_total();
     display_commanderhooks::UpdateHookLastCallTime(display_commanderhooks::HOOK_HID_ReadFile);
 
@@ -82,6 +84,7 @@ BOOL WINAPI ReadFile_Detour(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesT
 
 BOOL WINAPI ReadFileEx_Detour(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPOVERLAPPED lpOverlapped,
                               LPOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine) {
+    CALL_GUARD_NO_TS();
     display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_HID_ReadFileEx].increment_total();
     display_commanderhooks::UpdateHookLastCallTime(display_commanderhooks::HOOK_HID_ReadFileEx);
 
@@ -101,6 +104,7 @@ BOOL WINAPI ReadFileEx_Detour(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfByte
 
 BOOL WINAPI ReadFileScatter_Detour(HANDLE hFile, FILE_SEGMENT_ELEMENT aSegmentArray[], DWORD nNumberOfBytesToRead,
                                    LPDWORD lpReserved, LPOVERLAPPED lpOverlapped) {
+    CALL_GUARD_NO_TS();
     display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_HID_ReadFileScatter].increment_total();
     display_commanderhooks::UpdateHookLastCallTime(display_commanderhooks::HOOK_HID_ReadFileScatter);
 
@@ -119,6 +123,7 @@ BOOL WINAPI ReadFileScatter_Detour(HANDLE hFile, FILE_SEGMENT_ELEMENT aSegmentAr
 }
 
 BOOLEAN __stdcall HidD_GetInputReport_Direct(HANDLE HidDeviceObject, PVOID ReportBuffer, ULONG ReportBufferLength) {
+    CALL_GUARD_NO_TS();
     return HidD_GetInputReport_Original
                ? HidD_GetInputReport_Original(HidDeviceObject, ReportBuffer, ReportBufferLength)
                : HidD_GetInputReport(HidDeviceObject, ReportBuffer, ReportBufferLength);
@@ -126,6 +131,7 @@ BOOLEAN __stdcall HidD_GetInputReport_Direct(HANDLE HidDeviceObject, PVOID Repor
 
 // Hooked HidD_GetInputReport function - suppresses HID input report reading
 BOOLEAN __stdcall HidD_GetInputReport_Detour(HANDLE HidDeviceObject, PVOID ReportBuffer, ULONG ReportBufferLength) {
+    CALL_GUARD_NO_TS();
     display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_HIDD_GetInputReport].increment_total();
     display_commanderhooks::UpdateHookLastCallTime(display_commanderhooks::HOOK_HIDD_GetInputReport);
     // Check if HID suppression is enabled and GetInputReport blocking is enabled
@@ -153,6 +159,7 @@ BOOLEAN __stdcall HidD_GetAttributes_Direct(HANDLE HidDeviceObject, PHIDD_ATTRIB
 
 // Hooked HidD_GetAttributes function - returns error when detecting DualSense
 BOOLEAN __stdcall HidD_GetAttributes_Detour(HANDLE HidDeviceObject, PHIDD_ATTRIBUTES Attributes) {
+    CALL_GUARD_NO_TS();
     display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_HIDD_GetAttributes].increment_total();
     display_commanderhooks::UpdateHookLastCallTime(display_commanderhooks::HOOK_HIDD_GetAttributes);
     // Call original function first to get the actual attributes
@@ -241,6 +248,7 @@ HANDLE WINAPI CreateFileA_Direct(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD
 HANDLE WINAPI CreateFileA_Detour(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode,
                                  LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition,
                                  DWORD dwFlagsAndAttributes, HANDLE hTemplateFile) {
+    CALL_GUARD_NO_TS();
     display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_HID_CreateFileA].increment_total();
     display_commanderhooks::UpdateHookLastCallTime(display_commanderhooks::HOOK_HID_CreateFileA);
 
@@ -303,6 +311,7 @@ HANDLE WINAPI CreateFileW_Direct(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWOR
 HANDLE WINAPI CreateFileW_Detour(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode,
                                  LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition,
                                  DWORD dwFlagsAndAttributes, HANDLE hTemplateFile) {
+    CALL_GUARD_NO_TS();
     display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_HID_CreateFileW].increment_total();
     display_commanderhooks::UpdateHookLastCallTime(display_commanderhooks::HOOK_HID_CreateFileW);
 

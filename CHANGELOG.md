@@ -2,7 +2,40 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
-## Unreleased
+## v0.12.535
+- [cleanup] **Static link to user32** - Added static link to user32 so the addon explicitly depends on user32.dll. Ensures user32 is available for window/input APIs without relying on load order.
+
+## v0.12.532 (reverted)
+- [cleanup] [hooks] **Paired uninstall for Windows API hooks** - Added `UninstallWindowsApiHooks()` and `UninstallKernel32Hooks()` so user32 and kernel32 hooks are torn down in matching install/uninstall pairs. `UninstallApiHooks()` calls both.
+- [cleanup] [hooks] **Kernel32 hooks from module + table** - SetThreadExecutionState and AddVectoredExceptionHandler are installed via `GetProcAddress(kernel32, name)` and a small table `kKernel32ApiHooks` with enum `Kernel32ApiHook`; kernel32 install/uninstall live in `InstallKernel32Hooks()` / `UninstallKernel32Hooks()`.
+- [cleanup] **Shared hook entry type** - Replaced `User32WindowApiHookEntry` and `Kernel32ApiHookEntry` with a single `ModuleApiHookEntry` (name, detour, original) used for both user32 and kernel32 tables.
+- [cleanup] **Docs** - project_structure.md and hook_statistics_manager.md updated to describe table-driven install/uninstall per module and correct function names.
+
+## v0.12.531 (reverted)
+- [cleanup] [hooks] **User32/kernel32 API hooks: table-driven install via HMODULE** - User32 window APIs (GetFocus, GetForegroundWindow, CreateWindowExW, SetWindowLong*, SetWindowPos, SetCursor, ShowCursor, etc.) are installed from `kUser32WindowApiHooks`; kernel32 (SetThreadExecutionState, AddVectoredExceptionHandler) from `kKernel32ApiHooks`. Both use shared `ModuleApiHookEntry` (name, detour, original). Hooks are created via `GetModuleHandleW` / `GetProcAddress(module, name)`; aliased user32 exports share one trampoline to avoid MH_ERROR_ALREADY_CREATED. Paired uninstall: `UninstallWindowsApiHooks()`, `UninstallKernel32Hooks()`. Details: api_hooks.cpp InstallWindowsApiHooks, InstallKernel32Hooks, UninstallWindowsApiHooks, UninstallKernel32Hooks.
+- [bugfix] [hooks] **SetWindowLongW / SetWindowLongPtrA MH_ERROR_ALREADY_CREATED** - On 64-bit Windows, `SetWindowLongW` and `SetWindowLongPtrW` can point to the same implementation (and similarly `SetWindowLongPtrA` / `SetWindowLongA`). Hooking both caused MinHook to return `MH_ERROR_ALREADY_CREATED` for the second. The installer now checks for shared addresses and reuses the trampoline from the first hook instead of creating a duplicate; uninstall only calls `MH_RemoveHook` once per address. Details: api_hooks.cpp InstallWindowsApiHooks and UninstallApiHooks.
+
+## v0.12.530 (reverted)
+- [cleanup] **Detour debug info on ReShade unload** - When ReShade is unloaded (e.g. FreeLibrary on the ReShade module), the addon now logs the same detour debug info as in a crash report: recent detour calls and undestroyed guards. Helps diagnose in-progress detours or leaks when the user or game unloads ReShade. Details: OnReshadeUnload() in globals.cpp calls FormatRecentDetourCalls, FormatUndestroyedGuards, and exit_handler::WriteMultiLineToDebugLog.
+
+## v0.12.529 (reverted)
+- **Readded static linking for setupapi, tdh, advapi32, bcrypt, user32** - The addon DLL again statically links setupapi (device enumeration), tdh (PresentMon ETW), advapi32 (ETW EventRegister/EventWriteTransfer), bcrypt (SHA256), and user32 (window/input APIs). WinINet remains loaded at runtime via wininet_loader so the addon can still be used as a wininet.dll proxy without LNK2005. Details: CMakeLists.txt target_link_libraries, res/link_libraries.hpp.
+
+## v0.12.528 (reverted)
+- [cleanup] **CALL_GUARD_NO_TS() for direct/thin detours** - Added macro `CALL_GUARD_NO_TS()` (no timestamp) for crash/exit call-site tracking where timing is not needed. All _Direct and thin _Detour functions now use it instead of `CALL_GUARD(0)`, so crash reports can attribute in-progress calls without requiring a timestamp. Details: utils/detour_call_tracker.hpp; call sites updated across api_hooks, loadlibrary_hooks, display_settings_hooks, windows_message_hooks, hid_suppression_hooks, nvapi_hooks, d3d11_device_hooks, standalone_ui_settings_bridge.
+
+## v0.12.527 (reverted)
+- **Static linking for user32 and ETW (advapi32)** - The addon DLL now statically links user32 (window/input APIs) and advapi32 (ETW: EventRegister/EventWriteTransfer used by PCLStats and PresentMon-style tracing). ETW is linked via advapi32.lib; the Windows SDK does not provide a separate etw.lib. Details: CMakeLists.txt target_link_libraries, res/link_libraries.hpp updated to match.
+
+## v0.12.526 (reverted)
+- **Reverted changes to v0.12.520** - Reverted to the state of v0.12.520.
+
+## v0.12.520  (reverted)
+- **wininet.dll proxy support added** - Display Commander can be used as a wininet.dll proxy: all WinINet API exports are forwarded to the system wininet.dll. Enables games or tools that load wininet.dll from the game folder to work when using DC as a proxy.
+- **No longer link wininet/tdh/opengl32/version; load at runtime** - The project no longer links wininet.lib, tdh.lib, opengl32.lib, or version.lib. WinINet (version_check downloads), TDH (PresentMon ETW), OpenGL (wgl/gl for ImGui), and version (GetFileVersionInfo*) are loaded at runtime from system DLLs. Avoids LNK2005 when the addon is also used as a proxy (e.g. wininet.dll) and keeps builds independent of those libs. Details: utils/wininet_loader, utils/tdh_loader, utils/opengl_loader_standalone; version_check.cpp, presentmon_manager.cpp, cli_standalone_ui.cpp use the loaders; general_utils GetFileProductNameW, GetDLLVersionString used from main_entry and cli; InstallRealDXGIMinHookHooks skipped in exe build (proxy_dll not linked).
+
+## v0.12.519  (reverted)
+- **wininet.dll proxy support** - Display Commander can be used as a wininet.dll proxy: all WinINet API exports are forwarded to the system wininet.dll. Enables games or tools that load wininet.dll from the game folder to work when using DC as a proxy. Details: proxy_dll/wininet_proxy.hpp, wininet_proxy.cpp, exports.def (wininet block). Group 8 entry count corrected to 15 in comments (exports.def, wininet_proxy.hpp, wininet_proxy.cpp).
 
 ## v0.12.518
 - [cleanup] **Safe directory removal requires full path** - The safe directory removal wrapper (`SafeRemoveAll` / `IsAllowedForRemoveAll`) now requires the path to be absolute (e.g. `C:\...`). Relative paths are refused and logged, reducing the risk of deleting the wrong directory when a relative path is passed by mistake. Details: utils/safe_remove.cpp, utils/safe_remove.hpp.

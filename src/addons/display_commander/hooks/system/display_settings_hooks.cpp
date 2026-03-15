@@ -65,7 +65,8 @@ LONG WINAPI ChangeDisplaySettingsExA_Detour(LPCSTR lpszDeviceName, DEVMODEA* lpD
         return DISP_CHANGE_SUCCESSFUL;  // Return success without changing display mode
     }
 
-    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsExA].increment_unsuppressed();
+    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsExA]
+        .increment_unsuppressed();
     return ChangeDisplaySettingsExA_Original(lpszDeviceName, lpDevMode, hWnd, dwFlags, lParam);
 }
 
@@ -80,7 +81,8 @@ LONG WINAPI ChangeDisplaySettingsExW_Detour(LPCWSTR lpszDeviceName, DEVMODEW* lp
         return DISP_CHANGE_SUCCESSFUL;  // Return success without changing display mode
     }
 
-    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsExW].increment_unsuppressed();
+    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsExW]
+        .increment_unsuppressed();
     return ChangeDisplaySettingsExW_Original(lpszDeviceName, lpDevMode, hWnd, dwFlags, lParam);
 }
 

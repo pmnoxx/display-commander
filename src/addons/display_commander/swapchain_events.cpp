@@ -1199,7 +1199,7 @@ void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swap
     // Empty for now
 }
 
-void HandleFpsLimiterPost(bool from_present_detour, bool from_wrapper = false) {
+void HandleFpsLimiterPost(bool from_present_detour, bool frame_generation_aware = false) {
     auto now = utils::get_now_ns();
     CALL_GUARD(now);
     // Skip FPS limiter for first N frames (warmup)
@@ -1228,7 +1228,7 @@ void HandleFpsLimiterPost(bool from_present_detour, bool from_wrapper = false) {
     }
 }
 
-void OnPresentUpdateAfter2(bool from_wrapper) {
+void OnPresentUpdateAfter2(bool frame_generation_aware) {
     auto start_time_ns = utils::get_now_ns();
     CALL_GUARD(start_time_ns);
     // Track render thread ID
@@ -1326,7 +1326,7 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
         override_game_reflex_settings = false;
     }
 
-    HandleFpsLimiterPost(false, from_wrapper);
+    HandleFpsLimiterPost(false, frame_generation_aware);
     const LONGLONG end_ns = TimerPresentPacingDelayEnd(start_ns);
     g_frame_data[present_slot].sleep_post_present_end_time_ns.store(end_ns);
     if (g_reflexProvider->IsInitialized()) {
@@ -1476,7 +1476,7 @@ float GetDelayBiasFromRatio(int ratio_index) {
     return ratio_index * 0.125f;
 }
 
-void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
+void HandleFpsLimiterPre(bool from_present_detour, bool frame_generation_aware = false) {
     auto start_time_ns = utils::get_now_ns();
     CALL_GUARD(start_time_ns);
     LONGLONG handle_fps_limiter_start_time_ns = start_time_ns;
@@ -1484,7 +1484,7 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
     auto target_fps_native = target_fps;
     late_amount_ns.store(0);
 
-    if (from_wrapper) {
+    if (frame_generation_aware) {
         CALL_GUARD(start_time_ns);
         const DLSSGSummaryLite lite = GetDLSSGSummaryLite();
 
@@ -1499,7 +1499,7 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
         if (last_target_fps != target_fps) {
             last_target_fps = target_fps;
             LogInfo("Target FPS: %f, Target FPS Native: %f from wrapper: %s lite.fg_mode: %d", target_fps,
-                    target_fps_native, from_wrapper ? "true" : "false", static_cast<int>(lite.fg_mode));
+                    target_fps_native, frame_generation_aware ? "true" : "false", static_cast<int>(lite.fg_mode));
         }
 
         {
@@ -1523,7 +1523,7 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
         if (last_target_fps != target_fps) {
             last_target_fps = target_fps;
             LogInfo("Target FPS: %f, Target FPS Native: %f from wrapper: %s", target_fps, target_fps_native,
-                    from_wrapper ? "true" : "false");
+                    frame_generation_aware ? "true" : "false");
         }
     }
     if (s_fps_limiter_enabled.load()
@@ -2001,7 +2001,7 @@ bool OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline
 }
 
 // Present flags callback to strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
-void OnPresentFlags2(bool from_present_detour, bool from_wrapper) {
+void OnPresentFlags2(bool from_present_detour, bool frame_generation_aware) {
     CALL_GUARD(utils::get_now_ns());
     if (perf_measurement::IsSuppressionEnabled()
         && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::OnPresentFlags2)) {
@@ -2015,7 +2015,7 @@ void OnPresentFlags2(bool from_present_detour, bool from_wrapper) {
         g_reshade_event_counters[RESHADE_EVENT_PRESENT_FLAGS].fetch_add(1);
     }
 
-    HandleFpsLimiterPre(from_present_detour, from_wrapper);
+    HandleFpsLimiterPre(from_present_detour, frame_generation_aware);
 
     if (s_reflex_enable_current_frame.load()) {
         if (settings::g_advancedTabSettings.reflex_generate_markers.GetValue()) {

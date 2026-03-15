@@ -402,7 +402,7 @@ std::atomic<bool> g_factory_create_swapchain_for_composition_hooked{false};
 }  // namespace
 
 // Helper function for common Present/Present1 logic after calling original
-void HandlePresentAfter(bool from_wrapper) {
+void HandlePresentAfter(bool frame_generation_aware) {
     CALL_GUARD(utils::get_now_ns());
     if (perf_measurement::IsSuppressionEnabled()
         && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::HandlePresentAfter)) {
@@ -412,7 +412,7 @@ void HandlePresentAfter(bool from_wrapper) {
     perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::HandlePresentAfter);
 
     // Get device from swapchain for latency manager
-    ::OnPresentUpdateAfter2(from_wrapper);
+    ::OnPresentUpdateAfter2(frame_generation_aware);
 }
 
 static std::atomic<int> in_present_call(0);

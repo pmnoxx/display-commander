@@ -14,7 +14,7 @@
 #include <atomic>
 #include <ddraw.h>
 
-extern void OnPresentFlags2(bool from_present_detour, bool from_wrapper);
+extern void OnPresentFlags2(bool from_present_detour, bool frame_generation_aware);
 
 namespace {
 

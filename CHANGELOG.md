@@ -2,6 +2,9 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
+## v0.12.549
+- [cleanup] **Complete from_wrapper → frame_generation_aware rename** - Renamed the present-path parameter from `from_wrapper` to `frame_generation_aware` in swapchain_events (HandleFpsLimiterPre/Post, OnPresentUpdateAfter2, OnPresentFlags2), d3d9/ddraw/dxgi present hook externs and HandlePresentAfter, and docs/OnPresentSync_DelayBias_Formulas.md. Log messages updated accordingly. .clang-tidy: disabled modernize-use-designated-initializers. Display settings hooks: line formatting for long increment_unsuppressed calls. Details: swapchain_events.hpp/cpp, d3d9_present_hooks.cpp, ddraw_present_hooks.cpp, dxgi_present_hooks.hpp/cpp, docs/OnPresentSync_DelayBias_Formulas.md, .clang-tidy, display_settings_hooks.cpp.
+
 ## v0.12.548
 Reverted to v0.12.535
 

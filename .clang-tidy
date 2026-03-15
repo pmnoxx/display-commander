@@ -12,6 +12,7 @@ Checks:
   - readability-*
   - -llvm-header-guard
   - -llvm-include-order
+  - -modernize-use-designated-initializers
   - -modernize-use-trailing-return-type
   - -misc-non-private-member-variables-in-classes
   - -misc-unused-parameters

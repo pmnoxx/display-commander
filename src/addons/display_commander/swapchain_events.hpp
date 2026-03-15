@@ -45,8 +45,8 @@ void OnPresentUpdateBefore(reshade::api::command_queue* queue, reshade::api::swa
                            const reshade::api::rect* source_rect, const reshade::api::rect* dest_rect,
                            uint32_t dirty_rect_count, const reshade::api::rect* dirty_rects);
 void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swapchain* swapchain);
-void OnPresentUpdateAfter2(bool from_wrapper = false);
-void OnPresentFlags2(bool from_present_detour = true, bool from_wrapper = false);
+void OnPresentUpdateAfter2(bool frame_generation_aware = false);
+void OnPresentFlags2(bool from_present_detour = true, bool frame_generation_aware = false);
 
 // Buffer resolution upgrade event handlers
 bool OnCreateResource(reshade::api::device* device, reshade::api::resource_desc& desc,

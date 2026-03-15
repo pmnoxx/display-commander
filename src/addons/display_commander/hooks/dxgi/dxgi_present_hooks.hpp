@@ -345,5 +345,5 @@ HRESULT STDMETHODCALLTYPE IDXGIOutput6_GetDesc1_Detour(IDXGIOutput6* This, DXGI_
 void CleanupGPUMeasurementFences();
 
 // Helper function for common Present/Present1 logic after calling original
-void HandlePresentAfter(bool from_wrapper);
+void HandlePresentAfter(bool frame_generation_aware);
 }  // namespace display_commanderhooks::dxgi

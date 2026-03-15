@@ -26,7 +26,7 @@ endif()
 # Version (single source of truth for addon and exe; used by common_options and version.rc)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 12)
-set(DISPLAY_COMMANDER_VERSION_PATCH 518)
+set(DISPLAY_COMMANDER_VERSION_PATCH 535)
 set(DISPLAY_COMMANDER_VERSION_STRING "${DISPLAY_COMMANDER_VERSION_MAJOR}.${DISPLAY_COMMANDER_VERSION_MINOR}.${DISPLAY_COMMANDER_VERSION_PATCH}.${GIT_COMMIT_COUNT}")
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)
   set(DISPLAY_COMMANDER_BITNESS "32-bit")
@@ -131,7 +131,7 @@ endif()
 # bcrypt for SHA256 (ReShade installer signature verification)
 # opengl32 not linked: when used as opengl32.dll proxy we export gl*/wgl*; linking opengl32.lib would conflict.
 # Standalone UI and imgui_impl_opengl3 use runtime loader (see opengl_loader and imgui embedded loader).
-target_link_libraries(zzz_display_commander PRIVATE  setupapi tdh advapi32 wininet bcrypt)
+target_link_libraries(zzz_display_commander PRIVATE  setupapi tdh advapi32 wininet bcrypt user32)
 
 # NVAPI: load system nvapi64.dll at runtime via nvapi_loader (no nvapi64.lib). Headers still from external/nvapi.
 # MinHook library

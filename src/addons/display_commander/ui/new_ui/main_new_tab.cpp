@@ -3,6 +3,7 @@
 #include "../../adhd_multi_monitor/adhd_simple_api.hpp"
 #include "../../audio/audio_management.hpp"
 #include "../../config/default_overrides.hpp"
+#include "../../config/default_settings_file.hpp"
 #include "../../config/display_commander_config.hpp"
 #include "../../dlss/dlss_indicator_manager.hpp"
 #include "../../dxgi/vram_info.hpp"
@@ -2155,7 +2156,9 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
             reshade_backup_path = configs / game_name_btn;
         }
     }
-    imgui.Columns(show_backup_btn ? 6 : 5, "dc_folders_buttons", false);
+    std::string default_settings_path = display_commander::config::GetDefaultSettingsFilePath();
+    display_commander::config::LoadDefaultSettingsFile();  // ensure file exists so Open can open it
+    imgui.Columns(show_backup_btn ? 7 : 6, "dc_folders_buttons", false);
     if (dc_reshade_root.empty()) {
         imgui.BeginDisabled();
     }
@@ -2214,6 +2217,27 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx("Files here are copied to the game folder when missing (e.g. ReShadeProfile.ini). Path: %s",
                            default_files.string().c_str());
+    }
+    imgui.NextColumn();
+    if (default_settings_path.empty()) {
+        imgui.BeginDisabled();
+    }
+    if (imgui.Button(ICON_FK_FILE_CODE " Default settings")) {
+        std::string path = default_settings_path;
+        std::thread([path]() {
+            HINSTANCE result = ShellExecuteA(nullptr, "open", path.c_str(), nullptr, nullptr, SW_SHOW);
+            if (reinterpret_cast<intptr_t>(result) <= 32) {
+                LogError("Failed to open default_settings.toml: %s (Error: %ld)", path.c_str(),
+                         static_cast<long>(reinterpret_cast<intptr_t>(result)));
+            }
+        }).detach();
+    }
+    if (imgui.IsItemHovered() && !default_settings_path.empty()) {
+        imgui.SetTooltipEx("Open default_settings.toml in the default editor. Used as fallback when a game config is missing a key. Path: %s",
+                           default_settings_path.c_str());
+    }
+    if (default_settings_path.empty()) {
+        imgui.EndDisabled();
     }
     imgui.NextColumn();
     if (reshade_global.empty()) {

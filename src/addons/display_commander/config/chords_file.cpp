@@ -1,4 +1,5 @@
 #include "chords_file.hpp"
+#include "toml_line_parser.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
 
@@ -41,23 +42,6 @@ std::string NormalizeBoolValue(const std::string& value) {
     if (v == "true" || v == "1") return "1";
     if (v == "false" || v == "0") return "0";
     return value;
-}
-
-bool ParseTomlLine(const std::string& line, std::string& out_key, std::string& out_value) {
-    size_t eq = line.find('=');
-    if (eq == std::string::npos) return false;
-    out_key = line.substr(0, eq);
-    out_value = line.substr(eq + 1);
-    out_key.erase(0, out_key.find_first_not_of(" \t"));
-    out_key.erase(out_key.find_last_not_of(" \t") + 1);
-    out_value.erase(0, out_value.find_first_not_of(" \t"));
-    out_value.erase(out_value.find_last_not_of(" \t") + 1);
-    if (out_value.size() >= 2
-        && ((out_value.front() == '"' && out_value.back() == '"')
-            || (out_value.front() == '\'' && out_value.back() == '\''))) {
-        out_value = out_value.substr(1, out_value.size() - 2);
-    }
-    return !out_key.empty();
 }
 
 // One-time migration: when chords.toml doesn't exist, copy chord keys from game's DisplayCommander.ini or .toml

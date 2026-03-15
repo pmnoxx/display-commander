@@ -1,5 +1,6 @@
 #include "display_commander_config.hpp"
 #include "default_overrides.hpp"
+#include "default_settings_file.hpp"
 #include <algorithm>
 #include <cctype>
 #include <cstring>
@@ -720,6 +721,16 @@ void get_config_value_or_default(const char* section, const char* key, bool defa
             return;
         }
     }
+    if (display_commander::config::GetDefaultSettingValue(section, key, ov)) {
+        if (ov == "1" || ov == "true" || ov == "yes") {
+            *out_value = true;
+            return;
+        }
+        if (ov == "0" || ov == "false" || ov == "no") {
+            *out_value = false;
+            return;
+        }
+    }
     *out_value = default_value;
 }
 
@@ -740,6 +751,14 @@ void get_config_value_or_default(const char* section, const char* key, int defau
             /* fall through to default */
         }
     }
+    if (display_commander::config::GetDefaultSettingValue(section, key, ov)) {
+        try {
+            *out_value = std::stoi(ov);
+            return;
+        } catch (const std::exception&) {
+            /* fall through to default */
+        }
+    }
     *out_value = default_value;
 }
 
@@ -755,6 +774,14 @@ void get_config_value_or_default(const char* section, const char* key, float def
         try {
             *out_value = std::stof(ov);
             display_commander::config::MarkUsedOverride(section, key);
+            return;
+        } catch (const std::exception&) {
+            /* fall through to default */
+        }
+    }
+    if (display_commander::config::GetDefaultSettingValue(section, key, ov)) {
+        try {
+            *out_value = std::stof(ov);
             return;
         } catch (const std::exception&) {
             /* fall through to default */

@@ -858,6 +858,9 @@ BOOL ClipCursor_Direct(const RECT* lpRect) {
 
 // Function to call GetAsyncKeyState directly without going through the hook
 SHORT GetAsyncKeyState_Direct(int vKey) {
+    if (g_reshade_module.load() == nullptr) {
+        return 0;
+    }
     CALL_GUARD_NO_TS();
     return GetAsyncKeyState_Original ? GetAsyncKeyState_Original(vKey) : GetAsyncKeyState(vKey);
 }

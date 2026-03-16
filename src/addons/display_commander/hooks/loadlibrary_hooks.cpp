@@ -43,6 +43,7 @@
 #include "vulkan/vulkan_loader_hooks.hpp"
 #include "windows_hooks/api_hooks.hpp"
 
+#include <reshade.hpp>
 
 // Declare K32EnumProcessModules (kernel32 variant, safe from DllMain)
 extern "C" BOOL WINAPI K32EnumProcessModules(HANDLE hProcess, HMODULE* lphModule, DWORD cb, LPDWORD lpcbNeeded);
@@ -630,8 +631,8 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
     std::string timestamp = GetCurrentTimestamp();
     std::string dll_name = lpLibFileName ? lpLibFileName : "NULL";
 
-    LogInfo("[%s] LoadLibraryExA called: %s, hFile: 0x%p, dwFlags: 0x%08X (caller: %s)", timestamp.c_str(), dll_name.c_str(),
-            hFile, dwFlags, caller_str.c_str());
+    LogInfo("[%s] LoadLibraryExA called: %s, hFile: 0x%p, dwFlags: 0x%08X (caller: %s)", timestamp.c_str(),
+            dll_name.c_str(), hFile, dwFlags, caller_str.c_str());
 
     // Check for SpecialK blocking (incompatible with Display Commander)
     if (lpLibFileName) {
@@ -749,8 +750,8 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
     std::string timestamp = GetCurrentTimestamp();
     std::string dll_name = lpLibFileName ? WideToNarrow(lpLibFileName) : "NULL";
 
-    LogInfo("[%s] LoadLibraryExW called: %s, hFile: 0x%p, dwFlags: 0x%08X (caller: %s)", timestamp.c_str(), dll_name.c_str(),
-            hFile, dwFlags, caller_str.c_str());
+    LogInfo("[%s] LoadLibraryExW called: %s, hFile: 0x%p, dwFlags: 0x%08X (caller: %s)", timestamp.c_str(),
+            dll_name.c_str(), hFile, dwFlags, caller_str.c_str());
 
     // Check for SpecialK blocking (incompatible with Display Commander)
     if (lpLibFileName) {
@@ -887,8 +888,8 @@ HMODULE WINAPI LoadPackagedLibrary_Detour(LPCWSTR lpwszPackageFullName, DWORD Re
         LoadPackagedLibrary_Original ? LoadPackagedLibrary_Original(lpwszPackageFullName, Reserved) : nullptr;
 
     if (result) {
-        LogInfo("[%s] LoadPackagedLibrary success: %s -> HMODULE: 0x%p (caller: %s)", timestamp.c_str(), name_str.c_str(),
-                result, caller_str.c_str());
+        LogInfo("[%s] LoadPackagedLibrary success: %s -> HMODULE: 0x%p (caller: %s)", timestamp.c_str(),
+                name_str.c_str(), result, caller_str.c_str());
         std::wstring module_name_wide(name_str.begin(), name_str.end());
         ModuleInfo moduleInfo;
         FillModuleInfoFromHandle(result, module_name_wide, moduleInfo);
@@ -1071,8 +1072,13 @@ BOOL WINAPI FreeLibrary_Detour(HMODULE hLibModule) {
     CALL_GUARD(utils::get_now_ns());
 
     if (IsReshadeTryingToFreeDisplayCommander(hLibModule, GetCallingDLL())) {
-        LogInfo("FreeLibrary: Ignoring ReShade request to unload Display Commander (0x%p)", hLibModule);
-        return TRUE;
+        LogInfo("FreeLibrary: ReShade unloading Display Commander (0x%p) - unregistering addon and overlays first",
+                hLibModule);
+        // unregister_addon automatically unregisters all events and overlays registered by this addon
+        reshade::unregister_addon(hLibModule);
+        g_reshade_module.store(nullptr);
+        BOOL result = FreeLibrary_Original ? FreeLibrary_Original(hLibModule) : FreeLibrary(hLibModule);
+        return result;
     }
 
     // Check if this is the ReShade module being unloaded
@@ -1105,8 +1111,12 @@ VOID WINAPI FreeLibraryAndExitThread_Detour(HMODULE hLibModule, DWORD dwExitCode
     detour_call_tracker::RecordCallNoGuard(s_fle_detour_idx, utils::get_now_ns());
 
     if (IsReshadeTryingToFreeDisplayCommander(hLibModule, caller_module)) {
-        LogInfo("FreeLibraryAndExitThread: Ignoring ReShade request to unload Display Commander (0x%p)", hLibModule);
-        return;
+        LogInfo(
+            "FreeLibraryAndExitThread: ReShade unloading Display Commander (0x%p) - unregistering addon and "
+            "overlays first",
+            hLibModule);
+        // unregister_addon automatically unregisters all events and overlays registered by this addon
+        reshade::unregister_addon(hLibModule);
     }
 
     // Check if this is the ReShade module being unloaded
@@ -1131,9 +1141,8 @@ static GetProcAddress_pfn GetProcAddress_Original = nullptr;
 // Base names (lowercase) of DLLs we ship as proxies. If GetProcAddress fails for such a module, we log.
 static const std::wstring* GetProxyDllNames() {
     static const std::wstring names[] = {
-        L"bcrypt.dll",  L"hid.dll",     L"dxgi.dll",     L"d3d11.dll",   L"d3d12.dll",
-        L"dinput8.dll", L"version.dll", L"opengl32.dll", L"dbghelp.dll", L"vulkan-1.dll",
-        L"winhttp.dll",
+        L"bcrypt.dll",  L"hid.dll",      L"dxgi.dll",    L"d3d11.dll",    L"d3d12.dll",   L"dinput8.dll",
+        L"version.dll", L"opengl32.dll", L"dbghelp.dll", L"vulkan-1.dll", L"winhttp.dll",
     };
     return names;
 }
@@ -1849,10 +1858,9 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
             }
         }
     }
-    const std::wstring module_display_name =
-        (IsKnownDllName(moduleName) ? L"*" : L"") + moduleName;
-    LogInfo("[OnModuleLoaded] %ws (0x%p)%s%s", module_display_name.c_str(), hModule,
-            has_dc_export ? " (DC proxy)" : "", product_and_version.c_str());
+    const std::wstring module_display_name = (IsKnownDllName(moduleName) ? L"*" : L"") + moduleName;
+    LogInfo("[OnModuleLoaded] %ws (0x%p)%s%s", module_display_name.c_str(), hModule, has_dc_export ? " (DC proxy)" : "",
+            product_and_version.c_str());
     {
         std::string imports = GetStaticImportDllNamesSingleLine(hModule);
         if (!imports.empty()) {
@@ -1912,8 +1920,8 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
         if (is_reshade_dll) {
             HMODULE expected = nullptr;
             if (g_reshade_module.compare_exchange_strong(expected, hModule))
-                LogInfo("[OnModuleLoaded] ReShade module set from LoadLibrary: %ws (0x%p)",
-                        module_display_name.c_str(), hModule);
+                LogInfo("[OnModuleLoaded] ReShade module set from LoadLibrary: %ws (0x%p)", module_display_name.c_str(),
+                        hModule);
         }
     }
 

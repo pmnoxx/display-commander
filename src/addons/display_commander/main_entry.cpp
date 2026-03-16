@@ -2364,7 +2364,6 @@ void ProcessAttach_RegisterAndPostInit(HMODULE h_module, const std::wstring& ent
     LogInfoDirect("Entry point detected: %s", entry_point_utf8.c_str());
     utils::initialize_qpc_timing_constants();
     DoInitializationWithoutHwndSafe(h_module);
-    RegisterReShadeEvents(h_module);
     ProcessAttach_LoadLocalAddonDllsAfterReShade(h_module);
     LoadAddonsFromPluginsDirectory();
     if (IsDisplayCommanderHookingInstance()) display_commanderhooks::InstallApiHooks();
@@ -2921,6 +2920,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             LogInfo("[main_entry] DLL_PROCESS_ATTACH: RegisterAndPostInit complete");
             g_dll_initialization_complete.store(true);
             reason = "RegisterAndPostInit complete";
+
+            RegisterReShadeEvents(h_module);
             break;
         }
         case DLL_THREAD_ATTACH: {

@@ -419,6 +419,29 @@ extern "C" __declspec(dllexport) void CALLBACK CommandLine(HWND hwnd, HINSTANCE 
     RunCommandLine(hinst, lpszCmdLine);
 }
 
+bool FinishAddonRegistration(HMODULE addon_module, HMODULE reshade_module, bool do_unregister) {
+    g_module.store(addon_module, std::memory_order_release);
+    // Store ReShade module handle for unload detection (don't override if already set)
+    HMODULE expected = nullptr;
+    (void)g_reshade_module.compare_exchange_strong(expected, reshade_module);
+    LogInfo("[AddonInit] Stored ReShade module handle: 0x%p", reshade_module);
+
+    bool ok = false;
+    if (do_unregister) {
+        reshade::unregister_addon(addon_module);
+        ok = reshade::register_addon(addon_module, reshade_module);
+        reshade::unregister_overlay("DC", OnRegisterOverlayDisplayCommander);
+        reshade::register_overlay("DC", OnRegisterOverlayDisplayCommander);
+    } else {
+        ok = reshade::register_addon(addon_module, reshade_module);
+        reshade::register_overlay("DC", OnRegisterOverlayDisplayCommander);
+    }
+    if (ok) {
+        RegisterReShadeEvents(addon_module);
+    }
+    return ok;
+}
+
 // Export addon initialization function
 extern "C" __declspec(dllexport) bool AddonInit(HMODULE addon_module, HMODULE reshade_module) {
     if (g_no_dc_mode.load(std::memory_order_acquire)) {
@@ -429,17 +452,5 @@ extern "C" __declspec(dllexport) bool AddonInit(HMODULE addon_module, HMODULE re
         LogInfo("[AddonInit] Display Commander state is not HOOKED, refusing to load");
         return false;
     }
-    g_module.store(addon_module, std::memory_order_release);
-    // Store ReShade module handle for unload detection (don't override if already set)
-    HMODULE expected = nullptr;
-    (void)g_reshade_module.compare_exchange_strong(expected, reshade_module);
-    LogInfo("[AddonInit] Stored ReShade module handle: 0x%p", reshade_module);
-
-    reshade::unregister_addon(addon_module);
-    reshade::register_addon(addon_module);
-    reshade::unregister_overlay("DC", OnRegisterOverlayDisplayCommander);
-    reshade::register_overlay("DC", OnRegisterOverlayDisplayCommander);
-    RegisterReShadeEvents(addon_module);
-
-    return true;
+    return FinishAddonRegistration(addon_module, reshade_module, true);
 }

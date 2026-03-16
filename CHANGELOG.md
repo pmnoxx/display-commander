@@ -2,6 +2,9 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
+## v0.12.558
+- [cleanup] **Addon registration refactor** - Moved addon/store module and ReShade register/unregister logic into `FinishAddonRegistration(addon_module, reshade_module, do_unregister)`, declared in addon.hpp and returning the result of `register_addon`. AddonInit now returns that result. Code cleanup needed before making winmm.dll proxy compatible with ReShade loaded as Vulkan layer.
+
 ## v0.12.557
 - [cleanup] **RegisterReShadeEvents rename** - Renamed `DoInitializationWithoutHwnd` to `RegisterReShadeEvents` so the name reflects that it registers all ReShade addon events (overlay, device/swapchain, present, draw, etc.) and conditionally installs API hooks. Behavior unchanged.Moved copy default files to only happen once.
 

@@ -43,4 +43,5 @@ void ContinuousMonitoringThread();
 void OverrideReShadeSettings();
 
 // Initialization functions
+bool FinishAddonRegistration(HMODULE addon_module, HMODULE reshade_module, bool do_unregister = true);
 void RegisterReShadeEvents(HMODULE h_module);

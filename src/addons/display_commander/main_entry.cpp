@@ -1783,7 +1783,7 @@ void DoInitializationWithoutHwndSafe(HMODULE h_module) {
     DoInitializationWithoutHwndSafe_Late();
 }
 
-void DoInitializationWithoutHwnd(HMODULE h_module) {
+void RegisterReShadeEvents(HMODULE h_module) {
     CALL_GUARD(utils::get_now_ns());
     // Register reshade_overlay event for test code
     reshade::register_event<reshade::addon_event::reshade_overlay>(OnPerformanceOverlay);
@@ -1856,7 +1856,6 @@ void DoInitializationWithoutHwnd(HMODULE h_module) {
     reshade::register_event<reshade::addon_event::reshade_begin_effects>(OnReShadeBeginEffects);
     reshade::register_event<reshade::addon_event::reshade_finish_effects>(OnReShadeFinishEffects);
     reshade::register_event<reshade::addon_event::reshade_present>(OnReShadePresent);
-    if (IsDisplayCommanderHookingInstance()) display_commanderhooks::InstallApiHooks();
 }
 
 // Named event name for injection tracking (shared across processes)
@@ -2365,9 +2364,18 @@ void ProcessAttach_RegisterAndPostInit(HMODULE h_module, const std::wstring& ent
     LogInfoDirect("Entry point detected: %s", entry_point_utf8.c_str());
     utils::initialize_qpc_timing_constants();
     DoInitializationWithoutHwndSafe(h_module);
-    DoInitializationWithoutHwnd(h_module);
+    RegisterReShadeEvents(h_module);
     ProcessAttach_LoadLocalAddonDllsAfterReShade(h_module);
     LoadAddonsFromPluginsDirectory();
+    if (IsDisplayCommanderHookingInstance()) display_commanderhooks::InstallApiHooks();
+    // Copy DefaultFiles into game folder (only if missing) once per launch
+    {
+        WCHAR exe_buf[MAX_PATH];
+        if (GetModuleFileNameW(nullptr, exe_buf, MAX_PATH) > 0) {
+            std::filesystem::path game_dir = std::filesystem::path(exe_buf).parent_path();
+            CopyDefaultFilesToGameFolder(game_dir);
+        }
+    }
 }
 
 // Minimum Display Commander version allowed to load (below this we refuse).

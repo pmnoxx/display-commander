@@ -43,4 +43,4 @@ void ContinuousMonitoringThread();
 void OverrideReShadeSettings();
 
 // Initialization functions
-void DoInitializationWithoutHwnd(HMODULE h_module);
+void RegisterReShadeEvents(HMODULE h_module);

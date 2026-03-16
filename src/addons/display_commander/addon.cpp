@@ -426,29 +426,20 @@ extern "C" __declspec(dllexport) bool AddonInit(HMODULE addon_module, HMODULE re
     }
     CALL_GUARD(utils::get_now_ns());
     if (g_display_commander_state.load(std::memory_order_acquire) != DC_STATE_HOOKED) {
-        LogInfo("AddonInit: Display Commander state is not HOOKED, refusing to load");
+        LogInfo("[AddonInit] Display Commander state is not HOOKED, refusing to load");
         return false;
     }
     g_module.store(addon_module, std::memory_order_release);
     // Store ReShade module handle for unload detection (don't override if already set)
     HMODULE expected = nullptr;
     (void)g_reshade_module.compare_exchange_strong(expected, reshade_module);
-    LogInfo("AddonInit: Stored ReShade module handle: 0x%p", reshade_module);
+    LogInfo("[AddonInit] Stored ReShade module handle: 0x%p", reshade_module);
 
     reshade::unregister_addon(addon_module);
     reshade::register_addon(addon_module);
     reshade::unregister_overlay("DC", OnRegisterOverlayDisplayCommander);
     reshade::register_overlay("DC", OnRegisterOverlayDisplayCommander);
-    DoInitializationWithoutHwnd(addon_module);
-
-    // Copy DefaultFiles into game folder (only if missing) once per launch
-    {
-        WCHAR exe_buf[MAX_PATH];
-        if (GetModuleFileNameW(nullptr, exe_buf, MAX_PATH) > 0) {
-            std::filesystem::path game_dir = std::filesystem::path(exe_buf).parent_path();
-            CopyDefaultFilesToGameFolder(game_dir);
-        }
-    }
+    RegisterReShadeEvents(addon_module);
 
     return true;
 }

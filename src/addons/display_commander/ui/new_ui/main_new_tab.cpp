@@ -2312,6 +2312,80 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
     }
     imgui.Columns(1);
 
+    // Second row: Log, reshade.log, Config, Default config (open in editor)
+    imgui.Spacing();
+    if (imgui.Button(ICON_FK_FILE " Log")) {
+        std::thread([]() {
+            char process_path[MAX_PATH];
+            if (GetModuleFileNameA(nullptr, process_path, MAX_PATH) == 0) return;
+            std::string full_path(process_path);
+            size_t last_slash = full_path.find_last_of("\\/");
+            if (last_slash == std::string::npos) return;
+            std::string log_path = full_path.substr(0, last_slash) + "\\DisplayCommander.log";
+            ShellExecuteA(nullptr, "open", log_path.c_str(), nullptr, nullptr, SW_SHOW);
+        }).detach();
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltipEx("Open DisplayCommander.log in the default text editor.");
+    }
+    imgui.SameLine();
+    if (g_reshade_module != nullptr) {
+        if (imgui.Button(ICON_FK_FILE " reshade.log")) {
+            std::thread([]() {
+                char process_path[MAX_PATH];
+                if (GetModuleFileNameA(nullptr, process_path, MAX_PATH) == 0) return;
+                std::string full_path(process_path);
+                size_t last_slash = full_path.find_last_of("\\/");
+                if (last_slash == std::string::npos) return;
+                std::string log_path = full_path.substr(0, last_slash) + "\\reshade.log";
+                ShellExecuteA(nullptr, "open", log_path.c_str(), nullptr, nullptr, SW_SHOW);
+            }).detach();
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx("Open reshade.log in the default text editor.");
+        }
+        imgui.SameLine();
+    }
+    std::string config_path_row =
+        display_commander::config::DisplayCommanderConfigManager::GetInstance().GetConfigPath();
+    if (config_path_row.empty()) {
+        imgui.BeginDisabled();
+    }
+    if (imgui.Button(ICON_FK_FILE " Config")) {
+        if (!config_path_row.empty()) {
+            std::string path = config_path_row;
+            std::thread([path]() {
+                ShellExecuteA(nullptr, "open", path.c_str(), nullptr, nullptr, SW_SHOW);
+            }).detach();
+        }
+    }
+    if (imgui.IsItemHovered() && !config_path_row.empty()) {
+        imgui.SetTooltipEx("Open this game's DisplayCommander.toml in the default editor.\n%s",
+                          config_path_row.c_str());
+    }
+    if (config_path_row.empty()) {
+        imgui.EndDisabled();
+    }
+    imgui.SameLine();
+    if (default_settings_path.empty()) {
+        imgui.BeginDisabled();
+    }
+    if (imgui.Button(ICON_FK_FILE_CODE " Default config")) {
+        if (!default_settings_path.empty()) {
+            std::string path = default_settings_path;
+            std::thread([path]() {
+                ShellExecuteA(nullptr, "open", path.c_str(), nullptr, nullptr, SW_SHOW);
+            }).detach();
+        }
+    }
+    if (imgui.IsItemHovered() && !default_settings_path.empty()) {
+        imgui.SetTooltipEx("Open default_settings.toml (default config for all games).\n%s",
+                          default_settings_path.c_str());
+    }
+    if (default_settings_path.empty()) {
+        imgui.EndDisabled();
+    }
+
     DrawUpdatesDisplayCommanderHeader(imgui);
     DrawUpdatesReshadeHeader(imgui, game_dir);
     DrawUpdatesAddonsHeader(imgui);

@@ -183,7 +183,7 @@ MainTabSettings::MainTabSettings()
       force_mipmap_lod_bias("force_mipmap_lod_bias", 0.0f, -5.0f, 5.0f, "DisplayCommander"),
       add_dc_to_reshade_shader_paths("add_dc_to_reshade_shader_paths", true, "DisplayCommander"),
       auto_reshade_config_backup("auto_reshade_config_backup", false, "DisplayCommander"),
-      brightness_autohdr_section_enabled("brightness_autohdr_section_enabled_don", false, "DisplayCommander"),
+      brightness_autohdr_section_enabled("brightness_autohdr_section_enabled", false, "DisplayCommander"),
       brightness_percent("brightness_percent", 100.0f, 0.0f, 500.0f, "DisplayCommander"),
       sdr_content_brightness_nits("sdr_content_brightness_nits", 240.0f, 80.0f, 480.0f, "DisplayCommander"),
       swapchain_colorspace("swapchain_colorspace", 0, {"Auto", "scRGB(default)", "HDR10", "sRGB", "Gamma 2.2", "None"},

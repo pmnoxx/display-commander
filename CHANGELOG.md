@@ -2,6 +2,9 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
+## v0.12.563
+- [settings] [ui] **Default settings template: more commented examples** - The template for `default_settings.toml` (created when the file does not exist) now includes commented examples and short explanations for: window mode (0–3), max anisotropic filtering (max_anisotropy, 0–16), PresentMon ETW tracing (EnablePresentMonTracing), and FPS limiter (fps_limiter_enabled, fps_limit, fps_limiter_mode, fps_limit_background). Makes it easier to set global defaults without hunting for config key names. Details: config/default_settings_file.cpp DEFAULT_SETTINGS_TEMPLATE.
+
 ## v0.12.562
 - [cleanup] [compatibility] **Auto-rename unused DC proxy DLLs and unused DLLs detection** - When Display Commander is loaded as a `.dll` proxy (e.g. `dxgi.dll`, `d3d11.dll`), it now detects other Display Commander proxy DLLs in the game folder (by version resource `ProductName`), logs how many were detected and their paths, then renames them to `*.dll.unused` so only the active proxy stays in place. This reduces confusion from leftover proxy copies and lowers the risk of games or tools picking up an unintended DC DLL. Details: `GetFileProductNameW` improved with null-terminator reading and English-US fallback; `RenameUnusedDcProxyDlls` in main_entry.cpp.
 
@@ -448,7 +451,7 @@ Reverted to v0.12.535
 - [cleanup] **NVIDIA-related hooks moved to hooks/nvidia/** - NGX, NVAPI, Streamline, and PCLStats ETW hook sources (ngx_hooks, nvapi_hooks, streamline_hooks, pclstats_etw_hooks) are now under `hooks/nvidia/` for clearer structure alongside `hooks/dxgi/`, `hooks/vulkan/`, etc. All consumer includes and docs updated. Details: private_docs/feature_nvidia_hooks_folder.md.
 
 ## v0.12.428
-- [ui] [settings] **Brightness / Auto HDR section on by default** - The Brightness and Auto HDR subsection (including adding Display Commander's Shaders/Textures to ReShade's EffectSearchPaths and TextureSearchPaths) now defaults to enabled for new configs. The setting uses a new config key (`brightness_autohdr_section_enabled_don`) so existing users keep their current choice. Details: main_tab_settings.cpp brightness_autohdr_section_enabled (default true, key brightness_autohdr_section_enabled_don).
+- [ui] [settings] **Brightness / Auto HDR section on by default** - The Brightness and Auto HDR subsection (including adding Display Commander's Shaders/Textures to ReShade's EffectSearchPaths and TextureSearchPaths) now defaults to enabled for new configs. The setting uses a new config key (`brightness_autohdr_section_enabled`) so existing users keep their current choice. Details: main_tab_settings.cpp brightness_autohdr_section_enabled (default true, key brightness_autohdr_section_enabled).
 
 ## v0.12.427
 - [bugfix] **x86 (32-bit) build fixed** - The 32-bit addon build was failing in CI (Build Debug x86, Build x86) because MSVC does not allow multiple `/arch` options on the same compilation. The addon now uses a single architecture flag: `/arch:SSE2` for 32-bit and `/arch:AVX2` for 64-bit. Details: CMakeLists.txt DC_MSVC_ARCH set from CMAKE_SIZEOF_VOID_P.

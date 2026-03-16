@@ -2701,6 +2701,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                                       "game shuts down. Shown even when HDR is off.");
                 }
             }
+            imgui.SetNextItemWidth(400.0f);
             if (ComboSettingWrapper(settings::g_mainTabSettings.swapchain_colorspace, "Swapchain colorspace", imgui)) {
                 // Value is applied in OnReShadePresent each frame (DECODE_METHOD)
             }
@@ -2708,6 +2709,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                 imgui.SetTooltipEx(
                     "How to interpret the backbuffer (decode). Auto = detect from pipeline. Default Auto.");
             }
+            imgui.SetNextItemWidth(400.0f);
             if (ComboSettingWrapper(settings::g_mainTabSettings.brightness_colorspace, "Color Space", imgui)) {
                 // Value is applied in OnReShadePresent each frame (ENCODE_METHOD)
             }
@@ -2811,6 +2813,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                                       " 8-bit buffer. "
                                       "Recommend RenoDX for SDR->HDR swapchain upgrade.");
                 }
+                imgui.SetNextItemWidth(400.0f);
                 if (SliderFloatSetting(settings::g_mainTabSettings.auto_hdr_strength, "Auto HDR strength", "%.2f",
                                        imgui)) {
                     // Value is applied in OnReShadePresent each frame

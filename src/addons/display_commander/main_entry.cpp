@@ -1982,6 +1982,9 @@ void ProcessAttach_ScanDisplayCommanderState(bool* another_undecided = nullptr) 
 
 // Returns the file's version resource ProductName (wide), or empty if absent. Used to avoid
 // loading ReShade again when already loaded, or loading Display Commander (ourselves) again.
+// Note: We intentionally ignore the length reported by VerQueryValueW for strings and instead
+// rely on the null terminator, since some version blocks report too-small lengths that would
+// truncate names like "Display Commander".
 std::wstring GetFileProductNameW(const std::wstring& path_w) {
     DWORD ver_handle = 0;
     const DWORD size = GetFileVersionInfoSizeW(path_w.c_str(), &ver_handle);
@@ -1997,16 +2000,131 @@ std::wstring GetFileProductNameW(const std::wstring& path_w) {
     if (!VerQueryValueW(buf.data(), L"\\VarFileInfo\\Translation", reinterpret_cast<void**>(&p_trans), &trans_len)
         || !p_trans || trans_len < sizeof(LANGANDCODEPAGE))
         return {};
+
+    auto read_product = [&buf](const wchar_t* sub_block) -> std::wstring {
+        void* p_block = nullptr;
+        UINT len_ignored = 0;
+        if (!VerQueryValueW(buf.data(), sub_block, &p_block, &len_ignored) || !p_block) return {};
+        const wchar_t* product = static_cast<const wchar_t*>(p_block);
+        // Read until null terminator, with a hard safety cap.
+        constexpr size_t kMaxChars = 512;
+        size_t str_len = 0;
+        while (str_len < kMaxChars && product[str_len] != L'\0') ++str_len;
+        if (str_len == 0) return {};
+        return std::wstring(product, str_len);
+    };
+
     wchar_t sub_block[64];
     swprintf_s(sub_block, L"\\StringFileInfo\\%04x%04x\\ProductName", p_trans[0].wLanguage, p_trans[0].wCodePage);
-    void* p_block = nullptr;
-    UINT len = 0;
-    if (!VerQueryValueW(buf.data(), sub_block, &p_block, &len) || !p_block || len < sizeof(wchar_t)) return {};
-    const wchar_t* product = static_cast<const wchar_t*>(p_block);
-    size_t max_chars = len / sizeof(wchar_t);
-    size_t str_len = 0;
-    while (str_len < max_chars && product[str_len] != L'\0') ++str_len;
-    return std::wstring(product, str_len);
+    std::wstring result = read_product(sub_block);
+
+    // If the first translation gave a very short string, always try English-US (040904b0) as a fallback;
+    // this is what Explorer typically uses for ProductName.
+    if (result.size() < 17) {
+        const wchar_t* en_us_block = L"\\StringFileInfo\\040904b0\\ProductName";
+        std::wstring en_result = read_product(en_us_block);
+        if (en_result.size() > result.size()) result = std::move(en_result);
+    }
+
+    return result;
+}
+
+// When loaded as a .dll proxy (e.g. dxgi.dll, d3d11.dll), detect other Display Commander proxy DLLs
+// in the module directory, log the list (unused DLLs detection), then rename them to *.dll.unused.
+void RenameUnusedDcProxyDlls(HMODULE h_module) {
+    if (h_module == nullptr) return;
+
+    WCHAR module_path_w[MAX_PATH] = {};
+    if (GetModuleFileNameW(h_module, module_path_w, MAX_PATH) == 0) return;
+
+    std::filesystem::path self_path(module_path_w);
+    if (!self_path.has_filename()) return;
+
+    const std::wstring self_product = GetFileProductNameW(self_path.wstring());
+    char self_product_narrow[256] = {};
+    if (!self_product.empty()) {
+        WideCharToMultiByte(CP_ACP, 0, self_product.c_str(), -1, self_product_narrow,
+                            static_cast<int>(sizeof(self_product_narrow)), nullptr, nullptr);
+    }
+    LogInfo("[main_entry] RenameUnusedDcProxyDlls: self_product: %s", self_product_narrow);
+    if (self_product.empty() || _wcsicmp(self_product.c_str(), L"Display Commander") != 0) {
+        return;  // Only operate when our own module is identified as Display Commander.
+    }
+    char self_path_narrow[MAX_PATH] = {};
+    WideCharToMultiByte(CP_ACP, 0, self_path.wstring().c_str(), -1, self_path_narrow, MAX_PATH, nullptr, nullptr);
+    LogInfo("[main_entry] RenameUnusedDcProxyDlls: self_path: %s", self_path_narrow);
+
+    std::filesystem::path dir = self_path.parent_path();
+    if (dir.empty()) return;
+
+    // Detection phase: collect paths of unused DC proxy DLLs.
+    std::vector<std::filesystem::path> unused_paths;
+    std::error_code ec;
+    for (const auto& entry :
+         std::filesystem::directory_iterator(dir, std::filesystem::directory_options::skip_permission_denied, ec)) {
+        if (ec) break;
+        if (!entry.is_regular_file(ec)) continue;
+
+        std::filesystem::path path = entry.path();
+        if (!path.has_filename()) continue;
+        if (std::filesystem::equivalent(path, self_path, ec)) {
+            ec.clear();
+            continue;  // Never rename the currently loaded proxy DLL.
+        }
+
+        std::wstring ext = path.extension().wstring();
+        for (auto& c : ext) {
+            if (c >= L'A' && c <= L'Z') c += (L'a' - L'A');
+        }
+        if (ext != L".dll") continue;
+
+        const std::wstring product = GetFileProductNameW(path.wstring());
+        char path_narrow[MAX_PATH] = {};
+        char product_narrow[256] = {};
+        WideCharToMultiByte(CP_ACP, 0, path.wstring().c_str(), -1, path_narrow, MAX_PATH, nullptr, nullptr);
+        if (!product.empty()) {
+            WideCharToMultiByte(CP_ACP, 0, product.c_str(), -1, product_narrow,
+                                static_cast<int>(sizeof(product_narrow)), nullptr, nullptr);
+        }
+        LogInfo("[main_entry] RenameUnusedDcProxyDlls: path: %s, product: %s", path_narrow, product_narrow);
+        if (product.empty() || _wcsicmp(product.c_str(), L"Display Commander") != 0) continue;
+
+        std::filesystem::path new_path = path;
+        new_path += L".unused";  // e.g. dxgi.dll.unused
+        if (std::filesystem::exists(new_path, ec)) {
+            ec.clear();
+            continue;  // Don't overwrite existing *.dll.unused files.
+        }
+        unused_paths.push_back(path);
+    }
+
+    // Log detection result (unused DLLs detection).
+    const size_t n = unused_paths.size();
+    if (n == 0) {
+        LogInfo("[main_entry] RenameUnusedDcProxyDlls: no unused DC proxy DLLs detected");
+        return;
+    }
+    LogInfo("[main_entry] RenameUnusedDcProxyDlls: detected %zu unused DC proxy DLL(s)", n);
+    for (size_t i = 0; i < n; i++) {
+        char path_narrow[MAX_PATH] = {};
+        WideCharToMultiByte(CP_ACP, 0, unused_paths[i].wstring().c_str(), -1, path_narrow, MAX_PATH, nullptr, nullptr);
+        LogInfo("[main_entry] RenameUnusedDcProxyDlls: unused[%zu]: %s", i, path_narrow);
+    }
+
+    // Rename each detected unused DLL.
+    for (const std::filesystem::path& path : unused_paths) {
+        std::filesystem::path new_path = path;
+        new_path += L".unused";
+        std::error_code rename_ec;
+        std::filesystem::rename(path, new_path, rename_ec);
+        if (!rename_ec) {
+            char old_narrow[MAX_PATH] = {};
+            char new_narrow[MAX_PATH] = {};
+            WideCharToMultiByte(CP_ACP, 0, path.wstring().c_str(), -1, old_narrow, MAX_PATH, nullptr, nullptr);
+            WideCharToMultiByte(CP_ACP, 0, new_path.wstring().c_str(), -1, new_narrow, MAX_PATH, nullptr, nullptr);
+            LogInfo("[main_entry] Renamed unused DC proxy DLL: %s -> %s", old_narrow, new_narrow);
+        }
+    }
 }
 
 void ProcessAttach_LoadLocalAddonDlls(HMODULE h_module) {
@@ -2838,6 +2956,13 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
             display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
             display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
+
+            // If loaded as .dll proxy, detect and rename unused DC proxy DLLs in the same directory.
+            if (display_commander::utils::IsLoadedWithDLLExtension(static_cast<void*>(h_module))) {
+                LogInfo("[main_entry] DLL_PROCESS_ATTACH: RenameUnusedDcProxyDlls");
+                RenameUnusedDcProxyDlls(h_module);
+            }
+
             ProcessAttachEarlyResult early = ProcessAttach_EarlyChecksAndInit(h_module);
             if (early == ProcessAttachEarlyResult::RefuseLoad) {
                 return TRUE;

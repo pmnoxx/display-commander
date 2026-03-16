@@ -2,6 +2,9 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
+## v0.12.561
+- [bugfix] [compatibility] **ReShade Vulkan layer detection: UTF-8 BOM and debug** - ReShadeApps.ini saved with a UTF-8 BOM caused the "Apps" key to not match; the parser now strips a leading UTF-8 BOM so the Apps list is read correctly. When parse fails, debug log includes file size and first 1000 bytes (printable preview) for diagnostics. Details: utils/reshade_vulkan_layer_detector.cpp StripUtf8Bom, LogReShadeAppsIniFileDebugInfo; IsReShadeRegisteredAsVulkanLayerForCurrentExe LogDebug at each step (Debug log level only).
+
 ## v0.12.560
 - [cleanup] **DllMain refactor** - Refactored `DllMain` in main_entry.cpp for clearer structure and flow. Behavior unchanged.
 

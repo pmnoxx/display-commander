@@ -1807,6 +1807,10 @@ void DrawNvapiSettings(display_commander::ui::GraphicsApi api, display_commander
                 ::g_nvapi_event_counters[NVAPI_EVENT_D3D_GET_SLEEP_STATUS].store(0);
                 ::g_sleep_reflex_native_ns.store(0);
                 ::g_sleep_reflex_native_ns_smooth.store(0);
+                ::g_nvapi_d3d_last_sleep_global_frame_id.store(0);
+                for (size_t i = 0; i < static_cast<size_t>(::kLatencyMarkerTypeCountFirstSix); ++i) {
+                    ::g_nvapi_d3d_last_global_frame_id_by_marker_type[i].store(0);
+                }
             }
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltipEx("Reset all Reflex debug counters to zero.");

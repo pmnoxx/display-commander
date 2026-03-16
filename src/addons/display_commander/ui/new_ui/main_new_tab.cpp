@@ -108,6 +108,115 @@ bool DidNativeReflexSleepRecently(uint64_t now_ns) {
     return last_injected_call > 0 && (now_ns - last_injected_call) < utils::SEC_TO_NS;  // 1s in nanoseconds
 }
 
+// Draw native Reflex (NvLL VK) status on the same line: Status OK/FAIL + tooltip (from NvLL_VK_Sleep_Detour /
+// NvLL_VK_SetLatencyMarker_Detour). Only draws when AreNvLowLatencyVkHooksInstalled(). Call after Reflex combo;
+// uses SameLine so it appears next to the previous widget. Layout matches DrawDxgiNativeReflexStatusOnSameLine.
+void DrawNvllNativeReflexStatusOnSameLine(display_commander::ui::IImGuiWrapper& imgui) {
+    if (!AreNvLowLatencyVkHooksInstalled()) {
+        return;
+    }
+    uint64_t hook_counts[static_cast<std::size_t>(NvllVkHook::Count)] = {};
+    GetNvllVkHookCallCounts(hook_counts, static_cast<std::size_t>(NvllVkHook::Count));
+    const uint64_t sleep_count = hook_counts[static_cast<std::size_t>(NvllVkHook::Sleep)];
+    const uint64_t marker_count = hook_counts[static_cast<std::size_t>(NvllVkHook::SetLatencyMarker)];
+
+    uint64_t marker_by_type[kNvllVkMarkerTypeCount] = {};
+    GetNvLowLatencyVkMarkerCountsByType(marker_by_type, kNvllVkMarkerTypeCount);
+
+    const bool status_ok = (sleep_count > 0 && marker_count > 0);
+
+    imgui.SameLine();
+    if (status_ok) {
+        imgui.TextColored(ui::colors::ICON_SUCCESS, "Status: OK");
+    } else {
+        imgui.TextColored(ui::colors::ICON_ERROR, "Status: FAIL");
+    }
+    if (imgui.IsItemHovered()) {
+        std::ostringstream tt;
+        tt << "OK - Game implements native Reflex correctly.\n"
+           << "FAIL - Game didn't implement native Reflex correctly, needs fixes.\n"
+           << "Sleep: " << sleep_count << "\n"
+           << "Markers total: " << marker_count << "\n\n"
+           << "Count (by marker type):\n";
+        for (size_t i = 0; i < kNvllVkMarkerTypeCount; ++i) {
+            tt << "  " << GetNvLowLatencyVkMarkerTypeName(static_cast<int>(i)) << ": ";
+            if (marker_by_type[i] != 0) {
+                tt << marker_by_type[i];
+            } else {
+                tt << "—";
+            }
+            tt << "\n";
+        }
+        imgui.SetTooltipEx("%s", tt.str().c_str());
+    }
+}
+
+// Number of frames (g_global_frame_id) to consider "recent" for DXGI native Reflex status OK.
+constexpr uint64_t kDxgiNativeReflexStatusFrameWindow = 50;
+
+// Draw native Reflex (DXGI/D3D) status on the same line: Sleep count + marker count (from NvAPI_D3D_Sleep_Detour /
+// NvAPI_D3D_SetLatencyMarker_Detour). Only draws when device is D3D11/D3D12 and Reflex is available. Call after Reflex
+// combo; uses SameLine so it appears next to the previous widget. Shown when NvLL (Vulkan) status is not shown.
+// Status OK when all 6 markers and Sleep were seen within the last kDxgiNativeReflexStatusFrameWindow frames.
+void DrawDxgiNativeReflexStatusOnSameLine(display_commander::ui::IImGuiWrapper& imgui) {
+    const reshade::api::device_api api = g_last_reshade_device_api.load();
+    if (api != reshade::api::device_api::d3d11 && api != reshade::api::device_api::d3d12) {
+        return;
+    }
+    if (!IsReflexAvailable()) {
+        return;
+    }
+    const uint32_t sleep_count = g_nvapi_event_counters[NVAPI_EVENT_D3D_SLEEP].load();
+    const uint32_t marker_count = g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_LATENCY_MARKER].load();
+    const uint64_t current_frame = g_global_frame_id.load(std::memory_order_relaxed);
+    const uint64_t cutoff_frame = (current_frame >= kDxgiNativeReflexStatusFrameWindow)
+                                      ? (current_frame - kDxgiNativeReflexStatusFrameWindow)
+                                      : 0;
+
+    uint64_t last_frame_by_type[static_cast<size_t>(kLatencyMarkerTypeCountFirstSix)] = {};
+    int latest_type = -1;
+    uint64_t latest_frame = 0;
+    bool all_markers_within_window = true;
+    for (size_t i = 0; i < static_cast<size_t>(kLatencyMarkerTypeCountFirstSix); ++i) {
+        last_frame_by_type[i] = g_nvapi_d3d_last_global_frame_id_by_marker_type[i].load();
+        if (last_frame_by_type[i] != 0 && last_frame_by_type[i] >= latest_frame) {
+            latest_frame = last_frame_by_type[i];
+            latest_type = static_cast<int>(i);
+        }
+        if (last_frame_by_type[i] == 0 || last_frame_by_type[i] < cutoff_frame) {
+            all_markers_within_window = false;
+        }
+    }
+    const uint64_t last_sleep_frame = g_nvapi_d3d_last_sleep_global_frame_id.load();
+    const bool sleep_within_window = (last_sleep_frame != 0 && last_sleep_frame >= cutoff_frame);
+    const bool status_ok = all_markers_within_window && sleep_within_window;
+
+    imgui.SameLine();
+    if (status_ok) {
+        imgui.TextColored(ui::colors::ICON_SUCCESS, "Status: OK");
+    } else {
+        imgui.TextColored(ui::colors::ICON_ERROR, "Status: FAIL");
+    }
+    if (imgui.IsItemHovered()) {
+        std::ostringstream tt;
+        tt << "OK - Game implements native Reflex correctly.\n"
+           << "FAIL - Game didn't implement native Reflex correctly, needs fixes.\n"
+           << "Sleep: " << sleep_count << "\n"
+           << "Markers total: " << marker_count << "\n\n"
+           << "Last frame (by marker type):\n";
+        for (size_t i = 0; i < static_cast<size_t>(kLatencyMarkerTypeCountFirstSix); ++i) {
+            tt << "  " << GetNvLowLatencyVkMarkerTypeName(static_cast<int>(i)) << ": ";
+            if (last_frame_by_type[i] != 0) {
+                tt << "#" << last_frame_by_type[i];
+            } else {
+                tt << "—";
+            }
+            tt << "\n";
+        }
+        imgui.SetTooltipEx("%s", tt.str().c_str());
+    }
+}
+
 // Draw DXGI overlay subsection (show DXGI VRR status, show DXGI refresh rate). Uses RefreshRateMonitor when
 // enable_dxgi_refresh_rate_vrr_detection is on in Advanced tab. Checkboxes are disabled when that setting is off.
 void DrawDxgiOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui) {
@@ -4113,6 +4222,8 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
             }
             imgui.SetTooltipEx("%s", tooltip.c_str());
         }
+        DrawNvllNativeReflexStatusOnSameLine(imgui);
+        DrawDxgiNativeReflexStatusOnSameLine(imgui);
     }
 
     if (!::IsNativeFramePacingInSync()) {
@@ -4499,6 +4610,8 @@ static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWr
                 "Off: Disables both Low Latency and Boost.\n"
                 "Game Defaults: Do not override; use the game's own Reflex settings.");
         }
+        DrawNvllNativeReflexStatusOnSameLine(imgui);
+        DrawDxgiNativeReflexStatusOnSameLine(imgui);
         if (PCLStatsReportingAllowed()) {
             imgui.SameLine();
             drawPclStatsCheckbox();

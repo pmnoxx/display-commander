@@ -1152,6 +1152,10 @@ extern std::array<std::atomic<uint32_t>, NUM_NVAPI_EVENTS> g_nvapi_event_counter
 // NVAPI sleep timestamp tracking
 extern std::atomic<uint64_t> g_nvapi_last_sleep_timestamp_ns;  // Last NVAPI_D3D_Sleep call timestamp in nanoseconds
 extern std::atomic<bool> g_native_reflex_detected;             // Native Reflex detected via SetLatencyMarker calls
+/** For each of the first 6 marker types (0..5), last g_global_frame_id when we received that marker (0 = not yet). */
+extern std::atomic<uint64_t> g_nvapi_d3d_last_global_frame_id_by_marker_type[kLatencyMarkerTypeCountFirstSix];
+/** Last g_global_frame_id when NvAPI_D3D_Sleep was called (0 = not yet). For DXGI native Reflex status OK/FAIL. */
+extern std::atomic<uint64_t> g_nvapi_d3d_last_sleep_global_frame_id;
 
 // OpenGL hook counters
 extern std::array<std::atomic<uint64_t>, NUM_OPENGL_HOOKS> g_opengl_hook_counters;  // Array for all OpenGL hook events

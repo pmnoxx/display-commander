@@ -313,6 +313,11 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
         return NvAPI_D3D_SetLatencyMarker_Direct(pDev, pSetLatencyMarkerParams);
     }
     g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_LATENCY_MARKER].fetch_add(1);
+    const int marker_type = static_cast<int>(pSetLatencyMarkerParams->markerType);
+    if (marker_type >= 0 && marker_type < static_cast<int>(kLatencyMarkerTypeCountFirstSix)) {
+        g_nvapi_d3d_last_global_frame_id_by_marker_type[marker_type].store(
+            g_global_frame_id.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    }
 
     const ReflexMarkerTypes nvapi_markers = {
         static_cast<int>(NV_LATENCY_MARKER_TYPE::SIMULATION_START),
@@ -482,6 +487,8 @@ NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown* pDev) {
     // utils::SRWLockExclusive lock(g_nvapi_lock);
     // Increment counter
     g_nvapi_event_counters[NVAPI_EVENT_D3D_SLEEP].fetch_add(1);
+    g_nvapi_d3d_last_sleep_global_frame_id.store(g_global_frame_id.load(std::memory_order_relaxed),
+                                                std::memory_order_relaxed);
     // Record timestamp of this sleep call
     g_nvapi_last_sleep_timestamp_ns.store(utils::get_now_ns());
 

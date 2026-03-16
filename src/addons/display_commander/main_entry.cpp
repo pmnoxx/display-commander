@@ -2329,9 +2329,6 @@ void ProcessAttach_NoReShadeModeInit(HMODULE h_module) {
 }
 
 void ProcessAttach_RegisterAndPostInit(HMODULE h_module, const std::wstring& entry_point) {
-    display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
-    display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
-    OutputDebugStringA("ReShade 111111");
     DetectMultipleReShadeVersions();
     wchar_t exe_path_buf[MAX_PATH] = {};
     const wchar_t* exe_name_display = L"";
@@ -2385,8 +2382,6 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
     g_hmodule = h_module;
     g_dll_load_time_ns.store(utils::get_now_ns(), std::memory_order_release);
     g_display_commander_state.store(DisplayCommanderState::DC_STATE_UNDECIDED, std::memory_order_release);
-    display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
-    display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
 
     if (display_commander::utils::version_check::CompareVersions(DISPLAY_COMMANDER_VERSION_STRING,
                                                                  kDisplayCommanderMinLoadVersion)
@@ -2841,6 +2836,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 }
             } guard(set_process_attached_on_exit);
 
+            display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
+            display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
             ProcessAttachEarlyResult early = ProcessAttach_EarlyChecksAndInit(h_module);
             if (early == ProcessAttachEarlyResult::RefuseLoad) {
                 return TRUE;
@@ -2893,7 +2890,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 break;
             }
 
-            if (!reshade::register_addon(h_module)) {
+            if (!FinishAddonRegistration(h_module, nullptr, false)) {
                 {
                     char msg[512];
                     snprintf(msg, sizeof(msg), "g_module handle: 0x%p", g_hmodule);
@@ -2925,7 +2922,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             g_dll_initialization_complete.store(true);
             reason = "RegisterAndPostInit complete";
 
-            RegisterReShadeEvents(h_module);
+            // RegisterReShadeEvents(h_module);
             break;
         }
         case DLL_THREAD_ATTACH: {

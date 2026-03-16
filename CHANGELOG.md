@@ -2,6 +2,9 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
+## v0.12.560
+- [cleanup] **DllMain refactor** - Refactored `DllMain` in main_entry.cpp for clearer structure and flow. Behavior unchanged.
+
 ## v0.12.559
 - [compatibility] **ReShade Vulkan layer detection (log only)** - When the current game exe is listed in ReShade's Vulkan layer apps list (`C:\ProgramData\ReShade\ReShadeApps.ini`, `Apps=`), the addon now logs a single line: "ReShade registered as Vulkan layer for this exe." No change to load or registration behavior. Details: `utils/reshade_vulkan_layer_detector.hpp`, `utils/reshade_vulkan_layer_detector.cpp`; `main_entry.cpp` calls `IsReShadeRegisteredAsVulkanLayerForCurrentExe()` and logs when true.
 

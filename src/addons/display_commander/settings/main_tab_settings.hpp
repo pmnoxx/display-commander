@@ -215,6 +215,8 @@ class MainTabSettings {
      * Brightness and AutoHDR section is disabled. Default on. */
     ui::new_ui::BoolSetting brightness_autohdr_section_enabled;
     ui::new_ui::FloatSetting brightness_percent;
+    /** Windows SDR content brightness (nits, 80–480) when HDR is on. Slider in Brightness and AutoHDR when applicable. */
+    ui::new_ui::FloatSetting sdr_content_brightness_nits;
     /** Decode only: how to interpret backbuffer (DECODE_METHOD). Default scRGB (1). */
     ui::new_ui::ComboSetting swapchain_colorspace;  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None
     /** Encode only: output color space (ENCODE_METHOD). */

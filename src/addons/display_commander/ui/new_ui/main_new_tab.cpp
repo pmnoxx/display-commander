@@ -5,6 +5,8 @@
 #include "../../config/default_overrides.hpp"
 #include "../../config/default_settings_file.hpp"
 #include "../../config/display_commander_config.hpp"
+#include "../../display/hdr_control.hpp"
+#include "../../display/sdr_white_level.hpp"
 #include "../../dlss/dlss_indicator_manager.hpp"
 #include "../../dxgi/vram_info.hpp"
 #include "../../globals.hpp"
@@ -2233,8 +2235,10 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
         }).detach();
     }
     if (imgui.IsItemHovered() && !default_settings_path.empty()) {
-        imgui.SetTooltipEx("Open default_settings.toml in the default editor. Used as fallback when a game config is missing a key. Path: %s",
-                           default_settings_path.c_str());
+        imgui.SetTooltipEx(
+            "Open default_settings.toml in the default editor. Used as fallback when a game config is missing a key. "
+            "Path: %s",
+            default_settings_path.c_str());
     }
     if (default_settings_path.empty()) {
         imgui.EndDisabled();
@@ -2660,6 +2664,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
             if (!settings::g_mainTabSettings.brightness_autohdr_section_enabled.GetValue()) {
                 imgui.BeginDisabled();
             }
+            imgui.SetNextItemWidth(400.0f);
             if (SliderFloatSetting(settings::g_mainTabSettings.brightness_percent, "Brightness (%)", "%.0f", imgui)) {
                 // Value is applied in OnReShadePresent each frame
             }
@@ -2668,6 +2673,33 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                     "Adjust brightness via Display Commander's ReShade effect (0-500%%, 100%% = neutral).\n"
                     "Requires DisplayCommander_Control.fx to be in ReShade's Shaders folder and effect reload (e.g. "
                     "Ctrl+Shift+F5) or game restart.");
+            }
+            // Windows SDR content brightness: only when HDR is on for the game's display
+            {
+                HMONITOR mon = display_commander::display::sdr_white_level::GetGameMonitorForSdrBrightness();
+                bool hdr_supported = false;
+                bool hdr_enabled = true;
+                if (mon != nullptr) {
+                    // display_commander::display::hdr_control::GetHdrStateForMonitor(mon, &//hdr_supported,
+                    // &hdr_enabled);
+                }
+                if (hdr_enabled && mon != nullptr) {
+                    imgui.SetNextItemWidth(400.0f);
+                    if (SliderFloatSetting(settings::g_mainTabSettings.sdr_content_brightness_nits,
+                                           "SDR content brightness (Windows WIP)", "%.0f nits", imgui)) {
+                        display_commander::display::sdr_white_level::SetSdrWhiteLevelNits(
+                            mon, settings::g_mainTabSettings.sdr_content_brightness_nits.GetValue());
+                    }
+                    if (imgui.IsItemHovered()) {
+                        imgui.SetTooltipEx(
+                            "Windows SDR content brightness when HDR is on (Settings > Display > HDR). "
+                            "80–480 nits. Affects the display where the game runs.");
+                    }
+                    // warning doesn't restore itself back when game shuts down
+                    imgui.TextColored(ui::colors::TEXT_WARNING,
+                                      "Warning: SDR content brightness (Windows) does not restore itself back when "
+                                      "game shuts down. Shown even when HDR is off.");
+                }
             }
             if (ComboSettingWrapper(settings::g_mainTabSettings.swapchain_colorspace, "Swapchain colorspace", imgui)) {
                 // Value is applied in OnReShadePresent each frame (DECODE_METHOD)

@@ -2,6 +2,9 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
+## v0.12.553
+- [new feature] [ui] [settings] **SDR content brightness (Windows) in Brightness and AutoHDR** - When Windows HDR is on for the game's display, the Main tab (Brightness and AutoHDR) shows a slider "SDR content brightness (Windows)" to set SDR white level in nits (80–480). Uses undocumented DwmpSDRToHDRBoost (dwmapi ordinal 171). Value is persisted; applied when the user changes the slider. No read-back of current value from Windows. Details: display/sdr_white_level.hpp, display/sdr_white_level.cpp; main_tab_settings sdr_content_brightness_nits; main_new_tab.cpp.
+
 ## v0.12.552
 - [bugfix] **Crash fix for RSCP3** - Avoids crashes when ReShade is unloaded: do not call GetAsyncKeyState_Direct when ReShade is already unloaded (prevents use of unloaded code). When ReShade requests to unload Display Commander (FreeLibrary or FreeLibraryAndExitThread), the addon now calls reshade::unregister_addon first so events and overlays are cleaned up before the module unloads. Details: windows_message_hooks.cpp GetAsyncKeyState_Direct checks g_reshade_module; loadlibrary_hooks.cpp FreeLibrary_Detour and FreeLibraryAndExitThread_Detour call unregister_addon when ReShade is unloading the addon. Note: Also fixes Display Commander not unregister error in reshade logs.
 

@@ -1,5 +1,6 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "notes_tab.hpp"
+#include "../../res/forkawesome.h"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../imgui_wrapper_base.hpp"
@@ -102,15 +103,39 @@ void DrawNotesTab(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.TextDisabled("Path: %s", notes_path.string().c_str());
     imgui.Spacing();
 
-    if (imgui.Button("Save")) {
+    if (imgui.Button(ICON_FK_FLOPPY " Save")) {
         SaveNotesToFile();
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx("Save notes to file. Also saved automatically when the input loses focus.");
     }
     imgui.SameLine();
+    if (imgui.Button(ICON_FK_FILE " Open")) {
+        std::error_code ec;
+        if (std::filesystem::exists(notes_path, ec)) {
+            std::string path_str = notes_path.string();
+            HINSTANCE result = ShellExecuteA(nullptr, "open", path_str.c_str(), nullptr, nullptr, SW_SHOW);
+            if (reinterpret_cast<intptr_t>(result) <= 32) {
+                LogError("Failed to open notes file: %s (Error: %d)", path_str.c_str(),
+                         static_cast<int>(reinterpret_cast<intptr_t>(result)));
+            }
+        } else {
+            if (SaveNotesToFile()) {
+                std::string path_str = notes_path.string();
+                HINSTANCE result = ShellExecuteA(nullptr, "open", path_str.c_str(), nullptr, nullptr, SW_SHOW);
+                if (reinterpret_cast<intptr_t>(result) <= 32) {
+                    LogError("Failed to open notes file: %s (Error: %d)", path_str.c_str(),
+                             static_cast<int>(reinterpret_cast<intptr_t>(result)));
+                }
+            }
+        }
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltipEx("Open the notes file in the default text editor.");
+    }
+    imgui.SameLine();
     std::filesystem::path notes_dir = notes_path.parent_path();
-    if (imgui.Button("Open folder")) {
+    if (imgui.Button(ICON_FK_FOLDER_OPEN " Open folder")) {
         std::error_code ec;
         if (!std::filesystem::exists(notes_dir, ec)) {
             std::filesystem::create_directories(notes_dir, ec);

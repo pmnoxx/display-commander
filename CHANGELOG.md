@@ -3,6 +3,7 @@
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 ## v0.12.569 (unreleased)
+- [ui] **Notes tab: Open button and icons** - Notes tab now has an **Open** button that opens the current game's notes file in the default text editor (creates and saves the file first if it doesn't exist). Save, Open, and Open folder buttons use ForkAwesome icons (floppy, file, folder-open). Details: notes_tab.cpp; res/forkawesome.h.
 - [bugfix] [ui] [settings] **Games and Hotkeys tab checkboxes** - Main → Show Individual Tabs includes "Show Games Tab" and "Show Hotkeys Tab" (both default on). The tab bar now respects these checkboxes: Games and Hotkeys (and the NVIDIA Profile tab) show or hide when you toggle them; previously they only appeared when "Show All Tabs" was on. Standalone settings window also respects these settings. Details: new_ui_tabs.cpp tab-bar visibility loop now checks show_games_tab, show_hotkeys_tab, show_nvidia_profile_tab; main_tab_settings, cli_standalone_ui.cpp.
 
 ## v0.12.568

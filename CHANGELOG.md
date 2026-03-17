@@ -2,6 +2,9 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
+## v0.12.577 (unreleased)
+- [ui] **Add DC Shaders/Textures tooltip shows ReShade path values** - The tooltip for "Add DC Shaders/Textures to ReShade paths" now shows two lines with the current ReShade config values: EffectSearchPaths and TextureSearchPaths (from GENERAL section), read via `get_config_value`. Paths are shown separated by "; "; "—" when a value is missing or empty. Details: main_new_tab.cpp DrawUpdatesSectionContent tooltip; uses nullptr for global config.
+
 ## v0.12.576 (unreleased)
 - [compatibility] **ReShade config overrides use runtime when available** - When applying ReShade settings (window/docking, tutorial/updates, DC shader paths), the addon now passes the current effect runtime to `get_config_value`/`set_config_value` when one is available (e.g. from `OnInitEffectRuntime`). Each runtime’s .ini (ReShade.ini, ReShade2.ini, etc.) is updated correctly instead of always writing to the global/current config. Call sites without a runtime still pass `nullptr`. Details: OverrideReShadeSettings(runtime) and helpers take optional runtime; addon.hpp declaration; main_entry.cpp, main_new_tab.cpp call sites.
 

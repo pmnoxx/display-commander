@@ -84,6 +84,7 @@ EXTERN_C const GUID IID_IDirect3DDevice9 = {
 #include <atomic>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <functional>
 #include <iomanip>
 #include <sstream>
@@ -2298,9 +2299,39 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
         OverrideReShadeSettings(nullptr);
     }
     if (imgui.IsItemHovered()) {
+        std::string effect_display = "—";
+        std::string texture_display = "—";
+        // Use same runtime as OverrideReShadeSettings: nullptr = global ReShade config
+        char buf[4096] = {0};
+        size_t buf_size = sizeof(buf);
+        if (reshade::get_config_value(nullptr, "GENERAL", "EffectSearchPaths", buf, &buf_size) && buf_size > 0) {
+            std::string combined;
+            const char* ptr = buf;
+            while (ptr < buf + sizeof(buf) && *ptr != '\0') {
+                if (!combined.empty()) combined += "; ";
+                combined += ptr;
+                ptr += std::strlen(ptr) + 1;
+            }
+            if (!combined.empty()) effect_display = std::move(combined);
+        }
+        buf_size = sizeof(buf);
+        std::memset(buf, 0, sizeof(buf));
+        if (reshade::get_config_value(nullptr, "GENERAL", "TextureSearchPaths", buf, &buf_size) && buf_size > 0) {
+            std::string combined;
+            const char* ptr = buf;
+            while (ptr < buf + sizeof(buf) && *ptr != '\0') {
+                if (!combined.empty()) combined += "; ";
+                combined += ptr;
+                ptr += std::strlen(ptr) + 1;
+            }
+            if (!combined.empty()) texture_display = std::move(combined);
+        }
         imgui.SetTooltipEx(
             "When on: Display Commander adds its Shaders/Textures folder to ReShade's EffectSearchPaths and "
-            "TextureSearchPaths. When off: DC removes those paths from ReShade config.");
+            "TextureSearchPaths. When off: DC removes those paths from ReShade config.\n\n"
+            "EffectSearchPaths: %s\n"
+            "TextureSearchPaths: %s",
+            effect_display.c_str(), texture_display.c_str());
     }
     const bool backup_effective = settings::g_advancedTabSettings.auto_enable_reshade_config_backup.GetValue()
                                   || settings::g_mainTabSettings.auto_reshade_config_backup.GetValue();

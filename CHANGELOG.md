@@ -2,6 +2,10 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
+## v0.12.580 (unreleased)
+- [new feature] [settings] **Config path: .DC_CONFIG_IN_DLL** - If an empty file named `.DC_CONFIG_IN_DLL` exists in the same folder as the Display Commander addon (the .addon64/.addon32 or proxy DLL), config and ReShade data are stored in that addon folder instead of the game exe directory. Useful for global or shared addon installs. Otherwise the game exe directory is used. Details: ChooseAndSetDcConfigPath in main_entry.cpp; README Installation and Expert – flag files.
+- [cleanup] **README: config paths and expert flags** - Documented default config/ReShade paths and the `.DC_CONFIG_IN_DLL` option in Installation. Expert – flag files now list each flag on its own line (game exe directory: `.NO_RESHADE`, `.NODC`, `.UI`, `.NO_EXIT`, `.GET_PROC_ADDRESS`; addon folder: `.DC_CONFIG_IN_DLL`, `.DLL_DETECTOR`). Details: README.md.
+
 ## v0.12.579 (unreleased)
 - [cleanup] **Refactored DC config path** - Config directory is now stored in `g_dc_config_directory` (set at process attach to exe path) and passed into `DisplayCommanderConfigManager::Initialize(std::optional<std::wstring_view> config_directory)`. Call sites in main_entry (DLL attach, no-ReShade init, injection) pass the global when available; config manager uses it for DisplayCommander.toml, .ini, and log paths. Enables a future way to change the config path. Details: globals.hpp/cpp g_dc_config_directory; display_commander_config Initialize overload; main_entry.cpp.
 

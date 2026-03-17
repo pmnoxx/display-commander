@@ -81,7 +81,17 @@ Note: Applying window operations from the main thread can crash some apps. This 
 - **Continue rendering in background**: Game keeps rendering when alt-tabbed (no minimize/focus spoofing)
 - **Standalone / independent UI**: Run settings in a separate window or without ReShade (.NO_RESHADE, SetupDC)
 - **Proxy loading**: Load as dxgi.dll, d3d9.dll, d3d11.dll, d3d12.dll, ddraw.dll, dinput8.dll, hid.dll, bcrypt.dll, version.dll, opengl32.dll, dbghelp.dll, vulkan-1.dll, or winhttp.dll proxy when needed. When loaded as **winhttp.dll**, the Main tab shows a warning: the proxy is not signed by Microsoft and may cause network connection issues (blocked traffic, login failures); consider using another proxy (e.g. dxgi.dll) if you see network problems.
-- **Expert – flag files**: Optional files in the game exe directory (e.g. `.NO_RESHADE`, `.GET_PROC_ADDRESS`) enable standalone mode, GetProcAddress logging, block-exit debugging, and more. See [Expert: Flag files in the game directory](docs/EXPERT_FLAG_FILES.md).
+- **Expert – flag files**: Optional flag files change behavior (e.g. `.NO_RESHADE`, `.NODC`).  
+  **In the game exe directory:**  
+  - `.NO_RESHADE` / `.NORESHADE` — standalone mode (no ReShade; settings UI only)  
+  - `.NODC` — load ReShade only, do not register as addon (proxy-only)  
+  - `.UI` — open independent settings window at start  
+  - `.NO_EXIT` / `.NOEXIT` — block process exit; open independent UI when game tries to exit (debugging)  
+  - `.GET_PROC_ADDRESS` — GetProcAddress logging  
+  **In the addon (DLL) folder:**  
+  - `.DC_CONFIG_IN_DLL` — store config and ReShade data in the addon folder instead of the game folder  
+  - `.DLL_DETECTOR` — copy addon to `dlls_loaded` and exit (for detecting which DLLs the game loads)  
+  See [Expert: Flag files in the game directory](docs/EXPERT_FLAG_FILES.md).
 - **Addon directory DLL loading**: From the same folder as the addon, **.dc64 / .dc32 / .dc / .asi** are loaded before ReShade; **.dc64r / .dc32r / .dcr** are loaded after ReShade (for addons that need the ReShade API). Post-ReShade addons use a temp copy so originals can be updated while the game runs.
 - **NVIDIA Profile (Inspector)**: View and edit driver profile for the current game; apply as administrator
 - **CPU control**: Core affinity and process priority (Main / Settings tab in standalone)
@@ -109,6 +119,8 @@ For a comprehensive list of known issues and workarounds, see [KNOWN_ISSUES.md](
 2. Copy the file `zzz_display_commander.addon64` (or `.addon32` for 32-bit) to the folder where ReShade is loaded for your game (the same folder as the ReShade runtime, e.g., `dxgi.dll`).
    - Alternatively, place it into your global ReShade installation directory (for example `D:\\Program Files\\ReShade`).
 3. Launch the game, open the ReShade overlay (Home by default), go to the Add-ons tab, and locate "Display Commander".
+
+**Config and ReShade paths**: By default, Display Commander and ReShade store their config (e.g. `DisplayCommander.toml`, `ReShade.ini`) in the **game exe directory**. If you use a global or shared addon location and want config next to the addon instead, create an empty file named **`.DC_CONFIG_IN_DLL`** in the same folder as the Display Commander addon (the `.addon64`/`.addon32` or the proxy DLL). Config and ReShade data will then use that addon folder.
 
 **Note**: For the latest stable release compatible with ReShade 6.6.2, download from [Latest Release](https://github.com/pmnoxx/display-commander/releases).
 

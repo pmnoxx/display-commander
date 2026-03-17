@@ -1881,6 +1881,31 @@ constexpr const wchar_t* INJECTION_STOP_EVENT_NAME = L"Local\\DisplayCommander_I
 namespace {
 enum class ProcessAttachEarlyResult { Continue, RefuseLoad, EarlySuccess, LoaderOnly };
 
+// If empty file ".DC_CONFIG_IN_DLL" exists next to the Display Commander module, use module path as config path;
+// otherwise use game exe path. Sets RESHADE_BASE_PATH_OVERRIDE and g_dc_config_directory.
+static void ChooseAndSetDcConfigPath(HMODULE h_module) {
+    std::wstring config_path_w;
+    WCHAR module_path[MAX_PATH] = {};
+    if (GetModuleFileNameW(h_module, module_path, MAX_PATH) > 0) {
+        std::filesystem::path dll_dir = std::filesystem::path(module_path).parent_path();
+        std::error_code ec;
+        if (std::filesystem::is_regular_file(dll_dir / L".DC_CONFIG_IN_DLL", ec) && !ec) {
+            config_path_w = dll_dir.wstring();
+        }
+    }
+    if (config_path_w.empty()) {
+        WCHAR exe_path[MAX_PATH] = {};
+        if (GetModuleFileNameW(nullptr, exe_path, MAX_PATH) == 0) return;
+        WCHAR* last_slash = wcsrchr(exe_path, L'\\');
+        if (last_slash == nullptr || last_slash <= exe_path) return;
+        *last_slash = L'\0';
+        config_path_w = exe_path;
+    }
+    if (config_path_w.empty()) return;
+    SetEnvironmentVariableW(L"RESHADE_BASE_PATH_OVERRIDE", config_path_w.c_str());
+    g_dc_config_directory.store(std::make_shared<std::wstring>(config_path_w));
+}
+
 std::wstring ProcessAttach_GetConfigDirectoryW() {
     auto dir = g_dc_config_directory.load(std::memory_order_acquire);
     if (dir != nullptr && !dir->empty()) return *dir;
@@ -2939,18 +2964,8 @@ void ResolveAndLogDllMainFunctionStack() {
 BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     switch (fdw_reason) {
         case DLL_PROCESS_ATTACH: {
-            // Set ReShade base path and DC config directory to exe path (game exe directory), before any LoadLibrary of ReShade.
-            {
-                WCHAR exe_path[MAX_PATH] = {};
-                if (GetModuleFileNameW(nullptr, exe_path, MAX_PATH) > 0) {
-                    WCHAR* last_slash = wcsrchr(exe_path, L'\\');
-                    if (last_slash != nullptr && last_slash > exe_path) {
-                        *last_slash = L'\0';
-                        SetEnvironmentVariableW(L"RESHADE_BASE_PATH_OVERRIDE", exe_path);
-                        g_dc_config_directory.store(std::make_shared<std::wstring>(exe_path));
-                    }
-                }
-            }
+            // Set ReShade base path and DC config directory (DLL dir if .DC_CONFIG_IN_DLL present, else exe dir), before any LoadLibrary of ReShade.
+            ChooseAndSetDcConfigPath(h_module);
             CaptureDllLoadCallerPath(h_module);
             EnsureDisplayCommanderLogWithModulePath(h_module);
 

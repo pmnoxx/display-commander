@@ -1657,7 +1657,8 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
                     settings::g_mainTabSettings.show_performance_tab.GetValue() ? "enabled" : "disabled");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Shows the Performance tab (experimental measurements) even when 'Show All Tabs' is disabled.");
+            imgui.SetTooltipEx(
+                "Shows the Performance tab (experimental measurements) even when 'Show All Tabs' is disabled.");
         }
     }
 
@@ -1708,7 +1709,8 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
                     settings::g_mainTabSettings.show_notes_tab.GetValue() ? "enabled" : "disabled");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Shows the Notes tab for per-game notes (stored in Display_Commander\\Games\\<game>\\notes.txt).");
+            imgui.SetTooltipEx(
+                "Shows the Notes tab for per-game notes (stored in Display_Commander\\Games\\<game>\\notes.txt).");
         }
     }
 
@@ -3058,9 +3060,8 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                         reshade::api::resource bb = runtime->get_back_buffer(0);
                         if (bb != 0) {
                             const auto fmt = device->get_resource_desc(bb).texture.format;
-                            backbuffer_8bit =
-                                (fmt == reshade::api::format::r8g8b8a8_unorm
-                                 || fmt == reshade::api::format::b8g8r8a8_unorm);
+                            backbuffer_8bit = (fmt == reshade::api::format::r8g8b8a8_unorm
+                                               || fmt == reshade::api::format::b8g8r8a8_unorm);
                         }
                     }
                 }
@@ -3068,9 +3069,8 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                     auto desc_ptr = g_last_swapchain_desc_post.load();
                     if (desc_ptr != nullptr) {
                         const auto fmt = desc_ptr->back_buffer.texture.format;
-                        backbuffer_8bit =
-                            (fmt == reshade::api::format::r8g8b8a8_unorm
-                             || fmt == reshade::api::format::b8g8r8a8_unorm);
+                        backbuffer_8bit = (fmt == reshade::api::format::r8g8b8a8_unorm
+                                           || fmt == reshade::api::format::b8g8r8a8_unorm);
                     }
                 }
                 if (backbuffer_8bit) {
@@ -3732,7 +3732,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
 void DrawQuickFpsLimitChanger(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
     CALL_GUARD(utils::get_now_ns());
-    const float selected_epsilon = 0.0001f;
+    const float selected_epsilon = 0.002f;
     auto window_state = ::g_window_state.load();
     double refresh_hz = window_state ? window_state->current_monitor_refresh_rate.ToHz() : 0.0;
     int y = static_cast<int>(std::round(refresh_hz));
@@ -3846,7 +3846,7 @@ void DrawQuickFpsLimitChanger(display_commander::ui::IImGuiWrapper& imgui) {
 }
 
 void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& imgui,
-                                         reshade::api::effect_runtime* runtime) {
+                                          reshade::api::effect_runtime* runtime) {
     (void)imgui;
     CALL_GUARD(utils::get_now_ns());
     {
@@ -6061,7 +6061,7 @@ static void DrawDisplaySettings_DXGI(display_commander::ui::IImGuiWrapper& imgui
 }
 
 void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui,
-                        reshade::api::effect_runtime* runtime) {
+                         reshade::api::effect_runtime* runtime) {
     CALL_GUARD(utils::get_now_ns());
     DrawDisplaySettings_DisplayAndTarget(imgui, runtime);
     DrawDisplaySettings_WindowModeAndApply(imgui);

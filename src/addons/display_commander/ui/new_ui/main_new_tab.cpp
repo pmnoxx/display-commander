@@ -2563,6 +2563,11 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
 }
 
 void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui) {
+    DrawMainNewTab(api, imgui, nullptr);
+}
+
+void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui,
+                    reshade::api::effect_runtime* runtime) {
     (void)api;
     CALL_GUARD(utils::get_now_ns());
     RefreshReShadeModuleIfNeeded();
@@ -2886,7 +2891,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
     g_rendering_ui_section.store("ui:tab:main_new:display_settings", std::memory_order_release);
     if (imgui.CollapsingHeader("Display Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
         imgui.Indent();
-        DrawDisplaySettings(api, imgui);
+        DrawDisplaySettings(api, imgui, runtime);
         imgui.Unindent();
     }
 
@@ -3045,13 +3050,28 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                 imgui.BeginDisabled();
             }
             if (settings::g_mainTabSettings.auto_hdr.GetValue()) {
-                // Warning when 8-bit backbuffer: recommend RenoDX for SDR->HDR upgrade
-                auto desc_ptr = g_last_swapchain_desc_post.load();
+                // Warning when 8-bit backbuffer: recommend RenoDX for SDR->HDR upgrade (format from runtime or desc)
                 bool backbuffer_8bit = false;
-                if (desc_ptr != nullptr) {
-                    const auto fmt = desc_ptr->back_buffer.texture.format;
-                    backbuffer_8bit =
-                        (fmt == reshade::api::format::r8g8b8a8_unorm || fmt == reshade::api::format::b8g8r8a8_unorm);
+                if (runtime != nullptr) {
+                    reshade::api::device* device = runtime->get_device();
+                    if (device != nullptr) {
+                        reshade::api::resource bb = runtime->get_back_buffer(0);
+                        if (bb != 0) {
+                            const auto fmt = device->get_resource_desc(bb).texture.format;
+                            backbuffer_8bit =
+                                (fmt == reshade::api::format::r8g8b8a8_unorm
+                                 || fmt == reshade::api::format::b8g8r8a8_unorm);
+                        }
+                    }
+                }
+                if (!backbuffer_8bit) {
+                    auto desc_ptr = g_last_swapchain_desc_post.load();
+                    if (desc_ptr != nullptr) {
+                        const auto fmt = desc_ptr->back_buffer.texture.format;
+                        backbuffer_8bit =
+                            (fmt == reshade::api::format::r8g8b8a8_unorm
+                             || fmt == reshade::api::format::b8g8r8a8_unorm);
+                    }
                 }
                 if (backbuffer_8bit) {
                     imgui.TextColored(::ui::colors::ICON_WARNING, ICON_FK_WARNING
@@ -3825,7 +3845,8 @@ void DrawQuickFpsLimitChanger(display_commander::ui::IImGuiWrapper& imgui) {
     }
 }
 
-void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& imgui) {
+void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& imgui,
+                                         reshade::api::effect_runtime* runtime) {
     (void)imgui;
     CALL_GUARD(utils::get_now_ns());
     {
@@ -3844,30 +3865,61 @@ void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& 
             }
         }
 
-        // Render resolution and refresh rate on the same line: "Render resolution: XXX Refresh rate: XXX"
-        int game_render_w = g_game_render_width.load();
-        int game_render_h = g_game_render_height.load();
-        if (game_render_w > 0 && game_render_h > 0) {
+        // Backbuffer size: from runtime when available, else from game render size
+        uint32_t backbuffer_w = 0;
+        uint32_t backbuffer_h = 0;
+        reshade::api::format backbuffer_format = reshade::api::format::unknown;
+        if (runtime != nullptr) {
+            runtime->get_screenshot_width_and_height(&backbuffer_w, &backbuffer_h);
+            reshade::api::device* device = runtime->get_device();
+            if (device != nullptr) {
+                reshade::api::resource bb = runtime->get_back_buffer(0);
+                if (bb != 0) {
+                    backbuffer_format = device->get_resource_desc(bb).texture.format;
+                }
+            }
+            if (backbuffer_format == reshade::api::format::unknown) {
+                auto desc_ptr = g_last_swapchain_desc_post.load();
+                if (desc_ptr != nullptr) {
+                    backbuffer_format = desc_ptr->back_buffer.texture.format;
+                }
+            }
+        }
+        if (backbuffer_w == 0 || backbuffer_h == 0) {
+            backbuffer_w = static_cast<uint32_t>(g_game_render_width.load());
+            backbuffer_h = static_cast<uint32_t>(g_game_render_height.load());
+            if (backbuffer_w == 0 || backbuffer_h == 0) {
+                auto desc_ptr = g_last_swapchain_desc_post.load();
+                if (desc_ptr != nullptr) {
+                    backbuffer_w = desc_ptr->back_buffer.texture.width;
+                    backbuffer_h = desc_ptr->back_buffer.texture.height;
+                    backbuffer_format = desc_ptr->back_buffer.texture.format;
+                }
+            } else {
+                auto desc_ptr = g_last_swapchain_desc_post.load();
+                if (desc_ptr != nullptr) {
+                    backbuffer_format = desc_ptr->back_buffer.texture.format;
+                }
+            }
+        }
+
+        if (backbuffer_w > 0 && backbuffer_h > 0) {
             imgui.TextColored(ui::colors::TEXT_LABEL, "Render resolution:");
             imgui.SameLine();
-            imgui.Text("%dx%d", game_render_w, game_render_h);
+            imgui.Text("%ux%u", static_cast<unsigned>(backbuffer_w), static_cast<unsigned>(backbuffer_h));
 
-            // Get bit depth from swapchain format (optional, in parens)
-            auto desc_ptr = g_last_swapchain_desc_post.load();
-            if (desc_ptr != nullptr) {
-                const char* bit_depth_str = nullptr;
-                switch (desc_ptr->back_buffer.texture.format) {
-                    case reshade::api::format::r8g8b8a8_unorm:
-                    case reshade::api::format::b8g8r8a8_unorm:     bit_depth_str = "8-bit"; break;
-                    case reshade::api::format::r10g10b10a2_unorm:  bit_depth_str = "10-bit"; break;
-                    case reshade::api::format::r16g16b16a16_float: bit_depth_str = "16-bit"; break;
-                    default:                                       break;
-                }
-
-                if (bit_depth_str != nullptr) {
-                    imgui.SameLine();
-                    imgui.TextColored(ui::colors::TEXT_DIMMED, " (%s)", bit_depth_str);
-                }
+            // Bit depth from runtime or swapchain desc (optional, in parens)
+            const char* bit_depth_str = nullptr;
+            switch (backbuffer_format) {
+                case reshade::api::format::r8g8b8a8_unorm:
+                case reshade::api::format::b8g8r8a8_unorm:     bit_depth_str = "8-bit"; break;
+                case reshade::api::format::r10g10b10a2_unorm:  bit_depth_str = "10-bit"; break;
+                case reshade::api::format::r16g16b16a16_float: bit_depth_str = "16-bit"; break;
+                default:                                       break;
+            }
+            if (bit_depth_str != nullptr) {
+                imgui.SameLine();
+                imgui.TextColored(ui::colors::TEXT_DIMMED, " (%s)", bit_depth_str);
             }
 
             // Refresh rate on same line: "Refresh rate: XXX" (actual NVAPI smoothed alpha 0.02, else selected display)
@@ -6008,9 +6060,10 @@ static void DrawDisplaySettings_DXGI(display_commander::ui::IImGuiWrapper& imgui
     }
 }
 
-void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui) {
+void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui,
+                        reshade::api::effect_runtime* runtime) {
     CALL_GUARD(utils::get_now_ns());
-    DrawDisplaySettings_DisplayAndTarget(imgui);
+    DrawDisplaySettings_DisplayAndTarget(imgui, runtime);
     DrawDisplaySettings_WindowModeAndApply(imgui);
     DrawDisplaySettings_FpsLimiter(imgui);
 

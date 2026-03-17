@@ -14,13 +14,19 @@ display_commander::ui::GraphicsApi GetGraphicsApiFromRuntime(reshade::api::effec
 display_commander::ui::GraphicsApi GetGraphicsApiFromLastDeviceApi();
 
 // Draw the main new tab content (api = device API in ReShade; GraphicsApi::Unknown in standalone).
+// Two-arg overload for standalone UI (no runtime); three-arg when runtime is provided (backbuffer size/format from runtime).
 void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui);
+void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui,
+                    reshade::api::effect_runtime* runtime);
 
-// Draw display settings section (api = device API when in ReShade; Unknown in standalone)
-void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui);
+// Draw display settings section (api = device API when in ReShade; Unknown in standalone).
+// When runtime is non-null, backbuffer size/format in Display and Target use the runtime.
+void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui,
+                        reshade::api::effect_runtime* runtime = nullptr);
 
 // Display settings section helpers (split from DrawDisplaySettings)
-void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& imgui);
+void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& imgui,
+                                         reshade::api::effect_runtime* runtime = nullptr);
 void DrawDisplaySettings_WindowModeAndApply(display_commander::ui::IImGuiWrapper& imgui);
 void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui);
 void DrawDisplaySettings_VSyncAndTearing(display_commander::ui::IImGuiWrapper& imgui);

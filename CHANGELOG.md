@@ -2,6 +2,9 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
+## v0.12.579 (unreleased)
+- [cleanup] **Refactored DC config path** - Config directory is now stored in `g_dc_config_directory` (set at process attach to exe path) and passed into `DisplayCommanderConfigManager::Initialize(std::optional<std::wstring_view> config_directory)`. Call sites in main_entry (DLL attach, no-ReShade init, injection) pass the global when available; config manager uses it for DisplayCommander.toml, .ini, and log paths. Enables a future way to change the config path. Details: globals.hpp/cpp g_dc_config_directory; display_commander_config Initialize overload; main_entry.cpp.
+
 ## v0.12.578 (unreleased)
 - [bugfix] [compatibility] **Fixed ReShade config path** - ReShade now creates its config (ReShade.ini, etc.) in the game exe directory even when ReShade is loaded globally (e.g. from System32 or a shared install). Display Commander sets `RESHADE_BASE_PATH_OVERRIDE` at the start of `DLL_PROCESS_ATTACH` to the same path it uses for DisplayCommander.toml. Details: main_entry.cpp.
 

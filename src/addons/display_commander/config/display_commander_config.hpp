@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 #include "../utils/srwlock_wrapper.hpp"
@@ -16,8 +17,8 @@ class DisplayCommanderConfigManager {
    public:
     static DisplayCommanderConfigManager& GetInstance();
 
-    // Initialize the config system
-    void Initialize();
+    // Initialize the config system. If config_directory is set, use it as the config dir (DisplayCommander.toml location); otherwise use exe directory.
+    void Initialize(std::optional<std::wstring_view> config_directory = std::nullopt);
 
     // Get configuration value (compatible with reshade::get_config_value API)
     bool GetConfigValue(const char* section, const char* key, std::string& value);

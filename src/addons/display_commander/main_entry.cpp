@@ -81,6 +81,7 @@
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <optional>
 #include <reshade.hpp>
 #include <set>
 #include <sstream>
@@ -1881,6 +1882,8 @@ namespace {
 enum class ProcessAttachEarlyResult { Continue, RefuseLoad, EarlySuccess, LoaderOnly };
 
 std::wstring ProcessAttach_GetConfigDirectoryW() {
+    auto dir = g_dc_config_directory.load(std::memory_order_acquire);
+    if (dir != nullptr && !dir->empty()) return *dir;
     wchar_t exe_path[MAX_PATH];
     if (GetModuleFileNameW(nullptr, exe_path, MAX_PATH) == 0) return L"";
     return std::filesystem::path(exe_path).parent_path().wstring();
@@ -2456,7 +2459,9 @@ bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/, bool found_
 
 void ProcessAttach_NoReShadeModeInit(HMODULE h_module) {
     g_hmodule = h_module;
-    display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
+    auto dc_dir = g_dc_config_directory.load(std::memory_order_acquire);
+    display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize(
+        (dc_dir && !dc_dir->empty()) ? std::optional<std::wstring_view>(*dc_dir) : std::nullopt);
     display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
     utils::initialize_qpc_timing_constants();
     DoInitializationWithoutHwndSafe(h_module);
@@ -2934,7 +2939,7 @@ void ResolveAndLogDllMainFunctionStack() {
 BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     switch (fdw_reason) {
         case DLL_PROCESS_ATTACH: {
-            // Set ReShade base path to the same directory DC uses for config (game exe directory), before any LoadLibrary of ReShade.
+            // Set ReShade base path and DC config directory to exe path (game exe directory), before any LoadLibrary of ReShade.
             {
                 WCHAR exe_path[MAX_PATH] = {};
                 if (GetModuleFileNameW(nullptr, exe_path, MAX_PATH) > 0) {
@@ -2942,6 +2947,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                     if (last_slash != nullptr && last_slash > exe_path) {
                         *last_slash = L'\0';
                         SetEnvironmentVariableW(L"RESHADE_BASE_PATH_OVERRIDE", exe_path);
+                        g_dc_config_directory.store(std::make_shared<std::wstring>(exe_path));
                     }
                 }
             }
@@ -2982,7 +2988,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 }
             } guard(set_process_attached_on_exit);
 
-            display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
+            auto dc_dir = g_dc_config_directory.load(std::memory_order_acquire);
+            display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize(
+                (dc_dir && !dc_dir->empty()) ? std::optional<std::wstring_view>(*dc_dir) : std::nullopt);
             display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
 
             // If loaded as .dll proxy, detect and rename unused DC proxy DLLs in the same directory.
@@ -3298,7 +3306,9 @@ void StartInjectionInternal(bool forever) {
         std::format("StartInjectionInternal PID: {}, forever: {}", GetCurrentProcessId(), forever).c_str());
 
     // Initialize config system for logging
-    display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
+    auto dc_dir = g_dc_config_directory.load(std::memory_order_acquire);
+    display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize(
+        (dc_dir && !dc_dir->empty()) ? std::optional<std::wstring_view>(*dc_dir) : std::nullopt);
     display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
 
     // Check if hook is already active

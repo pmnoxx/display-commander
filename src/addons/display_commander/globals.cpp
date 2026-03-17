@@ -441,6 +441,9 @@ std::atomic<std::shared_ptr<const std::string>> g_hdr10_override_timestamp{std::
 // Config save failure path (thread-safe, updated by config manager, read by UI thread)
 std::atomic<std::shared_ptr<const std::string>> g_config_save_failure_path{nullptr};
 
+// DC config directory (set at process attach; overridable later)
+std::atomic<std::shared_ptr<const std::wstring>> g_dc_config_directory{nullptr};
+
 // Multiple Display Commander versions detection
 std::atomic<std::shared_ptr<const std::string>> g_other_dc_version_detected{nullptr};
 

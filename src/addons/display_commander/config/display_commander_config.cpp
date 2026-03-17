@@ -238,29 +238,29 @@ DisplayCommanderConfigManager& DisplayCommanderConfigManager::GetInstance() {
     return instance;
 }
 
-void DisplayCommanderConfigManager::Initialize() {
+void DisplayCommanderConfigManager::Initialize(std::optional<std::wstring_view> config_directory) {
     utils::SRWLockExclusive lock(config_mutex_);
 
     if (initialized_) {
         return;
     }
 
-    const std::string toml_path = GetConfigFilePath();
-    const std::string ini_path = GetConfigFilePathIni();
+    std::filesystem::path config_dir;
+    if (config_directory.has_value() && !config_directory->empty()) {
+        config_dir = std::filesystem::path(std::wstring(config_directory->data(), config_directory->size()));
+    }
+    if (config_dir.empty()) {
+        const std::string toml_path = GetConfigFilePath();
+        config_dir = std::filesystem::path(toml_path).parent_path();
+    }
+
+    const std::string toml_path = (config_dir / "DisplayCommander.toml").string();
+    const std::string ini_path = (config_dir / "DisplayCommander.ini").string();
     config_path_ = toml_path;
     config_file_ = std::make_unique<TomlFile>();
 
-    // Initialize logger with DisplayCommander.log in the main executable directory
-    char exe_path[MAX_PATH];
-    DWORD path_length = GetModuleFileNameA(nullptr, exe_path, MAX_PATH);
-    std::filesystem::path exe_dir;
-    if (path_length > 0) {
-        exe_dir = std::filesystem::path(exe_path).parent_path();
-    } else {
-        // Fallback to config directory if we can't get exe path
-        exe_dir = std::filesystem::path(config_path_).parent_path();
-    }
-    std::string log_path = (exe_dir / "DisplayCommander.log").string();
+    // Initialize logger with DisplayCommander.log in the config directory
+    std::string log_path = (config_dir / "DisplayCommander.log").string();
     display_commander::logger::Initialize(log_path);
 
     // Test the logger

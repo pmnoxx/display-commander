@@ -826,6 +826,9 @@ extern std::atomic<std::shared_ptr<const std::string>> g_hdr10_override_timestam
 // Config save failure tracking
 extern std::atomic<std::shared_ptr<const std::string>> g_config_save_failure_path;
 
+// DC config directory (DisplayCommander.toml location). Set at start of DLL_PROCESS_ATTACH to exe directory; can be changed later.
+extern std::atomic<std::shared_ptr<const std::wstring>> g_dc_config_directory;
+
 // Multiple Display Commander versions detection
 extern std::atomic<std::shared_ptr<const std::string>> g_other_dc_version_detected;
 

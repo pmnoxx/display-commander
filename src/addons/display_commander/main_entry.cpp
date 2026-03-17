@@ -188,6 +188,10 @@ void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
     if (runtime != nullptr && should_skip_addon_injection_for_window(static_cast<HWND>(runtime->get_hwnd()))) {
         return;  // Don't draw DC UI for no-inject windows (e.g. independent standalone UI)
     }
+    // Ensure the current overlay runtime is in our list (fallback if init_effect_runtime was missed, e.g. addon load order)
+    if (runtime != nullptr) {
+        AddReShadeRuntime(runtime);
+    }
     const bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
     // Avoid displaying UI twice
     if (show_display_commander_ui) {

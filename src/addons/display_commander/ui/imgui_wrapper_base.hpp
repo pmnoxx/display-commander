@@ -121,6 +121,8 @@ struct IImGuiWrapper {
     virtual void Unindent() = 0;
     virtual bool InputText(const char* label, char* buf, size_t buf_size) = 0;
     virtual bool InputText(const char* label, char* buf, size_t buf_size, int flags) = 0;
+    virtual bool InputTextMultiline(const char* label, char* buf, size_t buf_size, const ImVec2& size,
+                                    int flags = 0) = 0;
     virtual bool InputFloat(const char* label, float* v, float step = 0.0f, float step_fast = 0.0f,
                             const char* format = "%.3f", int flags = 0) = 0;
     virtual bool InputInt(const char* label, int* v, int step = 1, int step_fast = 0, int flags = 0) = 0;

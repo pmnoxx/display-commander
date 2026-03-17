@@ -527,6 +527,18 @@ std::filesystem::path GetGameFolderFromProcess() {
     return std::filesystem::path(buf).parent_path();
 }
 
+std::filesystem::path GetGameNotesFilePath() {
+    std::filesystem::path base = GetDisplayCommanderAppDataFolder();
+    if (base.empty()) {
+        return base;
+    }
+    std::string game_name = GetGameNameFromProcess();
+    if (game_name.empty()) {
+        return std::filesystem::path();
+    }
+    return base / L"Games" / std::filesystem::path(game_name) / L"notes.txt";
+}
+
 // DefaultFiles folder: %LocalAppData%\Programs\Display_Commander\DefaultFiles. Does not create the directory.
 std::filesystem::path GetDefaultFilesFolder() {
     std::filesystem::path base = GetDisplayCommanderAppDataFolder();

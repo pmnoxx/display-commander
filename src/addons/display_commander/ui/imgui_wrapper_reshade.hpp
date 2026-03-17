@@ -114,6 +114,10 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
     bool InputText(const char* label, char* buf, size_t buf_size, int flags) override {
         return ImGui::InputText(label, buf, buf_size, static_cast<ImGuiInputTextFlags>(flags));
     }
+    bool InputTextMultiline(const char* label, char* buf, size_t buf_size, const ImVec2& size, int flags) override {
+        return ImGui::InputTextMultiline(label, buf, buf_size, size, static_cast<ImGuiInputTextFlags>(flags), nullptr,
+                                        nullptr);
+    }
     bool InputFloat(const char* label, float* v, float step, float step_fast, const char* format, int flags) override {
         return ImGui::InputFloat(label, v, step, step_fast, format, static_cast<ImGuiInputTextFlags>(flags));
     }

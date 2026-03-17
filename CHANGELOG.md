@@ -2,9 +2,12 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
-## v0.12.569 (unreleased)
+## v0.12.570 (unreleased)
+
+## v0.12.569
 - [ui] **Notes tab: Open button and icons** - Notes tab now has an **Open** button that opens the current game's notes file in the default text editor (creates and saves the file first if it doesn't exist). Save, Open, and Open folder buttons use ForkAwesome icons (floppy, file, folder-open). Details: notes_tab.cpp; res/forkawesome.h.
 - [bugfix] [ui] [settings] **Games and Hotkeys tab checkboxes** - Main → Show Individual Tabs includes "Show Games Tab" and "Show Hotkeys Tab" (both default on). The tab bar now respects these checkboxes: Games and Hotkeys (and the NVIDIA Profile tab) show or hide when you toggle them; previously they only appeared when "Show All Tabs" was on. Standalone settings window also respects these settings. Details: new_ui_tabs.cpp tab-bar visibility loop now checks show_games_tab, show_hotkeys_tab, show_nvidia_profile_tab; main_tab_settings, cli_standalone_ui.cpp.
+- [cleanup] **ImGui wrapper and general_utils (Notes support)** - InputTextMultiline added to IImGuiWrapper (ReShade and standalone) for Notes tab multiline input; GetGameNotesFilePath() in general_utils returns per-game notes path (Games\<game>\notes.txt). Details: imgui_wrapper_base.hpp, imgui_wrapper_reshade.hpp, imgui_wrapper_standalone.cpp/hpp; general_utils.cpp/hpp.
 
 ## v0.12.568
 - [ui] [settings] **NVIDIA Profile tab opt-in** - The NVIDIA Profile tab is no longer shown by default. Use Main → Show Individual Tabs → "Show NVIDIA Profile Tab" to show it (or enable "Show All Tabs"). Default for the new setting is off. Details: main_tab_settings show_nvidia_profile_tab (default false); new_ui_tabs treats NVIDIA Profile as an advanced tab gated by this setting.

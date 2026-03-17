@@ -81,6 +81,11 @@ bool ImGuiWrapperStandalone::InputText(const char* label, char* buf, size_t buf_
 bool ImGuiWrapperStandalone::InputText(const char* label, char* buf, size_t buf_size, int flags) {
     return ImGui::InputText(label, buf, buf_size, static_cast<ImGuiInputTextFlags>(flags));
 }
+bool ImGuiWrapperStandalone::InputTextMultiline(const char* label, char* buf, size_t buf_size, const ImVec2& size,
+                                                int flags) {
+    return ImGui::InputTextMultiline(label, buf, buf_size, size, static_cast<ImGuiInputTextFlags>(flags), nullptr,
+                                     nullptr);
+}
 bool ImGuiWrapperStandalone::InputFloat(const char* label, float* v, float step, float step_fast, const char* format,
                                         int flags) {
     return ImGui::InputFloat(label, v, step, step_fast, format, static_cast<ImGuiInputTextFlags>(flags));

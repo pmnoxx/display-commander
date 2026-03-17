@@ -87,6 +87,9 @@ std::string GetGameNameFromProcess();
 // Process exe's parent directory (game folder). Empty on failure.
 std::filesystem::path GetGameFolderFromProcess();
 
+// Per-game notes file: %LocalAppData%\Programs\Display_Commander\Games\<GAME_NAME>\notes.txt. Empty if base or game name unavailable.
+std::filesystem::path GetGameNotesFilePath();
+
 // DefaultFiles folder: %LocalAppData%\Programs\Display_Commander\DefaultFiles (files copied to game folder when missing)
 std::filesystem::path GetDefaultFilesFolder();
 

@@ -89,6 +89,7 @@ Note: Applying window operations from the main thread can crash some apps. This 
   - `.NO_EXIT` / `.NOEXIT` — block process exit; open independent UI when game tries to exit (debugging)  
   - `.GET_PROC_ADDRESS` — GetProcAddress logging  
   **In the addon (DLL) folder:**  
+  - `.DC_CONFIG_GLOBAL` — store config and ReShade data in `%LocalAppData%\Programs\Display_Commander\Games\<game_name>\` (global per-game folder)  
   - `.DC_CONFIG_IN_DLL` — store config and ReShade data in the addon folder instead of the game folder  
   - `.DLL_DETECTOR` — copy addon to `dlls_loaded` and exit (for detecting which DLLs the game loads)  
   See [Expert: Flag files in the game directory](docs/EXPERT_FLAG_FILES.md).
@@ -120,7 +121,7 @@ For a comprehensive list of known issues and workarounds, see [KNOWN_ISSUES.md](
    - Alternatively, place it into your global ReShade installation directory (for example `D:\\Program Files\\ReShade`).
 3. Launch the game, open the ReShade overlay (Home by default), go to the Add-ons tab, and locate "Display Commander".
 
-**Config and ReShade paths**: By default, Display Commander and ReShade store their config (e.g. `DisplayCommander.toml`, `ReShade.ini`) in the **game exe directory**. If you use a global or shared addon location and want config next to the addon instead, create an empty file named **`.DC_CONFIG_IN_DLL`** in the same folder as the Display Commander addon (the `.addon64`/`.addon32` or the proxy DLL). Config and ReShade data will then use that addon folder.
+**Config and ReShade paths**: By default, config (e.g. `DisplayCommander.toml`, `ReShade.ini`) is stored in the **game exe directory**. In the **addon folder** (same folder as the `.addon64`/`.addon32` or proxy DLL) you can create an empty file to override: **`.DC_CONFIG_GLOBAL`** → `%LocalAppData%\Programs\Display_Commander\Games\<game_name>\` (game name = exe’s parent folder, e.g. `Sekiro`); **`.DC_CONFIG_IN_DLL`** → config in the addon folder. If both exist, `.DC_CONFIG_GLOBAL` wins.
 
 **Note**: For the latest stable release compatible with ReShade 6.6.2, download from [Latest Release](https://github.com/pmnoxx/display-commander/releases).
 
@@ -146,8 +147,8 @@ Prerequisites:
 Clone with submodules:
 
 ```bash
-git clone --recurse-submodules https://github.com/yourname/reshade-display-commander.git
-cd reshade-display-commander
+git clone --recurse-submodules https://github.com/pmnoxx/display-commander.git
+cd display-commander
 ```
 
 Build (x64):

@@ -1881,15 +1881,27 @@ constexpr const wchar_t* INJECTION_STOP_EVENT_NAME = L"Local\\DisplayCommander_I
 namespace {
 enum class ProcessAttachEarlyResult { Continue, RefuseLoad, EarlySuccess, LoaderOnly };
 
-// If empty file ".DC_CONFIG_IN_DLL" exists next to the Display Commander module, use module path as config path;
-// otherwise use game exe path. Sets RESHADE_BASE_PATH_OVERRIDE and g_dc_config_directory.
+// Chooses config path (and sets RESHADE_BASE_PATH_OVERRIDE and g_dc_config_directory) in order of priority:
+// 1) If .DC_CONFIG_GLOBAL exists next to the addon: use %LocalAppData%\\Programs\\Display_Commander\\Games\\<game_name>
+// 2) Else if .DC_CONFIG_IN_DLL exists next to the addon: use addon folder
+// 3) Else: use game exe directory
 static void ChooseAndSetDcConfigPath(HMODULE h_module) {
     std::wstring config_path_w;
     WCHAR module_path[MAX_PATH] = {};
     if (GetModuleFileNameW(h_module, module_path, MAX_PATH) > 0) {
         std::filesystem::path dll_dir = std::filesystem::path(module_path).parent_path();
         std::error_code ec;
-        if (std::filesystem::is_regular_file(dll_dir / L".DC_CONFIG_IN_DLL", ec) && !ec) {
+
+        if (std::filesystem::is_regular_file(dll_dir / L".DC_CONFIG_GLOBAL", ec) && !ec) {
+            std::filesystem::path base = GetDisplayCommanderAppDataFolder();
+            if (!base.empty()) {
+                std::string game_name = GetGameNameFromProcess();
+                if (game_name.empty()) game_name = "Game";
+                config_path_w = (base / L"Games" / std::filesystem::path(game_name)).wstring();
+            }
+        }
+        if (config_path_w.empty() &&
+            std::filesystem::is_regular_file(dll_dir / L".DC_CONFIG_IN_DLL", ec) && !ec) {
             config_path_w = dll_dir.wstring();
         }
     }

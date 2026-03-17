@@ -2,7 +2,12 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
+## v0.12.581 (unreleased)
+- [new feature] [settings] **.DC_CONFIG_GLOBAL** - Empty file in the addon folder switches config and ReShade data to `%LocalAppData%\Programs\Display_Commander\Games\<game_name>\` (global per-game folder). See README Installation and Expert – flag files.
+- [cleanup] **README: config path priority and clone URL** - Installation section now states that override is an empty file in the addon folder, explains \<game_name> (exe parent folder), and that .DC_CONFIG_GLOBAL wins if both flag files exist. Build from source: clone URL set to pmnoxx/display-commander, cd display-commander. Details: README.md.
+
 ## v0.12.580 (unreleased)
+- [new feature] [settings] **Config path: .DC_CONFIG_GLOBAL** - If an empty file named `.DC_CONFIG_GLOBAL` exists in the same folder as the Display Commander addon, config and ReShade data are stored in `%LocalAppData%\Programs\Display_Commander\Games\<game_name>\` instead of the game exe directory. Game name is derived from the process exe path (same as Notes). Priority order: .DC_CONFIG_GLOBAL → .DC_CONFIG_IN_DLL → exe directory. Details: ChooseAndSetDcConfigPath in main_entry.cpp; GetDisplayCommanderAppDataFolder, GetGameNameFromProcess in general_utils; README.
 - [new feature] [settings] **Config path: .DC_CONFIG_IN_DLL** - If an empty file named `.DC_CONFIG_IN_DLL` exists in the same folder as the Display Commander addon (the .addon64/.addon32 or proxy DLL), config and ReShade data are stored in that addon folder instead of the game exe directory. Useful for global or shared addon installs. Otherwise the game exe directory is used. Details: ChooseAndSetDcConfigPath in main_entry.cpp; README Installation and Expert – flag files.
 - [cleanup] **README: config paths and expert flags** - Documented default config/ReShade paths and the `.DC_CONFIG_IN_DLL` option in Installation. Expert – flag files now list each flag on its own line (game exe directory: `.NO_RESHADE`, `.NODC`, `.UI`, `.NO_EXIT`, `.GET_PROC_ADDRESS`; addon folder: `.DC_CONFIG_IN_DLL`, `.DLL_DETECTOR`). Details: README.md.
 

@@ -548,6 +548,10 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
     OnInitEffectRuntime_StartRefreshRateMonitoringIfNeeded();
     OnInitEffectRuntime_InitWithHwndOnce(runtime);
 
+    // Re-apply ReShade config overrides for this runtime (window config, paths, tutorial/updates, etc.)
+    // so each new runtime (e.g. ReShade2.ini) gets the same DC settings.
+    OverrideReShadeSettings();
+
     LogInfo("[OnInitEffectRuntime] exit");
 }
 

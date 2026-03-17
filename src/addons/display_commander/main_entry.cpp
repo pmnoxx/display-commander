@@ -2934,6 +2934,17 @@ void ResolveAndLogDllMainFunctionStack() {
 BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     switch (fdw_reason) {
         case DLL_PROCESS_ATTACH: {
+            // Set ReShade base path to the same directory DC uses for config (game exe directory), before any LoadLibrary of ReShade.
+            {
+                WCHAR exe_path[MAX_PATH] = {};
+                if (GetModuleFileNameW(nullptr, exe_path, MAX_PATH) > 0) {
+                    WCHAR* last_slash = wcsrchr(exe_path, L'\\');
+                    if (last_slash != nullptr && last_slash > exe_path) {
+                        *last_slash = L'\0';
+                        SetEnvironmentVariableW(L"RESHADE_BASE_PATH_OVERRIDE", exe_path);
+                    }
+                }
+            }
             CaptureDllLoadCallerPath(h_module);
             EnsureDisplayCommanderLogWithModulePath(h_module);
 

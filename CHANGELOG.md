@@ -2,6 +2,9 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
+## v0.12.578 (unreleased)
+- [bugfix] [compatibility] **Fixed ReShade config path** - ReShade now creates its config (ReShade.ini, etc.) in the game exe directory even when ReShade is loaded globally (e.g. from System32 or a shared install). Display Commander sets `RESHADE_BASE_PATH_OVERRIDE` at the start of `DLL_PROCESS_ATTACH` to the same path it uses for DisplayCommander.toml. Details: main_entry.cpp.
+
 ## v0.12.577 (unreleased)
 - [ui] **Add DC Shaders/Textures tooltip shows ReShade path values** - The tooltip for "Add DC Shaders/Textures to ReShade paths" now shows two lines with the current ReShade config values: EffectSearchPaths and TextureSearchPaths (from GENERAL section), read via `get_config_value`. Paths are shown separated by "; "; "—" when a value is missing or empty. Details: main_new_tab.cpp DrawUpdatesSectionContent tooltip; uses nullptr for global config.
 

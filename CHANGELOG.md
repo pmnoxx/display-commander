@@ -4,7 +4,9 @@
 
 ## (unreleased)
 
+
 ## v0.12.589
+- [cleanup] **DLSS version ranges: tuple compare** - `isBetween` (used for DLSS SR/RR render-preset availability) now compares `(major, minor, patch)` lexicographically via `std::tuple` instead of packing into a single integer, so ordering stays correct for any component values (e.g. 310.x) without encoding limits. Details: `general_utils.cpp`.
 
 ## v0.12.588
 - [settings] **Per-game folder name skips engine paths** - For `.DC_CONFIG_GLOBAL`, Notes, and ReShade backup paths, the game folder name now walks up from the exe directory and skips generic segments (`Client`, `Binaries`, `Win64`, `Win32`, `Bin`, `x64`, `x86`) so titles like Wuthering Waves resolve to the real game folder name instead of `Win64`. If every segment is generic, the exe file name (without `.exe`) is used. Details: `GetGameNameFromProcess` in general_utils.cpp.

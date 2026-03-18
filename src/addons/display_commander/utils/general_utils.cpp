@@ -1,10 +1,4 @@
 #include "general_utils.hpp"
-#include "../latency/reflex_provider.hpp"
-#include "../hooks/hook_suppression_manager.hpp"
-#include "globals.hpp"
-#include "logging.hpp"
-#include "settings/advanced_tab_settings.hpp"
-#include "settings/main_tab_settings.hpp"
 #include <d3d9.h>
 #include <MinHook.h>
 #include <ShlObj.h>
@@ -14,7 +8,15 @@
 #include <reshade.hpp>
 #include <sstream>
 #include <string>
+#include <tuple>
 #include <vector>
+#include "../hooks/hook_suppression_manager.hpp"
+#include "../latency/reflex_provider.hpp"
+#include "globals.hpp"
+#include "logging.hpp"
+#include "settings/advanced_tab_settings.hpp"
+#include "settings/main_tab_settings.hpp"
+
 
 bool IsReflexAvailable() {
     if (!is_64_bit()) return false;
@@ -536,13 +538,7 @@ bool IsGenericGameInstallFolderSegment(const std::wstring& seg) {
         return true;
     }
     static const wchar_t* const kGeneric[] = {
-        L"bin",
-        L"binaries",
-        L"client",
-        L"win32",
-        L"win64",
-        L"x64",
-        L"x86",
+        L"bin", L"binaries", L"client", L"win32", L"win64", L"x64", L"x86",
     };
     for (const wchar_t* n : kGeneric) {
         if (_wcsicmp(seg.c_str(), n) == 0) {
@@ -552,7 +548,7 @@ bool IsGenericGameInstallFolderSegment(const std::wstring& seg) {
     return false;
 }
 
-} // namespace
+}  // namespace
 
 std::string GetGameNameFromProcess() {
     WCHAR buf[MAX_PATH];
@@ -622,9 +618,8 @@ void CopyDefaultFilesToGameFolder(const std::filesystem::path& game_dir) {
     if (game_dir.empty() || !std::filesystem::is_directory(game_dir, ec)) {
         return;
     }
-    for (const auto& entry :
-         std::filesystem::directory_iterator(default_files, std::filesystem::directory_options::skip_permission_denied,
-                                             ec)) {
+    for (const auto& entry : std::filesystem::directory_iterator(
+             default_files, std::filesystem::directory_options::skip_permission_denied, ec)) {
         if (ec) {
             break;
         }
@@ -663,8 +658,8 @@ void CopyGameIniFilesToReshadeConfigBackupFolder() {
             return;
         }
     }
-    for (const auto& entry :
-         std::filesystem::directory_iterator(game_dir, std::filesystem::directory_options::skip_permission_denied, ec)) {
+    for (const auto& entry : std::filesystem::directory_iterator(
+             game_dir, std::filesystem::directory_options::skip_permission_denied, ec)) {
         if (ec) {
             break;
         }
@@ -673,7 +668,8 @@ void CopyGameIniFilesToReshadeConfigBackupFolder() {
         }
         const std::filesystem::path& p = entry.path();
         std::string ext = p.extension().string();
-        std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        std::transform(ext.begin(), ext.end(), ext.begin(),
+                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
         if (ext != ".ini") {
             continue;
         }
@@ -835,15 +831,13 @@ DlssOverrideDllStatus GetDlssOverrideFolderDllStatus(const std::string& folder_p
     return status;
 }
 
-// Helper function to check if a version is between two version ranges (inclusive)
+// Inclusive range on (major, minor, patch) with lexicographic order (same as semver tuple).
 bool isBetween(int major, int minor, int patch, int minMajor, int minMinor, int minPatch, int maxMajor, int maxMinor,
                int maxPatch) {
-    // Convert version to comparable integer (major * 10000 + minor * 100 + patch)
-    int version = (major * 10000) + (minor * 100) + patch;
-    int minVersion = (minMajor * 10000) + (minMinor * 100) + minPatch;
-    int maxVersion = (maxMajor * 10000) + (maxMinor * 100) + maxPatch;
-
-    return version >= minVersion && version <= maxVersion;
+    const std::tuple<int, int, int> v{major, minor, patch};
+    const std::tuple<int, int, int> lo{minMajor, minMinor, minPatch};
+    const std::tuple<int, int, int> hi{maxMajor, maxMinor, maxPatch};
+    return v >= lo && v <= hi;
 }
 
 // Get supported DLSS Super Resolution presets based on DLL version

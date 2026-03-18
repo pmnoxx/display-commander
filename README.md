@@ -89,7 +89,7 @@ Note: Applying window operations from the main thread can crash some apps. This 
   - `.NO_EXIT` / `.NOEXIT` — block process exit; open independent UI when game tries to exit (debugging)
   - `.GET_PROC_ADDRESS` — GetProcAddress logging
   **In the addon (DLL) folder or `%LocalAppData%\Programs\Display_Commander\`:**
-  - `.DC_CONFIG_GLOBAL` — store config and ReShade data in `%LocalAppData%\Programs\Display_Commander\Games\<game_name>\` (global per-game folder). The empty flag file can live next to the addon **or** in the Display_Commander app data root (one place is enough).
+  - `.DC_CONFIG_GLOBAL` — store config and ReShade data in `%LocalAppData%\Programs\Display_Commander\Games\<game_name>\` (global per-game folder; `game_name` skips generic exe path segments like `Client` / `Binaries` / `Win64`). The empty flag file can live next to the addon **or** in the Display_Commander app data root (one place is enough).
   - `.DC_CONFIG_IN_DLL` — store config and ReShade data in the addon folder instead of the game folder
   - `.DLL_DETECTOR` — copy addon to `dlls_loaded` and exit (for detecting which DLLs the game loads)
   See [Expert: Flag files in the game directory](docs/EXPERT_FLAG_FILES.md).
@@ -121,7 +121,7 @@ For a comprehensive list of known issues and workarounds, see [KNOWN_ISSUES.md](
    - Alternatively, place it into your global ReShade installation directory (for example `D:\\Program Files\\ReShade`).
 3. Launch the game, open the ReShade overlay (Home by default), go to the Add-ons tab, and locate "Display Commander".
 
-**Config and ReShade paths**: By default, config (e.g. `DisplayCommander.toml`, `ReShade.ini`) is stored in the **game exe directory**. Create an empty **`.DC_CONFIG_GLOBAL`** in the **addon folder** or in **`%LocalAppData%\Programs\Display_Commander\`** to use `%LocalAppData%\Programs\Display_Commander\Games\<game_name>\` (game name = exe’s parent folder, e.g. `Sekiro`). **`.DC_CONFIG_IN_DLL`** in the addon folder stores config next to the addon. Priority: `.DC_CONFIG_GLOBAL` (either location) beats `.DC_CONFIG_IN_DLL`.
+**Config and ReShade paths**: By default, config (e.g. `DisplayCommander.toml`, `ReShade.ini`) is stored in the **game exe directory**. Create an empty **`.DC_CONFIG_GLOBAL`** in the **addon folder** or in **`%LocalAppData%\Programs\Display_Commander\`** to use `%LocalAppData%\Programs\Display_Commander\Games\<game_name>\` (game name = first path segment above the exe that is not a generic engine folder—`Client`, `Binaries`, `Win64`, `Win32`, `Bin`, `x64`, `x86`—otherwise the exe name without `.exe`, e.g. `Wuthering Waves` or `Sekiro`). **`.DC_CONFIG_IN_DLL`** in the addon folder stores config next to the addon. Priority: `.DC_CONFIG_GLOBAL` (either location) beats `.DC_CONFIG_IN_DLL`.
 
 **Note**: For the latest stable release compatible with ReShade 6.6.2, download from [Latest Release](https://github.com/pmnoxx/display-commander/releases).
 

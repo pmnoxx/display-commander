@@ -87,7 +87,8 @@ std::filesystem::path GetDisplayCommanderAddonsFolder();
 // Display Commander ReShade configs root: %LocalAppData%\Programs\Display_Commander\Reshade\Configs (per-game subfolders)
 std::filesystem::path GetDisplayCommanderReshadeConfigsFolder();
 
-// Last path component of the process exe directory (e.g. "D:\SteamLibrary\...\Sekiro" -> "Sekiro"). Empty on failure.
+// Folder name for per-game paths: walks up from the exe directory, skipping generic segments (Client, Binaries,
+// Win64, Win32, Bin, x64, x86); falls back to exe stem. Empty on failure.
 std::string GetGameNameFromProcess();
 
 // Process exe's parent directory (game folder). Empty on failure.

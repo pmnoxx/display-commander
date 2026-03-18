@@ -528,18 +528,59 @@ std::filesystem::path GetDisplayCommanderReshadeConfigsFolder() {
     return reshade_root / L"Configs";
 }
 
+namespace {
+
+// Path segments that are not game titles (UE layout: .../GameTitle/Client/Binaries/Win64/game.exe).
+bool IsGenericGameInstallFolderSegment(const std::wstring& seg) {
+    if (seg.empty()) {
+        return true;
+    }
+    static const wchar_t* const kGeneric[] = {
+        L"bin",
+        L"binaries",
+        L"client",
+        L"win32",
+        L"win64",
+        L"x64",
+        L"x86",
+    };
+    for (const wchar_t* n : kGeneric) {
+        if (_wcsicmp(seg.c_str(), n) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+} // namespace
+
 std::string GetGameNameFromProcess() {
     WCHAR buf[MAX_PATH];
     if (::GetModuleFileNameW(nullptr, buf, MAX_PATH) == 0) {
         return std::string();
     }
-    std::filesystem::path exe_path(buf);
-    std::filesystem::path parent = exe_path.parent_path();
-    std::string name = parent.filename().string();
-    if (name.empty()) {
-        return "Game";
+    const std::filesystem::path exe_path(buf);
+    std::filesystem::path dir = exe_path.parent_path();
+    for (int depth = 0; depth < 64 && !dir.empty(); ++depth) {
+        const std::filesystem::path par = dir.parent_path();
+        const std::wstring seg = dir.filename().wstring();
+        if (!seg.empty() && !IsGenericGameInstallFolderSegment(seg)) {
+            const std::string name = dir.filename().string();
+            if (!name.empty()) {
+                return name;
+            }
+        }
+        if (par == dir) {
+            break;
+        }
+        dir = par;
     }
-    return name;
+    const std::string stem = exe_path.stem().string();
+    if (!stem.empty()) {
+        return stem;
+    }
+    const std::string parent_name = exe_path.parent_path().filename().string();
+    return parent_name.empty() ? "Game" : parent_name;
 }
 
 std::filesystem::path GetGameFolderFromProcess() {

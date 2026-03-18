@@ -47,6 +47,7 @@
 #include "../../utils.hpp"
 #include "../../utils/d3d9_api_version.hpp"
 #include "../../utils/dc_load_path.hpp"
+#include "../../utils/exponential_smooth.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/overlay_window_detector.hpp"
@@ -2282,7 +2283,7 @@ static void DrawUpdatesAddonsHeader(display_commander::ui::IImGuiWrapper& imgui)
 }
 
 static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgui,
-                                     reshade::api::effect_runtime* runtime) {
+                                      reshade::api::effect_runtime* runtime) {
     using namespace display_commander::utils;
     using namespace display_commander::utils::version_check;
 
@@ -7073,22 +7074,29 @@ void DrawOverlayVUBars(display_commander::ui::IImGuiWrapper& imgui, bool show_to
     } else {
         return;
     }
-    const float decay = 0.85f;
-    for (unsigned int i = 0; i < effective_meter_count; ++i) {
-        float p = s_overlay_vu_peaks[i];
-        float s = s_overlay_vu_smoothed[i];
-        s_overlay_vu_smoothed[i] = (p > s) ? p : (s * decay);
+    // Wall-clock first-order smoothing (same feel as α=0.05 per step at 60 Hz); see utils/exponential_smooth.hpp.
+    static uint64_t s_overlay_vu_last_smooth_ns = 0;
+    const uint64_t now_ns = utils::get_now_ns();
+    float dt_sec = (1.0f / 60.0f);
+    if (s_overlay_vu_last_smooth_ns != 0ULL) {
+        dt_sec = static_cast<float>(static_cast<double>(now_ns - s_overlay_vu_last_smooth_ns) * 1e-9);
+        dt_sec = (std::min)((std::max)(dt_sec, 1.0e-4f), 0.25f);
     }
-    const float bar_height = 48.0f;
-    const float bar_width = 10.0f;
-    // Column width from widest label (e.g. "LFE 100.0%"); fixed 10px bars + 3px gap caused label overlap.
+    s_overlay_vu_last_smooth_ns = now_ns;
+    const float k_vu_tau_sec = utils::first_order_tau_for_step_alpha(0.1f, 60.0f);
+    for (unsigned int i = 0; i < effective_meter_count; ++i) {
+        const float p = (std::min)(1.0f, s_overlay_vu_peaks[i]);
+        const float s = s_overlay_vu_smoothed[i];
+        s_overlay_vu_smoothed[i] = utils::exponential_smooth_toward(s, p, dt_sec, k_vu_tau_sec);
+    }
+    const float bar_height = 96.0f;
+    const float bar_width = 20.0f;
+    // Column width from widest channel label (L, LFE, Ch0, …) so labels do not overlap.
     const float col_pad_x = 6.0f;
     float column_width = bar_width + (col_pad_x * 2.0f);
     for (unsigned int i = 0; i < effective_meter_count; ++i) {
         const char* ch_label = GetAudioChannelLabel(i, effective_meter_count);
-        char raw_buf[32];
-        (void)std::snprintf(raw_buf, sizeof(raw_buf), "%s %.1f%%", ch_label, 100.0f);
-        const float tw = imgui.CalcTextSize(raw_buf).x;
+        const float tw = imgui.CalcTextSize(ch_label).x;
         column_width = (std::max)(column_width, tw + (col_pad_x * 2.0f));
     }
     const float total_width = static_cast<float>(effective_meter_count) * column_width;
@@ -7114,16 +7122,15 @@ void DrawOverlayVUBars(display_commander::ui::IImGuiWrapper& imgui, bool show_to
     const float line_height = imgui.GetTextLineHeightWithSpacing();
     for (unsigned int i = 0; i < effective_meter_count; ++i) {
         const char* ch_label = GetAudioChannelLabel(i, effective_meter_count);
-        const float level = (std::min)(1.0f, s_overlay_vu_smoothed[i]);
-        char raw_buf[32];
-        (void)std::snprintf(raw_buf, sizeof(raw_buf), "%s %.1f%%", ch_label, level * 100.0f);
         const float col_x = cursor.x + static_cast<float>(i) * column_width;
-        const float text_w = imgui.CalcTextSize(raw_buf).x;
+        const float text_w = imgui.CalcTextSize(ch_label).x;
         imgui.SetCursorScreenPos(ImVec2(col_x + ((column_width - text_w) * 0.5f), label_y));
-        imgui.TextColored(ui::colors::TEXT_DIMMED, "%s", raw_buf);
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "%s", ch_label);
     }
     if (show_tooltips && imgui.IsItemHovered()) {
-        imgui.SetTooltipEx("Per-channel peak level (default output device).");
+        imgui.SetTooltipEx(
+            "Per-channel level (default output device). Smoothed with ~0.32 s time constant (exp decay by "
+            "wall time, not raw frame count).");
     }
     imgui.SetCursorScreenPos(ImVec2(cursor.x, label_y + line_height));
     imgui.Dummy(ImVec2(total_width, line_height));

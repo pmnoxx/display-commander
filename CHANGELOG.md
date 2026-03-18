@@ -4,6 +4,10 @@
 
 ## (unreleased)
 
+## v0.12.585
+- [ui] **Performance overlay VU bars smoother** - Levels use first-order smoothing with ~0.32 s time constant (geometric decay by wall-clock `dt`, calibrated like α=0.05 at 60 Hz), so motion stays similar across frame rates. Reusable helpers in `utils/exponential_smooth.hpp`. Details: `DrawOverlayVUBars` in main_new_tab.cpp.
+- [ui] **Performance overlay VU bars** - Channel labels only (L, R, LFE, …); no numeric level under the bars. Bars are 96×40 px (2× taller, 4× wider than before).
+
 ## v0.12.584
 - [ui] [bugfix] **Performance overlay VU bars** - Fixed overlapping per-channel labels: column width follows the widest label (e.g. 5.1/7.1 channels like LFE); bars stay centered. Details: `DrawOverlayVUBars` in main_new_tab.cpp.
 

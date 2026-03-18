@@ -998,12 +998,14 @@ void DrawGlobalSettingsSection(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.SetTooltipEx(
             "When enabled, Windows Gaming Input is suppressed for all games (same effect as the per-game checkbox "
             "in the Controller tab, but applied everywhere). Stored in the Display Commander folder "
-            "(global_overrides.toml, same location as hotkeys.toml). Overrides the per-game value even when the game config has it. Restart each game to apply. "
-            "Warning: Suppressing Windows Gaming Input may break networking in some games.");
+            "(global_overrides.toml, same location as hotkeys.toml). Overrides the per-game value even when the game config has it. "
+            "Restart each game to apply.");
     }
     imgui.SameLine();
-    imgui.TextColored(::ui::colors::TEXT_WARNING,
-                      ICON_FK_WARNING " Suppressing Windows Gaming Input may break networking in some games.");
+    imgui.TextColored(::ui::colors::TEXT_WARNING, ICON_FK_WARNING);
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltipEx("Suppressing Windows Gaming Input may break networking in some games.");
+    }
 
     imgui.Unindent();
 }

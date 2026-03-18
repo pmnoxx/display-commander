@@ -4,6 +4,9 @@
 
 ## (unreleased)
 
+## v0.12.585
+- [ui] **WGI global warning: icon tooltip only** - Advanced → Global settings: the networking caveat for “Enable Windows Gaming Input suppression globally” is no longer shown as cut-off inline text; only the warning icon appears next to the checkbox—hover it for the full message.
+
 ## v0.12.584
 - [ui] **Performance overlay VU bars** - Channel labels only (L, R, LFE, …); no numeric level under the bars. Bars are 96×40 px (2× taller, 4× wider than before).
 

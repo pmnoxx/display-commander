@@ -4,6 +4,9 @@
 
 ## (unreleased)
 
+## v0.12.583
+- [cleanup] **DC shaders extract to app data only** - Embedded Display Commander shaders (.fx / .fxh) are written only under `%LocalAppData%\Programs\Display_Commander\Reshade\Shaders\DisplayCommander\`, not next to the addon or under the game ReShade folder. Keeps the game directory clean; use Main tab “Add DC Shaders/Textures to ReShade paths” if effects fail to load. Details: `OnInitEffectRuntime_ExtractShadersOnce` in main_entry.cpp.
+
 ## v0.12.582
 - [settings] **.DC_CONFIG_GLOBAL in Display_Commander app data folder** - Global config mode also activates when an empty `.DC_CONFIG_GLOBAL` exists in `%LocalAppData%\Programs\Display_Commander\`, not only next to the addon. Lets a single flag enable per-game folders under `Games\<game_name>\` for shared or global addon installs without copying the file beside every DLL. Details: `GetDisplayCommanderAppDataRootPathNoCreate`, `ChooseAndSetDcConfigPath` in main_entry.cpp; README.
 

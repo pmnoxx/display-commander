@@ -439,7 +439,7 @@ void OnInitEffectRuntime_ExtractShadersOnce() {
     constexpr int IDR_RESHADE_FXH = 302;
     constexpr int IDR_PERCEPTUALBOOST_FX = 303;
 
-    auto extract_resource = [](int res_id, const wchar_t* filename_wide, const char* filename_utf8) -> bool {
+    auto extract_resource = [](int res_id, const wchar_t* filename_wide) -> bool {
         HRSRC hRes = FindResourceA(g_hmodule, MAKEINTRESOURCE(res_id), RT_RCDATA);
         if (hRes == nullptr) return false;
         HGLOBAL hLoaded = LoadResource(g_hmodule, hRes);
@@ -448,53 +448,36 @@ void OnInitEffectRuntime_ExtractShadersOnce() {
         const DWORD size = SizeofResource(g_hmodule, hRes);
         if (pData == nullptr || size == 0) return false;
 
-        auto write_to = [&pData, size](const std::filesystem::path& dest_path) -> bool {
-            std::error_code ec2;
-            std::filesystem::create_directories(dest_path.parent_path(), ec2);
-            if (ec2) return false;
-            std::ofstream of(dest_path, std::ios::binary);
-            if (!of) return false;
-            of.write(static_cast<const char*>(pData), static_cast<std::streamsize>(size));
-            return of.good();
-        };
-
-        wchar_t addon_path[MAX_PATH] = {};
-        if (GetModuleFileNameW(g_hmodule, addon_path, MAX_PATH) == 0) return false;
-        std::filesystem::path addon_dir = std::filesystem::path(addon_path).parent_path();
-
-        bool any_written = false;
         wchar_t localappdata_path[MAX_PATH] = {};
-        if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
-            std::filesystem::path la_dest = std::filesystem::path(localappdata_path) / L"Programs"
-                                            / L"Display_Commander" / L"Reshade" / L"Shaders" / L"DisplayCommander"
-                                            / filename_wide;
-            if (write_to(la_dest)) any_written = true;
+        if (!SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT,
+                                        localappdata_path))) {
+            return false;
         }
-        std::filesystem::path dc_dest =
-            addon_dir / L"Display_Commander" / L"Reshade" / L"Shaders" / L"DisplayCommander" / filename_wide;
-        if (write_to(dc_dest)) any_written = true;
-
-        char base_path[512] = {};
-        size_t base_size = sizeof(base_path);
-        reshade::get_reshade_base_path(base_path, &base_size);
-        std::filesystem::path reshade_base(base_path);
-        std::filesystem::path reshade_dest = reshade_base / "Shaders" / "DisplayCommander" / filename_utf8;
-        if (std::filesystem::exists(reshade_base / "Shaders") && std::filesystem::is_directory(reshade_base / "Shaders")
-            && write_to(reshade_dest)) {
-            any_written = true;
-        }
-        return any_written;
+        std::filesystem::path la_dest =
+            std::filesystem::path(localappdata_path) / L"Programs" / L"Display_Commander" / L"Reshade" / L"Shaders"
+            / L"DisplayCommander" / filename_wide;
+        std::error_code ec2;
+        std::filesystem::create_directories(la_dest.parent_path(), ec2);
+        if (ec2) return false;
+        std::ofstream of(la_dest, std::ios::binary);
+        if (!of) return false;
+        of.write(static_cast<const char*>(pData), static_cast<std::streamsize>(size));
+        return of.good();
     };
 
-    if (extract_resource(IDR_CONTROL_FX, L"DisplayCommander_Control.fx", "DisplayCommander_Control.fx")) {
+    if (!extract_resource(IDR_CONTROL_FX, L"DisplayCommander_Control.fx")) {
+        LogWarn(
+            "DisplayCommander: could not extract shaders to "
+            "%%LOCALAPPDATA%%\\Programs\\Display_Commander\\Reshade\\Shaders\\DisplayCommander "
+            "(check permissions). Brightness/AutoHDR effects need that path in ReShade search paths.");
+    } else {
         LogInfo(
-            "DisplayCommander shaders extracted to Reshade\\Shaders\\DisplayCommander (e.g. "
-            "%%LOCALAPPDATA%%\\Programs\\Display_Commander\\Reshade\\Shaders\\DisplayCommander).");
+            "DisplayCommander shaders extracted to "
+            "%%LOCALAPPDATA%%\\Programs\\Display_Commander\\Reshade\\Shaders\\DisplayCommander.");
     }
-    extract_resource(IDR_COLOR_FXH, L"color.fxh", "color.fxh");
-    extract_resource(IDR_RESHADE_FXH, L"ReShade.fxh", "ReShade.fxh");
-    extract_resource(IDR_PERCEPTUALBOOST_FX, L"DisplayCommander_PerceptualBoost.fx",
-                     "DisplayCommander_PerceptualBoost.fx");
+    extract_resource(IDR_COLOR_FXH, L"color.fxh");
+    extract_resource(IDR_RESHADE_FXH, L"ReShade.fxh");
+    extract_resource(IDR_PERCEPTUALBOOST_FX, L"DisplayCommander_PerceptualBoost.fx");
 }
 
 void OnInitEffectRuntime_StartRefreshRateMonitoringIfNeeded() {

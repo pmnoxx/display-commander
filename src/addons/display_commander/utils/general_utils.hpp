@@ -71,6 +71,8 @@ std::string ConvertRenderPresetToLetter(
 
 // Display Commander folder in Local App Data: %LocalAppData%\Programs\Display_Commander (shared across games)
 std::filesystem::path GetDisplayCommanderAppDataFolder();
+// Same path as above but does not create the directory (empty if LocalAppData is unavailable).
+std::filesystem::path GetDisplayCommanderAppDataRootPathNoCreate();
 
 // Display Commander ReShade root: %LocalAppData%\Programs\Display_Commander\Reshade (contains Shaders, Textures)
 std::filesystem::path GetDisplayCommanderReshadeRootFolder();

@@ -471,6 +471,14 @@ std::filesystem::path GetDisplayCommanderAppDataFolder() {
     return dc_folder;
 }
 
+std::filesystem::path GetDisplayCommanderAppDataRootPathNoCreate() {
+    wchar_t localappdata_path[MAX_PATH];
+    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
+        return std::filesystem::path();
+    }
+    return std::filesystem::path(localappdata_path) / L"Programs" / L"Display_Commander";
+}
+
 // Display Commander ReShade root: contains Shaders and Textures subfolders used for
 // EffectSearchPaths/TextureSearchPaths. Creates the directory if it does not exist; returns empty path if creation
 // fails.

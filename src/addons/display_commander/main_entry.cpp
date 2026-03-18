@@ -1882,7 +1882,8 @@ namespace {
 enum class ProcessAttachEarlyResult { Continue, RefuseLoad, EarlySuccess, LoaderOnly };
 
 // Chooses config path (and sets RESHADE_BASE_PATH_OVERRIDE and g_dc_config_directory) in order of priority:
-// 1) If .DC_CONFIG_GLOBAL exists next to the addon: use %LocalAppData%\\Programs\\Display_Commander\\Games\\<game_name>
+// 1) If .DC_CONFIG_GLOBAL exists next to the addon OR in %LocalAppData%\\Programs\\Display_Commander: use
+//    %LocalAppData%\\Programs\\Display_Commander\\Games\\<game_name>
 // 2) Else if .DC_CONFIG_IN_DLL exists next to the addon: use addon folder
 // 3) Else: use game exe directory
 static void ChooseAndSetDcConfigPath(HMODULE h_module) {
@@ -1892,7 +1893,17 @@ static void ChooseAndSetDcConfigPath(HMODULE h_module) {
         std::filesystem::path dll_dir = std::filesystem::path(module_path).parent_path();
         std::error_code ec;
 
+        bool use_global_config = false;
         if (std::filesystem::is_regular_file(dll_dir / L".DC_CONFIG_GLOBAL", ec) && !ec) {
+            use_global_config = true;
+        } else {
+            ec.clear();
+            std::filesystem::path dc_root = GetDisplayCommanderAppDataRootPathNoCreate();
+            if (!dc_root.empty() && std::filesystem::is_regular_file(dc_root / L".DC_CONFIG_GLOBAL", ec) && !ec) {
+                use_global_config = true;
+            }
+        }
+        if (use_global_config) {
             std::filesystem::path base = GetDisplayCommanderAppDataFolder();
             if (!base.empty()) {
                 std::string game_name = GetGameNameFromProcess();

@@ -2,37 +2,42 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
-## v0.12.581 (unreleased)
+## (unreleased)
+
+## v0.12.582
+- [settings] **.DC_CONFIG_GLOBAL in Display_Commander app data folder** - Global config mode also activates when an empty `.DC_CONFIG_GLOBAL` exists in `%LocalAppData%\Programs\Display_Commander\`, not only next to the addon. Lets a single flag enable per-game folders under `Games\<game_name>\` for shared or global addon installs without copying the file beside every DLL. Details: `GetDisplayCommanderAppDataRootPathNoCreate`, `ChooseAndSetDcConfigPath` in main_entry.cpp; README.
+
+## v0.12.581
 - [new feature] [settings] **.DC_CONFIG_GLOBAL** - Empty file in the addon folder switches config and ReShade data to `%LocalAppData%\Programs\Display_Commander\Games\<game_name>\` (global per-game folder). See README Installation and Expert – flag files.
 - [cleanup] **README: config path priority and clone URL** - Installation section now states that override is an empty file in the addon folder, explains \<game_name> (exe parent folder), and that .DC_CONFIG_GLOBAL wins if both flag files exist. Build from source: clone URL set to pmnoxx/display-commander, cd display-commander. Details: README.md.
 
-## v0.12.580 (unreleased)
+## v0.12.580
 - [new feature] [settings] **Config path: .DC_CONFIG_GLOBAL** - If an empty file named `.DC_CONFIG_GLOBAL` exists in the same folder as the Display Commander addon, config and ReShade data are stored in `%LocalAppData%\Programs\Display_Commander\Games\<game_name>\` instead of the game exe directory. Game name is derived from the process exe path (same as Notes). Priority order: .DC_CONFIG_GLOBAL → .DC_CONFIG_IN_DLL → exe directory. Details: ChooseAndSetDcConfigPath in main_entry.cpp; GetDisplayCommanderAppDataFolder, GetGameNameFromProcess in general_utils; README.
 - [new feature] [settings] **Config path: .DC_CONFIG_IN_DLL** - If an empty file named `.DC_CONFIG_IN_DLL` exists in the same folder as the Display Commander addon (the .addon64/.addon32 or proxy DLL), config and ReShade data are stored in that addon folder instead of the game exe directory. Useful for global or shared addon installs. Otherwise the game exe directory is used. Details: ChooseAndSetDcConfigPath in main_entry.cpp; README Installation and Expert – flag files.
 - [cleanup] **README: config paths and expert flags** - Documented default config/ReShade paths and the `.DC_CONFIG_IN_DLL` option in Installation. Expert – flag files now list each flag on its own line (game exe directory: `.NO_RESHADE`, `.NODC`, `.UI`, `.NO_EXIT`, `.GET_PROC_ADDRESS`; addon folder: `.DC_CONFIG_IN_DLL`, `.DLL_DETECTOR`). Details: README.md.
 
-## v0.12.579 (unreleased)
+## v0.12.579
 - [cleanup] **Refactored DC config path** - Config directory is now stored in `g_dc_config_directory` (set at process attach to exe path) and passed into `DisplayCommanderConfigManager::Initialize(std::optional<std::wstring_view> config_directory)`. Call sites in main_entry (DLL attach, no-ReShade init, injection) pass the global when available; config manager uses it for DisplayCommander.toml, .ini, and log paths. Enables a future way to change the config path. Details: globals.hpp/cpp g_dc_config_directory; display_commander_config Initialize overload; main_entry.cpp.
 
-## v0.12.578 (unreleased)
+## v0.12.578
 - [bugfix] [compatibility] **Fixed ReShade config path** - ReShade now creates its config (ReShade.ini, etc.) in the game exe directory even when ReShade is loaded globally (e.g. from System32 or a shared install). Display Commander sets `RESHADE_BASE_PATH_OVERRIDE` at the start of `DLL_PROCESS_ATTACH` to the same path it uses for DisplayCommander.toml. Details: main_entry.cpp.
 
-## v0.12.577 (unreleased)
+## v0.12.577
 - [ui] **Add DC Shaders/Textures tooltip shows ReShade path values** - The tooltip for "Add DC Shaders/Textures to ReShade paths" now shows two lines with the current ReShade config values: EffectSearchPaths and TextureSearchPaths (from GENERAL section), read via `get_config_value`. Paths are shown separated by "; "; "—" when a value is missing or empty. Details: main_new_tab.cpp DrawUpdatesSectionContent tooltip; uses nullptr for global config.
 
-## v0.12.576 (unreleased)
+## v0.12.576
 - [compatibility] **ReShade config overrides use runtime when available** - When applying ReShade settings (window/docking, tutorial/updates, DC shader paths), the addon now passes the current effect runtime to `get_config_value`/`set_config_value` when one is available (e.g. from `OnInitEffectRuntime`). Each runtime’s .ini (ReShade.ini, ReShade2.ini, etc.) is updated correctly instead of always writing to the global/current config. Call sites without a runtime still pass `nullptr`. Details: OverrideReShadeSettings(runtime) and helpers take optional runtime; addon.hpp declaration; main_entry.cpp, main_new_tab.cpp call sites.
 
-## v0.12.575 (unreleased)
+## v0.12.575
 - [compatibility] **Name, author, and description in ReShade Add-ons tab** - The addon now exports NAME, AUTHOR, and DESCRIPTION (in addition to WEBSITE and ISSUES) so ReShade can show addon name, author, and description in the Add-ons tab. ReShade's addon manager was updated to load the AUTHOR export via GetProcAddress when present; name and description were already loaded. Users see Display Commander's author and description in the overlay. Details: addon.cpp exports AUTHOR; external/reshade/source/addon_manager.cpp loads AUTHOR like WEBSITE/ISSUES.
 
-## v0.12.574 (unreleased)
+## v0.12.574
 - [compatibility] **ReShade settings re-applied on every new runtime** - Display Commander’s ReShade overrides (window/docking config, tutorial and updates, DC shader/texture paths) are now applied every time a new ReShade effect runtime is created, not only at first load. Games that create multiple runtimes (e.g. main swapchain + VR or multiple windows) get consistent DC settings in each runtime’s config (ReShade.ini, ReShade2.ini, etc.). Details: OverrideReShadeSettings() is called from OnInitEffectRuntime in main_entry.cpp.
 
-## v0.12.573 (unreleased)
+## v0.12.573
 - [compatibility] **Website and Issues URLs in ReShade Add-ons tab** - The addon now exports WEBSITE and ISSUES so ReShade can show clickable links in the Add-ons tab (project page and issues page). Users can open the Display Commander repo and report issues directly from the overlay. Details: addon.cpp exports WEBSITE and ISSUES; ReShade addon_manager.cpp reads them via GetProcAddress.
 
-## v0.12.572 (unreleased)
+## v0.12.572
 - [ui] **VRR Cap button shows green when within 0.002** - In the FPS limit quick changer, the "VRR Cap" button (and other preset buttons) now show as selected (green) when the current FPS limit is within 0.002 of that preset value, so slight floating-point differences no longer hide the selection. Details: main_new_tab.cpp DrawQuickFpsLimitChanger selected_epsilon.
 - [cleanup] **SafeRemoveAll extension whitelist** - `SafeRemoveAll` no longer removes all files in a directory. It now takes a whitelist of file extensions and only removes files with those extensions (case-insensitive), then removes empty directories. Reduces risk of deleting unintended files in temp/staging dirs. Callers pass the extensions they expect: post-ReShade addon temp (`.dc64r`, `.dc32r`, `.dcr`), ReShade update/download temp (`.exe`, `.dll`), Debug staging (`.dll`). Details: utils/safe_remove.hpp, utils/safe_remove.cpp; main_entry.cpp, cli_standalone_ui.cpp, reshade_version_download.cpp, version_check.cpp; docs/safe_remove_extension_whitelist_plan.md.
 - [bugfix] [ui] **Backbuffer colorspace display with RenoDX** - Fixed the UI so backbuffer color space is shown correctly when RenoDX is used to upgrade the backbuffer (e.g. SDR→HDR). The displayed color space now reflects the actual swapchain/backbuffer state after the upgrade instead of showing stale or incorrect values.
@@ -561,82 +566,82 @@ Reverted to v0.12.535
 ## v0.12.416
 - [new feature] [hooks] **D3D9 hook suppression** - D3D9 hooks (Direct3DCreate9/CreateDeviceEx and present) can be suppressed like other hook types. When suppressed, Display Commander does not install hooks on d3d9.dll. Use Debug → Hooks and enable "Suppressed" for "D3D9", or set `D3D9Hooks = true` under `[DisplayCommander.HookSuppression]` in DisplayCommander.toml. Takes effect on next game start. Details: HookType::D3D9; suppress_d3d9_hooks / d3d9_hooks_installed in hook_suppression_settings; InstallDX9Hooks checks ShouldSuppressHook(HookType::D3D9) and calls MarkHookInstalled on success.
 
-## v0.12.415 (unreleased)
+## v0.12.415
 - [cleanup] **PresentMon: start worker only from continuous monitoring thread** - The PresentMon ETW worker is no longer started from the UI thread (Main tab "click to enable" or Advanced tab checkbox). Enabling the setting only saves the option; the continuous monitoring thread starts the worker on its next loop. This avoids starting the worker from the overlay/render thread or, when LoadFromDllMain=1, from DllMain. Stopping still runs from the UI when the user disables the option. Details: main_new_tab.cpp, advanced_tab.cpp remove CreateAndStartPresentMon() on enable; continuous_monitoring.cpp calls CreateAndStartPresentMon when enabled and not running.
 - [cleanup] **PresentMon: 5s delay after continuous monitoring starts** - The continuous monitoring thread now waits 5 seconds after it starts before starting the PresentMon worker (when the setting is enabled). This defers ETW/thread creation until after early process and DllMain-related activity has settled. Details: continuous_monitoring.cpp kPresentMonStartDelaySec, elapsed_ns check.
 - [ui] [settings] **Brightness / Auto HDR section off by default** - The Brightness and Auto HDR subsection on the Main tab is now disabled by default for new configs. The setting uses a new config key so existing users keep their current choice; new installs see the section collapsed until they enable it. Details: main_tab_settings.cpp brightness_autohdr_section_enabled (default false, key brightness_autohdr_section_enabled_doff).
 
-## v0.12.414 (unreleased)
+## v0.12.414
 - [compatibility] [hooks] **Prevent D3D11 hooking when ReFramework is detected** - When the ReFramework plugin (e.g. for Monster Hunter Rise, other REF games) is present, Display Commander no longer installs its D3D11 device hooks on d3d11.dll. This avoids conflicts and instability when both mods hook the same API. A log line is written when hooks are skipped. Details: loadlibrary_hooks.cpp OnModuleLoaded d3d11.dll branch checks HasReframeworkPluginModule() before InstallD3D11DeviceHooks.
 
-## v0.12.413 (unreleased)
+## v0.12.413
 - [new feature] [hooks] **Override game’s exception handler** - The AddVectoredExceptionHandler detour now registers the addon’s own vectored exception handler so Display Commander’s crash reporting runs even when the game registers its own. Process exit hooks use Initialize/Shutdown. Details: process_exit_hooks.hpp; api_hooks.cpp.
 
-## v0.12.412 (unreleased)
+## v0.12.412
 - [cleanup] **Vulkan NVLL: use shared Reflex-marker FPS limiter** - The NvLowLatencyVk (reflex_marker_vk_nvll) path now uses the same Reflex-marker FPS limiter as the NVAPI path. Vulkan games that use NvLowLatencyVk.dll SetLatencyMarker get centralized handling via `ProcessReflexMarkerFpsLimiter`: FPS limiter choice, max-queued-frames throttling, OnPresentFlags2, HandlePresentAfter, and latency buffer recording. `NotifyGameSetLatencyMarkerCall` is now invoked for Vulkan NVLL as well, so PCLStats / "Inject Reflex" visibility is consistent with native Reflex. Details: ProcessReflexMarkerFpsLimiter declared in globals.hpp (int return, std::function<int()> callback); nvlowlatencyvk_hooks.cpp delegates to it; NVAPI and Vulkan share one implementation.
 
-## v0.12.411 (unreleased)
+## v0.12.411
 - [cleanup] **NVAPI SetLatencyMarker refactor** - Reflex marker handling is centralized in `ProcessReflexMarkerFpsLimiter`; the detour now delegates to it with a callback. The callback type was changed from a function pointer to `std::function<NvAPI_Status()>` so a capturing lambda can be passed. Details: nvapi_hooks.cpp (ProcessReflexMarkerFpsLimiter, NvAPI_D3D_SetLatencyMarker_Detour).
 
-## v0.12.410 (unreleased)
+## v0.12.410
 - [bugfix] **Reflex FPS limiter: max queued frames only when limiter active** - The `reflex_fps_limiter_max_queued_frames` wait (throttling until the previous frame's SIMULATION_START is after PRESENT_START) now runs only when the Reflex-marker FPS limiter is the active limiter. Previously it could run for every marker even when another FPS limiter was in use, which was incorrect. Details: nvapi_hooks.cpp — block moved inside `use_fps_limiter` and PRESENT_END branch.
 
-## v0.12.409 (unreleased)
+## v0.12.409
 - [bugfix] **Reflex markers: fix double-send and missing sends** - Fixed bugs where Reflex latency markers were sometimes sent twice (e.g. from both DXGI Present and NVAPI SetLatencyMarker paths), causing frame generation (FG) to repeatedly turn on and off, and in other cases were not sent when they should have been. The addon now coordinates marker injection so markers are sent exactly once and reliably. Details: reflex marker injection / PCLStats and NVAPI SetLatencyMarker coordination.
 
 ## v0.12.408
 - [removal] **PresentMon feature removed** - PresentMon ETW tracing and related UI (flip state, debug info, Advanced tab option) are disabled. The feature is gated behind `kPresentMonEnabled` (set to false in presentmon_manager.hpp). Details: presentmon_manager.hpp kPresentMonEnabled = false; all PresentMon UI and logic already guarded by this flag.
 
-## v0.12.407 (unreleased)
+## v0.12.407
 - [new feature] [ui] **Performance overlay: FPS limiter source** - Added an optional line in the performance overlay that shows which path is currently applying the FPS limiter (e.g. reflex_marker, dxgi_swapchain). Enable via the new "FPS limiter src" checkbox under Main tab → overlay controls (CPU / limiter section). Same value as "(src: xxx)" in the Main tab FPS limiter section. Details: show_fps_limiter_src in main_tab_settings; DrawPerformanceOverlayContent uses GetChosenFpsLimiterSiteName().
 
 ## v0.12.406
 - [new feature] [hooks] **AddVectoredExceptionHandler detour** - The addon hooks `AddVectoredExceptionHandler` so the game cannot override Display Commander’s crash-reporting vectored exception handler. Our handler is registered via `AddVectoredExceptionHandler_Direct` (real API), and the detour forwards game registrations to the real API while keeping our handler in place. Details: api_hooks (AddVectoredExceptionHandler_Detour, AddVectoredExceptionHandler_Direct); process_exit_hooks uses _Direct for registration.
 
-## v0.12.405 (unreleased)
+## v0.12.405
 - [settings] [ui] **FPS limiter preset: enum and default change** - The FPS limiter preset (when the game has native Reflex) is now a typed enum `FpsLimiterPreset` in code. "Pace real frames Low-latency (Use native frame pacing)" is **slot 0** and the **default** for new configs; the combo order and default in main tab settings updated accordingly. Stored config value is unchanged (0–6); existing configs are not migrated, so a previously saved preset index may refer to a different preset after this release.
 - [bugfix] **FPS limiter preset: Low-latency (native frame pacing) fixed** - The "Pace real frames Low-latency (Use native frame pacing)" preset now correctly does not use the Reflex Latency Markers as FPS limiter (`use_reflex_markers_as_fps_limiter` is set off); it uses native frame pacing as intended. Details: ApplyNativeReflexPreset (FpsLimiterPreset::kLowLatencyNativePacing).
 
-## v0.12.404 (unreleased)
+## v0.12.404
 - [ui] **Tooltips: default max width (SetTooltipEx)** - All UI tooltips now use `SetTooltipEx` with a default max width (800px), so long tooltips wrap and are easier to read instead of stretching across the screen. Details: migrated ~673 `SetTooltip` calls to `SetTooltipEx` across 21 files.
 - [cleanup] **Window message rate logs: throttled** - When the window receives very high message rates, the debug dump and threshold messages from `CheckMessageRateAndLogIfHigh` are now throttled (LogErrorThrottled with 40 ms) so the log is not flooded. Details: window_proc_hooks.cpp.
 - [new feature] [ui] [hooks] **Debug tab: Hooks sub-tab** - Added debug menu: Debug tab now has a **Hooks** sub-tab listing all hook types with **Suppressed** and **Installed** per line, and a **checkbox** to turn suppression on/off for each hook (saved to [DisplayCommander.HookSuppression]; takes effect on next hook install, e.g. game restart).
 - [ui] **WGI suppression: networking warning** - Advanced tab "Enable Windows Gaming Input suppression globally" now shows a warning on the same line: suppressing Windows Gaming Input may break networking in some games. Tooltip updated with the same warning.
 
-## v0.12.403 (unreleased)
+## v0.12.403
 - **OnModuleLoaded log: ProductName and Version** - The [OnModuleLoaded] log line now includes the module’s version resource ProductName and Version (e.g. " - Display Commander 0.12.403.0" or " - NVIDIA DLSS 3.7.0.0") when available, making it easier to identify loaded DLLs from the log. Details: GetDLLProductNameUtf8 in general_utils; loadlibrary_hooks.cpp OnModuleLoaded uses GetModuleFileNameW then GetDLLProductNameUtf8 and GetDLLVersionString.
 
-## v0.12.402 (unreleased)
+## v0.12.402
 - **DirectInput hooks disabled by default** - DirectInput and DirectInput8 hooks are now off by default. New installs and users who have not changed the setting will no longer have these hooks active, reducing risk of input or compatibility issues. You can enable them in Experimental (Suppress DirectInput Hooks — uncheck to enable) or in Hook Stats if you need DirectInput device tracking or debugging. Details: suppress_dinput_hooks / suppress_dinput8_hooks default true in experimental_tab_settings, hook_suppression_settings, and s_suppress_dinput_hooks in globals.
 
 ## v0.12.401
 - **Version bump** - Bump to 0.12.401 after revert of 0.12.399 / 0.12.400.
 
-## v0.12.398 (unreleased)
+## v0.12.398
 - **PCLStats / Inject Reflex: hide when game uses native Reflex** - When the game is actively calling NvAPI SetLatencyMarker (native Reflex), the addon no longer offers or shows "Inject Reflex" / PCLStats injection. PCLStatsReportingAllowed() returns false if the game has called SetLatencyMarker in the last second, so the Inject Reflex option and related UI are hidden when native Reflex is detected. Details: pclstats_etw_hooks (NotifyGameSetLatencyMarkerCall, g_last_game_set_latency_marker_ns); nvapi_hooks.cpp (notify from detour); PCLStatsReportingAllowed() checks recent game marker time.
 
-## v0.12.397 (unreleased)
+## v0.12.397
 - **ReShade addon mode: global version and upgrade button** - When Display Commander runs as an addon (ReShade loaded the game first), the ReShade section in Updates now always shows the **Global ReShade version** (or "(none)" if no global install), and the same **Version to download** combo plus **Download** button used to upgrade the global ReShade folder. You can see which version is installed globally and download a different version without switching to proxy mode. Details: main_new_tab.cpp DrawUpdatesReshadeHeader (!g_hooked_before_reshade branch).
 
-## v0.12.396 (unreleased)
+## v0.12.396
 - **Replace with global ReShade after game closes** - When Display Commander runs as an addon (ReShade loaded the game first), the ReShade section no longer shows "Reshade updates not possible unless running DC as dll proxy." Instead you see: (1) **ReShade loaded as: &lt;dll&gt; (&lt;version&gt;)** (e.g. dxgi.dll (5.12.2)), showing the current loaded ReShade version, and (2) a **Replace with global after game closes** button. Clicking the button starts a background .cmd script immediately (no setting is saved). The script waits for the game process to exit, then copies the global ReShade DLL to the target path in a loop until successful. Details: utils/reshade_replace_after_exit.hpp/cpp (GetReshadeLoadedModulePath, StartReplaceWithGlobalAfterExitScript); main_new_tab.cpp (ReShade header when !g_hooked_before_reshade, version via GetDLLVersionString).
 - **Update status above Updates** - Above the Updates section you now see whether a newer debug build is available ("New version available on GitHub") or "Display Commander: using latest". The check runs once when you open the addon; if it fails, nothing is shown.
 - **Version check uses the release page only** - When checking for a newer Display Commander, the addon only opens the public latest-debug release page and reads the version from it. No extra API calls or downloads; the Download button still works when you click it.
 - **"Use global version" and simplified download** - A single **"Use global version"** checkbox (off by default) replaces the old version selector. When off, Display Commander loads from the game folder if present, otherwise from the global folder. When on, it always loads from the global folder. One **"Download latest version"** button installs the latest build to the global Display Commander folder.
 
-## v0.12.395 (unreleased)
+## v0.12.395
 - **FPS limiter preset label and Reflex settings visibility** - The OnPresent FPS limiter preset is renamed from "Native Reflex FPS preset" to "FPS limiter preset" in the UI and comments. The Reflex control (Low latency / Low latency + boost / Off / Game Defaults) is now always shown when the OnPresent sync FPS limiter section is visible, so it is no longer hidden when using the FPS limiter preset with native Reflex in sync. Details: main_new_tab.cpp (DrawDisplaySettings_FpsLimiterOnPresentSync); main_tab_settings.hpp/cpp (comments).
 
-## v0.12.394 (unreleased)
+## v0.12.394
 - **Main tab: Updates section only when hooked before ReShade** - The "Updates" section (ReShade, Display Commander, Addons) on the Main tab is now shown only when Display Commander was hooked before ReShade loaded. When DC loads after ReShade, the section is hidden. Details: main_new_tab.cpp (g_hooked_before_reshade guard).
 
-## v0.12.393 (unreleased)
+## v0.12.393
 - **DualSense/HID no longer integrated in Display Commander** - HID.dll and DualSense are no longer integrated: no HID hooks, no DualSense init, and related UI is hidden.
 
-## v0.12.392 (unreleased)
+## v0.12.392
 - **Open Display Commander global folder: fix button not working** - The "Open folder" button for the Display Commander global folder (Updates section) now creates the folder if it does not exist, then opens it in Explorer using ShellExecuteW with the "open" verb. Previously it used ShellExecuteA "explore" on a path that might not exist, which could fail. Details: main_new_tab.cpp.
 
-## v0.12.391 (unreleased)
+## v0.12.391
 - **Global DC version: detailed status instead of (none)** - The Main tab "Global DC version" line now shows a specific message when no version is available: "Global folder missing" when the Display Commander app data folder does not exist, "No addon in global folder" when the folder exists but has no zzz_display_commander.addon64/.addon32, or "Version unknown" when the addon file exists but has no version resource. The tooltip path shows the global folder or addon path as appropriate. Details: main_new_tab.cpp.
 - **OnModuleLoaded log: mark DC proxy modules** - When a loaded module exports GetDisplayCommanderState, the LoadLibrary hook now appends " (DC proxy)" to the [OnModuleLoaded] log line so logs clearly identify Display Commander proxy DLLs (e.g. dxgi.dll, version.dll) versus system or other DLLs. Details: loadlibrary_hooks.cpp.
 
@@ -920,7 +925,7 @@ Reverted to v0.12.535
 - **Multi-window exit fix** - TLDR: Ignores window close message if app has multiple windows. When the game has more than one window, closing one window (WM_CLOSE, WM_DESTROY, WM_QUIT) no longer triggers the addon exit handler; exit is only triggered when the last window is closed. Prevents premature shutdown when one of several game windows is closed. Details: window_proc_hooks.cpp — CountOtherProcessWindows() excludes the closing HWND and standalone UI; OnHandleExit only called when no other process windows remain.
 - **Show independent window: setting-driven** - The "Show independent window" checkbox in the Main tab is now a persisted BooleanSetting. The checkbox only toggles the setting; the continuous monitoring thread opens or closes the standalone settings window based on that setting, so the window state stays in sync across restarts. Details: show_independent_window in main_tab_settings; main_new_tab uses CheckboxSetting only; continuous_monitoring per-second block calls RequestShowIndependentWindow/CloseIndependentWindow when setting and window state differ.
 
-## v0.12.332 (unreleased)
+## v0.12.332
 - **Show Independent window: fixed crash** - Opening the "Show independent window" option from the ReShade overlay no longer crashes. The standalone settings window and all related UI (performance overlay, Display Commander window, tab bar) now use the ImGui wrapper instead of calling ImGui directly, so the correct ImGui context is used and symbol/ABI clashes are avoided. Details: cli_standalone_ui.cpp (RunStandaloneSettingsUI, RunStandaloneGamesOnlyUI, DrawLauncherSettingsTab use ImGuiWrapperStandalone); main_entry.cpp (OnPerformanceOverlay_DisplayCommanderWindow, OnPerformanceOverlay_TestWindow, DrawCustomCursor use ImGuiWrapperReshade); new_ui_tabs.cpp TabManager::Draw and NewUISystem::Draw take IImGuiWrapper&; wrapper gains SetNextWindowBgAlpha, GetWindowPos, GetForegroundDrawList.
 
 ## v0.12.331
@@ -1284,7 +1289,7 @@ Reverted to v0.12.535
 - **Launcher: Japanese font support** - Standalone launcher and no-ReShade settings UI now merge Japanese glyphs from a Windows system font (Meiryo, MS Gothic, or Yu Gothic) into the default ImGui font so Japanese text (e.g. game names, paths) displays correctly.
 - **Deadlock fix on startup** - Fixed a deadlock that could occur during addon startup; initialization order and locking are adjusted so startup completes without hanging.
 
-## v0.12.232 (unreleased)
+## v0.12.232
 
 - **Launcher: Win32 Jump List for recently launched games** - When running the standalone Display Commander Launcher exe, the taskbar Jump List (right-click the taskbar icon) shows a "Recently launched" category. Items from: (1) Steam games launched from the launcher (steam_launch_history), (2) games in the game launcher registry (last run with Display Commander). Up to 16 items, sorted by most recent. Uses SetCurrentProcessExplicitAppUserModelID so the custom list is shown. Steam items use launcher exe + `--steam-run <appid>` (IShellLink does not accept steam:// URLs); registry items use game exe path + arguments. Clicking a Jump List item launches the game; for Steam the exe handles `--steam-run` and exits after starting the game.
 - **Shared DXGI factory: defer until process attach** - `GetSharedDXGIFactory()` no longer creates the shared DXGI factory until `g_process_attached` is true. This avoids calling `CreateDXGIFactory1` (and getting DXGI_ERROR_INVALID_CALL / 0x887a0001) during early init before process attach has completed. Callers (display cache, resolution helpers, VRAM info) already handle a null factory and skip DXGI work.
@@ -1306,15 +1311,15 @@ Reverted to v0.12.535
 - **Launcher single-instance mutex** - The Games-only UI (rundll32 Launcher and standalone exe) uses a named mutex (`Local\DisplayCommander_LauncherMutex64` / `...32`) so only one instance runs. If another is already running, the new process brings the existing window to focus (ShowWindow SW_RESTORE, SetForegroundWindow) and exits.
 - **Games window (Launcher/exe): resize both ways, non-movable, more list rows** - Inner Games window now uses GetClientRect every frame so it grows and shrinks with the outer window. Added NoTitleBar so the tab cannot be dragged. Steam "Launch Steam game" search list uses remaining vertical space (BeginChild 0,0) so more rows are visible when the window is large.
 
-## v0.12.226 (unreleased)
+## v0.12.226
 
 - **Games window (Launcher/exe): stretch to borders** - The standalone Games-only UI window now fills the full client area; position and size are set every frame to the display size so the content stretches when the window is resized. Replaced AlwaysAutoResize with NoResize/NoMove/NoCollapse so the inner ImGui window stays full-client-area.
 
-## v0.12.225 (unreleased)
+## v0.12.225
 
 - **Build: shared object library and common options** - DLL and exe now share an object library (`display_commander_objs`) for all sources except `main_entry.cpp` and `main_exe.cpp`, so common code is compiled once and linked into both targets. A single interface library (`display_commander_common_options`) holds compile definitions, include directories, and compiler flags for both; flags are no longer duplicated. Build time improves when building both targets (e.g. `ninja zzz_display_commander display_commander_exe`).
 
-## v0.12.224 (unreleased)
+## v0.12.224
 
 - **SetupDC and installer UI removed** - Removed the `SetupDC` command from CommandLine (rundll32) and the standalone installer UI (`RunStandaloneUI`). The "Display Commander - Installer" window (Setup tab, Games tab, ReShade install) is no longer available. Use the standalone exe or rundll32 Launcher for the Games-only UI; use ReShade overlay or no-ReShade settings window for configuration.
 - **Standalone .exe build** - Project builds both the ReShade addon DLL and a standalone Launcher executable (Display Commander Launcher.exe / Display Commander Launcher32.exe) from the same codebase. EXE uses the same init path as the DLL in no-ReShade mode then runs the standalone settings UI on the main thread. New CMake target `display_commander_exe`; entry in `main_exe.cpp` (wWinMain → RunDisplayCommanderStandalone). DllMain is compiled only for the DLL (guarded with DISPLAY_COMMANDER_BUILD_EXE).
@@ -2483,7 +2488,7 @@ Remove unused code.
 
 - **Borderless window minimize/restore** - Support for minimizing and restoring borderless games using standard Windows keybinds (Win+Down to minimize, Win+Up to restore). ShowWindow hook only blocks minimize for bordered windows so borderless Win+Down/Win+Up works (Special-K style, see [SpecialK@fe80f1d](https://github.com/SpecialKO/SpecialK/commit/fe80f1dc06d7360475c689479d0afbe224e0f68a)). Handled in ProcessHotkeys when app is in foreground only; ShowWindow_Direct used to prevent spoofing.
 
-## v0.12.0 (unreleased)
+## v0.12.0
 
 - **DLSS overrides** - Added DLSS override feature with loading from dlss_override folder, Quality Preset setting, internal resolution scale slider, and M–Z presets; re-enabled DLSS-G profile setting; hook to slDLSSGetOptimalSettings
 - **DLSS UI** - Show DLSS information tab when DLSS was active at least once; button to force internal resolution / render preset change; option to control DLSS auto-exposure; DLSS indicator on/off via registry

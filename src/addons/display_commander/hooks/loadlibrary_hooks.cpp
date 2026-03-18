@@ -1074,13 +1074,13 @@ BOOL WINAPI FreeLibrary_Detour(HMODULE hLibModule) {
     if (IsReshadeTryingToFreeDisplayCommander(hLibModule, GetCallingDLL())) {
         LogInfo("[FreeLibrary] ReShade unloading Display Commander (0x%p) - unregistering addon and overlays first",
                 hLibModule);
-        // unregister_addon automatically unregisters all events and overlays registered by this addon
-        reshade::unregister_addon(hLibModule);
-        g_reshade_module.store(nullptr);
 
         // Wait until ContinuousMonitoring is in its sleep phase so it sees g_reshade_module == nullptr before we return
         {
             utils::SRWLockExclusive lock(utils::g_continuous_monitoring_loop_lock);
+            // unregister_addon automatically unregisters all events and overlays registered by this addon
+            reshade::unregister_addon(hLibModule);
+            g_reshade_module.store(nullptr);
         }
         LogInfo("[FreeLibrary] ReShade unloaded Display Commander (0x%p)", hLibModule);
 
@@ -1100,7 +1100,7 @@ BOOL WINAPI FreeLibrary_Detour(HMODULE hLibModule) {
 
     // Only clear if refcount reached 0 (result is FALSE) and it's the ReShade module
     if (is_reshade_module && result == FALSE) {
-        LogInfo("FreeLibrary: Detected ReShade module unload (refcount reached 0) (0x%p)", hLibModule);
+        LogInfo("[FreeLibrary] Detected ReShade module unload (refcount reached 0) (0x%p)", hLibModule);
         OnReshadeUnload();
     }
 

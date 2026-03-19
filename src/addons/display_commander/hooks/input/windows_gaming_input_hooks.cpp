@@ -73,22 +73,6 @@ std::string IIDToGUIDString(const IID& iid) {
 // Hook state
 WindowsGamingInputState g_wgi_state;
 
-// Hooked RoGetActivationFactory function
-// This function handles all Windows.Gaming.Input ABI interfaces:
-// - IArcadeStick, IArcadeStickStatics, IArcadeStickStatics2
-// - IFlightStick, IFlightStickStatics
-// - IGameController, IGameControllerBatteryInfo
-// - IGamepad, IGamepad2, IGamepadStatics, IGamepadStatics2
-// - IHeadset
-// - IRacingWheel, IRacingWheelStatics, IRacingWheelStatics2
-// - IRawGameController, IRawGameController2, IRawGameControllerStatics
-// - IUINavigationController, IUINavigationControllerStatics, IUINavigationControllerStatics2
-//
-// Also handles other Windows Runtime interfaces:
-// - ICoreWindow: (1294176261, 15402, 16817, 144, 34, 83, 107, 185, 207, 147, 177)
-//   Reference: https://learn.microsoft.com/en-us/uwp/api/windows.ui.core.icorewindow?view=winrt-26100
-// ABI::Windows::UI::Core::IID_ICoreWindow
-
 HRESULT WINAPI RoGetActivationFactory_Detour(HSTRING activatableClassId, REFIID iid, void** factory) {
     // Log each new (iid, activatableClassId) pair once. HStringToNarrowSafe is crash-safe (invalid HSTRING → no AV).
     const std::string iid_str = IIDToGUIDString(iid);
@@ -100,23 +84,13 @@ HRESULT WINAPI RoGetActivationFactory_Detour(HSTRING activatableClassId, REFIID 
                     class_str.c_str());
         }
     }
-
-    // Always block those iids.
-    const bool is_blocked_iid = (iid == ABI::Windows::Gaming::Input::IID_IGamepadStatics
-                                 || iid == ABI::Windows::Gaming::Input::IID_IGamepadStatics2
-                                 || iid == ABI::Windows::Gaming::Input::IID_IRawGameControllerStatics);
-
-    if (is_blocked_iid) {
-        return RoGetActivationFactory_Original(activatableClassId, iid, factory);
-    }
-
     static bool is_unity_player = GetModuleHandleA("UnityPlayer.dll") != nullptr;
     const bool global_on = settings::g_advancedTabSettings.suppress_wgi_globally.GetValue();
     const bool master = settings::g_advancedTabSettings.suppress_wgi_enabled.GetValue();
     const bool suppress_for_unity = settings::g_advancedTabSettings.suppress_wgi_for_unity.GetValue();
     const bool suppress_for_non_unity = settings::g_advancedTabSettings.suppress_wgi_for_non_unity_games.GetValue();
-    const bool per_game_ok =
-        (is_unity_player && (suppress_for_unity || global_on)) || (!is_unity_player && (suppress_for_non_unity || global_on));
+    const bool per_game_ok = (is_unity_player && (suppress_for_unity || global_on))
+                             || (!is_unity_player && (suppress_for_non_unity || global_on));
     const bool should_suppress = (master || global_on) && per_game_ok;
 
     if (should_suppress) {

@@ -4,6 +4,9 @@
 
 ## (unreleased)
 
+## v0.12.605
+- [new feature] [compatibility] **`dlls_to_load` before/after ReShade** - Display Commander can now load helper DLLs from `dlls_to_load\\before_reshade\\` during attach (and still supports legacy `dlls_to_load\\`), plus `dlls_to_load\\after_reshade\\` after ReShade init. Load order is alphabetical; folders are created if missing.
+
 ## v0.12.604
 - [cleanup] [ui] **DLSS Information is built only when expanded** - The Main tab now uses a cheap check to decide whether to show the “DLSS Information” section, and only builds the full NGX-backed summary when the section is expanded.
 

@@ -86,6 +86,7 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <vector>
 
@@ -2268,6 +2269,67 @@ void ProcessAttach_LoadLocalAddonDlls(HMODULE h_module) {
     }
 }
 
+// Loads .dc64/.dc32/.dc/.asi/.dll from dlls_dir (non-recursive). Creates the folder if missing. Alphabetical order.
+// Skips ReShade and Display Commander by product name. log_prefix used in debug output (e.g. "dlls_to_load/before_reshade").
+static void LoadDllsFromDirectory(const std::filesystem::path& dlls_dir, const char* log_prefix) {
+    std::error_code ec;
+    if (!std::filesystem::exists(dlls_dir, ec)) {
+        std::filesystem::create_directories(dlls_dir, ec);
+        if (ec) return;
+    } else if (!std::filesystem::is_directory(dlls_dir, ec)) {
+        return;
+    }
+#ifdef _WIN64
+    const std::wstring ext_list[] = {L".dc64", L".dc", L".asi", L".dll"};
+#else
+    const std::wstring ext_list[] = {L".dc32", L".dc", L".asi", L".dll"};
+#endif
+    const std::set<std::wstring> ext_match(ext_list, ext_list + 4);
+    std::vector<std::filesystem::path> to_load;
+    for (const auto& entry : std::filesystem::directory_iterator(
+             dlls_dir, std::filesystem::directory_options::skip_permission_denied, ec)) {
+        if (ec) break;
+        if (!entry.is_regular_file(ec)) continue;
+        std::wstring ext = entry.path().extension().wstring();
+        std::transform(ext.begin(), ext.end(), ext.begin(), ::towlower);
+        if (!ext_match.contains(ext)) continue;
+        to_load.push_back(entry.path());
+    }
+    if (to_load.empty()) return;
+    std::sort(to_load.begin(), to_load.end(),
+              [](const std::filesystem::path& a, const std::filesystem::path& b) {
+                  return a.filename().wstring() < b.filename().wstring();
+              });
+    for (const auto& path : to_load) {
+        const std::wstring path_w = path.wstring();
+        const std::wstring product = GetFileProductNameW(path_w);
+        if (!product.empty() && _wcsicmp(product.c_str(), L"ReShade") == 0 && g_reshade_module != nullptr) continue;
+        if (!product.empty() && _wcsicmp(product.c_str(), L"Display Commander") == 0) continue;
+        HMODULE mod = LoadLibraryW(path_w.c_str());
+        if (mod != nullptr) {
+            const std::string name = path.filename().string();
+            char msg[384];
+            snprintf(msg, sizeof(msg), "[DisplayCommander] Loaded DLL (%s): %s\n", log_prefix, name.c_str());
+            OutputDebugStringA(msg);
+        }
+    }
+}
+
+// Loads .dc64/.dc32/.dc/.asi/.dll from Display Commander config directory.
+// For before_reshade: also loads from dlls_to_load/ root (legacy) first, then from dlls_to_load/before_reshade/.
+// For after_reshade: loads only from dlls_to_load/after_reshade/. Creates subdirs if missing.
+void ProcessAttach_LoadDllsFromConfigDirectory(std::wstring_view subdir) {
+    auto dc_dir = g_dc_config_directory.load(std::memory_order_acquire);
+    if (dc_dir == nullptr || dc_dir->empty()) return;
+    const std::filesystem::path base = std::filesystem::path(*dc_dir) / L"dlls_to_load";
+    if (subdir == L"before_reshade") {
+        LoadDllsFromDirectory(base, "dlls_to_load");
+        LoadDllsFromDirectory(base / L"before_reshade", "dlls_to_load/before_reshade");
+    } else if (subdir == L"after_reshade") {
+        LoadDllsFromDirectory(base / L"after_reshade", "dlls_to_load/after_reshade");
+    }
+}
+
 namespace {
 const std::wstring kPostReShadeTempExtensions[] = {L".dc64r", L".dc32r", L".dcr"};
 }
@@ -2558,6 +2620,7 @@ void ProcessAttach_NoReShadeModeInit(HMODULE h_module) {
     display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
     utils::initialize_qpc_timing_constants();
     DoInitializationWithoutHwndSafe(h_module);
+    ProcessAttach_LoadDllsFromConfigDirectory(L"before_reshade");
     g_standalone_ui_pending.store(true);
 }
 
@@ -2596,6 +2659,7 @@ void ProcessAttach_RegisterAndPostInit(HMODULE h_module, const std::wstring& ent
     utils::initialize_qpc_timing_constants();
     DoInitializationWithoutHwndSafe(h_module);
     ProcessAttach_LoadLocalAddonDllsAfterReShade(h_module);
+    ProcessAttach_LoadDllsFromConfigDirectory(L"after_reshade");
     LoadAddonsFromPluginsDirectory();
     if (IsDisplayCommanderHookingInstance()) display_commanderhooks::InstallApiHooks();
     // Copy DefaultFiles into game folder (only if missing) once per launch
@@ -3096,6 +3160,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             }
             ProcessAttach_DetectReShadeInModules();
             ProcessAttach_LoadLocalAddonDlls(h_module);
+            ProcessAttach_LoadDllsFromConfigDirectory(L"before_reshade");
             ProcessAttach_CheckNoReShadeMode();
 
             std::wstring entry_point;

@@ -178,13 +178,11 @@ Prerequisites:
 ### Method 1 (DC as `winmm.dll`, ReFramework loaded before ReShade)
 
 1. In the **Monster Hunter Wilds game exe directory**, copy Display Commander as:
-   - `zzz_display_commander.addon64` -> rename to `winmm.dll`
-2. Extract ReShade into the same directory so you have:
-   - `ReShade64.dll`
-3. Create:
-   - `dlls_to_load/before_reshade/`
-   and place ReFramework here:
-   - `dlls_to_load/before_reshade/dinput8.dll`
+   - `zzz_display_commander.addon64` → rename to `./winmm.dll`
+2. Copy ReShade as the DXGI proxy:
+   - `ReShade64.dll` → rename to `./dxgi.dll`
+3. and place ReFramework here:
+   - `./dinput8.dll`
 
 This works because Display Commander loads `dlls_to_load/before_reshade/` **before** it initializes ReShade.
 

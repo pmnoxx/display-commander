@@ -4,6 +4,9 @@
 
 ## (unreleased)
 
+## v0.12.601
+- [hooks] **Streamline DLSS-G status tracking** - Restored `slDLSSGSetOptions` detour and updated DLSS-G “enabled” tracking to use `slDLSSGGetState`’s returned `DLSSGState` (status) instead of relying on requested options.
+
 ## v0.12.592
 - [bugfix] [hooks] [compatibility] **Crash when ReShade unloads Display Commander** - Fixes a potential crash if ReShade calls `FreeLibrary` on the addon while background continuous monitoring still touches ReShade state. Unregistering the addon and clearing the ReShade module handle now happens under the same lock as that monitoring loop so teardown is ordered safely. Details: `FreeLibrary_Detour`, `loadlibrary_hooks.cpp`.
 

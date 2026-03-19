@@ -88,6 +88,11 @@ using slDLSSSetOptions_pfn = int (*)(const sl::ViewportHandle& viewport, const s
 static slDLSSSetOptions_pfn slDLSSSetOptions_Original = nullptr;
 static std::atomic<bool> g_slDLSSSetOptions_hook_installed{false};
 
+// slDLSSGSetOptions: Result(viewport, options) - hooked when game requests it via slGetFeatureFunction
+using slDLSSGSetOptions_pfn = int (*)(const sl::ViewportHandle& viewport, const sl::DLSSGOptions& options);
+static slDLSSGSetOptions_pfn slDLSSGSetOptions_Original = nullptr;
+static std::atomic<bool> g_slDLSSGSetOptions_hook_installed{false};
+
 // slSetData: plugin internal - signature matches PFun_slSetDataInternal
 using slSetDataInternal_pfn = int (*)(const sl::BaseStructure* inputs, sl::CommandBuffer* cmdBuffer);
 static slSetDataInternal_pfn slSetData_Original = nullptr;
@@ -242,27 +247,43 @@ static void UpdateNGXParamsFromDLSSOptimalSettings(const sl::DLSSOptimalSettings
     g_ngx_parameters.update_float("Sharpness", settings.optimalSharpness);
 }
 
-// Update g_ngx_parameters and FG atomic from Streamline DLSS-G options (for Vulkan/Streamline DLSS Information tab).
-// Log only when mode or numFramesToGenerate changes to avoid flooding the log.
-static void UpdateNGXParamsFromDLSSGOptions(const sl::DLSSGOptions& options) {
-    const bool fg_on = (options.mode != sl::DLSSGMode::eOff);
-    g_streamline_dlssg_fg_enabled.store(fg_on);
-    if (fg_on) {
+// Update g_ngx_parameters and FG atomic from Streamline DLSS-G state (for Vulkan/Streamline DLSS Information tab).
+// "Enabled" is based on returned state.status (operational), not the requested options.
+// Options (if provided by the caller) are used only for mode / requested numFramesToGenerate.
+static void UpdateNGXParamsFromDLSSGOptions(const sl::DLSSGState& state, const sl::DLSSGOptions* options) {
+    const uint32_t status_val = static_cast<uint32_t>(state.status);
+    g_ngx_parameters.update_uint("DLSSG.Status", status_val);
+    g_ngx_parameters.update_uint("DLSSG.NumFramesToGenerateMax", state.numFramesToGenerateMax);
+    g_ngx_parameters.update_uint("DLSSG.NumFramesActuallyPresented", state.numFramesActuallyPresented);
+    g_ngx_parameters.update_uint("DLSSG.MinWidthOrHeight", state.minWidthOrHeight);
+
+    const bool fg_operational = (state.status == sl::DLSSGStatus::eOk);
+    g_streamline_dlssg_fg_enabled.store(fg_operational);
+    if (fg_operational) {
         g_dlssg_was_active_once.store(true);
     }
-    g_ngx_parameters.update_int("DLSSG.EnableInterp", fg_on ? 1 : 0);
-    g_ngx_parameters.update_uint("DLSSG.MultiFrameCount", options.numFramesToGenerate);
+    g_ngx_parameters.update_int("DLSSG.EnableInterp", fg_operational ? 1 : 0);
 
+    // Keep existing key updated when caller provides options (common in real titles).
+    // Streamline does not expose mode/frames-to-generate in DLSSGState.
+    if (options != nullptr) {
+        g_ngx_parameters.update_uint("DLSSG.MultiFrameCount", options->numFramesToGenerate);
+        g_ngx_parameters.update_int("DLSSG.Mode", static_cast<int>(options->mode));
+    }
+
+    static std::atomic<uint32_t> s_last_status{UINT32_MAX};
     static std::atomic<int> s_last_mode{-1};
     static std::atomic<uint32_t> s_last_num_frames{UINT32_MAX};
-    const int mode_val = static_cast<int>(options.mode);
-    const uint32_t num_frames = static_cast<uint32_t>(options.numFramesToGenerate);
-    if (s_last_mode.load(std::memory_order_relaxed) != mode_val
+    const int mode_val = (options != nullptr) ? static_cast<int>(options->mode) : -1;
+    const uint32_t num_frames = (options != nullptr) ? static_cast<uint32_t>(options->numFramesToGenerate) : 0;
+    if (s_last_status.load(std::memory_order_relaxed) != status_val
+        || s_last_mode.load(std::memory_order_relaxed) != mode_val
         || s_last_num_frames.load(std::memory_order_relaxed) != num_frames) {
+        s_last_status.store(status_val, std::memory_order_relaxed);
         s_last_mode.store(mode_val, std::memory_order_relaxed);
         s_last_num_frames.store(num_frames, std::memory_order_relaxed);
-        LogInfo("UpdateNGXParamsFromDLSSGOptions: mode=%d numFramesToGenerate=%d", mode_val,
-                options.numFramesToGenerate);
+        LogInfo("UpdateNGXParamsFromDLSSGState: status=0x%X mode=%d numFramesToGenerate=%u", status_val, mode_val,
+                num_frames);
     }
 }
 
@@ -453,6 +474,19 @@ static int slDLSSSetOptions_Detour(const sl::ViewportHandle& viewport, const sl:
     return slDLSSSetOptions_Original(viewport, modified_options);
 }
 
+// slDLSSGSetOptions detour: observe requested mode/frames-to-generate. "Enabled" is decided by slDLSSGGetState.
+static int slDLSSGSetOptions_Detour(const sl::ViewportHandle& viewport, const sl::DLSSGOptions& options) {
+    if (slDLSSGSetOptions_Original == nullptr) {
+        return static_cast<int>(sl::Result::eErrorInvalidParameter);
+    }
+    int result = slDLSSGSetOptions_Original(viewport, options);
+    if (result == static_cast<int>(sl::Result::eOk)) {
+        g_ngx_parameters.update_uint("DLSSG.MultiFrameCount", options.numFramesToGenerate);
+        g_ngx_parameters.update_int("DLSSG.Mode", static_cast<int>(options.mode));
+    }
+    return result;
+}
+
 // slSetData detour: log when plugin's slSetData is called (inputs chain + cmdBuffer)
 static int slSetData_Detour(const sl::BaseStructure* inputs, sl::CommandBuffer* cmdBuffer) {
     if (inputs != nullptr) {
@@ -489,8 +523,8 @@ static int slDLSSGGetState_Detour(const sl::ViewportHandle& viewport, sl::DLSSGS
         return static_cast<int>(sl::Result::eErrorInvalidParameter);
     }
     int result = slDLSSGGetState_Original(viewport, state, options);
-    if (result == static_cast<int>(sl::Result::eOk) && options != nullptr) {
-        UpdateNGXParamsFromDLSSGOptions(*options);
+    if (result == static_cast<int>(sl::Result::eOk)) {
+        UpdateNGXParamsFromDLSSGOptions(state, options);
     }
     return result;
 }
@@ -513,6 +547,17 @@ static int slGetFeatureFunction_Detour(int feature, const char* functionName, vo
         } else {
             g_slDLSSGGetState_hook_installed.store(false);
             LogError("Failed to install slDLSSGGetState hook");
+        }
+    }
+    // Install slDLSSGSetOptions hook on first successful lookup
+    if (functionName != nullptr && std::strcmp(functionName, "slDLSSGSetOptions") == 0
+        && !g_slDLSSGSetOptions_hook_installed.exchange(true)) {
+        if (CreateAndEnableHook(function, reinterpret_cast<LPVOID>(slDLSSGSetOptions_Detour),
+                                reinterpret_cast<LPVOID*>(&slDLSSGSetOptions_Original), "slDLSSGSetOptions")) {
+            LogInfo("Installed slDLSSGSetOptions hook");
+        } else {
+            g_slDLSSGSetOptions_hook_installed.store(false);
+            LogError("Failed to install slDLSSGSetOptions hook");
         }
     }
     // Install slDLSSGetOptimalSettings hook on first successful lookup

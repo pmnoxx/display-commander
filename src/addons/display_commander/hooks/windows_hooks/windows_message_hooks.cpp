@@ -231,30 +231,6 @@ constexpr std::array<HookInfo, HOOK_COUNT> g_hook_info = {{
     {"SetWindowLongW", DllGroup::DISPLAY_SETTINGS, HOOK_SetWindowLongW},
     {"SetWindowLongPtrA", DllGroup::DISPLAY_SETTINGS, HOOK_SetWindowLongPtrA},
     {"SetWindowLongPtrW", DllGroup::DISPLAY_SETTINGS, HOOK_SetWindowLongPtrW},
-
-    // Kernel32
-    {"CreateFileA", DllGroup::HID_API, HOOK_HID_CreateFileA},
-    {"CreateFileW", DllGroup::HID_API, HOOK_HID_CreateFileW},
-    {"ReadFile", DllGroup::HID_API, HOOK_HID_ReadFile},
-    {"ReadFileEx", DllGroup::HID_API, HOOK_HID_ReadFileEx},
-    {"ReadFileScatter", DllGroup::HID_API, HOOK_HID_ReadFileScatter},
-    {"WriteFile", DllGroup::HID_API, HOOK_HID_WriteFile},
-    {"WriteFileEx", DllGroup::HID_API, HOOK_HID_WriteFileEx},
-    {"DeviceIoControl", DllGroup::HID_API, HOOK_HID_DeviceIoControl},
-
-    // HID API hooks
-    {"HIDD_GetInputReport", DllGroup::HID_API, HOOK_HIDD_GetInputReport},
-    {"HIDD_GetAttributes", DllGroup::HID_API, HOOK_HIDD_GetAttributes},
-    {"HIDD_GetPreparsedData", DllGroup::HID_API, HOOK_HIDD_GetPreparsedData},
-    {"HIDD_FreePreparsedData", DllGroup::HID_API, HOOK_HIDD_FreePreparsedData},
-    {"HIDD_GetCaps", DllGroup::HID_API, HOOK_HIDD_GetCaps},
-    {"HIDD_GetManufacturerString", DllGroup::HID_API, HOOK_HIDD_GetManufacturerString},
-    {"HIDD_GetProductString", DllGroup::HID_API, HOOK_HIDD_GetProductString},
-    {"HIDD_GetSerialNumberString", DllGroup::HID_API, HOOK_HIDD_GetSerialNumberString},
-    {"HIDD_GetNumInputBuffers", DllGroup::HID_API, HOOK_HIDD_GetNumInputBuffers},
-    {"HIDD_SetNumInputBuffers", DllGroup::HID_API, HOOK_HIDD_SetNumInputBuffers},
-    {"HIDD_GetFeature", DllGroup::HID_API, HOOK_HIDD_GetFeature},
-    {"HIDD_SetFeature", DllGroup::HID_API, HOOK_HIDD_SetFeature},
 }};
 
 namespace {
@@ -1172,7 +1148,7 @@ UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSize
             // This size is needed to correctly advance to the next RAWINPUT block
             const UINT original_size = current->header.dwSize;
 
-            // When Continue Rendering is on, rewrite RIM_INPUTSINK -> RIM_INPUT so gamepad/HID raw input is not seen as
+            // When Continue Rendering is on, rewrite RIM_INPUTSINK -> RIM_INPUT so gamepad raw input is not seen as
             // background
             if (settings::g_advancedTabSettings.continue_rendering.GetValue()
                 && current->header.wParam == RIM_INPUTSINK) {
@@ -2386,7 +2362,6 @@ const char* GetDllGroupName(DllGroup group) {
         case DllGroup::DINPUT:           return "dinput.dll";
         case DllGroup::OPENGL:           return "opengl32.dll";
         case DllGroup::DISPLAY_SETTINGS: return "user32.dll (display_settings)";
-        case DllGroup::HID_API:          return "HID API (kernel32.dll + hid.dll)";
         default:                         return "Unknown";
     }
 }

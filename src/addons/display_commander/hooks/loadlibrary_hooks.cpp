@@ -30,7 +30,6 @@
 #include "hook_suppression_manager.hpp"
 #include "input/dinput_hooks.hpp"
 #include "input/game_input_hooks.hpp"
-#include "input/hid_hooks_install.hpp"
 #include "input/windows_gaming_input_hooks.hpp"
 #include "input/xinput_hooks.hpp"
 #include "nvidia/ngx_hooks.hpp"
@@ -1147,12 +1146,12 @@ static GetProcAddress_pfn GetProcAddress_Original = nullptr;
 // Base names (lowercase) of DLLs we ship as proxies. If GetProcAddress fails for such a module, we log.
 static const std::wstring* GetProxyDllNames() {
     static const std::wstring names[] = {
-        L"bcrypt.dll",  L"hid.dll",      L"dxgi.dll",    L"d3d11.dll",    L"d3d12.dll",   L"dinput8.dll",
+        L"bcrypt.dll", L"dxgi.dll", L"d3d11.dll", L"d3d12.dll", L"dinput8.dll",
         L"version.dll", L"opengl32.dll", L"dbghelp.dll", L"vulkan-1.dll", L"winhttp.dll",
     };
     return names;
 }
-static constexpr size_t kProxyDllNamesCount = 11;
+static constexpr size_t kProxyDllNamesCount = 10;
 
 // Proc names we have already logged for GetProcAddress(our proxy, result found). One log per name.
 static std::set<std::string> g_proxy_getproc_logged_names;
@@ -2098,23 +2097,6 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
             LogInfo("[OnModuleLoaded] DirectInput hooks not installed (e.g. suppressed or already installed)");
         }
     }
-    // kernel32.dll – HID-related hooks (ReadFile, CreateFileA/W, WriteFile, DeviceIoControl)
-    else if (lowerModuleName.find(L"kernel32.dll") != std::wstring::npos) {
-        if (enabled_experimental_features && InstallHIDKernel32Hooks(hModule)) {
-            LogInfo("[OnModuleLoaded] HID kernel32 hooks installed successfully");
-        } else if (enabled_experimental_features) {
-            LogInfo("[OnModuleLoaded] HID kernel32 hooks not installed (suppressed or already installed)");
-        }
-    }
-    // hid.dll – HID API hooks (HidD_*, HidP_*)
-    else if (lowerModuleName.find(L"hid.dll") != std::wstring::npos) {
-        if (enabled_experimental_features && InstallHIDDHooks(hModule)) {
-            LogInfo("[OnModuleLoaded] HID (hid.dll) hooks installed successfully");
-        } else if (enabled_experimental_features) {
-            LogInfo("[OnModuleLoaded] HID (hid.dll) hooks not installed (suppressed or already installed)");
-        }
-    }
-
     // Generic logging for other modules
     else {
         LogInfo("[OnModuleLoaded] Other module loaded: %ws (0x%p)", module_display_name.c_str(), hModule);

@@ -4,7 +4,6 @@
 #include "../../hooks/input/dinput_hooks.hpp"
 #include "../../hooks/opengl/opengl_hooks.hpp"
 #include "../../hooks/system/display_settings_hooks.hpp"
-#include "../../hooks/input/hid_statistics.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../globals.hpp"
 #include "../../utils/timing.hpp"
@@ -37,8 +36,7 @@ void DrawHookStatsTab(display_commander::ui::IImGuiWrapper& imgui) {
         display_commanderhooks::DllGroup::DINPUT8,
         display_commanderhooks::DllGroup::DINPUT,
         display_commanderhooks::DllGroup::OPENGL,
-        display_commanderhooks::DllGroup::DISPLAY_SETTINGS,
-        display_commanderhooks::DllGroup::HID_API
+        display_commanderhooks::DllGroup::DISPLAY_SETTINGS
     };
 
     int hook_count = display_commanderhooks::GetHookCount();
@@ -242,39 +240,6 @@ void DrawHookStatsTab(display_commander::ui::IImGuiWrapper& imgui) {
         }
     }
 
-    imgui.Spacing();
-    imgui.Separator();
-
-    imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== HID Device Type Statistics ===");
-    imgui.Text("Track different types of HID devices accessed");
-    imgui.Separator();
-
-    const auto& device_stats = display_commanderhooks::GetHIDDeviceStats();
-    uint64_t total_devices = device_stats.total_devices.load();
-    uint64_t dualsense_devices = device_stats.dualsense_devices.load();
-    uint64_t xbox_devices = device_stats.xbox_devices.load();
-    uint64_t generic_devices = device_stats.generic_hid_devices.load();
-    uint64_t unknown_devices = device_stats.unknown_devices.load();
-
-    imgui.Text("Total HID Devices: %llu", total_devices);
-    imgui.Text("DualSense Controllers: %llu", dualsense_devices);
-    imgui.Text("Xbox Controllers: %llu", xbox_devices);
-    imgui.Text("Generic HID Devices: %llu", generic_devices);
-    imgui.Text("Unknown Devices: %llu", unknown_devices);
-
-    if (total_devices > 0) {
-        float dualsense_rate = static_cast<float>(dualsense_devices) / static_cast<float>(total_devices) * 100.0f;
-        float xbox_rate = static_cast<float>(xbox_devices) / static_cast<float>(total_devices) * 100.0f;
-        float generic_rate = static_cast<float>(generic_devices) / static_cast<float>(total_devices) * 100.0f;
-        float unknown_rate = static_cast<float>(unknown_devices) / static_cast<float>(total_devices) * 100.0f;
-
-        imgui.Spacing();
-        imgui.Text("Device Distribution:");
-        imgui.Text("DualSense: %.2f%%", dualsense_rate);
-        imgui.Text("Xbox: %.2f%%", xbox_rate);
-        imgui.Text("Generic HID: %.2f%%", generic_rate);
-        imgui.Text("Unknown: %.2f%%", unknown_rate);
-    }
 }
 
 } // namespace ui::new_ui

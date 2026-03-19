@@ -12,7 +12,7 @@ using ui::new_ui::SettingBase;
 
 // Settings manager for hook suppression
 // Hooks with suppress_xxx_hooks = true are blacklisted by default
-// Currently blacklisted: DEBUG_OUTPUT (can be noisy), HID_SUPPRESSION (experimental)
+// Currently blacklisted: DEBUG_OUTPUT (can be noisy)
 class HookSuppressionSettings {
    public:
     HookSuppressionSettings();
@@ -36,8 +36,6 @@ class HookSuppressionSettings {
     BoolSetting suppress_streamline_hooks;
     BoolSetting suppress_ngx_hooks;
     BoolSetting suppress_windows_gaming_input_hooks;
-    BoolSetting suppress_hid_kernel32_hooks;
-    BoolSetting suppress_hid_hid_dll_hooks;
     BoolSetting suppress_api_hooks;
     BoolSetting suppress_window_api_hooks;
     BoolSetting suppress_sleep_hooks;
@@ -47,7 +45,6 @@ class HookSuppressionSettings {
     BoolSetting suppress_display_settings_hooks;
     BoolSetting suppress_windows_message_hooks;
     BoolSetting suppress_opengl_hooks;
-    BoolSetting suppress_hid_suppression_hooks;
     BoolSetting suppress_nvapi_hooks;
     BoolSetting suppress_process_exit_hooks;
     BoolSetting suppress_window_proc_hooks;
@@ -67,8 +64,6 @@ class HookSuppressionSettings {
     BoolSetting streamline_hooks_installed;
     BoolSetting ngx_hooks_installed;
     BoolSetting windows_gaming_input_hooks_installed;
-    BoolSetting hid_kernel32_hooks_installed;
-    BoolSetting hid_hid_dll_hooks_installed;
     BoolSetting api_hooks_installed;
     BoolSetting window_api_hooks_installed;
     BoolSetting sleep_hooks_installed;
@@ -78,7 +73,6 @@ class HookSuppressionSettings {
     BoolSetting display_settings_hooks_installed;
     BoolSetting windows_message_hooks_installed;
     BoolSetting opengl_hooks_installed;
-    BoolSetting hid_suppression_hooks_installed;
     BoolSetting nvapi_hooks_installed;
     BoolSetting process_exit_hooks_installed;
     BoolSetting window_proc_hooks_installed;

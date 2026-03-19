@@ -99,14 +99,6 @@ class ExperimentalTabSettings {
     // DirectInput hook suppression settings
     BoolSetting suppress_dinput_hooks;
 
-    // HID suppression settings
-    BoolSetting hid_suppression_enabled;
-    BoolSetting hid_suppression_dualsense_only;
-    BoolSetting hid_suppression_block_readfile;
-    BoolSetting hid_suppression_block_getinputreport;
-    BoolSetting hid_suppression_block_getattributes;
-    BoolSetting hid_suppression_block_createfile;
-
     // Debug output hook settings
     BoolSetting debug_output_log_to_reshade;
     BoolSetting debug_output_show_stats;

@@ -15,7 +15,6 @@ SRWLOCK g_blocked_dlls_srwlock = SRWLOCK_INIT;
 SRWLOCK g_host_loaded_apis_srwlock = SRWLOCK_INIT;
 SRWLOCK g_context_lock = SRWLOCK_INIT;
 SRWLOCK g_seen_exception_addresses_lock = SRWLOCK_INIT;
-SRWLOCK g_hid_suppression_mutex = SRWLOCK_INIT;
 SRWLOCK g_nvapi_lock = SRWLOCK_INIT;
 SRWLOCK g_ngx_handle_mutex = SRWLOCK_INIT;
 SRWLOCK g_qpc_modules_srwlock = SRWLOCK_INIT;
@@ -47,7 +46,6 @@ void LogAllSrwlockStatus() {
     LogOne("dlss_tracked", TryIsSRWLockHeld(g_dlss_tracked_srwlock));
     LogOne("detour context_lock", TryIsSRWLockHeld(g_context_lock));
     LogOne("seen_exception_addresses", TryIsSRWLockHeld(g_seen_exception_addresses_lock));
-    LogOne("hid_suppression", TryIsSRWLockHeld(g_hid_suppression_mutex));
     LogOne("nvapi", TryIsSRWLockHeld(g_nvapi_lock));
     LogOne("ngx_handle", TryIsSRWLockHeld(g_ngx_handle_mutex));
     LogOne("qpc_modules", TryIsSRWLockHeld(g_qpc_modules_srwlock));

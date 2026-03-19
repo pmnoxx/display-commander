@@ -3,12 +3,12 @@
 #include <imgui.h>
 #include <windows.h>
 #include <xinput.h>
+
 #include <array>
 #include <atomic>
 #include <memory>
 #include <string>
 #include <vector>
-#include "../../dualsense/dualsense_hid_wrapper.hpp"
 
 namespace display_commander {
 namespace ui {
@@ -43,9 +43,6 @@ struct XInputSharedState {
     std::atomic<uint64_t> stick_events{0};
     std::atomic<uint64_t> trigger_events{0};
 
-    // HID CreateFile counters
-    std::atomic<uint64_t> hid_createfile_total{0};
-    std::atomic<uint64_t> hid_createfile_dualsense{0};
 
     std::atomic<bool> trigger_screenshot{false};
     std::atomic<bool> ui_overlay_open{false};
@@ -53,7 +50,6 @@ struct XInputSharedState {
     // Settings
     std::atomic<bool> enable_xinput_hooks{true};  // Enable XInput hooks (off by default)
     std::atomic<bool> swap_a_b_buttons{false};
-    std::atomic<bool> enable_dualsense_xinput{false};   // Enable DualSense to XInput conversion
     std::atomic<bool> test_gamepad_suppression{false};  // When true, zero XInputGetState output to game (for testing)
     // Stick input->output mapping per axis: input [min_input, max_input] -> output [min_output, max_output] (0-1)
     // Left stick X axis
@@ -251,7 +247,6 @@ class XInputWidget {
                                  float right_min_out, float right_max_out);
     void DrawTriggerStates(display_commander::ui::IImGuiWrapper& imgui, const XINPUT_GAMEPAD& gamepad);
     void DrawBatteryStatus(display_commander::ui::IImGuiWrapper& imgui, int controller_index);
-    void DrawDualSenseReport(display_commander::ui::IImGuiWrapper& imgui, int controller_index);
 
     // Helper functions
     std::string GetButtonName(WORD button) const;
@@ -288,7 +283,7 @@ void InitializeXInputWidget();
 void DrawXInputWidget(display_commander::ui::IImGuiWrapper& imgui);
 /** Draw "Active input APIs (last 10s)" section for Controller tab (Special K-style). */
 void DrawActiveInputApisSection(display_commander::ui::IImGuiWrapper& imgui);
-/** Draw GetState(0) and DualSense HID report polling rates for Controller tab. */
+/** Draw GetState(0) polling rates for Controller tab. */
 void DrawControllerPollingRatesSection(display_commander::ui::IImGuiWrapper& imgui);
 /** Draw full Controller tab (all sections in order). Call this from both UIs so widgets stay in sync. */
 void DrawControllerTab(display_commander::ui::IImGuiWrapper& imgui);

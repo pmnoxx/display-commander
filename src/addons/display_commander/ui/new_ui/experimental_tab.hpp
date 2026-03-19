@@ -54,9 +54,6 @@ void DrawDisableFlipChainControls();
 // Draw developer tools section
 void DrawDeveloperTools(display_commander::ui::IImGuiWrapper& imgui);
 
-// Draw HID suppression controls section
-void DrawHIDSuppression(display_commander::ui::IImGuiWrapper& imgui);
-
 // Draw debug output hooks section
 void DrawDebugOutputHooks(display_commander::ui::IImGuiWrapper& imgui);
 

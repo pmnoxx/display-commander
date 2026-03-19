@@ -17,7 +17,6 @@ extern SRWLOCK g_blocked_dlls_srwlock;
 extern SRWLOCK g_host_loaded_apis_srwlock;  // host-loaded graphics API names (LoadLibrary caller tracking)
 extern SRWLOCK g_context_lock;
 extern SRWLOCK g_seen_exception_addresses_lock;
-extern SRWLOCK g_hid_suppression_mutex;
 extern SRWLOCK g_nvapi_lock;
 extern SRWLOCK g_ngx_handle_mutex;
 extern SRWLOCK g_qpc_modules_srwlock;

@@ -37,18 +37,6 @@ void InputActivityStats::MarkActiveByHookIndex(int hook_index) {
         case HOOK_GetRawInputBuffer:
             api_id = InputApiId::RawInput;
             break;
-        case HOOK_HID_CreateFileA:
-        case HOOK_HID_CreateFileW:
-        case HOOK_HID_ReadFile:
-        case HOOK_HID_ReadFileEx:
-        case HOOK_HID_ReadFileScatter:
-        case HOOK_HIDD_GetInputReport:
-        case HOOK_HIDD_GetAttributes:
-        case HOOK_HIDD_GetPreparsedData:
-        case HOOK_HIDD_FreePreparsedData:
-        case HOOK_HIDD_GetCaps:
-            api_id = InputApiId::HID;
-            break;
         default:
             break;
     }
@@ -89,7 +77,6 @@ const char* InputActivityStats::GetApiDisplayName(InputApiId api_id) {
         case InputApiId::DirectInput8:          return "DirectInput 8";
         case InputApiId::DirectInput:           return "DirectInput";
         case InputApiId::RawInput:              return "Raw Input";
-        case InputApiId::HID:                   return "HID";
         case InputApiId::WindowsGamingInput:   return "Windows.Gaming.Input";
         case InputApiId::GameInput:             return "GameInput";
         default:                                return "Unknown";

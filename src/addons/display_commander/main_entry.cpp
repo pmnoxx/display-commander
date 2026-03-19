@@ -8,7 +8,6 @@
 #include "exit_handler.hpp"
 #include "globals.hpp"
 #include "hooks/dbghelp/dbghelp_private_loader.hpp"
-#include "hooks/input/hid_suppression_hooks.hpp"
 #include "hooks/input/xinput_hooks.hpp"
 #include "hooks/loadlibrary_hooks.hpp"
 #include "hooks/vulkan/nvlowlatencyvk_hooks.hpp"
@@ -55,7 +54,6 @@
 #include "utils/timing.hpp"
 #include "utils/version_check.hpp"
 #include "version.hpp"
-#include "widgets/dualsense_widget/dualsense_widget.hpp"
 
 // Libraries <Windows.h>
 #include <windows.h>
@@ -1831,9 +1829,6 @@ void DoInitializationWithoutHwndSafe_Late() {
     dxgi::fps_limiter::StartRefreshRateMonitoring();
     std::thread(RunBackgroundAudioMonitor).detach();
     ui::new_ui::InitExperimentalTab();
-    if (enabled_experimental_features) {
-        display_commander::widgets::dualsense_widget::InitializeDualSenseWidget();
-    }
     display_commanderhooks::keyboard_tracker::Initialize();
     LogInfo("Keyboard tracking system initialized");
 }
@@ -3287,14 +3282,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
             // Clean up experimental tab threads
             ui::new_ui::CleanupExperimentalTab();
-
-            // Clean up DualSense support (only when experimental features were enabled)
-            if (enabled_experimental_features) {
-                display_commander::widgets::dualsense_widget::CleanupDualSenseWidget();
-            }
-
-            // Clean up HID suppression hooks
-            renodx::hooks::UninstallHIDSuppressionHooks();
 
             // Clean up NVAPI instances before shutdown
             if (g_reflexProvider) {

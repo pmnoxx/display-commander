@@ -1,5 +1,5 @@
 EXPORTS
-	; Proxy export blocks for d3d9, d3d11, d3d12, ddraw, dinput8, hid, bcrypt, opengl32, dxgi, version, winmm, winhttp, dbghelp, vulkan-1 (keep updating this list)
+	; Proxy export blocks for d3d9, d3d11, d3d12, ddraw, dinput8, bcrypt, opengl32, dxgi, version, winmm, winhttp, dbghelp, vulkan-1 (keep updating this list)
 	; using: python scripts/gen_proxy_from_spec.py <dll> scripts/specs/<dll>.spec (see script docstring).
 	; d3d9.dll exports (ordinals match ReShade/d3d9.lib where specified)
 	; https://github.com/wine-mirror/wine/blob/master/dlls/d3d9/d3d9.spec
@@ -92,53 +92,6 @@ EXPORTS
 	DllGetClassObject PRIVATE
 	DllRegisterServer PRIVATE
 	DllUnregisterServer PRIVATE
-
-	; hid.dll exports (Wine hid.spec)
-	; https://github.com/wine-mirror/wine/blob/master/dlls/hid/hid.spec
-	HidD_FlushQueue PRIVATE
-	HidD_FreePreparsedData PRIVATE
-	HidD_GetAttributes PRIVATE
-	HidD_GetConfiguration PRIVATE
-	HidD_GetFeature PRIVATE
-	HidD_GetHidGuid PRIVATE
-	HidD_GetIndexedString PRIVATE
-	HidD_GetInputReport PRIVATE
-	HidD_GetManufacturerString PRIVATE
-	HidD_GetMsGenreDescriptor PRIVATE
-	HidD_GetNumInputBuffers PRIVATE
-	HidD_GetPhysicalDescriptor PRIVATE
-	HidD_GetPreparsedData PRIVATE
-	HidD_GetProductString PRIVATE
-	HidD_GetSerialNumberString PRIVATE
-	HidD_Hello PRIVATE
-	HidD_SetConfiguration PRIVATE
-	HidD_SetFeature PRIVATE
-	HidD_SetNumInputBuffers PRIVATE
-	HidD_SetOutputReport PRIVATE
-	HidP_GetButtonCaps PRIVATE
-	HidP_GetCaps PRIVATE
-	HidP_GetData PRIVATE
-	HidP_GetExtendedAttributes PRIVATE
-	HidP_GetLinkCollectionNodes PRIVATE
-	HidP_GetScaledUsageValue PRIVATE
-	HidP_GetSpecificButtonCaps PRIVATE
-	HidP_GetSpecificValueCaps PRIVATE
-	HidP_GetUsageValue PRIVATE
-	HidP_GetUsageValueArray PRIVATE
-	HidP_GetUsages PRIVATE
-	HidP_GetUsagesEx PRIVATE
-	HidP_GetValueCaps PRIVATE
-	HidP_InitializeReportForID PRIVATE
-	HidP_MaxDataListLength PRIVATE
-	HidP_MaxUsageListLength PRIVATE
-	HidP_SetData PRIVATE
-	HidP_SetScaledUsageValue PRIVATE
-	HidP_SetUsageValue PRIVATE
-	HidP_SetUsageValueArray PRIVATE
-	HidP_SetUsages PRIVATE
-	HidP_TranslateUsagesToI8042ScanCodes PRIVATE
-	HidP_UnsetUsages PRIVATE
-	HidP_UsageListDifference PRIVATE
 
 	; bcrypt.dll exports (Wine bcrypt.spec)
 	; https://github.com/wine-mirror/wine/blob/master/dlls/bcrypt/bcrypt.spec

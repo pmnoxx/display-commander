@@ -4,7 +4,6 @@
 #include "hooks/dbghelp/dbghelp_original_hooks.hpp"
 #include "hooks/dbghelp/dbghelp_private_loader.hpp"
 #include "hooks/hook_suppression_manager.hpp"
-#include "hooks/input/hid_suppression_hooks.hpp"
 #include "utils/logging.hpp"
 
 //

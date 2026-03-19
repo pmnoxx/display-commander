@@ -13,7 +13,6 @@ enum class InputApiId : int {
     DirectInput8,
     DirectInput,
     RawInput,
-    HID,
     WindowsGamingInput,
     GameInput,
     Count
@@ -21,7 +20,7 @@ enum class InputApiId : int {
 
 /**
  * Single class that keeps input activity stats for the "Active input APIs (last 10s)" display.
- * All input-related detours (XInput, DInput, Raw Input, HID, WGI, GameInput) should
+ * All input-related detours (XInput, DInput, Raw Input, WGI, GameInput) should
  * call MarkActive() or MarkActiveByHookIndex() so the Controller tab can show which APIs
  * the game has used recently.
  */

@@ -21,8 +21,8 @@ struct HookCallStats {
     }
 };
 
-// DLL group enumeration (HID_API = kernel32.dll + hid.dll)
-enum class DllGroup { USER32, XINPUT1_4, KERNEL32, DINPUT8, DINPUT, OPENGL, DISPLAY_SETTINGS, HID_API, COUNT };
+// DLL group enumeration
+enum class DllGroup { USER32, XINPUT1_4, KERNEL32, DINPUT8, DINPUT, OPENGL, DISPLAY_SETTINGS, COUNT };
 
 // Hook index enumeration (order must match g_hook_info array in .cpp)
 // Note: "// ok" = g_hook_stats counter updated in detour; "// no counter" = not updated
@@ -113,28 +113,6 @@ enum HookIndex {
     HOOK_SetWindowLongW,            // ok
     HOOK_SetWindowLongPtrA,         // ok
     HOOK_SetWindowLongPtrW,         // ok
-
-    // HID API hooks (71-87)
-    HOOK_HID_CreateFileA,             // ok
-    HOOK_HID_CreateFileW,             // ok
-    HOOK_HID_ReadFile,                // ok
-    HOOK_HID_ReadFileEx,              // ok
-    HOOK_HID_ReadFileScatter,         // ok
-    HOOK_HID_WriteFile,               // ok
-    HOOK_HID_WriteFileEx,             // ok
-    HOOK_HID_DeviceIoControl,         // ok
-    HOOK_HIDD_GetInputReport,         // ok
-    HOOK_HIDD_GetAttributes,          // ok
-    HOOK_HIDD_GetPreparsedData,       // ok
-    HOOK_HIDD_FreePreparsedData,      // ok
-    HOOK_HIDD_GetCaps,                // ok
-    HOOK_HIDD_GetManufacturerString,  // ok
-    HOOK_HIDD_GetProductString,       // ok
-    HOOK_HIDD_GetSerialNumberString,  // ok
-    HOOK_HIDD_GetNumInputBuffers,     // ok
-    HOOK_HIDD_SetNumInputBuffers,     // ok
-    HOOK_HIDD_GetFeature,             // ok
-    HOOK_HIDD_SetFeature,             // ok
 
     HOOK_COUNT
 };

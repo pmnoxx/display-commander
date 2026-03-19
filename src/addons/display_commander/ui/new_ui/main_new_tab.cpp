@@ -1606,7 +1606,7 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
-                "Enable advanced settings to show advanced tabs (Advanced, Debug, HID Input, etc.).\n"
+                "Enable advanced settings to show advanced tabs (Advanced, Debug, etc.).\n"
                 "When disabled, advanced tabs will be hidden to simplify the interface.");
         }
     }
@@ -5023,29 +5023,29 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
         }
     };
 
-    // Reflex combo: always visible; which setting is used depends on FPS Limiter Mode (and applies even when checkbox off)
+    // Reflex combo: always visible; which setting is used depends on FPS Limiter Mode (and applies even when checkbox
+    // off)
     if (IsReflexAvailable()) {
         imgui.Spacing();
         const FpsLimiterMode mode = static_cast<FpsLimiterMode>(current_item);
         bool combo_changed = false;
         if (mode == FpsLimiterMode::kOnPresentSync) {
-            combo_changed = ComboSettingEnumWrapper(settings::g_mainTabSettings.onpresent_reflex_mode, "Reflex", imgui,
-                                                    600.f);
-        } else if (mode == FpsLimiterMode::kReflex) {
-            combo_changed = ComboSettingEnumWrapper(settings::g_mainTabSettings.reflex_limiter_reflex_mode, "Reflex",
-                                                    imgui, 600.f);
-        } else {
             combo_changed =
-                ComboSettingEnumWrapper(settings::g_mainTabSettings.reflex_disabled_limiter_mode, "Reflex", imgui,
-                                        600.f);
+                ComboSettingEnumWrapper(settings::g_mainTabSettings.onpresent_reflex_mode, "Reflex", imgui, 600.f);
+        } else if (mode == FpsLimiterMode::kReflex) {
+            combo_changed =
+                ComboSettingEnumWrapper(settings::g_mainTabSettings.reflex_limiter_reflex_mode, "Reflex", imgui, 600.f);
+        } else {
+            combo_changed = ComboSettingEnumWrapper(settings::g_mainTabSettings.reflex_disabled_limiter_mode, "Reflex",
+                                                    imgui, 600.f);
         }
         (void)combo_changed;
         if (imgui.IsItemHovered()) {
-            const char* context =
-                (mode == FpsLimiterMode::kOnPresentSync)
-                    ? "On Present Sync"
-                    : (mode == FpsLimiterMode::kReflex) ? "Reflex FPS limiter" : "FPS limiter off or LatentSync";
-            std::string tooltip = std::string("NVIDIA Reflex (used for ") + context + ").\n\n"
+            const char* context = (mode == FpsLimiterMode::kOnPresentSync) ? "On Present Sync"
+                                  : (mode == FpsLimiterMode::kReflex)      ? "Reflex FPS limiter"
+                                                                           : "FPS limiter off or LatentSync";
+            std::string tooltip =
+                std::string("NVIDIA Reflex (used for ") + context + ").\n\n"
                 + "Low latency: Enables Reflex Low Latency Mode (default).\n"
                 + "Low Latency + boost: Enables both Low Latency and Boost for maximum latency reduction.\n"
                 + "Off: Disables both Low Latency and Boost.\n"

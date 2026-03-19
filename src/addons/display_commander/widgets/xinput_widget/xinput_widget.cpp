@@ -5,7 +5,6 @@
 #include <sstream>
 #include <vector>
 #include "../../config/display_commander_config.hpp"
-#include "../../dualsense/dualsense_hid_wrapper.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/hook_suppression_manager.hpp"
 #include "../../hooks/input/input_activity_stats.hpp"
@@ -236,18 +235,6 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.SetTooltipEx("Swap the A and B button mappings");
     }
 
-    // DualSense to XInput conversion (only when experimental features enabled)
-    if (enabled_experimental_features) {
-        bool dualsense_xinput = g_shared_state->enable_dualsense_xinput.load();
-        if (imgui.Checkbox("DualSense to XInput", &dualsense_xinput)) {
-            g_shared_state->enable_dualsense_xinput.store(dualsense_xinput);
-            SaveSettings();
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Convert DualSense controller input to XInput format");
-        }
-    }
-
     // Test gamepad suppression (zero XInputGetState output to game)
     bool test_suppression = g_shared_state->test_gamepad_suppression.load();
     if (imgui.Checkbox("Test gamepad suppression", &test_suppression)) {
@@ -258,32 +245,6 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.SetTooltipEx(
             "When enabled, zeroes all gamepad output (buttons, sticks, triggers) returned to the game by "
             "XInputGetState/XInputGetStateEx. Use to test that suppression works; the game will see no input.");
-    }
-
-    // HID suppression and HID CreateFile counters (only when experimental features enabled)
-    if (enabled_experimental_features) {
-        bool hid_suppression = settings::g_experimentalTabSettings.hid_suppression_enabled.GetValue();
-        if (imgui.Checkbox("Enable HID Suppression", &hid_suppression)) {
-            settings::g_experimentalTabSettings.hid_suppression_enabled.SetValue(hid_suppression);
-            LogInfo("HID suppression %s", hid_suppression ? "enabled" : "disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Suppress HID input reading for games to prevent them from detecting controllers.\nUseful for "
-                "preventing games from interfering with controller input handling.");
-        }
-
-        imgui.Spacing();
-        imgui.TextColored(::ui::colors::TEXT_DEFAULT, "HID CreateFile Detection:");
-        uint64_t hid_total = g_shared_state->hid_createfile_total.load();
-        uint64_t hid_dualsense = g_shared_state->hid_createfile_dualsense.load();
-        imgui.Text("HID CreateFile Total: %llu", hid_total);
-        imgui.Text("HID CreateFile DualSense: %llu", hid_dualsense);
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Shows how many times the game tried to open HID devices via CreateFile.\nDualSense counter shows "
-                "specifically DualSense controller access attempts.");
-        }
     }
 
     imgui.TextColored(::ui::colors::TEXT_DIMMED, "Stick mapping: input range [min%%, max%%] -> output [min%%, max%%]");
@@ -557,8 +518,6 @@ void XInputWidget::DrawEventCounters(display_commander::ui::IImGuiWrapper& imgui
         g_shared_state->xinput_getstate_update_ns.store(0);
         g_shared_state->xinput_getstateex_update_ns.store(0);
         g_shared_state->last_xinput_call_time_ns.store(0);
-        g_shared_state->hid_createfile_total.store(0);
-        g_shared_state->hid_createfile_dualsense.store(0);
     }
 }
 
@@ -754,15 +713,6 @@ void XInputWidget::DrawControllerState(display_commander::ui::IImGuiWrapper& img
         imgui.Unindent();
     }
 
-    // Draw DualSense report if experimental features and dualsense_to_xinput are enabled
-    if (enabled_experimental_features && g_shared_state->enable_dualsense_xinput.load()) {
-        imgui.Spacing();
-        if (imgui.CollapsingHeader("DualSense Input Report", 0)) {
-            imgui.Indent();
-            DrawDualSenseReport(imgui, selected_controller_);
-            imgui.Unindent();
-        }
-    }
 }
 
 void XInputWidget::DrawButtonStates(display_commander::ui::IImGuiWrapper& imgui, const XINPUT_GAMEPAD& gamepad) {
@@ -1255,13 +1205,6 @@ void XInputWidget::LoadSettings() {
         g_shared_state->swap_a_b_buttons.store(swap_buttons);
     }
 
-    // Load DualSense to XInput conversion setting
-    bool dualsense_xinput;
-    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "EnableDualSenseXInput",
-                                                    dualsense_xinput)) {
-        g_shared_state->enable_dualsense_xinput.store(dualsense_xinput);
-    }
-
     // Load test gamepad suppression setting
     bool test_gamepad_suppression;
     if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "TestGamepadSuppression",
@@ -1506,10 +1449,6 @@ void XInputWidget::SaveSettings() {
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "SwapABButtons",
                                                 g_shared_state->swap_a_b_buttons.load());
 
-    // Save DualSense to XInput conversion setting
-    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "EnableDualSenseXInput",
-                                                g_shared_state->enable_dualsense_xinput.load());
-
     // Save test gamepad suppression setting
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "TestGamepadSuppression",
                                                 g_shared_state->test_gamepad_suppression.load());
@@ -1696,7 +1635,7 @@ void DrawControllerPollingRatesSection(display_commander::ui::IImGuiWrapper& img
     }
     imgui.Indent();
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx("XInput GetState(0) calls/sec (game polling) and DualSense HID report rate (addon reading).");
+        imgui.SetTooltipEx("XInput GetState(0) calls/sec (game polling).");
     }
 
     // XInput GetState(0) rate (use original tick so time-slowdown doesn't skew rate)
@@ -1719,26 +1658,6 @@ void DrawControllerPollingRatesSection(display_commander::ui::IImGuiWrapper& img
                static_cast<unsigned long long>(getstate0_calls));
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx("Game (or addon) calls to XInputGetState(0) per second.");
-    }
-
-    // DualSense HID report rate (first device if any)
-    if (display_commander::dualsense::g_dualsense_hid_wrapper) {
-        const auto& devices = display_commander::dualsense::g_dualsense_hid_wrapper->GetDevices();
-        if (devices.empty()) {
-            imgui.TextColored(::ui::colors::TEXT_DIMMED, "DualSense HID: no devices");
-        } else {
-            const auto& dev = devices[0];
-            if (dev.packet_rate_ever_called) {
-                imgui.Text("DualSense HID: %.1f reports/sec", dev.last_packet_rate_hz);
-            } else {
-                imgui.TextColored(::ui::colors::TEXT_DIMMED, "DualSense HID: never");
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx("Addon ReadFile rate for first DualSense (packet-number-changed branch).");
-            }
-        }
-    } else {
-        imgui.TextColored(::ui::colors::TEXT_DIMMED, "DualSense HID: not initialized");
     }
 
     imgui.Unindent();
@@ -1800,7 +1719,6 @@ void XInputWidget::TestLeftMotor() {
     vibration.wLeftMotorSpeed = 65535;  // Maximum intensity
     vibration.wRightMotorSpeed = 0;     // Right motor off
 
-    // Use detour so DualSense-as-XInput (slot 0) gets HID rumble; otherwise uses original XInput.
     DWORD result = display_commanderhooks::XInputSetState_Detour(selected_controller_, &vibration);
     if (result == ERROR_SUCCESS) {
         vibration_test_start_ns_ = utils::get_now_ns();
@@ -1823,7 +1741,6 @@ void XInputWidget::TestRightMotor() {
     vibration.wLeftMotorSpeed = 0;       // Left motor off
     vibration.wRightMotorSpeed = 65535;  // Maximum intensity
 
-    // Use detour so DualSense-as-XInput (slot 0) gets HID rumble; otherwise uses original XInput.
     DWORD result = display_commanderhooks::XInputSetState_Detour(selected_controller_, &vibration);
     if (result == ERROR_SUCCESS) {
         vibration_test_start_ns_ = utils::get_now_ns();
@@ -1847,7 +1764,6 @@ void XInputWidget::StopVibration() {
     vibration.wRightMotorSpeed = 0;
 
     vibration_test_start_ns_ = 0;  // Clear timer so UI stops showing countdown
-    // Use detour so DualSense-as-XInput (slot 0) gets HID rumble stop; otherwise uses original XInput.
     DWORD result = display_commanderhooks::XInputSetState_Detour(selected_controller_, &vibration);
     if (result == ERROR_SUCCESS) {
         LogInfo("XInputWidget::StopVibration() - Vibration stopped for controller %d", selected_controller_);
@@ -1956,215 +1872,6 @@ void UpdateBatteryStatus(DWORD user_index) {
         if (debug_count++ < 3) {
             LogWarn("XXX Failed to get battery info for controller %lu: %lu", user_index, result);
         }
-    }
-}
-
-void XInputWidget::DrawDualSenseReport(display_commander::ui::IImGuiWrapper& imgui, int controller_index) {
-    (void)controller_index;
-    // Check if DualSense HID wrapper is available
-    if (!display_commander::dualsense::g_dualsense_hid_wrapper) {
-        imgui.TextColored(::ui::colors::TEXT_DIMMED, "DualSense HID wrapper not available");
-        return;
-    }
-
-    // Get devices from HID wrapper
-    const auto& devices = display_commander::dualsense::g_dualsense_hid_wrapper->GetDevices();
-    if (devices.empty()) {
-        imgui.TextColored(::ui::colors::TEXT_DIMMED, "No DualSense devices detected");
-        return;
-    }
-
-    // Find the device that corresponds to the selected controller
-    const auto& device = devices[0];
-    if (!device.is_connected) {
-        imgui.TextColored(::ui::colors::TEXT_DIMMED, "DualSense device not connected");
-        return;
-    }
-
-    // Display basic device info
-    imgui.TextColored(::ui::colors::STATUS_ACTIVE, "Device: %s",
-                      device.device_name.empty() ? "DualSense Controller" : device.device_name.c_str());
-    imgui.Text("Connection: %s", device.connection_type.c_str());
-    imgui.Text("Vendor ID: 0x%04X", device.vendor_id);
-    imgui.Text("Product ID: 0x%04X", device.product_id);
-
-    // Display last update time
-    if (device.last_update_time > 0) {
-        DWORD now = GetTickCount();
-        DWORD age_ms = now - device.last_update_time;
-        imgui.Text("Last Update: %lu ms ago", age_ms);
-    }
-
-    imgui.Spacing();
-
-    // Display input report size and first few bytes
-    if (device.hid_device && device.hid_device->input_report.size() > 0) {
-        imgui.Text("Input Report Size: %zu bytes", device.hid_device->input_report.size());
-
-        // Show first 16 bytes in hex format
-        const auto& inputReport = device.hid_device->input_report;
-        std::string hex_string = "";
-        for (size_t i = 0; i < (inputReport.size() < 16 ? inputReport.size() : 16); ++i) {
-            char hex_byte[4];
-            sprintf_s(hex_byte, "%02X ", inputReport[i]);
-            hex_string += hex_byte;
-        }
-        imgui.Text("First 16 bytes: %s", hex_string.c_str());
-
-        imgui.Spacing();
-
-        // Display DualSense data if available
-        if (imgui.CollapsingHeader("DualSense Data", 0)) {
-            imgui.Indent();
-            const auto& sk_data = device.sk_dualsense_data;
-
-            // Basic input data
-            if (imgui.CollapsingHeader("Input Data", 0)) {
-                imgui.Indent();
-                imgui.Columns(2, "SKInputColumns", false);
-
-                // Sticks
-                imgui.Text("Left Stick: X=%d, Y=%d", sk_data.LeftStickX, sk_data.LeftStickY);
-                imgui.NextColumn();
-                imgui.Text("Right Stick: X=%d, Y=%d", sk_data.RightStickX, sk_data.RightStickY);
-                imgui.NextColumn();
-
-                // Triggers
-                imgui.Text("Left Trigger: %d", sk_data.TriggerLeft);
-                imgui.NextColumn();
-                imgui.Text("Right Trigger: %d", sk_data.TriggerRight);
-                imgui.NextColumn();
-
-                // D-pad
-                const char* dpad_names[] = {"Up",        "Up-Right", "Right",   "Down-Right", "Down",
-                                            "Down-Left", "Left",     "Up-Left", "None"};
-                imgui.Text("D-Pad: %s", dpad_names[static_cast<int>(sk_data.DPad)]);
-                imgui.NextColumn();
-                imgui.Text("Sequence: %d", sk_data.SeqNo);
-                imgui.NextColumn();
-
-                imgui.Columns(1);
-                imgui.Unindent();
-            }
-
-            // Button states
-            if (imgui.CollapsingHeader("Button States", 0)) {
-                imgui.Indent();
-                imgui.Columns(3, "SKButtonColumns", false);
-
-                // Face buttons
-                imgui.Text("Square: %s", sk_data.ButtonSquare ? "PRESSED" : "Released");
-                imgui.NextColumn();
-                imgui.Text("Cross: %s", sk_data.ButtonCross ? "PRESSED" : "Released");
-                imgui.NextColumn();
-                imgui.Text("Circle: %s", sk_data.ButtonCircle ? "PRESSED" : "Released");
-                imgui.NextColumn();
-                imgui.Text("Triangle: %s", sk_data.ButtonTriangle ? "PRESSED" : "Released");
-                imgui.NextColumn();
-
-                // Shoulder buttons
-                imgui.Text("L1: %s", sk_data.ButtonL1 ? "PRESSED" : "Released");
-                imgui.NextColumn();
-                imgui.Text("R1: %s", sk_data.ButtonR1 ? "PRESSED" : "Released");
-                imgui.NextColumn();
-                imgui.Text("L2: %s", sk_data.ButtonL2 ? "PRESSED" : "Released");
-                imgui.NextColumn();
-                imgui.Text("R2: %s", sk_data.ButtonR2 ? "PRESSED" : "Released");
-                imgui.NextColumn();
-
-                // System buttons
-                imgui.Text("Create: %s", sk_data.ButtonCreate ? "PRESSED" : "Released");
-                imgui.NextColumn();
-                imgui.Text("Options: %s", sk_data.ButtonOptions ? "PRESSED" : "Released");
-                imgui.NextColumn();
-                imgui.Text("L3: %s", sk_data.ButtonL3 ? "PRESSED" : "Released");
-                imgui.NextColumn();
-                imgui.Text("R3: %s", sk_data.ButtonR3 ? "PRESSED" : "Released");
-                imgui.NextColumn();
-                imgui.Text("Home: %s", sk_data.ButtonHome ? "PRESSED" : "Released");
-                imgui.NextColumn();
-                imgui.Text("Touchpad: %s", sk_data.ButtonPad ? "PRESSED" : "Released");
-                imgui.NextColumn();
-                imgui.Text("Mute: %s", sk_data.ButtonMute ? "PRESSED" : "Released");
-                imgui.NextColumn();
-
-                // Edge controller buttons
-                if (sk_data.ButtonLeftFunction || sk_data.ButtonRightFunction || sk_data.ButtonLeftPaddle
-                    || sk_data.ButtonRightPaddle) {
-                    imgui.Text("Left Function: %s", sk_data.ButtonLeftFunction ? "PRESSED" : "Released");
-                    imgui.NextColumn();
-                    imgui.Text("Right Function: %s", sk_data.ButtonRightFunction ? "PRESSED" : "Released");
-                    imgui.NextColumn();
-                    imgui.Text("Left Paddle: %s", sk_data.ButtonLeftPaddle ? "PRESSED" : "Released");
-                    imgui.NextColumn();
-                    imgui.Text("Right Paddle: %s", sk_data.ButtonRightPaddle ? "PRESSED" : "Released");
-                    imgui.NextColumn();
-                }
-
-                imgui.Columns(1);
-                imgui.Unindent();
-            }
-
-            // Motion sensors
-            if (imgui.CollapsingHeader("Motion Sensors")) {
-                imgui.Indent();
-                imgui.Columns(2, "SKMotionColumns", false);
-
-                imgui.Text("Angular Velocity X: %d", sk_data.AngularVelocityX);
-                imgui.NextColumn();
-                imgui.Text("Angular Velocity Y: %d", sk_data.AngularVelocityY);
-                imgui.NextColumn();
-                imgui.Text("Angular Velocity Z: %d", sk_data.AngularVelocityZ);
-                imgui.NextColumn();
-                imgui.Text("Accelerometer X: %d", sk_data.AccelerometerX);
-                imgui.NextColumn();
-                imgui.Text("Accelerometer Y: %d", sk_data.AccelerometerY);
-                imgui.NextColumn();
-                imgui.Text("Accelerometer Z: %d", sk_data.AccelerometerZ);
-                imgui.NextColumn();
-                imgui.Text("Temperature: %d°C", sk_data.Temperature);
-                imgui.NextColumn();
-                imgui.Text("Sensor Timestamp: %u", sk_data.SensorTimestamp);
-                imgui.NextColumn();
-
-                imgui.Columns(1);
-                imgui.Unindent();
-            }
-
-            // Adaptive triggers
-            if (imgui.CollapsingHeader("Adaptive Triggers")) {
-                imgui.Indent();
-                imgui.Columns(2, "SKTriggerColumns", false);
-
-                imgui.Text("Left Trigger Status: %d", sk_data.TriggerLeftStatus);
-                imgui.NextColumn();
-                imgui.Text("Right Trigger Status: %d", sk_data.TriggerRightStatus);
-                imgui.NextColumn();
-                imgui.Text("Left Stop Location: %d", sk_data.TriggerLeftStopLocation);
-                imgui.NextColumn();
-                imgui.Text("Right Stop Location: %d", sk_data.TriggerRightStopLocation);
-                imgui.NextColumn();
-                imgui.Text("Left Effect: %d", sk_data.TriggerLeftEffect);
-                imgui.NextColumn();
-                imgui.Text("Right Effect: %d", sk_data.TriggerRightEffect);
-                imgui.NextColumn();
-
-                imgui.Columns(1);
-                imgui.Unindent();
-            }
-
-            // Timestamps
-            if (imgui.CollapsingHeader("Timestamps")) {
-                imgui.Indent();
-                imgui.Text("Host Timestamp: %u", sk_data.HostTimestamp);
-                imgui.Text("Device Timestamp: %u", sk_data.DeviceTimeStamp);
-                imgui.Text("Sensor Timestamp: %u", sk_data.SensorTimestamp);
-                imgui.Unindent();
-            }
-            imgui.Unindent();
-        }
-    } else {
-        imgui.TextColored(::ui::colors::TEXT_DIMMED, "No input report data available");
     }
 }
 

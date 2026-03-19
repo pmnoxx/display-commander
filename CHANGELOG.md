@@ -2,7 +2,9 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
-## (unreleased)
+## v0.12.616
+- [removal] [cleanup] **Removed all HID hook/proxy code paths** - HID input suppression hooks, HID API tracking/stats, and hid.dll proxy exports were removed to simplify input handling and reduce hook surface area. Details: removed `hooks/input/hid_*`, removed `proxy_dll/hid_proxy.cpp`, stripped HID entries from `windows_message_hooks.*`, `input_activity_stats.*`, hook suppression settings/manager, and UI wiring.
+- [removal] [cleanup] **Removed all DualShock/DualSense code paths** - The DualSense monitor, DualSense-to-XInput conversion, DualSense rumble/output handling, and all dedicated DualSense hook/wrapper/widget sources were removed to simplify input handling and reduce maintenance overhead. Details: removed `dualsense/`, `hooks/input/dualsense_hooks.*`, and `widgets/dualsense_widget/*`; cleaned integration points in `main_entry.cpp`, `swapchain_events.cpp`, `xinput_hooks.cpp`, `xinput_widget.*`, HID suppression, and hook stats.
 
 ## v0.12.615
 - [bugfix] [ui] **Ray Reconstruction shows as "CreateFeature seen" when DLSS is created** - In many games Ray Reconstruction is not a separate NGX CreateFeature call; it is enabled as part of the DLSS Super Resolution feature (parameters/mode). We now mark DLSS-RR as "CreateFeature seen" when we observe DLSS (SuperSampling) being created (NGX) or when DLSS is in use (Streamline), so the "CreateFeature seen (tracked)" section no longer shows DLSS-RR as "Not seen" or "Loaded too late" when RR is enabled in-game alongside DLSS and DLSS-G. Details: `TrackNGXHandle` in `ngx_hooks.cpp`, `UpdateNGXParamsFromDLSSOptions` in `streamline_hooks.cpp`.

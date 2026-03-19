@@ -26,7 +26,7 @@ endif()
 # Version (single source of truth for addon and exe; used by common_options and version.rc)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 12)
-set(DISPLAY_COMMANDER_VERSION_PATCH 615)
+set(DISPLAY_COMMANDER_VERSION_PATCH 616)
 set(DISPLAY_COMMANDER_VERSION_STRING "${DISPLAY_COMMANDER_VERSION_MAJOR}.${DISPLAY_COMMANDER_VERSION_MINOR}.${DISPLAY_COMMANDER_VERSION_PATCH}.${GIT_COMMIT_COUNT}")
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)
   set(DISPLAY_COMMANDER_BITNESS "32-bit")
@@ -124,7 +124,6 @@ endif()
 
 # System libraries removed (xinput, dinput8, winmm, dbghelp) to avoid DLL dependency issues - they are loaded dynamically
 # Version library is needed for GetFileVersionInfo functions
-# HID libraries are needed for HID device enumeration and management
 # DXGI library is needed for DXGI interface IIDs
 # ETW libraries (tdh/advapi32) are needed for PresentMon-style tracing
 # WinInet library is needed for HTTP downloads (shader packages list)

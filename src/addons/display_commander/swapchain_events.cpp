@@ -11,7 +11,6 @@
 #include "hooks/dxgi/dxgi_factory_wrapper.hpp"
 #include "hooks/dxgi/dxgi_gpu_completion.hpp"
 #include "hooks/dxgi/dxgi_present_hooks.hpp"
-#include "hooks/input/hid_suppression_hooks.hpp"
 #include "hooks/input/xinput_hooks.hpp"
 #include "hooks/nvidia/ngx_hooks.hpp"
 #include "hooks/nvidia/streamline_hooks.hpp"
@@ -45,7 +44,6 @@
 #include "utils/no_inject_windows.hpp"
 #include "utils/perf_measurement.hpp"
 #include "utils/timing.hpp"
-#include "widgets/dualsense_widget/dualsense_widget.hpp"
 #include "widgets/xinput_widget/xinput_widget.hpp"
 #include "window_management/window_management.hpp"
 
@@ -296,12 +294,6 @@ void DoInitializationWithHwnd(HWND hwnd) {
 
     LogInfo("[DoInitializationWithHwnd] before InitExperimentalTab");
     ui::new_ui::InitExperimentalTab();
-
-    // Initialize DualSense support (only when experimental features enabled)
-    if (enabled_experimental_features) {
-        LogInfo("[DoInitializationWithHwnd] before InitializeDualSenseWidget");
-        display_commander::widgets::dualsense_widget::InitializeDualSenseWidget();
-    }
 
     // Set up window hooks if we have a valid HWND
     if (hwnd != nullptr && IsWindow(hwnd)) {

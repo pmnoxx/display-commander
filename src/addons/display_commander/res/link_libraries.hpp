@@ -14,7 +14,7 @@ struct LinkLibraryEntry {
 
 // Libraries linked to zzz_display_commander (addon DLL). Order matches CMake.
 inline constexpr LinkLibraryEntry kAddonLinkLibraries[] = {
-    {"setupapi", "HID device enumeration, setup API"},
+    {"setupapi", "Device enumeration, setup API"},
     {"tdh", "Event Trace (PresentMon-style tracing)"},
     {"advapi32", "Registry, ETW"},
     {"wininet", "HTTP (ReShade version list, downloads)"},

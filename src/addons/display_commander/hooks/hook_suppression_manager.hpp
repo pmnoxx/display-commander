@@ -17,8 +17,6 @@ enum class HookType {
     STREAMLINE,
     NGX,
     WINDOWS_GAMING_INPUT,
-    HID_KERNEL32,  // kernel32 ReadFile/CreateFile/WriteFile/DeviceIoControl (InstallHIDKernel32Hooks)
-    HID_HID_DLL,   // hid.dll HidD_*/HidP_* (InstallHIDDHooks)
     API,
     WINDOW_API,
     SLEEP,
@@ -28,7 +26,6 @@ enum class HookType {
     DISPLAY_SETTINGS,
     WINDOWS_MESSAGE,
     OPENGL,
-    HID_SUPPRESSION,
     NVAPI,
     PROCESS_EXIT,
     WINDOW_PROC,
@@ -58,7 +55,7 @@ class HookSuppressionManager {
     bool IsHookInstalled(HookType hookType);
 
     // Number of hook types (for UI iteration)
-    static constexpr int kHookTypeCount = 29;
+    static constexpr int kHookTypeCount = 26;
 
     // Get hook type by index (0 .. kHookTypeCount-1). Valid only for display iteration.
     static HookType GetHookTypeByIndex(int index);

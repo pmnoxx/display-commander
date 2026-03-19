@@ -3,7 +3,6 @@
 #include "../../dlss/dlss_indicator_manager.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/hook_suppression_manager.hpp"
-#include "../../hooks/input/hid_suppression_hooks.hpp"
 #include "../../hooks/loadlibrary_hooks.hpp"
 #include "../../hooks/system/debug_output_hooks.hpp"
 #include "../../hooks/system/rand_hooks.hpp"
@@ -24,7 +23,6 @@
 #include "../../utils/d3d9_api_version.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"
-#include "../../widgets/dualsense_widget/dualsense_widget.hpp"
 #include "../imgui_wrapper_reshade.hpp"
 #include "../monitor_settings/monitor_settings.hpp"
 #include "hook_stats_tab.hpp"
@@ -246,16 +244,6 @@ void DrawExperimentalTab(display_commander::ui::IImGuiWrapper& imgui, reshade::a
         }
 
         if (enabled_experimental_features) {
-            if (imgui.CollapsingHeader("HID Suppression", display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
-                DrawHIDSuppression(imgui);
-            }
-            imgui.Spacing();
-
-            if (imgui.CollapsingHeader("DualSense Controller Monitor",
-                                       display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
-                display_commander::widgets::dualsense_widget::DrawDualSenseWidget(imgui);
-            }
-            imgui.Spacing();
         }
 
         if (imgui.CollapsingHeader("Developer Tools", display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
@@ -2035,134 +2023,6 @@ void DrawDeveloperTools(display_commander::ui::IImGuiWrapper& imgui) {
                       ICON_FK_WARNING " DANGER: Unload ReShade DLL button will attempt to unload ReShade from memory!");
     imgui.TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f),
                       "This is extremely dangerous and will likely crash the game if ReShade is in use!");
-}
-
-void DrawHIDSuppression(display_commander::ui::IImGuiWrapper& imgui) {
-    imgui.TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "HID Suppression");
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Suppress HID input reading for games to prevent them from detecting controllers.\nUseful for preventing "
-            "games from interfering with controller input handling.");
-    }
-
-    // Master HID suppression enable
-    if (CheckboxSetting(settings::g_experimentalTabSettings.hid_suppression_enabled, "Enable HID Suppression", imgui)) {
-        LogInfo("HID suppression %s",
-                settings::g_experimentalTabSettings.hid_suppression_enabled.GetValue() ? "enabled" : "disabled");
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx("Enable/disable HID input suppression for games.");
-    }
-
-    // Direct control button
-    imgui.SameLine();
-    bool current_state = settings::g_experimentalTabSettings.hid_suppression_enabled.GetValue();
-    if (imgui.Button("Toggle HID Suppression")) {
-        renodx::hooks::SetHIDSuppressionEnabled(!current_state);
-        LogInfo("HID suppression toggled via button: %s", !current_state ? "enabled" : "disabled");
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx("Directly toggle HID suppression on/off using the SetHIDSuppressionEnabled function.");
-    }
-
-    if (settings::g_experimentalTabSettings.hid_suppression_enabled.GetValue()) {
-        imgui.Spacing();
-
-        // DualSense only option
-        if (CheckboxSetting(settings::g_experimentalTabSettings.hid_suppression_dualsense_only, "DualSense Only",
-                            imgui)) {
-            LogInfo(
-                "HID suppression DualSense only %s",
-                settings::g_experimentalTabSettings.hid_suppression_dualsense_only.GetValue() ? "enabled" : "disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Only suppress DualSense controllers. If disabled, suppresses all HID devices.");
-        }
-
-        imgui.Spacing();
-
-        // Individual function blocking options
-        imgui.TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Block Functions:");
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Select which HID functions to block for games.");
-        }
-
-        if (CheckboxSetting(settings::g_experimentalTabSettings.hid_suppression_block_readfile, "Block ReadFile",
-                            imgui)) {
-            LogInfo(
-                "HID suppression ReadFile blocking %s",
-                settings::g_experimentalTabSettings.hid_suppression_block_readfile.GetValue() ? "enabled" : "disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Block ReadFile operations on potential HID devices.");
-        }
-
-        if (CheckboxSetting(settings::g_experimentalTabSettings.hid_suppression_block_getinputreport,
-                            "Block HidD_GetInputReport", imgui)) {
-            LogInfo("HID suppression HidD_GetInputReport blocking %s",
-                    settings::g_experimentalTabSettings.hid_suppression_block_getinputreport.GetValue() ? "enabled"
-                                                                                                        : "disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Block HidD_GetInputReport operations for games.");
-        }
-
-        if (CheckboxSetting(settings::g_experimentalTabSettings.hid_suppression_block_getattributes,
-                            "Block HidD_GetAttributes", imgui)) {
-            LogInfo("HID suppression HidD_GetAttributes blocking %s",
-                    settings::g_experimentalTabSettings.hid_suppression_block_getattributes.GetValue() ? "enabled"
-                                                                                                       : "disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Block HidD_GetAttributes operations to prevent device detection.");
-        }
-
-        if (CheckboxSetting(settings::g_experimentalTabSettings.hid_suppression_block_createfile, "Block CreateFile",
-                            imgui)) {
-            LogInfo("HID suppression CreateFile blocking %s",
-                    settings::g_experimentalTabSettings.hid_suppression_block_createfile.GetValue() ? "enabled"
-                                                                                                    : "disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Block CreateFile operations on HID device paths (\\?\\hid#).");
-        }
-
-        imgui.Spacing();
-
-        // Show current settings summary
-        imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Settings:");
-        imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Target: %s",
-                          settings::g_experimentalTabSettings.hid_suppression_dualsense_only.GetValue()
-                              ? "DualSense Only"
-                              : "All HID Devices");
-        imgui.TextColored(
-            ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  ReadFile: %s",
-            settings::g_experimentalTabSettings.hid_suppression_block_readfile.GetValue() ? "Blocked" : "Allowed");
-        imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  GetInputReport: %s",
-                          settings::g_experimentalTabSettings.hid_suppression_block_getinputreport.GetValue()
-                              ? "Blocked"
-                              : "Allowed");
-        imgui.TextColored(
-            ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  GetAttributes: %s",
-            settings::g_experimentalTabSettings.hid_suppression_block_getattributes.GetValue() ? "Blocked" : "Allowed");
-        imgui.TextColored(
-            ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  CreateFile: %s",
-            settings::g_experimentalTabSettings.hid_suppression_block_createfile.GetValue() ? "Blocked" : "Allowed");
-
-        // Show hook status
-        bool hooks_installed = renodx::hooks::AreHIDSuppressionHooksInstalled();
-        imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Hooks Status: %s",
-                          hooks_installed ? "Installed" : "Not Installed");
-
-        imgui.Spacing();
-        imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                          ICON_FK_WARNING " WARNING: This prevents games from reading HID input!");
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "HID suppression prevents games from reading controller input directly.\nThis may cause games to not "
-                "recognize controllers or behave unexpectedly.\nUse with caution and test thoroughly.");
-        }
-    }
 }
 
 void DrawDebugOutputHooks(display_commander::ui::IImGuiWrapper& imgui) {

@@ -1087,6 +1087,21 @@ DLSSGSummary GetDLSSGSummary() {
     return summary;
 }
 
+bool ShouldShowDlssInformationSection() {
+    if (g_dlss_was_active_once.load(std::memory_order_relaxed)
+        || g_dlssg_was_active_once.load(std::memory_order_relaxed)
+        || g_ray_reconstruction_was_active_once.load(std::memory_order_relaxed)) {
+        return true;
+    }
+    if (GetDlssTrackedModule(DlssTrackedKind::DLSS).has_value()) return true;
+    if (GetDlssTrackedModule(DlssTrackedKind::DLSSG).has_value()) return true;
+    if (GetDlssTrackedModule(DlssTrackedKind::DLSSD).has_value()) return true;
+    if (GetModuleHandleW(L"nvngx_dlss.dll") != nullptr) return true;
+    if (GetModuleHandleW(L"nvngx_dlssg.dll") != nullptr) return true;
+    if (GetModuleHandleW(L"nvngx_dlssd.dll") != nullptr) return true;
+    return false;
+}
+
 // Lite version: any_dlss_active, dlss_active, dlss_g_active, ray_reconstruction_active, fg_mode (call every frame from
 // FPS limiter / overlay)
 DLSSGSummaryLite GetDLSSGSummaryLite() {

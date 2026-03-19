@@ -1440,6 +1440,9 @@ struct DLSSModelProfile {
 // Function to get DLSS/DLSS-G summary from NGX parameters
 DLSSGSummary GetDLSSGSummary();
 
+// Main tab: show \"DLSS Information\" header without building full summary (cheap vs GetDLSSGSummary).
+bool ShouldShowDlssInformationSection();
+
 // DLSS-G frame generation mode (used by FPS limiter; call GetDLSSGSummaryLite every frame)
 enum class DLSSGFgMode : std::uint8_t {
     Off = 0,        // Disabled

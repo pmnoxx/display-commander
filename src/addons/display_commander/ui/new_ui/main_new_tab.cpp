@@ -6129,12 +6129,11 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
     }
     DrawDisplaySettings_VSyncAndTearing(imgui);
     {
-        const DLSSGSummary dlss_summary = GetDLSSGSummary();
-        // Show DLSS Information section if any DLSS feature was active at least once or any DLSS DLL is loaded
-        const bool show_dlss_section = dlss_summary.any_dlss_was_active_once || dlss_summary.any_dlss_dll_loaded;
         g_rendering_ui_section.store("ui:tab:main_new:dlss_info", std::memory_order_release);
-        if (show_dlss_section && imgui.CollapsingHeader("DLSS Information", ImGuiTreeNodeFlags_None)) {
+        if (ShouldShowDlssInformationSection()
+            && imgui.CollapsingHeader("DLSS Information", ImGuiTreeNodeFlags_None)) {
             imgui.Indent();
+            const DLSSGSummary dlss_summary = GetDLSSGSummary();
             if (is_dxgi) {
                 if (!AreNGXParameterVTableHooksInstalled()) {
                     imgui.TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f),

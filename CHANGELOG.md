@@ -4,6 +4,9 @@
 
 ## (unreleased)
 
+## v0.12.604
+- [cleanup] [ui] **DLSS Information is built only when expanded** - The Main tab now uses a cheap check to decide whether to show the “DLSS Information” section, and only builds the full NGX-backed summary when the section is expanded.
+
 ## v0.12.603
 - [cleanup] [compatibility] **Cache ReShade LoadFromDllMain warning check** - The Main tab no longer reads `ADDON\\LoadFromDllMain` from ReShade config every frame; it’s fetched once per process after ReShade is detected (restart required for ini changes to take effect).
 

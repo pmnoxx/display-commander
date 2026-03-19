@@ -4607,10 +4607,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
                 "Quick presets for FPS limiter when the game has native Reflex. Custom allows manual configuration.");
         }
 
-        if (preset == FpsLimiterPreset::kLowLatencyNativePacing) {
-            imgui.TextColored(ui::colors::TEXT_WARNING, "Warning: may offer poor frame pacing.");
-            imgui.TextWrapped("Consider switching to a preset with Reflex markers (max queued 1, 2, or 3).");
-        } else if (preset == FpsLimiterPreset::kLowLatencyMarkers) {
+        if (preset == FpsLimiterPreset::kLowLatencyMarkers) {
             imgui.TextColored(ui::colors::TEXT_WARNING, "Warning: may reduce FPS.");
             imgui.TextWrapped("Consider switching to Balanced or Stability  (max queued 2, or 3)..");
         }

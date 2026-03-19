@@ -4,6 +4,9 @@
 
 ## (unreleased)
 
+## v0.12.613
+- (No entries yet.)
+
 ## v0.12.612
 - [compatibility] **ReShade DLL search: DC config dir and exe dir** - ReShade32.dll/Reshade64.dll are now looked up in two places: first in Display Commander's config directory (where DisplayCommander.toml lives), then in the game exe directory. Previously only the exe dir (and global/base paths from settings) were used. This allows placing ReShade DLLs next to your config for proxy installs where the exe dir is read-only or shared. Details: `ReshadeLocationType::Config`, `GetReshadeLocations` / `ChooseReshadeVersion` in `utils/reshade_load_path.*`.
 

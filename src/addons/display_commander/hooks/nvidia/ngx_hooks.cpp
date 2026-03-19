@@ -98,6 +98,9 @@ static void TrackNGXHandle(NVSDK_NGX_Handle* handle, NVSDK_NGX_Feature feature) 
         case NVSDK_NGX_Feature_SuperSampling:
             g_dlss_enabled.fetch_add(1);
             g_dlss_was_active_once.store(true);
+            // Many games enable Ray Reconstruction as part of DLSS (params/mode), not a separate CreateFeature.
+            // Mark RR as "seen" when DLSS is created so the UI shows CreateFeature seen for RR in those cases.
+            g_ray_reconstruction_was_active_once.store(true);
             LogInfo("NGX DLSS Super Resolution enabled (count=%u)", g_dlss_enabled.load());
             break;
         case NVSDK_NGX_Feature_FrameGeneration:

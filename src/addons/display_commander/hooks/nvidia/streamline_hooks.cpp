@@ -215,6 +215,9 @@ static void UpdateNGXParamsFromDLSSOptions(const sl::DLSSOptions& options) {
     g_streamline_dlss_enabled.store(dlss_on);
     if (dlss_on) {
         g_dlss_was_active_once.store(true);
+        // Ray Reconstruction is often part of the DLSS stack in Streamline (no separate create). Mark RR as "seen"
+        // when DLSS is in use so the UI shows CreateFeature seen for DLSS-RR.
+        g_ray_reconstruction_was_active_once.store(true);
     }
     if (options.outputWidth != sl::INVALID_UINT && options.outputHeight != sl::INVALID_UINT) {
         g_ngx_parameters.update_uint("Width", options.outputWidth);

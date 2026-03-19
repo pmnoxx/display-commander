@@ -331,8 +331,7 @@ void ChooseFpsLimiter(uint64_t timestamp_ns, FpsLimiterCallSite caller_enum) {
             && !GetEffectiveUseStreamlineProxyFpsLimiter()) {
             continue;
         }
-        if (GetEffectiveSafeModeFpsLimiter()
-            && s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync
+        if (GetEffectiveSafeModeFpsLimiter() && s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync
             && site != FpsLimiterCallSite::reshade_addon_event) {
             continue;
         }

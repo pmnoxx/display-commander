@@ -4,6 +4,9 @@
 
 ## (unreleased)
 
+## v0.12.611
+- [ui] **DLSS information: CreateFeature seen (tracked)** - The Main tab DLSS block now has a collapsible "CreateFeature seen (tracked)" section (same style as "DLSS module paths (tracked)"). It shows for DLSS, DLSS FG, and DLSS-RR whether our NGX/Streamline hooks observed CreateFeature ("CreateFeature seen"), or "Loaded too late (CreateFeature not seen)" when the game created the feature before we hooked, or "Not seen" when the feature was never created in this session.
+
 ## v0.12.610
 - [bugfix] [settings] **Safe Mode fps limiter stays on after restart** - The "Safe Mode fps limiter" checkbox no longer turns off when you restart the game. Previously, loading settings re-applied the FPS limiter preset and overwrote this (and other) values in config. Presets now only apply as runtime overrides when native Reflex is active; they never write to config, so your saved choices (including Safe Mode fps limiter) persist correctly. Details: `GetNativeReflexPresetOverrides`, `GetEffective*` in globals; preset application removed from `LoadSettings` and from UI combo change.
 

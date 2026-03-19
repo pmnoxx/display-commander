@@ -813,7 +813,7 @@ void DrawFrameTimelineBarOverlay(display_commander::ui::IImGuiWrapper& imgui, bo
 
 // Draw DLSS indicator section (registry toggle + DLSS-FG text level). Shown at top of DLSS Information when active.
 static void DrawDLSSInfo_IndicatorSection(display_commander::ui::IImGuiWrapper& imgui) {
-    if (imgui.TreeNodeEx("DLSS indicator (Registry)", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (imgui.TreeNodeEx("DLSS indicator (Registry)", ImGuiTreeNodeFlags_None)) {
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
                 "Show DLSS on-screen indicator in games. Writes NVIDIA registry; may require restart. Admin if apply "
@@ -870,7 +870,7 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
         auto path_dlssg = GetDlssTrackedPath(DlssTrackedKind::DLSSG);
         auto path_dlssd = GetDlssTrackedPath(DlssTrackedKind::DLSSD);
         if (path_dlss.has_value() || path_dlssg.has_value() || path_dlssd.has_value()) {
-            if (imgui.TreeNodeEx("DLSS module paths (tracked)", ImGuiTreeNodeFlags_DefaultOpen)) {
+            if (imgui.TreeNodeEx("DLSS module paths (tracked)", ImGuiTreeNodeFlags_None)) {
                 if (imgui.IsItemHovered()) {
                     imgui.SetTooltipEx(
                         "Paths from OnModuleLoaded (DLL name or .bin identified as DLSS/DLSS-G/DLSS-D).");
@@ -893,6 +893,43 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
                 imgui.TreePop();
             }
         }
+    }
+
+    // CreateFeature seen (NGX/Streamline): whether we observed CreateFeature for each feature, or loaded too late
+    if (imgui.TreeNodeEx("CreateFeature seen (tracked)", ImGuiTreeNodeFlags_None)) {
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "Whether our NGX/Streamline hooks observed CreateFeature for each feature. \"Loaded too late\" means "
+                "the game created the feature before we hooked.");
+        }
+        const bool dlss_seen = g_dlss_was_active_once.load();
+        const bool dlss_late = dlssg_summary.dlss_active && !dlss_seen;
+        if (dlss_seen) {
+            imgui.TextColored(ui::colors::TEXT_SUCCESS, "DLSS: CreateFeature seen");
+        } else if (dlss_late) {
+            imgui.TextColored(ui::colors::TEXT_WARNING, "DLSS: Loaded too late (CreateFeature not seen)");
+        } else {
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS: Not seen");
+        }
+        const bool dlssfg_seen = g_dlssg_was_active_once.load();
+        const bool dlssfg_late = dlssg_summary.dlss_g_active && !dlssfg_seen;
+        if (dlssfg_seen) {
+            imgui.TextColored(ui::colors::TEXT_SUCCESS, "DLSS FG: CreateFeature seen");
+        } else if (dlssfg_late) {
+            imgui.TextColored(ui::colors::TEXT_WARNING, "DLSS FG: Loaded too late (CreateFeature not seen)");
+        } else {
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS FG: Not seen");
+        }
+        const bool dlssrr_seen = g_ray_reconstruction_was_active_once.load();
+        const bool dlssrr_late = dlssg_summary.ray_reconstruction_active && !dlssrr_seen;
+        if (dlssrr_seen) {
+            imgui.TextColored(ui::colors::TEXT_SUCCESS, "DLSS-RR: CreateFeature seen");
+        } else if (dlssrr_late) {
+            imgui.TextColored(ui::colors::TEXT_WARNING, "DLSS-RR: Loaded too late (CreateFeature not seen)");
+        } else {
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS-RR: Not seen");
+        }
+        imgui.TreePop();
     }
 
     // FG Mode
@@ -6126,8 +6163,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
     DrawDisplaySettings_VSyncAndTearing(imgui);
     {
         g_rendering_ui_section.store("ui:tab:main_new:dlss_info", std::memory_order_release);
-        if (ShouldShowDlssInformationSection()
-            && imgui.CollapsingHeader("DLSS Information", ImGuiTreeNodeFlags_None)) {
+        if (ShouldShowDlssInformationSection() && imgui.CollapsingHeader("DLSS Information", ImGuiTreeNodeFlags_None)) {
             imgui.Indent();
             const DLSSGSummary dlss_summary = GetDLSSGSummary();
             if (is_dxgi) {

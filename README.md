@@ -155,6 +155,18 @@ Use this path when **ReShade** is installed with the official setup from **[resh
 
 **Note**: For the latest stable release compatible with ReShade 6.6.2, download from [Latest Release](https://github.com/pmnoxx/display-commander/releases).
 
+### Installing OptiScaler
+
+[OptiScaler](https://github.com/optiscaler/OptiScaler) enables DLSS/FSR-style upscaling on AMD and Intel GPUs (and can be used alongside Display Commander). To install it in a game folder that uses Display Commander’s **dlls_to_load** layout:
+
+1. **Download** the OptiScaler archive from the [OptiScaler releases](https://github.com/optiscaler/OptiScaler/releases) (e.g. [v0.7.9](https://github.com/optiscaler/OptiScaler/releases/tag/v0.7.9) — file `OptiScaler_0.7.9.7z`).
+2. **Unpack** the contents into your game’s **`dlls_to_load/before_reshade`** folder (DLLs here load before ReShade). You can also use **`dlls_to_load`** (root) for the same “before ReShade” phase; **`dlls_to_load/after_reshade`** is for addons that must load after ReShade.
+3. **Run** `setup_windows.bat` from that folder:
+   - When prompted, choose **winmm.dll**.
+   - Choose **Nvidia** (or the option that matches your use case).
+
+OptiScaler has no official website; use only the [GitHub repo](https://github.com/optiscaler/OptiScaler), their Discord, or Nitec’s NexusMods page. It is free; any site asking for payment is a scam.
+
 ## Usage
 
 Inside the ReShade overlay, Display Commander exposes:

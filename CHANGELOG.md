@@ -4,6 +4,9 @@
 
 ## (unreleased)
 
+## v0.12.608
+- [docs] **README: OptiScaler with dlls_to_load** - Added a short OptiScaler install note covering the `dlls_to_load/before_reshade` (and `after_reshade`) folders.
+
 ## v0.12.607
 - [docs] **README: proxy install recommended** - Documented the recommended “Display Commander as `dxgi.dll`/`winmm.dll` proxy + `ReShade64.dll`/`ReShade32.dll`” layout (and kept ReShade-addon install as a fallback) for clearer, more compatible setup guidance.
 

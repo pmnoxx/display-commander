@@ -2302,7 +2302,7 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
     // Top block: Add DC Shaders/Textures checkbox + Open folder buttons (per private_docs/dc_folders_main_tab_spec.md)
     if (CheckboxSetting(settings::g_mainTabSettings.add_dc_to_reshade_shader_paths,
                         "Add DC Shaders/Textures to ReShade paths", imgui)) {
-        OverrideReShadeSettings(nullptr);
+        OverrideReShadeSettings(runtime);
     }
     if (imgui.IsItemHovered()) {
         std::string effect_display = "—";

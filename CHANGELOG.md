@@ -4,6 +4,9 @@
 
 ## (unreleased)
 
+## v0.12.606
+- [compatibility] **Apply ReShade path overrides to the active runtime** - Toggling “Add DC Shaders/Textures to ReShade paths” now passes the current ReShade runtime to the override function so the correct `ReShade*.ini` is updated when multiple runtimes/configs exist.
+
 ## v0.12.605
 - [new feature] [compatibility] **`dlls_to_load` before/after ReShade** - Display Commander can now load helper DLLs from `dlls_to_load\\before_reshade\\` during attach (and still supports legacy `dlls_to_load\\`), plus `dlls_to_load\\after_reshade\\` after ReShade init. Load order is alphabetical; folders are created if missing.
 

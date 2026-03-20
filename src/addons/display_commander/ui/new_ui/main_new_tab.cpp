@@ -948,9 +948,9 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
         if (bb_w > 0 && bb_h > 0) {
             res_text += " -> " + std::to_string(bb_w) + "x" + std::to_string(bb_h);
         }
-        imgui.Text("DLSS Res: %s", res_text.c_str());
+        imgui.Text("DLSS Internal->Output: %s", res_text.c_str());
     } else {
-        imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS Res: N/A");
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS Internal->Output: N/A");
     }
 
     // DLSS Status
@@ -4240,6 +4240,11 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
     bool enabled = settings::g_mainTabSettings.fps_limiter_enabled.GetValue();
     bool fps_limit_enabled =
         (enabled && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync) || ShouldReflexBeEnabled();
+    const auto get_fps_limiter_control_width = [&imgui]() -> float {
+        // Keep controls stable for fixed-width clients while avoiding overflow on narrower layouts.
+        const float avail = imgui.GetContentRegionAvail().x;
+        return (std::min)(kFpsLimiterItemWidth, (std::max)(260.0f, avail));
+    };
 
     // (enable checkbox) fps limit slider
     if (imgui.Checkbox("##FPS limiter", &enabled)) {
@@ -4256,7 +4261,7 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
     }
     float current_value = settings::g_mainTabSettings.fps_limit.GetValue();
     const char* fmt = (current_value > 0.0f) ? "%.3f FPS" : "No Limit";
-    imgui.SetNextItemWidth(kFpsLimiterItemWidth);
+    imgui.SetNextItemWidth(get_fps_limiter_control_width());
     if (SliderFloatSetting(settings::g_mainTabSettings.fps_limit, "FPS Limit", fmt, imgui)) {
     }
     float cur_limit = settings::g_mainTabSettings.fps_limit.GetValue();
@@ -4290,7 +4295,7 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
         }
         float current_bg = settings::g_mainTabSettings.fps_limit_background.GetValue();
         const char* fmt_bg = (current_bg > 0.0f) ? "%.0f FPS" : "No Limit";
-        imgui.SetNextItemWidth(kFpsLimiterItemWidth);
+        imgui.SetNextItemWidth(get_fps_limiter_control_width());
         if (SliderFloatSetting(settings::g_mainTabSettings.fps_limit_background, "Background FPS Limit", fmt_bg,
                                imgui)) {
         }
@@ -4308,7 +4313,7 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
     if (!enabled) {
         imgui.BeginDisabled();
     }
-    imgui.SetNextItemWidth(kFpsLimiterItemWidth);
+    imgui.SetNextItemWidth(get_fps_limiter_control_width());
     if (imgui.Combo("FPS Limiter Mode", &current_item, mode_items, 3)) {
         settings::g_mainTabSettings.fps_limiter_mode.SetValue(current_item);
         s_fps_limiter_mode.store(static_cast<FpsLimiterMode>(current_item));
@@ -4334,40 +4339,82 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
             "Sync to Display Refresh Rate - synchronizes frame display time to the monitor refresh rate "
             "(Non-VRR).\n"
             "NVIDIA Profile - FPS limit from driver profile (requires restart).\n"
-            " src: %s",
+            " Limiter path: %s",
             GetChosenFpsLimiterSiteName());
     }
-    imgui.SameLine();
-    imgui.TextDisabled("(src: %s)", GetChosenFpsLimiterSiteName());
-    if (imgui.IsItemHovered()) {
-        imgui.BeginTooltip();
-        imgui.TextUnformatted("Which path is currently applying the FPS limiter:");
-        imgui.Spacing();
+    imgui.TextDisabled("Limiter path: %s", GetChosenFpsLimiterSiteName());
+    if (imgui.CollapsingHeader("FPS Limiter Debug", display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
         const uint64_t now_ns = static_cast<uint64_t>(utils::get_now_ns());
         const uint8_t chosen = g_chosen_fps_limiter_site.load(std::memory_order_relaxed);
+        size_t active_sites = 0;
+        size_t recent_sites = 0;
+
+        for (size_t i = 0; i < kFpsLimiterCallSiteCount; i++) {
+            const uint64_t last_ts = g_fps_limiter_last_timestamp_ns[i].load(std::memory_order_relaxed);
+            const bool called_recently =
+                (last_ts != 0 && (now_ns - last_ts) <= static_cast<uint64_t>(utils::SEC_TO_NS));
+            const bool is_active = (chosen != kFpsLimiterChosenUnset && static_cast<size_t>(chosen) == i);
+            if (is_active) {
+                active_sites++;
+            }
+            if (called_recently) {
+                recent_sites++;
+            }
+        }
+
+        const float debug_label_width = (std::min)(280.0f, (std::max)(180.0f, imgui.GetContentRegionAvail().x * 0.45f));
+        imgui.Columns(2, "FpsLimiterDebugSummary", false);
+        imgui.SetColumnWidth(0, debug_label_width);
+
+        imgui.Text("Current limiter path:");
+        imgui.NextColumn();
+        imgui.Text("%s", GetChosenFpsLimiterSiteName());
+        imgui.NextColumn();
+
+        imgui.Text("Active call sites:");
+        imgui.NextColumn();
+        imgui.Text("%zu / %zu", active_sites, static_cast<size_t>(kFpsLimiterCallSiteCount));
+        imgui.NextColumn();
+
+        imgui.Text("Recent call sites (<=1s):");
+        imgui.NextColumn();
+        imgui.Text("%zu / %zu", recent_sites, static_cast<size_t>(kFpsLimiterCallSiteCount));
+        imgui.NextColumn();
+        imgui.Columns(1);
+
+        imgui.Separator();
+        imgui.TextUnformatted("Call site activity:");
+
+        imgui.Columns(2, "FpsLimiterDebugRows", false);
+        imgui.SetColumnWidth(0, debug_label_width);
         for (size_t i = 0; i < kFpsLimiterCallSiteCount; i++) {
             const char* name = FpsLimiterSiteName(static_cast<FpsLimiterCallSite>(i));
             const uint64_t last_ts = g_fps_limiter_last_timestamp_ns[i].load(std::memory_order_relaxed);
             const bool called_recently =
                 (last_ts != 0 && (now_ns - last_ts) <= static_cast<uint64_t>(utils::SEC_TO_NS));
             const bool is_active = (chosen != kFpsLimiterChosenUnset && static_cast<size_t>(chosen) == i);
-            const char* status;
-            ImVec4 status_color;
+
+            const char* status = "-";
+            ImVec4 status_color = ui::colors::TEXT_DIMMED;
             if (is_active) {
                 status = "Active";
                 status_color = ui::colors::ICON_SUCCESS;
             } else if (called_recently) {
                 status = "OK";
                 status_color = ui::colors::TEXT_SUCCESS;
-            } else {
-                status = "-";
-                status_color = ui::colors::TEXT_DIMMED;
             }
-            imgui.Text("%s: ", name);
-            imgui.SameLine(0.f, 0.f);
+
+            imgui.Text("%s", name);
+            imgui.NextColumn();
             imgui.TextColored(status_color, "%s", status);
+            if (last_ts != 0) {
+                const double age_ms = static_cast<double>(now_ns - last_ts) / static_cast<double>(utils::NS_TO_MS);
+                imgui.SameLine();
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "(%.1f ms ago)", age_ms);
+            }
+            imgui.NextColumn();
         }
-        imgui.EndTooltip();
+        imgui.Columns(1);
     }
     if (!enabled) {
         imgui.EndDisabled();
@@ -6204,7 +6251,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
             }
             if (settings::g_mainTabSettings.show_fps_limiter_src.GetValue()) {
                 const char* src_name = GetChosenFpsLimiterSiteName();
-                imgui.Text("src: %s", src_name);
+                imgui.Text("Limiter path: %s", src_name);
             }
 
             DrawDLSSInfo(imgui, dlss_summary);
@@ -6359,7 +6406,8 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                     s_dlss_scale_ui = settings::g_swapchainTabSettings.dlss_internal_resolution_scale.GetValue();
                 }
                 imgui.SetNextItemWidth(120.0f);
-                imgui.SliderFloat("Internal resolution scale (WIP Experimental)", &s_dlss_scale_ui, 0.0f, 1.0f, "%.2f");
+                imgui.SliderFloat("Internal/Output ratio override (WIP Experimental)", &s_dlss_scale_ui, 0.0f, 1.0f,
+                                  "%.2f");
                 if (!imgui.IsItemActive() && !imgui.IsItemDeactivatedAfterEdit()) {
                     s_dlss_scale_ui = settings::g_swapchainTabSettings.dlss_internal_resolution_scale.GetValue();
                 }
@@ -6368,9 +6416,9 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                 }
                 if (imgui.IsItemHovered()) {
                     imgui.SetTooltipEx(
-                        "Scale DLSS internal render resolution. 0 = no override. e.g. 0.5 = half width/height "
-                        "(OutWidth = "
-                        "Width * 0.5, OutHeight = Height * 0.5).");
+                        "Override DLSS internal-to-output resolution ratio. 0 = no override. e.g. 0.5 = half "
+                        "internal width/height vs output "
+                        "(OutWidth = Width * 0.5, OutHeight = Height * 0.5).");
                 }
             }
 
@@ -7627,12 +7675,12 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                     res_text += " -> " + std::to_string(bb_w) + "x" + std::to_string(bb_h);
                 }
                 if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                    imgui.Text("DLSS Res: %s", res_text.c_str());
+                    imgui.Text("DLSS Internal->Output: %s", res_text.c_str());
                 } else {
                     imgui.Text("%s", res_text.c_str());
                 }
             } else {
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS Res: N/A");
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS Internal->Output: N/A");
             }
         }
 
@@ -7852,7 +7900,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     if (show_fps_limiter_src) {
         const char* src_name = GetChosenFpsLimiterSiteName();
         if (settings::g_mainTabSettings.show_labels.GetValue()) {
-            imgui.Text("src: %s", src_name);
+            imgui.Text("Limiter path: %s", src_name);
         } else {
             imgui.Text("%s", src_name);
         }
@@ -8987,14 +9035,14 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         imgui.NextColumn();
 
         bool show_fps_limiter_src = settings::g_mainTabSettings.show_fps_limiter_src.GetValue();
-        if (imgui.Checkbox("FPS limiter src", &show_fps_limiter_src)) {
+        if (imgui.Checkbox("FPS limiter path", &show_fps_limiter_src)) {
             settings::g_mainTabSettings.show_fps_limiter_src.SetValue(show_fps_limiter_src);
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
                 "Shows which path is currently applying the FPS limiter in the performance overlay (e.g. "
                 "reflex_marker, "
-                "dxgi_swapchain). Same value as (src: xxx) in Main tab FPS limiter section.");
+                "dxgi_swapchain). Same value as (Limiter path: xxx) in Main tab FPS limiter section.");
         }
         imgui.NextColumn();
 
@@ -9068,11 +9116,12 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         imgui.NextColumn();
 
         bool show_dlss_internal_resolution = settings::g_mainTabSettings.show_dlss_internal_resolution.GetValue();
-        if (imgui.Checkbox("DLSS Res", &show_dlss_internal_resolution)) {
+        if (imgui.Checkbox("DLSS Internal/Output Res", &show_dlss_internal_resolution)) {
             settings::g_mainTabSettings.show_dlss_internal_resolution.SetValue(show_dlss_internal_resolution);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Shows DLSS internal resolution (e.g., 1920x1080) in the performance overlay.");
+            imgui.SetTooltipEx(
+                "Shows DLSS internal/output resolution pair (e.g., 1920x1080->3840x2160) in the performance overlay.");
         }
         imgui.NextColumn();
 

@@ -1181,7 +1181,7 @@ void DrawDLSSGSummaryContent(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Text("%s", summary.output_resolution.c_str());
     imgui.NextColumn();
 
-    imgui.Text("Scaling Ratio:");
+    imgui.Text("Internal/Output Ratio:");
     imgui.NextColumn();
     imgui.TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "%s", summary.scaling_ratio.c_str());
     imgui.NextColumn();

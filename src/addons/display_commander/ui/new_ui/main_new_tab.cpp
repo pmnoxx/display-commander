@@ -4099,15 +4099,39 @@ void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& 
             imgui.Spacing();
         }
 
-        // Target Display dropdown
+        // Target Display dropdown (centered row, flat / no frame background — similar to DC folder buttons)
         std::vector<const char*> monitor_c_labels;
         monitor_c_labels.reserve(display_info.size());
         for (const auto& info : display_info) {
             monitor_c_labels.push_back(info.display_label.c_str());
         }
 
+        float preview_text_w = imgui.CalcTextSize("—").x;
+        for (const char* lbl : monitor_c_labels) {
+            preview_text_w = (std::max)(preview_text_w, imgui.CalcTextSize(lbl).x);
+        }
+        const ImGuiStyle& st = imgui.GetStyle();
+        const float combo_ctrl_w =
+            preview_text_w + (st.FramePadding.x * 2.f) + st.ItemInnerSpacing.x + imgui.GetTextLineHeight() + 4.f;
+        const float label_w = imgui.CalcTextSize("Target Display").x;
+        const float row_w = label_w + st.ItemInnerSpacing.x + combo_ctrl_w;
+        const float avail_row = imgui.GetContentRegionAvail().x;
+        const float center_pad = (std::max)(0.f, (avail_row - row_w) * 0.5f);
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + center_pad);
+
+        ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.5f, 0.5f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.f);
+        const ImVec4 frame_bg_clear(0.f, 0.f, 0.f, 0.f);
+        imgui.PushStyleColor(ImGuiCol_FrameBg, frame_bg_clear);
+        imgui.PushStyleColor(ImGuiCol_FrameBgHovered, frame_bg_clear);
+        imgui.PushStyleColor(ImGuiCol_FrameBgActive, frame_bg_clear);
+
+        imgui.TextColored(ui::colors::TEXT_LABEL, "Target Display");
+        imgui.SameLine(0.f, st.ItemInnerSpacing.x);
+        imgui.SetNextItemWidth(combo_ctrl_w);
+
         static bool s_target_display_changed = false;
-        if (imgui.Combo("Target Display", &selected_index, monitor_c_labels.data(),
+        if (imgui.Combo("##TargetDisplay", &selected_index, monitor_c_labels.data(),
                         static_cast<int>(monitor_c_labels.size()))) {
             if (selected_index >= 0 && selected_index < static_cast<int>(display_info.size())) {
                 s_target_display_changed = true;
@@ -4119,6 +4143,9 @@ void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& 
                 LogInfo("Target monitor changed to device ID: %s", new_device_id.c_str());
             }
         }
+
+        imgui.PopStyleColor(3);
+        ImGui::PopStyleVar(2);
         if (imgui.IsItemHovered()) {
             // Get the saved game window display device ID for tooltip
             std::string saved_device_id = settings::g_mainTabSettings.game_window_extended_display_device_id.GetValue();

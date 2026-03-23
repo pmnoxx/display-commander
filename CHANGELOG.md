@@ -2,6 +2,9 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
+## v0.12.618
+- [settings] [cleanup] **Log active `default_settings.toml` values on load** - Startup logs now include all active key/value pairs parsed from `[DisplayCommander]` in `default_settings.toml`, so you can quickly confirm which fallback defaults are in effect (or see that none are set).
+
 ## v0.12.617
 - [docs] **README: remove OptiScaler note** - Removed the OptiScaler installation note from `README.md` to keep setup guidance focused on currently recommended paths.
 

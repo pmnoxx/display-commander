@@ -82,6 +82,19 @@ bool EnsureDefaultSettingsFileExists(const std::string& path) {
     return true;
 }
 
+void LogLoadedDefaultSettings(const std::string& path) {
+    if (g_default_settings_cache.empty()) {
+        LogInfo("Default settings file: loaded from %s - no active [DisplayCommander] values", path.c_str());
+        return;
+    }
+
+    LogInfo("Default settings file: loaded from %s - %zu active [DisplayCommander] values:", path.c_str(),
+            g_default_settings_cache.size());
+    for (const auto& [key, value] : g_default_settings_cache) {
+        LogInfo("  %s = %s", key.c_str(), value.c_str());
+    }
+}
+
 }  // namespace
 
 std::string GetDefaultSettingsFilePath() {
@@ -124,6 +137,7 @@ bool LoadDefaultSettingsFile() {
         }
     }
     g_default_settings_loaded = true;
+    LogLoadedDefaultSettings(path);
     return true;
 }
 

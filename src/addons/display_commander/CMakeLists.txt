@@ -314,9 +314,7 @@ add_executable(display_commander_exe WIN32
   ${CMAKE_CURRENT_LIST_DIR}/main_entry.cpp
   ${CMAKE_CURRENT_LIST_DIR}/main_exe.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/version.rc
-  ${CMAKE_CURRENT_LIST_DIR}/res/launcher_icon.rc
 )
-add_dependencies(display_commander_exe launcher_icon)
 target_sources(display_commander_exe PRIVATE
   $<TARGET_OBJECTS:display_commander_objs>
   $<TARGET_OBJECTS:imgui_standalone_obj>

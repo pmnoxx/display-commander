@@ -294,19 +294,6 @@ set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/ui/cli_standalone_ui.cpp P
 set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/ui/imgui_wrapper_standalone.cpp PROPERTIES COMPILE_DEFINITIONS "ImGui=ImGuiStandalone;ImDrawList=ImDrawListStandalone")
 
 # ---------------------------------------------------------------------------
-# Launcher exe icon: generate .ico from vector (SVG) or .NET fallback, then embed via .rc
-# ---------------------------------------------------------------------------
-set(LAUNCHER_ICON_ICO "${CMAKE_CURRENT_LIST_DIR}/res/launcher_icon.ico")
-add_custom_command(
-  OUTPUT "${LAUNCHER_ICON_ICO}"
-  COMMAND PowerShell -ExecutionPolicy Bypass -File "${CMAKE_CURRENT_LIST_DIR}/res/make_launcher_icon.ps1" -ResDir "${CMAKE_CURRENT_LIST_DIR}/res"
-  WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/res"
-  DEPENDS "${CMAKE_CURRENT_LIST_DIR}/res/launcher_icon.svg" "${CMAKE_CURRENT_LIST_DIR}/res/make_launcher_icon.ps1"
-  COMMENT "Generating launcher_icon.ico for exe"
-)
-add_custom_target(launcher_icon ALL DEPENDS "${LAUNCHER_ICON_ICO}")
-
-# ---------------------------------------------------------------------------
 # Standalone .exe target: same codebase as the DLL, different entry point.
 # Uses display_commander_objs (common code compiled once) + main_entry.cpp (with BUILD_EXE) + main_exe.cpp.
 # ---------------------------------------------------------------------------

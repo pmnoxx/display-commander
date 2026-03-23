@@ -35,7 +35,7 @@ void DrawDisplaySettings_VSyncAndTearing(display_commander::ui::IImGuiWrapper& i
 void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw window controls section
-void DrawWindowControls(display_commander::ui::IImGuiWrapper& imgui);
+void DrawWindowControlButtons(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw ADHD Multi-Monitor Mode controls section
 void DrawAdhdMultiMonitorControls(display_commander::ui::IImGuiWrapper& imgui);

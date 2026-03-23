@@ -202,16 +202,6 @@ void DrawAdvancedTab(display_commander::ui::GraphicsApi api, display_commander::
 void DrawFeaturesEnabledByDefault(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Indent();
 
-    CheckboxSetting(settings::g_advancedTabSettings.prevent_always_on_top, "Prevent Always On Top", imgui);
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx("Prevents windows from becoming always on top, even if they are moved or resized.");
-    }
-
-    CheckboxSetting(settings::g_advancedTabSettings.prevent_minimize, "Prevent Minimize", imgui);
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx("Prevents the game window from being minimized (e.g. via taskbar or system menu).");
-    }
-
     CheckboxSetting(settings::g_advancedTabSettings.flush_command_queue_before_sleep,
                     "Flush command queue before FPS limiter sleep", imgui);
     if (imgui.IsItemHovered()) {

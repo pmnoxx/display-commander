@@ -3523,6 +3523,18 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
     if (imgui.CollapsingHeader("Window Control", ImGuiTreeNodeFlags_None)) {
         imgui.Indent();
 
+        CheckboxSetting(settings::g_advancedTabSettings.prevent_always_on_top, "Prevent Always On Top", imgui);
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx("Prevents windows from becoming always on top, even if they are moved or resized.");
+        }
+
+        imgui.SameLine();
+        CheckboxSetting(settings::g_advancedTabSettings.prevent_minimize, "Prevent Minimize", imgui);
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx("Prevents the game window from being minimized (e.g. via taskbar or system menu).");
+        }
+
+
         // Continue Rendering in Background
         static bool continue_rendering_changed = false;
         if (CheckboxSetting(settings::g_advancedTabSettings.continue_rendering, "Continue Rendering in Background",
@@ -3683,7 +3695,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
     imgui.Spacing();
 
     // Window Controls Section
-    DrawWindowControls(imgui);
+    DrawWindowControlButtons(imgui);
 
     imgui.Spacing();
 
@@ -8622,7 +8634,7 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
     }
 }
 
-void DrawWindowControls(display_commander::ui::IImGuiWrapper& imgui) {
+void DrawWindowControlButtons(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
     CALL_GUARD(utils::get_now_ns());
     HWND hwnd = g_last_swapchain_hwnd.load();

@@ -1,8 +1,8 @@
 # https://clang.llvm.org/extra/clang-tidy/checks/list.html
 ---
 Checks:
-  - bug-prone-*
-  - cppcoreguidelines-
+  - bugprone-*
+  - cppcoreguidelines-*
   - google-*
   - llvm-*
   - misc-*
@@ -12,15 +12,16 @@ Checks:
   - readability-*
   - -llvm-header-guard
   - -llvm-include-order
-  - -modernize-use-designated-initializers
-  - -modernize-use-trailing-return-type
   - -misc-non-private-member-variables-in-classes
   - -misc-unused-parameters
   - -misc-use-internal-linkage
+  - -modernize-use-designated-initializers
+  - -modernize-use-trailing-return-type
   - -readability-function-cognitive-complexity
+  - -readability-identifier-length
   - -readability-magic-numbers
   - -readability-uppercase-literal-suffix
-  - -readability-identifier-length
+
 CheckOptions:
   readability-braces-around-statements.ShortStatementLines: 1
   readability-identifier-naming.ClassCase: CamelCase
@@ -34,17 +35,16 @@ CheckOptions:
   readability-identifier-naming.EnumCase: CamelCase
   readability-identifier-naming.FunctionCase: CamelCase
   readability-identifier-naming.GlobalFunctionCase: CamelCase
-  readability-identifier-naming.LocalVariableCase: lower_case
   readability-identifier-naming.LocalConstantCase: lower_case
-  readability-identifier-naming.MethodCase: CamelCase
+  readability-identifier-naming.LocalVariableCase: lower_case
   readability-identifier-naming.MemberCase: lower_case
+  readability-identifier-naming.MethodCase: CamelCase
   readability-identifier-naming.NamespaceCase: lower_case
   readability-identifier-naming.ParameterCase: lower_case
   readability-identifier-naming.StaticConstantCase: UPPER_CASE
   readability-identifier-naming.StructCase: CamelCase
   readability-identifier-naming.VariableCase: lower_case
 
-WarningsAsErrors: ""
-HeaderFilterRegex: ".*.hpp"
+HeaderFilterRegex: '.*\.(h|hh|hpp|hxx)$'
 HeaderFileExtensions: ["", "h", "hh", "hpp", "hxx"]
 ImplementationFileExtensions: ["c", "cc", "cpp", "cxx"]

@@ -275,6 +275,12 @@ This project is distributed under the terms in [LICENSE](LICENSE). Third-party c
 
 See `CHANGELOG.md` for version history.
 
+## Luma Framework Support
+
+Display Commander can be used together with many Luma Framework game mods when the game's DLL/proxy load order is configured correctly.
+
+- Luma mods and per-game features list: [Luma Framework - Mods List (Mod Features)](https://github.com/Filoppi/Luma-Framework/wiki/Mods-List#mod-features)
+- For game-specific setup notes, check the selected mod page and keep ReShade + proxy naming consistent with this README's installation sections.
 
 ---
 

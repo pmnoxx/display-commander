@@ -13,7 +13,7 @@ namespace settings {
 
 MainTabSettings::MainTabSettings()
     : window_mode(
-          "window_mode", static_cast<int>(WindowMode::kNoChanges),
+          "WindowMode", static_cast<int>(WindowMode::kNoChanges),
           {"No changes", "Prevent exclusive fullscreen / no resize", "Borderless fullscreen", "Borderless windowed"},
           "DisplayCommander"),
       aspect_index("aspect_index", 3, {"3:2", "4:3", "16:10", "16:9", "19:9", "19.5:9", "21:9", "21.5:9", "32:9"},

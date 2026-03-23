@@ -2924,6 +2924,18 @@ static void CaptureDllLoadCallerPath(HMODULE h_our_module) {
 // Append current module path (and caller if known) to DisplayCommander.log next to our DLL on every load.
 // No-throw; safe to call from DllMain. Does not create directories; only writes if the DLL's dir exists (it always
 // does).
+static void LogBoot(const std::string& text) {
+    try {
+        if (g_dll_main_log_path.empty()) return;
+        std::ofstream f(g_dll_main_log_path, std::ios::app);
+        if (!f) return;
+        f << text << "\n";
+        f.flush();
+    } catch (...) {
+        // avoid crashing DllMain
+    }
+}
+
 static void EnsureDisplayCommanderLogWithModulePath(HMODULE h_module) {
     wchar_t module_path_buf[MAX_PATH] = {};
     if (GetModuleFileNameW(h_module, module_path_buf, MAX_PATH) == 0) return;
@@ -2945,22 +2957,16 @@ static void EnsureDisplayCommanderLogWithModulePath(HMODULE h_module) {
         snprintf(dbg_buf + dbg_len, sizeof(dbg_buf) - static_cast<size_t>(dbg_len), "\n");
         OutputDebugStringA(dbg_buf);
     }
-    try {
-        std::filesystem::path log_path = std::filesystem::path(module_path_buf).parent_path() / "DisplayCommander.log";
-        g_dll_main_log_path = log_path.string();
-        std::ofstream f(log_path, std::ios::app);
-        if (f) {
-            f << "DisplayCommander module path: " << module_path_narrow;
-            if (!g_dll_load_caller_path.empty()) {
-                f << " Caller: " << g_dll_load_caller_path;
-            }
-            f << "\n";
-            f << "(DLL load function call stack will follow after init)\n";
-            f.flush();
-        }
-    } catch (...) {
-        // avoid crashing DllMain
+    std::filesystem::path log_path = std::filesystem::path(module_path_buf).parent_path() / "DisplayCommander.log";
+    g_dll_main_log_path = log_path.string();
+
+    std::string module_path_line = std::string("DisplayCommander module path: ") + module_path_narrow;
+    if (!g_dll_load_caller_path.empty()) {
+        module_path_line += " Caller: " + g_dll_load_caller_path;
     }
+
+    LogBoot(module_path_line);
+    LogBoot("(DLL load function call stack will follow after init)");
 }
 
 #ifndef IMAGE_DIRECTORY_ENTRY_IMPORT
@@ -3092,25 +3098,22 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     switch (fdw_reason) {
         case DLL_PROCESS_ATTACH: {
             // Set ReShade base path and DC config directory (DLL dir if .DC_CONFIG_IN_DLL present, else exe dir), before any LoadLibrary of ReShade.
+            LogBoot("[DLLMain] Stage 1");
             ChooseAndSetDcConfigPath(h_module);
+            LogBoot("[DLLMain] Stage 2");
             CaptureDllLoadCallerPath(h_module);
+            LogBoot("[DLLMain] Stage 3");
             EnsureDisplayCommanderLogWithModulePath(h_module);
-
+            LogBoot("[DLLMain] Stage 4");
             static const char* reason = "";
-            if (DllDetectorCopyToLoadedIfEnabled(h_module)) return TRUE;
+            if (DllDetectorCopyToLoadedIfEnabled(h_module))
+            {
+                LogBoot("[DLLMain] DllDetectorCopyToLoadedIfEnabled: true");
+                return TRUE;
+            }
+            LogBoot("[DLLMain] Stage 5");
             auto set_process_attached_on_exit = [h_module]() {
                 ResolveAndLogDllMainFunctionStack();
-                g_dll_initialization_complete.store(true);
-                // log
-                g_dll_initialization_complete.store(true);
-                // log executable path
-                WCHAR executable_path[MAX_PATH] = {0};
-                if (GetModuleFileNameW(nullptr, executable_path, MAX_PATH) > 0) {
-                    char executable_path_narrow[MAX_PATH];
-                    WideCharToMultiByte(CP_ACP, 0, executable_path, -1, executable_path_narrow, MAX_PATH, nullptr,
-                                        nullptr);
-                    LogInfo("[main_entry] DLL_PROCESS_ATTACH: executable path: %s", executable_path_narrow);
-                }
                 // log current
                 WCHAR current_module_path[MAX_PATH] = {0};
                 if (GetModuleFileNameW(h_module, current_module_path, MAX_PATH) > 0) {
@@ -3130,6 +3133,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 }
             } guard(set_process_attached_on_exit);
 
+            LogBoot("[DLLMain] Stage 6");
             auto dc_dir = g_dc_config_directory.load(std::memory_order_acquire);
             display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize(
                 (dc_dir && !dc_dir->empty()) ? std::optional<std::wstring_view>(*dc_dir) : std::nullopt);
@@ -3137,19 +3141,24 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
             // If loaded as .dll proxy, detect and rename unused DC proxy DLLs in the same directory.
             if (display_commander::utils::IsLoadedWithDLLExtension(static_cast<void*>(h_module))) {
+                LogBoot("[DLLMain] Stage 7");
                 LogInfo("[main_entry] DLL_PROCESS_ATTACH: RenameUnusedDcProxyDlls");
                 RenameUnusedDcProxyDlls(h_module);
             }
-
+            LogBoot("[DLLMain] Stage 8");
             ProcessAttachEarlyResult early = ProcessAttach_EarlyChecksAndInit(h_module);
             if (early == ProcessAttachEarlyResult::RefuseLoad) {
+                LogBoot("[DLLMain] Stage 9");
+                reason = "RefuseLoad";
                 return TRUE;
             }
             if (early == ProcessAttachEarlyResult::EarlySuccess) {
+                LogBoot("[DLLMain] Stage 10");
                 reason = "EarlySuccess";
                 return TRUE;
             }
             if (early == ProcessAttachEarlyResult::LoaderOnly) {
+                LogBoot("[DLLMain] Stage 11");
                 reason = "LoaderOnly";
                 return TRUE;
             }

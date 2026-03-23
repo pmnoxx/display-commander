@@ -388,10 +388,7 @@ LONG WINAPI VectoredExceptionHandler(PEXCEPTION_POINTERS ex) {
         exception_address = reinterpret_cast<uintptr_t>(ex->ExceptionRecord->ExceptionAddress);
         if (CheckAndRecordExceptionAddress(exception_address)) {
             // Address was already seen, skip detailed logging
-            std::ostringstream skip_msg;
-            skip_msg << "Vectored exception at address 0x" << std::hex << std::uppercase << exception_address
-                     << " already logged, skipping duplicate report";
-            LogInfo("%s", skip_msg.str().c_str());
+            LogInfoThrottled(10, "Vectored exception at address 0x%p already logged, skipping duplicate report", exception_address);
             return EXCEPTION_CONTINUE_SEARCH;
         }
     }

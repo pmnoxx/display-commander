@@ -538,7 +538,7 @@ bool IsGenericGameInstallFolderSegment(const std::wstring& seg) {
         return true;
     }
     static const wchar_t* const kGeneric[] = {
-        L"bin", L"binaries", L"client", L"win32", L"win64", L"x64", L"x86",
+        L"bin", L"binaries", L"client", L"win32", L"win64", L"x64", L"x86", L"x64_dx12",
     };
     for (const wchar_t* n : kGeneric) {
         if (_wcsicmp(seg.c_str(), n) == 0) {

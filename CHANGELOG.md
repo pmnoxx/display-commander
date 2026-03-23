@@ -2,6 +2,14 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
+
+## v0.12.622
+- [bugfix] [compatibility] **Fixed Monster Hunter Wilds being slow to start / unresponsive** - Improved startup behavior so Monster Hunter Wilds no longer becomes slow to start or unresponsive during launch.
+
+## v0.12.621
+- [bugfix] [settings] **Startup fix for some games using window mode overrides** - Fixed a startup issue where some games could fail to launch when reading the window mode override from config.
+  Details: renamed the config key from `window_mode` to `WindowMode` to avoid the problematic path.
+
 ## v0.12.620
 - [bugfix] [hooks] **Stop removing `WM_POPUP`** - Window message handling no longer removes `WM_POPUP`, preserving popup-related behavior expected by games and overlays.
 - [settings] **Default settings fallback now uses `"no changes"`** - `default_settings.toml` fallback behavior now points to `"no changes"` so missing defaults do not silently apply unintended overrides.

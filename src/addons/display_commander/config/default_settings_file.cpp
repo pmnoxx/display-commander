@@ -33,7 +33,7 @@ const char* const DEFAULT_SETTINGS_TEMPLATE = R"(# Display Commander — User de
 
 # Window mode: 0 = No changes, 1 = Prevent exclusive fullscreen / no resize,
 # 2 = Borderless fullscreen, 3 = Borderless windowed.
-# window_mode = 1
+# window_mode2 = 1
 
 # Override max anisotropic filtering level (1–16) for samplers that already use anisotropic filtering.
 # 0 = do not override (use game’s value). Uncomment and set to 16 for best quality.

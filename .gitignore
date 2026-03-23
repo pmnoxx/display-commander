@@ -72,17 +72,13 @@ external-src/
 .cursor
 !.cursor/rules/project_structure.mdc
 
-# run_tmp
-run_tmp/
-res_injector/injector_config.ini
-
 # user settings
 imgui.ini
 
 # Docs not commited to the repo
 private_docs
 
-
+# whitelist
 
 # excluded
 !src/**/*.hpp
@@ -134,7 +130,6 @@ private_docs
 !CMakePresets.json
 !README.md
 !SUMMARY.md
-!build_display_commander.ps1
 !SUPPORT.md
 !reshade-display-commander.code-workspace
 

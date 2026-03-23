@@ -1,13 +1,11 @@
 # Display Commander Addon CMakeLists.txt
 
-# Sources (exclude cli_ui_exe - it is a separate executable target)
 file(GLOB_RECURSE DISPLAY_COMMANDER_SOURCES
   CONFIGURE_DEPENDS
   ${CMAKE_CURRENT_LIST_DIR}/*.cpp
   ${CMAKE_CURRENT_LIST_DIR}/utils/*.cpp
   ${CMAKE_CURRENT_LIST_DIR}/proxy_dll/*.cpp
 )
-list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/cli_ui_exe/.*")
 # ReShade ImGui wrapper is header-only (included from experimental_tab.cpp) to avoid undefined ImGui symbols at link
 list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/imgui_wrapper_reshade\\.cpp$")
 # main_exe.cpp is only for the standalone .exe target; DLL must not link it (RunDisplayCommanderStandalone is exe-only).

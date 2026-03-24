@@ -249,6 +249,7 @@ static std::atomic<bool> g_loadlibrary_hooks_installed{false};
 // Module tracking
 static std::vector<ModuleInfo> g_loaded_modules;
 static std::unordered_set<HMODULE> g_module_handles;
+static std::unordered_set<HMODULE> g_on_module_loaded_seen_handles;
 
 // Display Commander module handle (for determining which modules can be blocked)
 static HMODULE g_display_commander_module = nullptr;
@@ -1543,6 +1544,7 @@ bool EnumerateLoadedModules(bool modules_loaded_late_without_noticing) {
             if (!modules_loaded_late_without_noticing) {
                 g_loaded_modules.clear();
                 g_module_handles.clear();
+                g_on_module_loaded_seen_handles.clear();
                 {
                     utils::SRWLockExclusive lock_apis(utils::g_host_loaded_apis_srwlock);
                     g_host_loaded_graphics_apis.clear();
@@ -1846,6 +1848,15 @@ static std::string GetModulePathUtf8(HMODULE hMod) {
 
 void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     CALL_GUARD(utils::get_now_ns());
+    {
+        utils::SRWLockExclusive lock(utils::g_module_srwlock);
+        if (g_on_module_loaded_seen_handles.find(hModule) != g_on_module_loaded_seen_handles.end()) {
+            LogInfo("[OnModuleLoaded] Duplicate callback ignored for hModule=0x%p (%ws)", hModule, moduleName.c_str());
+            return;
+        }
+        g_on_module_loaded_seen_handles.insert(hModule);
+    }
+
     const bool has_dc_export = (GetProcAddress(hModule, "GetDisplayCommanderState") != nullptr);
     std::string product_and_version;
     wchar_t module_path[MAX_PATH];

@@ -2,6 +2,18 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
+Known issues:
+- Witcher 3 crashes.
+
+
+
+## v0.12.624
+- [bugfix] [settings] [hooks] **Hook suppression no longer flips back during startup** - Suppressed hooks now stay suppressed across startup and ReShade auto-load paths, so setting a hook to suppressed actually prevents installation instead of being silently reverted.
+  Details: load hook suppression settings before early ReShade-load hook installs in `main_entry.cpp`; `HookSuppressionManager::MarkHookInstalled` now updates only `DisplayCommander.HooksInstalled` and no longer writes `DisplayCommander.HookSuppression` values.
+- [bugfix] [hooks] **Ignore duplicate `OnModuleLoaded` callback for the same module handle** - Repeated module-load callbacks with the same `HMODULE` are now ignored, so hook install paths and tracking logic run only once per unique loaded module instance.
+  Details: added a per-handle dedupe set at `OnModuleLoaded` entry in `hooks/loadlibrary_hooks.cpp`, with reset during full module re-enumeration.
+- [cleanup] [hooks] **Suppressed `LogGameExeStaticImports` output** - Reduced noisy startup logging by suppressing `LogGameExeStaticImports`, so logs focus on actionable hook and module events.
+  Details: static-import logging for the game executable is now suppressed while keeping other module-load diagnostics intact.
 
 ## v0.12.623
 - [ui] [compatibility] **Added warning to NVAPI "Refresh Rate"** - Added a warning for the NVAPI "Refresh Rate" control to make potential side effects clearer before users change it.

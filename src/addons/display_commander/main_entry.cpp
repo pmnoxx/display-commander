@@ -2516,6 +2516,9 @@ void ProcessAttach_DetectEntryPoint(HMODULE h_module, std::wstring& entry_point,
 
 bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/, bool found_proxy) {
     OutputDebugStringA("ReShade not loaded");
+    // Ensure suppression flags are loaded before any early hook install attempt.
+    // This path can run before normal startup loading in some attach flows.
+    settings::g_hook_suppression_settings.LoadAll();
     display_commander::utils::DetectAndLogPlatformAPIs();
     std::vector<display_commander::utils::PlatformAPI> detected_platforms =
         display_commander::utils::GetDetectedPlatformAPIs();
@@ -2976,6 +2979,8 @@ static void EnsureDisplayCommanderLogWithModulePath(HMODULE h_module) {
 // Reads IMAGE_IMPORT_DESCRIPTOR[] from the game executable (main module) in memory and logs each imported DLL name.
 // Uses manual PE parsing only (no DbgHelp). Safe to call when we log the PROCESS_ATTACH stack.
 static void LogGameExeStaticImports(void (*emit_line)(const std::string&, std::ofstream*), std::ofstream* f) {
+    const bool supressed = true;
+    if (supressed) return;
     HMODULE const base = GetModuleHandleW(nullptr);
     if (!base) return;
     const auto* const dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(base);

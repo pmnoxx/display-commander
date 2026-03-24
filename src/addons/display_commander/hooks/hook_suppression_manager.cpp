@@ -309,157 +309,209 @@ void HookSuppressionManager::MarkHookInstalled(HookType hookType) {
         case HookType::DXGI_FACTORY:
             if (!settings::g_hook_suppression_settings.dxgi_factory_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.dxgi_factory_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_dxgi_factory_hooks.SetValue(false);
+
+                // force setting to be written
+                settings::g_hook_suppression_settings.suppress_dxgi_factory_hooks.Save();
             }
             break;
         case HookType::DXGI_SWAPCHAIN:
             if (!settings::g_hook_suppression_settings.dxgi_swapchain_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.dxgi_swapchain_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_dxgi_swapchain_hooks.SetValue(false);
+
+                // force setting to be written
+                settings::g_hook_suppression_settings.suppress_dxgi_swapchain_hooks.Save();
             }
             break;
         case HookType::SL_PROXY_DXGI_SWAPCHAIN:
             if (!settings::g_hook_suppression_settings.sl_proxy_dxgi_swapchain_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.sl_proxy_dxgi_swapchain_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_sl_proxy_dxgi_swapchain_hooks.SetValue(false);
+
+                // force setting to be written
+                settings::g_hook_suppression_settings.suppress_sl_proxy_dxgi_swapchain_hooks.Save();
             }
             break;
         case HookType::D3D11_DEVICE:
             if (!settings::g_hook_suppression_settings.d3d11_device_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.d3d11_device_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_d3d11_device_hooks.SetValue(false);
+
+                // force setting to be written
+                settings::g_hook_suppression_settings.suppress_d3d11_device_hooks.Save();
             }
             break;
         case HookType::D3D12_DEVICE:
             if (!settings::g_hook_suppression_settings.d3d12_device_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.d3d12_device_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_d3d12_device_hooks.SetValue(false);
+
+                // force setting to be written
+                settings::g_hook_suppression_settings.suppress_d3d12_device_hooks.Save();
             }
             break;
         case HookType::XINPUT:
             if (!settings::g_hook_suppression_settings.xinput_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.xinput_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_xinput_hooks.SetValue(false);
+
+                // force setting to be written
+                settings::g_hook_suppression_settings.suppress_xinput_hooks.Save();
             }
             break;
         case HookType::DINPUT:
             if (!settings::g_hook_suppression_settings.dinput_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.dinput_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_dinput_hooks.SetValue(false);
+
+                // force setting to be written
+                settings::g_hook_suppression_settings.suppress_dinput_hooks.Save();
             }
             break;
         case HookType::DINPUT8:
             if (!settings::g_hook_suppression_settings.dinput8_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.dinput8_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_dinput8_hooks.SetValue(false);
+
+                // force setting to be written
+                settings::g_hook_suppression_settings.suppress_dinput8_hooks.Save();
             }
             break;
         case HookType::STREAMLINE:
             if (!settings::g_hook_suppression_settings.streamline_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.streamline_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_streamline_hooks.SetValue(false);
+
+                // force setting to be written
+                settings::g_hook_suppression_settings.suppress_streamline_hooks.Save();
             }
             break;
         case HookType::NGX:
             if (!settings::g_hook_suppression_settings.ngx_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.ngx_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_ngx_hooks.SetValue(false);
+
+                // force setting to be written
+                settings::g_hook_suppression_settings.suppress_ngx_hooks.Save();
             }
             break;
         case HookType::WINDOWS_GAMING_INPUT:
             if (!settings::g_hook_suppression_settings.windows_gaming_input_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.windows_gaming_input_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_windows_gaming_input_hooks.SetValue(false);
+
+                // force setting to be written
+                settings::g_hook_suppression_settings.suppress_windows_gaming_input_hooks.Save();
             }
             break;
         case HookType::API:
             if (!settings::g_hook_suppression_settings.api_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.api_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_api_hooks.SetValue(false);
+
+                // force setting to be written
+                settings::g_hook_suppression_settings.suppress_api_hooks.Save();
             }
             break;
         case HookType::WINDOW_API:
             if (!settings::g_hook_suppression_settings.window_api_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.window_api_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_window_api_hooks.SetValue(false);
+
+                // force setting to be written
+                settings::g_hook_suppression_settings.suppress_window_api_hooks.Save();
             }
             break;
         case HookType::SLEEP:
             if (!settings::g_hook_suppression_settings.sleep_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.sleep_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_sleep_hooks.SetValue(false);
+
+                // force setting to be written
+                settings::g_hook_suppression_settings.suppress_sleep_hooks.Save();
             }
             break;
         case HookType::TIMESLOWDOWN:
             if (!settings::g_hook_suppression_settings.timeslowdown_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.timeslowdown_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_timeslowdown_hooks.SetValue(false);
+
+                // force setting to be written
+                settings::g_hook_suppression_settings.suppress_timeslowdown_hooks.Save();
             }
             break;
         case HookType::DEBUG_OUTPUT:
             if (!settings::g_hook_suppression_settings.debug_output_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.debug_output_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_debug_output_hooks.SetValue(false);
+
+                // force setting to be written
+                settings::g_hook_suppression_settings.suppress_debug_output_hooks.Save();
             }
             break;
         case HookType::LOADLIBRARY:
             if (!settings::g_hook_suppression_settings.loadlibrary_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.loadlibrary_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_loadlibrary_hooks.SetValue(false);
+
+                // force setting to be written
+                settings::g_hook_suppression_settings.suppress_loadlibrary_hooks.Save();
             }
             break;
         case HookType::DISPLAY_SETTINGS:
             if (!settings::g_hook_suppression_settings.display_settings_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.display_settings_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_display_settings_hooks.SetValue(false);
+
+                // force setting to be written
+                settings::g_hook_suppression_settings.suppress_display_settings_hooks.Save();
             }
             break;
         case HookType::WINDOWS_MESSAGE:
             if (!settings::g_hook_suppression_settings.windows_message_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.windows_message_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_windows_message_hooks.SetValue(false);
+
+                // force setting to be written
+                settings::g_hook_suppression_settings.suppress_windows_message_hooks.Save();
             }
             break;
         case HookType::OPENGL:
             if (!settings::g_hook_suppression_settings.opengl_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.opengl_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_opengl_hooks.SetValue(false);
+
+                // force setting to be written
+                settings::g_hook_suppression_settings.suppress_opengl_hooks.Save();
             }
             break;
         case HookType::NVAPI:
             if (!settings::g_hook_suppression_settings.nvapi_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.nvapi_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_nvapi_hooks.SetValue(false);
+
+                // force setting to be written
+                settings::g_hook_suppression_settings.suppress_nvapi_hooks.Save();
             }
             break;
         case HookType::PROCESS_EXIT:
             if (!settings::g_hook_suppression_settings.process_exit_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.process_exit_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_process_exit_hooks.SetValue(false);
+
+                // force setting to be written
+                settings::g_hook_suppression_settings.suppress_process_exit_hooks.Save();
             }
             break;
         case HookType::WINDOW_PROC:
             if (!settings::g_hook_suppression_settings.window_proc_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.window_proc_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_window_proc_hooks.SetValue(false);
+
+                // force setting to be written
+                settings::g_hook_suppression_settings.suppress_window_proc_hooks.Save();
             }
             break;
         case HookType::DBGHELP:
             if (!settings::g_hook_suppression_settings.dbghelp_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.dbghelp_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_dbghelp_hooks.SetValue(false);
+
+                // force setting to be written
+                settings::g_hook_suppression_settings.suppress_dbghelp_hooks.Save();
             }
             break;
         case HookType::D3D9:
             if (!settings::g_hook_suppression_settings.d3d9_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.d3d9_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_d3d9_hooks.SetValue(false);
+
+                // force setting to be written
+                settings::g_hook_suppression_settings.suppress_d3d9_hooks.Save();
             }
             break;
         case HookType::VULKAN_LOADER:
             if (!settings::g_hook_suppression_settings.vulkan_loader_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.vulkan_loader_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_vulkan_loader_hooks.SetValue(false);
+
+                // force setting to be written
+                settings::g_hook_suppression_settings.suppress_vulkan_loader_hooks.Save();
             }
             break;
 
@@ -469,7 +521,7 @@ void HookSuppressionManager::MarkHookInstalled(HookType hookType) {
             break;
     }
 
-    LogInfo("HookSuppressionManager::MarkHookInstalled - Marked %d as installed and set suppression to false",
+    LogInfo("HookSuppressionManager::MarkHookInstalled - Marked %d as installed",
             static_cast<int>(hookType));
 }
 

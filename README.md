@@ -255,7 +255,7 @@ Need help? Check out our [Support Guide](SUPPORT.md) for detailed information on
 
 **Quick Support Links:**
 - **RenoDX Discord**: [Join our community](https://discord.com/invite/jz6ujVpgFB)
-- **Support Thread**: [Display Commander Support](https://discord.com/channels/1408098019194310818/1423918603035476041)
+- **Support Thread**: [Display Commander Support](https://discord.com/channels/1408098019194310818/1484495867586281493)
 - **GitHub Issues**: [Report bugs or request features](https://github.com/pmnoxx/display-commander/issues)
 
 The RenoDX Discord community is the best place to get real-time help, discuss features, and connect with other users.

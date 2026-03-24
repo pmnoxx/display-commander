@@ -1743,8 +1743,23 @@ std::vector<std::string> ReportMissedModulesOnExit() {
     return missed;
 }
 
+// Known REFramework host processes where plugin DLLs may not include "reframework\plugins" in the path.
+static bool IsReFrameworkGame() {
+    wchar_t exe_path[MAX_PATH] = {};
+    if (GetModuleFileNameW(nullptr, exe_path, MAX_PATH) == 0) {
+        return false;
+    }
+    std::wstring exe_name = std::filesystem::path(exe_path).filename().wstring();
+    std::transform(exe_name.begin(), exe_name.end(), exe_name.begin(), ::towlower);
+    return exe_name == L"re4.exe";
+}
+
 // Helper function to check if any loaded module has "reframework\plugins" in its path
 bool HasReframeworkPluginModule() {
+    if (IsReFrameworkGame()) {
+        return true;
+    }
+
     HMODULE modules[1024];
     DWORD num_modules = 0;
 

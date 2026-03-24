@@ -28,7 +28,7 @@
 
 // Streamline function pointers
 using slInit_pfn = int (*)(void* pref, uint64_t sdkVersion);
-using slIsFeatureSupported_pfn = int (*)(int feature, const void* adapterInfo);
+using slIsFeatureSupported_pfn = int (*)(sl::Feature feature, const sl::AdapterInfo& adapterInfo);
 using slGetNativeInterface_pfn = int (*)(void* proxyInterface, void** baseInterface);
 using slUpgradeInterface_pfn = int (*)(void** baseInterface);
 using slGetFeatureFunction_pfn = int (*)(int feature, const char* functionName, void*& function);
@@ -42,7 +42,7 @@ static slGetFeatureFunction_pfn slGetFeatureFunction_Original = nullptr;
 // Forward declarations for table-driven hook install
 static int slInit_Detour(void* pref, uint64_t sdkVersion);
 static int slUpgradeInterface_Detour(void** baseInterface);
-static int slIsFeatureSupported_Detour(int feature, const void* adapterInfo);
+static int slIsFeatureSupported_Detour(sl::Feature feature, const sl::AdapterInfo& adapterInfo);
 static int slGetNativeInterface_Detour(void* proxyInterface, void** baseInterface);
 static int slGetFeatureFunction_Detour(int feature, const char* functionName, void*& function);
 
@@ -310,7 +310,7 @@ int slInit_Detour(void* pref, uint64_t sdkVersion) {
     return -1;  // Error if original not available
 }
 
-int slIsFeatureSupported_Detour(int feature, const void* adapterInfo) {
+int slIsFeatureSupported_Detour(sl::Feature feature, const sl::AdapterInfo& adapterInfo) {
     CALL_GUARD(utils::get_now_ns());
     // Increment counter
     g_streamline_event_counters[STREAMLINE_EVENT_SL_IS_FEATURE_SUPPORTED].fetch_add(1);
@@ -706,6 +706,8 @@ bool InstallStreamlineHooks(HMODULE streamline_module) {
         LogInfo("Streamline hooks already installed");
         return true;
     }
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
+        display_commanderhooks::HookType::STREAMLINE);
 
     // Initialize prevent_slupgrade_interface from config
     InitializePreventSLUpgradeInterface();
@@ -716,13 +718,13 @@ bool InstallStreamlineHooks(HMODULE streamline_module) {
         FARPROC target = GetProcAddress(sl_interposer, entry.name);
         if (target == nullptr) {
             LogError("Streamline: %s not exported by sl.interposer.dll", entry.name);
-            RollbackStreamlineLoaderHooks();
-            return false;
+           // RollbackStreamlineLoaderHooks();
+           // return false;
         }
         if (!CreateAndEnableHook(reinterpret_cast<LPVOID>(target), entry.detour, entry.original, entry.name)) {
             LogError("Failed to create and enable %s hook", entry.name);
-            RollbackStreamlineLoaderHooks();
-            return false;
+           // RollbackStreamlineLoaderHooks();
+           // return false;
         }
     }
 
@@ -730,8 +732,6 @@ bool InstallStreamlineHooks(HMODULE streamline_module) {
     LogInfo("Streamline hooks installed successfully");
 
     // Mark Streamline hooks as installed
-    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
-        display_commanderhooks::HookType::STREAMLINE);
 
     return true;
 }

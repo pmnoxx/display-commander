@@ -71,45 +71,32 @@ void DrawMainTabLegalSection(display_commander::ui::IImGuiWrapper& imgui) {
     const int acknowledged = settings::g_mainTabSettings.license_acknowledged_version.GetValue();
     const bool need_accept = acknowledged < bundled_ver;
 
-    g_rendering_ui_section.store("ui:tab:main_new:legal", std::memory_order_release);
-
-    imgui.Separator();
-    imgui.Spacing();
-    imgui.TextColored(ui::colors::TEXT_DIMMED, "License presentation version: %d", bundled_ver);
-    imgui.Spacing();
-
     if (need_accept) {
+        g_rendering_ui_section.store("ui:tab:main_new:legal", std::memory_order_release);
         imgui.TextWrapped(
             "Use of Display Commander requires that you read and accept the license and third-party notices below. "
-            "Press Accept to continue, or Disagree to exit the game.");
+            "Press Accept after you have reviewed them.");
         imgui.Spacing();
-    } else {
-        imgui.TextColored(ui::colors::TEXT_DIMMED,
-                          "License and third-party notices are embedded in the addon binary (recorded acceptance: %d).",
-                          acknowledged);
-        imgui.Spacing();
-    }
 
-    if (imgui.Button(ICON_FK_FILE_CODE " Display Commander license")) {
-        EnsureBuffer(s_license_buf, IDR_DC_LICENSE, "License text could not be loaded from embedded resources.");
-        s_pending_license_popup = true;
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx("Shows the LICENSE file for Display Commander (embedded in the binary).");
-    }
+        if (imgui.Button(ICON_FK_FILE_CODE " Display Commander license")) {
+            EnsureBuffer(s_license_buf, IDR_DC_LICENSE, "License text could not be loaded from embedded resources.");
+            s_pending_license_popup = true;
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx("Shows the LICENSE file for Display Commander (embedded in the binary).");
+        }
 
-    imgui.SameLine();
+        imgui.SameLine();
 
-    if (imgui.Button(ICON_FK_FILE " Third-party notices")) {
-        EnsureBuffer(s_third_party_buf, IDR_THIRD_PARTY_NOTICES,
-                     "Third-party notices could not be loaded from embedded resources.");
-        s_pending_third_party_popup = true;
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx("Shows THIRD_PARTY_NOTICES.txt (embedded in the binary).");
-    }
+        if (imgui.Button(ICON_FK_FILE " Third-party notices")) {
+            EnsureBuffer(s_third_party_buf, IDR_THIRD_PARTY_NOTICES,
+                        "Third-party notices could not be loaded from embedded resources.");
+            s_pending_third_party_popup = true;
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx("Shows THIRD_PARTY_NOTICES.txt (embedded in the binary).");
+        }
 
-    if (need_accept) {
         imgui.Spacing();
         if (imgui.Button("Accept")) {
             settings::g_mainTabSettings.license_acknowledged_version.SetValue(bundled_ver);
@@ -118,14 +105,6 @@ void DrawMainTabLegalSection(display_commander::ui::IImGuiWrapper& imgui) {
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx("Record acceptance of this license version and hide this prompt until the version is "
                                "raised again.");
-        }
-        imgui.SameLine();
-        if (imgui.Button("Disagree")) {
-            LogWarn("License: user disagreed — terminating process");
-            TerminateProcess(GetCurrentProcess(), 1);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Exit the game without accepting the license terms.");
         }
     }
 

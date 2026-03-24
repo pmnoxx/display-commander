@@ -6,6 +6,14 @@ Known issues:
 - Witcher 3: fps gets halfed while using FG in the UI.
 - Sometimes config .toml file gets delete during save.
 
+## v0.12.627
+- [ui] **Main tab license block only when needed** - The license / third-party notice prompt at the bottom of the Main tab is shown only when the bundled license presentation version is newer than what you already accepted. After acceptance, that footer is omitted so the tab stays compact. The “Disagree” control that terminated the game was removed.
+  Details: `DrawMainTabLegalSection` in `ui/new_ui/help_tab.cpp`.
+
+## v0.12.626
+- [new feature] [ui] [settings] **Main tab optional panels (visibility + order)** - Seven Main tab sections (DC folders, Brightness and AutoHDR, Texture Filtering, Audio Control, CPU Control, window action buttons, Overlay Windows) are hidden by default; turn them on under Main → Advanced Settings → “Main tab optional panels”. You can reorder how they appear when multiple are enabled; DC folders now sits in that block below Display Settings and Resolution. Input Control and Window Control always stay below the optional block.
+  Details: new `show_main_tab_*` and `main_tab_optional_section_order` keys in `[DisplayCommander]`; draw helpers and order parsing in `ui/new_ui/main_new_tab.cpp`.
+
 ## v0.12.625
 - [compatibility] [hooks] **RE4: treat as REFramework present for hook skip** - `re4.exe` is detected so Display Commander skips the same D3D11/D3D12 device hooks as when a `reframework\plugins` module path is seen, avoiding conflicts when REFramework does not appear in loaded-module paths the usual way.
 

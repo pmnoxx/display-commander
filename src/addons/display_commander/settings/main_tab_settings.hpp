@@ -200,6 +200,24 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_vulkan_tab;
     ui::new_ui::BoolSetting show_notes_tab;
     ui::new_ui::BoolSetting show_nvidia_profile_tab;
+
+    /** Main tab: show optional "DC folders" collapsible (paths, versions, folder buttons). Default off. */
+    ui::new_ui::BoolSetting show_main_tab_dc_folders;
+    /** Main tab: show Brightness and AutoHDR section (ReShade only). Default off. */
+    ui::new_ui::BoolSetting show_main_tab_brightness_autohdr;
+    /** Main tab: show Texture Filtering section. Default off. */
+    ui::new_ui::BoolSetting show_main_tab_texture_filtering;
+    /** Main tab: show Audio Control section. Default off. */
+    ui::new_ui::BoolSetting show_main_tab_audio_control;
+    /** Main tab: show CPU Control section. Default off. */
+    ui::new_ui::BoolSetting show_main_tab_cpu_control;
+    /** Main tab: show window action buttons (minimize, focus, close, folders, etc.). Default off. */
+    ui::new_ui::BoolSetting show_main_tab_window_action_buttons;
+    /** Main tab: show Overlay Windows section. Default off. */
+    ui::new_ui::BoolSetting show_main_tab_overlay_windows;
+    /** Comma-separated stable IDs for optional main tab panel order (see main_new_tab.cpp). */
+    ui::new_ui::StringSetting main_tab_optional_section_order;
+
     /** When enabled, install NvLowLatencyVk hooks when NvLowLatencyVk.dll is loaded (Vulkan Reflex frame pacing). */
     ui::new_ui::BoolSetting vulkan_nvll_hooks_enabled;
     /** When enabled, hook vulkan-1.dll vkGetDeviceProcAddr and wrap vkSetLatencyMarkerNV (VK_NV_low_latency2) for frame

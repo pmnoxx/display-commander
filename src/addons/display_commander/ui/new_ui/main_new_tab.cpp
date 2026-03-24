@@ -90,6 +90,7 @@ EXTERN_C const GUID IID_IDirect3DDevice9 = {
 #include <functional>
 #include <iomanip>
 #include <sstream>
+#include <string>
 #include <thread>
 #include <vector>
 
@@ -1596,6 +1597,210 @@ void InitMainNewTab() {
     }
 }
 
+// Main tab optional panels: stable order tokens (used by Advanced Settings UI and DrawMainNewTab loop).
+enum class MainTabOptionalSectionKind {
+    BrightnessAutoHdr,
+    TextureFiltering,
+    AudioControl,
+    CpuControl,
+    WindowButtons,
+    OverlayWindows,
+    DcFolders,
+};
+
+static constexpr const char kMainTabOptionalSectionOrderDefault[] =
+    "brightness_autohdr,texture_filtering,audio_control,cpu_control,window_buttons,overlay_windows,dc_folders";
+
+static const char* MainTabOptionalSectionId(MainTabOptionalSectionKind k) {
+    switch (k) {
+        case MainTabOptionalSectionKind::BrightnessAutoHdr: return "brightness_autohdr";
+        case MainTabOptionalSectionKind::TextureFiltering: return "texture_filtering";
+        case MainTabOptionalSectionKind::AudioControl: return "audio_control";
+        case MainTabOptionalSectionKind::CpuControl: return "cpu_control";
+        case MainTabOptionalSectionKind::WindowButtons: return "window_buttons";
+        case MainTabOptionalSectionKind::OverlayWindows: return "overlay_windows";
+        case MainTabOptionalSectionKind::DcFolders: return "dc_folders";
+    }
+    return "";
+}
+
+static MainTabOptionalSectionKind MainTabOptionalSectionKindFromId(const std::string& tok) {
+    if (tok == "brightness_autohdr") return MainTabOptionalSectionKind::BrightnessAutoHdr;
+    if (tok == "texture_filtering") return MainTabOptionalSectionKind::TextureFiltering;
+    if (tok == "audio_control") return MainTabOptionalSectionKind::AudioControl;
+    if (tok == "cpu_control") return MainTabOptionalSectionKind::CpuControl;
+    if (tok == "window_buttons") return MainTabOptionalSectionKind::WindowButtons;
+    if (tok == "overlay_windows") return MainTabOptionalSectionKind::OverlayWindows;
+    if (tok == "dc_folders") return MainTabOptionalSectionKind::DcFolders;
+    return MainTabOptionalSectionKind::BrightnessAutoHdr;
+}
+
+static bool MainTabOptionalSectionIdValid(const std::string& tok) {
+    return tok == "brightness_autohdr" || tok == "texture_filtering" || tok == "audio_control"
+           || tok == "cpu_control" || tok == "window_buttons" || tok == "overlay_windows" || tok == "dc_folders";
+}
+
+static void MainTabOptionalTrimInPlace(std::string& s) {
+    const char* ws = " \t\r\n";
+    auto start = s.find_first_not_of(ws);
+    if (start == std::string::npos) {
+        s.clear();
+        return;
+    }
+    auto end = s.find_last_not_of(ws);
+    s = s.substr(start, end - start + 1);
+}
+
+static std::vector<MainTabOptionalSectionKind> MainTabParseOptionalSectionOrder(const std::string& raw) {
+    static constexpr MainTabOptionalSectionKind kDefaultSeq[] = {
+        MainTabOptionalSectionKind::BrightnessAutoHdr, MainTabOptionalSectionKind::TextureFiltering,
+        MainTabOptionalSectionKind::AudioControl,      MainTabOptionalSectionKind::CpuControl,
+        MainTabOptionalSectionKind::WindowButtons,     MainTabOptionalSectionKind::OverlayWindows,
+        MainTabOptionalSectionKind::DcFolders,
+    };
+    bool seen[7] = {};
+    std::vector<MainTabOptionalSectionKind> out;
+    out.reserve(7);
+    std::string cur;
+    for (size_t i = 0; i <= raw.size(); ++i) {
+        if (i < raw.size() && raw[i] != ',') {
+            cur.push_back(raw[i]);
+            continue;
+        }
+        MainTabOptionalTrimInPlace(cur);
+        if (!cur.empty() && MainTabOptionalSectionIdValid(cur)) {
+            MainTabOptionalSectionKind kind = MainTabOptionalSectionKindFromId(cur);
+            int idx = static_cast<int>(kind);
+            if (idx >= 0 && idx < 7 && !seen[idx]) {
+                seen[idx] = true;
+                out.push_back(kind);
+            }
+        }
+        cur.clear();
+    }
+    for (MainTabOptionalSectionKind k : kDefaultSeq) {
+        int idx = static_cast<int>(k);
+        if (!seen[idx]) out.push_back(k);
+    }
+    return out;
+}
+
+static std::string MainTabSerializeOptionalSectionOrder(const std::vector<MainTabOptionalSectionKind>& order) {
+    std::string s;
+    for (size_t i = 0; i < order.size(); ++i) {
+        if (i) s += ',';
+        s += MainTabOptionalSectionId(order[i]);
+    }
+    return s;
+}
+
+static const char* MainTabOptionalSectionDisplayName(MainTabOptionalSectionKind k) {
+    switch (k) {
+        case MainTabOptionalSectionKind::BrightnessAutoHdr: return "Brightness and AutoHDR";
+        case MainTabOptionalSectionKind::TextureFiltering: return "Texture Filtering";
+        case MainTabOptionalSectionKind::AudioControl: return "Audio Control";
+        case MainTabOptionalSectionKind::CpuControl: return "CPU Control";
+        case MainTabOptionalSectionKind::WindowButtons: return "Window action buttons";
+        case MainTabOptionalSectionKind::OverlayWindows: return "Overlay Windows";
+        case MainTabOptionalSectionKind::DcFolders: return "DC folders";
+    }
+    return "";
+}
+
+static void DrawMainTabOptionalPanelsAdvancedSettingsUi(display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.Spacing();
+    imgui.TextUnformatted("Main tab optional panels");
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltipEx(
+            "Show or hide collapsible sections on the Main tab (below Display Settings and Resolution). "
+            "All default off. Enable \"Show All Tabs\" or this section's panels as needed.");
+    }
+    imgui.Indent();
+
+    if (CheckboxSetting(settings::g_mainTabSettings.show_main_tab_dc_folders, "Show DC folders", imgui)) {
+        LogInfo("Show main tab DC folders %s",
+                settings::g_mainTabSettings.show_main_tab_dc_folders.GetValue() ? "on" : "off");
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltipEx("Paths, version info, and folder buttons for Display Commander / ReShade / addons.");
+    }
+
+    if (CheckboxSetting(settings::g_mainTabSettings.show_main_tab_brightness_autohdr, "Show Brightness and AutoHDR",
+                        imgui)) {
+        LogInfo("Show main tab Brightness/AutoHDR %s",
+                settings::g_mainTabSettings.show_main_tab_brightness_autohdr.GetValue() ? "on" : "off");
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltipEx("ReShade-only: brightness, color space, AutoHDR, and related controls.");
+    }
+
+    if (CheckboxSetting(settings::g_mainTabSettings.show_main_tab_texture_filtering, "Show Texture Filtering", imgui)) {
+        LogInfo("Show main tab Texture Filtering %s",
+                settings::g_mainTabSettings.show_main_tab_texture_filtering.GetValue() ? "on" : "off");
+    }
+    if (CheckboxSetting(settings::g_mainTabSettings.show_main_tab_audio_control, "Show Audio Control", imgui)) {
+        LogInfo("Show main tab Audio Control %s",
+                settings::g_mainTabSettings.show_main_tab_audio_control.GetValue() ? "on" : "off");
+    }
+    if (CheckboxSetting(settings::g_mainTabSettings.show_main_tab_cpu_control, "Show CPU Control", imgui)) {
+        LogInfo("Show main tab CPU Control %s",
+                settings::g_mainTabSettings.show_main_tab_cpu_control.GetValue() ? "on" : "off");
+    }
+    if (CheckboxSetting(settings::g_mainTabSettings.show_main_tab_window_action_buttons,
+                        "Show window action buttons", imgui)) {
+        LogInfo("Show main tab window action buttons %s",
+                settings::g_mainTabSettings.show_main_tab_window_action_buttons.GetValue() ? "on" : "off");
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltipEx("Minimize, focus, close, open game folder, config, log, etc.");
+    }
+    if (CheckboxSetting(settings::g_mainTabSettings.show_main_tab_overlay_windows, "Show Overlay Windows", imgui)) {
+        LogInfo("Show main tab Overlay Windows %s",
+                settings::g_mainTabSettings.show_main_tab_overlay_windows.GetValue() ? "on" : "off");
+    }
+
+    imgui.Spacing();
+    imgui.TextUnformatted("Panel order (when multiple are enabled)");
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltipEx("Draw order for optional panels on the Main tab. Input Control and Window Control stay "
+                           "below this block.");
+    }
+    std::vector<MainTabOptionalSectionKind> order =
+        MainTabParseOptionalSectionOrder(settings::g_mainTabSettings.main_tab_optional_section_order.GetValue());
+    for (size_t i = 0; i < order.size(); ++i) {
+        char up_id[48];
+        snprintf(up_id, sizeof(up_id), "Up##mtopt%u", static_cast<unsigned>(i));
+        char down_id[48];
+        snprintf(down_id, sizeof(down_id), "Down##mtopt%u", static_cast<unsigned>(i));
+
+        imgui.BulletText("%s", MainTabOptionalSectionDisplayName(order[i]));
+        imgui.SameLine();
+        if (i == 0) imgui.BeginDisabled();
+        if (imgui.SmallButton(up_id)) {
+            std::swap(order[i], order[i - 1]);
+            settings::g_mainTabSettings.main_tab_optional_section_order.SetValue(
+                MainTabSerializeOptionalSectionOrder(order));
+            LogInfo("Main tab optional panel order updated");
+        }
+        if (i == 0) imgui.EndDisabled();
+        imgui.SameLine();
+        if (i + 1 >= order.size()) imgui.BeginDisabled();
+        if (imgui.SmallButton(down_id)) {
+            std::swap(order[i], order[i + 1]);
+            settings::g_mainTabSettings.main_tab_optional_section_order.SetValue(
+                MainTabSerializeOptionalSectionOrder(order));
+            LogInfo("Main tab optional panel order updated");
+        }
+        if (i + 1 >= order.size()) imgui.EndDisabled();
+    }
+    if (imgui.Button("Reset panel order to default")) {
+        settings::g_mainTabSettings.main_tab_optional_section_order.SetValue(kMainTabOptionalSectionOrderDefault);
+        LogInfo("Main tab optional panel order reset to default");
+    }
+
+    imgui.Unindent();
+}
+
 void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
     CALL_GUARD(utils::get_now_ns());
@@ -1770,6 +1975,10 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
     }
 
     imgui.Unindent();
+
+    imgui.Spacing();
+
+    DrawMainTabOptionalPanelsAdvancedSettingsUi(imgui);
 
     imgui.Spacing();
 
@@ -2639,6 +2848,615 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
     DrawUpdatesAddonsHeader(imgui);
 }
 
+static void DrawMainTabOptionalPanelDcFolders(display_commander::ui::IImGuiWrapper& imgui,
+                                              reshade::api::effect_runtime* runtime) {
+    g_rendering_ui_section.store("ui:tab:main_new:dc_folders", std::memory_order_release);
+    if (imgui.CollapsingHeader("DC folders", ImGuiTreeNodeFlags_None)) {
+        imgui.Indent();
+        DrawUpdatesSectionContent(imgui, runtime);
+        imgui.Unindent();
+    }
+}
+
+static void DrawMainTabOptionalPanelBrightnessAutoHdr(display_commander::ui::IImGuiWrapper& imgui,
+                                                      reshade::api::effect_runtime* runtime) {
+    if (g_reshade_module == nullptr) return;
+    imgui.Spacing();
+    g_rendering_ui_section.store("ui:tab:main_new:brightness_autohdr", std::memory_order_release);
+    if (imgui.CollapsingHeader("Brightness and AutoHDR", ImGuiTreeNodeFlags_None)) {
+        imgui.Indent();
+        if (CheckboxSetting(settings::g_mainTabSettings.brightness_autohdr_section_enabled,
+                            "Load DC's shaders (Brightness, AutoHDR)", imgui)) {
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "When on: Brightness, AutoHDR and related controls are active (DC's ReShade effects are applied). "
+                "When off: the whole Brightness and AutoHDR section is disabled.");
+        }
+        if (!settings::g_mainTabSettings.brightness_autohdr_section_enabled.GetValue()) {
+            imgui.BeginDisabled();
+        }
+        imgui.SetNextItemWidth(400.0f);
+        if (SliderFloatSetting(settings::g_mainTabSettings.brightness_percent, "Brightness (%)", "%.0f", imgui)) {
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "Adjust brightness via Display Commander's ReShade effect (0-500%%, 100%% = neutral).\n"
+                "Requires DisplayCommander_Control.fx to be in ReShade's Shaders folder and effect reload (e.g. "
+                "Ctrl+Shift+F5) or game restart.");
+        }
+        {
+            HMONITOR mon = display_commander::display::sdr_white_level::GetGameMonitorForSdrBrightness();
+            bool hdr_enabled = true;
+            if (hdr_enabled && mon != nullptr) {
+                imgui.SetNextItemWidth(400.0f);
+                if (SliderFloatSetting(settings::g_mainTabSettings.sdr_content_brightness_nits,
+                                       "SDR content brightness (Windows WIP)", "%.0f nits", imgui)) {
+                    display_commander::display::sdr_white_level::SetSdrWhiteLevelNits(
+                        mon, settings::g_mainTabSettings.sdr_content_brightness_nits.GetValue());
+                }
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltipEx(
+                        "Windows SDR content brightness when HDR is on (Settings > Display > HDR). "
+                        "80–480 nits. Affects the display where the game runs.");
+                }
+                imgui.TextColored(ui::colors::TEXT_WARNING,
+                                  "Warning: SDR content brightness (Windows) does not restore itself back when "
+                                  "game shuts down. Shown even when HDR is off.");
+            }
+        }
+        imgui.SetNextItemWidth(400.0f);
+        if (ComboSettingWrapper(settings::g_mainTabSettings.swapchain_colorspace, "Swapchain colorspace", imgui)) {
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx("How to interpret the backbuffer (decode). Auto = detect from pipeline. Default Auto.");
+        }
+        imgui.SetNextItemWidth(400.0f);
+        if (ComboSettingWrapper(settings::g_mainTabSettings.brightness_colorspace, "Color Space", imgui)) {
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "Output/encode color space. Auto = match pipeline. sRGB = linearize, multiply, encode.");
+        }
+        {
+            const reshade::api::device_api api = g_last_reshade_device_api.load();
+            const bool is_dxgi = (api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11
+                                  || api == reshade::api::device_api::d3d12);
+            const bool renodx_loaded = g_is_renodx_loaded.load(std::memory_order_relaxed);
+            if (is_dxgi && !renodx_loaded) {
+                if (CheckboxSetting(settings::g_mainTabSettings.swapchain_hdr_upgrade, "Swapchain HDR Upgrade", imgui)) {
+                }
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltipEx(
+                        "Upgrades the swap chain to HDR (scRGB or HDR10) on creation. Requires DXGI (D3D10/11/12) "
+                        "and Windows HDR or an HDR display. Game restart may be needed.");
+                }
+                if (settings::g_mainTabSettings.swapchain_hdr_upgrade.GetValue()) {
+                    if (ComboSettingWrapper(settings::g_mainTabSettings.swapchain_hdr_upgrade_mode, "HDR mode", imgui)) {
+                    }
+                    if (imgui.IsItemHovered()) {
+                        imgui.SetTooltipEx(
+                            "scRGB = 16-bit float linear. HDR10 = 10-bit PQ (ST.2084). Change may require game "
+                            "restart.");
+                    }
+                    imgui.TextColored(
+                        ui::colors::TEXT_WARNING,
+                        "May cause black screen issue. For best compatibility use \"RenoDX Unity mod\" to do "
+                        "generic SDR->HDR upgrade (for non unity games).");
+                }
+            } else if (!is_dxgi) {
+                const char* api_label = "this API";
+                switch (api) {
+                    case reshade::api::device_api::d3d9:   api_label = "D3D9"; break;
+                    case reshade::api::device_api::opengl: api_label = "OpenGL"; break;
+                    case reshade::api::device_api::vulkan: api_label = "Vulkan"; break;
+                    default:                               break;
+                }
+                imgui.Text("Use RenoDX to upgrade swapchain to HDR (%s).", api_label);
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltipEx(
+                        "Swapchain HDR Upgrade is only available for DXGI (D3D10/11/12). For %s use RenoDX: "
+                        "https://github.com/clshortfuse/renodx",
+                        api_label);
+                }
+            }
+        }
+        if (CheckboxSetting(settings::g_mainTabSettings.auto_hdr, "AutoHDR Perceptual Boost", imgui)) {
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "Runs DisplayCommander_PerceptualBoost.fx. Use 'Swapchain HDR Upgrade' for SDR->HDR upgrade.");
+        }
+        if (!settings::g_mainTabSettings.brightness_autohdr_section_enabled.GetValue()) {
+            imgui.EndDisabled();
+        }
+        {
+            const reshade::api::device_api api = g_last_reshade_device_api.load();
+            const bool is_dxgi = (api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11
+                                  || api == reshade::api::device_api::d3d12);
+
+            auto show_checkbox = (g_show_auto_colorspace_fix_in_main_tab.load(std::memory_order_relaxed));
+            bool auto_colorspace = settings::g_advancedTabSettings.auto_colorspace.GetValue();
+            bool swap_chain_upgrade = settings::g_mainTabSettings.swapchain_hdr_upgrade.GetValue();
+            if (is_dxgi && (show_checkbox || !auto_colorspace || swap_chain_upgrade)) {
+                if (imgui.Checkbox("HDR10 / scRGB color fix", &auto_colorspace)) {
+                    settings::g_advancedTabSettings.auto_colorspace.SetValue(auto_colorspace);
+                }
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltipEx(
+                        "Sets DXGI swap chain and ReShade color space to match the back buffer: "
+                        "10-bit HDR10 (R10G10B10A2) -> HDR10 (ST2084), 16-bit FP (R16G16B16A16) -> scRGB (Linear). "
+                        "No change for 8-bit (SDR). Improves compatibility with RenoDX HDR10 mode. DirectX 11/12.");
+                }
+            }
+        }
+        if (!settings::g_mainTabSettings.brightness_autohdr_section_enabled.GetValue()) {
+            imgui.BeginDisabled();
+        }
+        if (settings::g_mainTabSettings.auto_hdr.GetValue()) {
+            bool backbuffer_8bit = false;
+            if (runtime != nullptr) {
+                reshade::api::device* device = runtime->get_device();
+                if (device != nullptr) {
+                    reshade::api::resource bb = runtime->get_back_buffer(0);
+                    if (bb != 0) {
+                        const auto fmt = device->get_resource_desc(bb).texture.format;
+                        backbuffer_8bit = (fmt == reshade::api::format::r8g8b8a8_unorm
+                                           || fmt == reshade::api::format::b8g8r8a8_unorm);
+                    }
+                }
+            }
+            if (!backbuffer_8bit) {
+                auto desc_ptr = g_last_swapchain_desc_post.load();
+                if (desc_ptr != nullptr) {
+                    const auto fmt = desc_ptr->back_buffer.texture.format;
+                    backbuffer_8bit = (fmt == reshade::api::format::r8g8b8a8_unorm
+                                       || fmt == reshade::api::format::b8g8r8a8_unorm);
+                }
+            }
+            if (backbuffer_8bit) {
+                imgui.TextColored(::ui::colors::ICON_WARNING, ICON_FK_WARNING
+                                                      " 8-bit buffer. "
+                                                      "Recommend RenoDX for SDR->HDR swapchain upgrade.");
+            }
+            imgui.SetNextItemWidth(400.0f);
+            if (SliderFloatSetting(settings::g_mainTabSettings.auto_hdr_strength, "Auto HDR strength", "%.2f", imgui)) {
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltipEx("Profile 3 effect strength (0.0 = no effect, 1.0 = full effect, up to 2.0).");
+            }
+        }
+        ui::colors::PushNestedHeaderColors(&imgui);
+        if (imgui.CollapsingHeader("Misc", ImGuiTreeNodeFlags_None)) {
+            imgui.Indent();
+            if (SliderFloatSetting(settings::g_mainTabSettings.gamma_value, "Gamma", "%.2f", imgui)) {
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltipEx(
+                    "Gamma correction (0.5–2.0, 1.0 = neutral). Applied in DisplayCommander_Control.fx with "
+                    "Brightness.");
+            }
+            if (SliderFloatSetting(settings::g_mainTabSettings.contrast_value, "Contrast", "%.2f", imgui)) {
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltipEx(
+                    "Contrast (0.0–2.0, 1.0 = neutral). Applied in DisplayCommander_Control.fx with Brightness.");
+            }
+            if (SliderFloatSetting(settings::g_mainTabSettings.saturation_value, "Saturation", "%.2f", imgui)) {
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltipEx(
+                    "Saturation (0.0 = grayscale, 1.0 = neutral, up to 2.0). Applied in "
+                    "DisplayCommander_Control.fx with Brightness.");
+            }
+            if (SliderFloatSetting(settings::g_mainTabSettings.hue_degrees, "Hue (degrees)", "%.1f", imgui)) {
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltipEx(
+                    "Hue shift (-15 to +15 degrees, 0 = neutral). Applied in DisplayCommander_Control.fx with "
+                    "Brightness.");
+            }
+            imgui.Unindent();
+        }
+        ui::colors::PopNestedHeaderColors(&imgui);
+        if (!settings::g_mainTabSettings.brightness_autohdr_section_enabled.GetValue()) {
+            imgui.EndDisabled();
+        }
+        imgui.Unindent();
+    }
+}
+
+static void DrawMainTabOptionalPanelTextureFiltering(display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.Spacing();
+    g_rendering_ui_section.store("ui:tab:main_new:texture_filtering", std::memory_order_release);
+    if (imgui.CollapsingHeader("Texture Filtering", ImGuiTreeNodeFlags_None)) {
+        imgui.Indent();
+
+        uint32_t d3d11_count = g_d3d_sampler_event_counters[D3D_SAMPLER_EVENT_CREATE_SAMPLER_STATE_D3D11].load();
+        uint32_t d3d12_count = g_d3d_sampler_event_counters[D3D_SAMPLER_EVENT_CREATE_SAMPLER_D3D12].load();
+        uint32_t total_count = d3d11_count + d3d12_count;
+
+        imgui.Text("CreateSampler Calls: %u", total_count);
+        if (d3d11_count > 0) {
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "(D3D11: %u)", d3d11_count);
+        }
+        if (d3d12_count > 0) {
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "(D3D12: %u)", d3d12_count);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "Total number of CreateSamplerState (D3D11) and CreateSampler (D3D12) calls intercepted.");
+        }
+
+        if (total_count > 0) {
+            imgui.Spacing();
+            imgui.Separator();
+            imgui.Spacing();
+
+            imgui.TextColored(ui::colors::TEXT_LABEL, "Filter Modes (Original Game Requests):");
+            imgui.Indent();
+
+            uint32_t point_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_POINT].load();
+            uint32_t linear_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_LINEAR].load();
+            uint32_t aniso_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_ANISOTROPIC].load();
+            uint32_t comp_point_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_COMPARISON_POINT].load();
+            uint32_t comp_linear_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_COMPARISON_LINEAR].load();
+            uint32_t comp_aniso_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_COMPARISON_ANISOTROPIC].load();
+            uint32_t other_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_OTHER].load();
+
+            if (point_count > 0) {
+                imgui.Text("  Point: %u", point_count);
+            }
+            if (linear_count > 0) {
+                imgui.Text("  Linear: %u", linear_count);
+            }
+            if (aniso_count > 0) {
+                imgui.Text("  Anisotropic: %u", aniso_count);
+            }
+            if (comp_point_count > 0) {
+                imgui.Text("  Comparison Point: %u", comp_point_count);
+            }
+            if (comp_linear_count > 0) {
+                imgui.Text("  Comparison Linear: %u", comp_linear_count);
+            }
+            if (comp_aniso_count > 0) {
+                imgui.Text("  Comparison Anisotropic: %u", comp_aniso_count);
+            }
+            if (other_count > 0) {
+                imgui.Text("  Other: %u", other_count);
+            }
+
+            imgui.Unindent();
+            imgui.Spacing();
+
+            imgui.TextColored(ui::colors::TEXT_LABEL, "Address Modes (U Coordinate):");
+            imgui.Indent();
+
+            uint32_t wrap_count = g_sampler_address_mode_counters[SAMPLER_ADDRESS_WRAP].load();
+            uint32_t mirror_count = g_sampler_address_mode_counters[SAMPLER_ADDRESS_MIRROR].load();
+            uint32_t clamp_count = g_sampler_address_mode_counters[SAMPLER_ADDRESS_CLAMP].load();
+            uint32_t border_count = g_sampler_address_mode_counters[SAMPLER_ADDRESS_BORDER].load();
+            uint32_t mirror_once_count = g_sampler_address_mode_counters[SAMPLER_ADDRESS_MIRROR_ONCE].load();
+
+            if (wrap_count > 0) {
+                imgui.Text("  Wrap: %u", wrap_count);
+            }
+            if (mirror_count > 0) {
+                imgui.Text("  Mirror: %u", mirror_count);
+            }
+            if (clamp_count > 0) {
+                imgui.Text("  Clamp: %u", clamp_count);
+            }
+            if (border_count > 0) {
+                imgui.Text("  Border: %u", border_count);
+            }
+            if (mirror_once_count > 0) {
+                imgui.Text("  Mirror Once: %u", mirror_once_count);
+            }
+
+            imgui.Unindent();
+            imgui.Spacing();
+
+            uint32_t total_aniso_samplers = 0;
+            for (int i = 0; i < MAX_ANISOTROPY_LEVELS; ++i) {
+                total_aniso_samplers += g_sampler_anisotropy_level_counters[i].load();
+            }
+
+            if (total_aniso_samplers > 0) {
+                imgui.TextColored(ui::colors::TEXT_LABEL, "Anisotropic Filtering Levels (Original Game Requests):");
+                imgui.Indent();
+
+                for (int i = 0; i < MAX_ANISOTROPY_LEVELS; ++i) {
+                    uint32_t count = g_sampler_anisotropy_level_counters[i].load();
+                    if (count > 0) {
+                        int level = i + 1;
+                        imgui.Text("  %dx: %u", level, count);
+                    }
+                }
+
+                imgui.Unindent();
+                imgui.Spacing();
+            }
+
+            imgui.Separator();
+        }
+
+        imgui.Spacing();
+
+        if (SliderIntSetting(settings::g_mainTabSettings.max_anisotropy, "Anisotropic Level", "%d", imgui)) {
+            LogInfo("Max anisotropy set to %d", settings::g_mainTabSettings.max_anisotropy.GetValue());
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "Override maximum anisotropic filtering level (1-16) for existing anisotropic filters.\n"
+                "Set to 0 (Game default) to preserve the game's original AF settings.\n"
+                "Only affects samplers that already use anisotropic filtering.");
+        }
+
+        imgui.Spacing();
+
+        float lod_bias = settings::g_mainTabSettings.force_mipmap_lod_bias.GetValue();
+        if (imgui.SliderFloat("Mipmap LOD Bias", &lod_bias, -5.0f, 5.0f, lod_bias == 0.0f ? "Game Default" : "%.2f")) {
+            settings::g_mainTabSettings.force_mipmap_lod_bias.SetValue(lod_bias);
+            LogInfo("Mipmap LOD bias set to %.2f", lod_bias);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx("Use a small (i.e. -0.6'ish) negative LOD bias to sharpen DLSS and FSR games");
+        }
+
+        if (lod_bias != 0.0f) {
+            imgui.SameLine();
+            if (imgui.Button("Game Default##Mipmap LOD Bias")) {
+                settings::g_mainTabSettings.force_mipmap_lod_bias.SetValue(0.0f);
+                LogInfo("Mipmap LOD bias reset to game default");
+            }
+        }
+
+        imgui.Spacing();
+        imgui.TextColored(ui::colors::TEXT_WARNING,
+                          ICON_FK_WARNING " Game restart may be required for changes to take full effect.");
+
+        imgui.Unindent();
+    }
+}
+
+static void DrawMainTabOptionalPanelAudioControl(display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.Spacing();
+    g_rendering_ui_section.store("ui:tab:main_new:audio", std::memory_order_release);
+    if (imgui.CollapsingHeader("Audio Control", ImGuiTreeNodeFlags_None)) {
+        imgui.Indent();
+        DrawAudioSettings(imgui);
+        imgui.Unindent();
+    }
+}
+
+static void DrawMainTabOptionalPanelCpuControl(display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.Spacing();
+    g_rendering_ui_section.store("ui:tab:main_new:cpu", std::memory_order_release);
+    if (imgui.CollapsingHeader("CPU Control", ImGuiTreeNodeFlags_None)) {
+        imgui.Indent();
+
+        SYSTEM_INFO sys_info = {};
+        GetSystemInfo(&sys_info);
+        DWORD max_cores = sys_info.dwNumberOfProcessors;
+
+        settings::UpdateCpuCoresMaximum();
+
+        int cpu_cores_value = settings::g_mainTabSettings.cpu_cores.GetValue();
+        int max_cores_int = static_cast<int>(max_cores);
+
+        if (cpu_cores_value > 0 && cpu_cores_value < MIN_CPU_CORES_SELECTABLE) {
+            cpu_cores_value = MIN_CPU_CORES_SELECTABLE;
+            settings::g_mainTabSettings.cpu_cores.SetValue(cpu_cores_value);
+        }
+
+        int slider_min = 0;
+        int slider_max = max_cores_int;
+
+        std::string slider_label = "CPU Cores";
+        if (cpu_cores_value == 0) {
+            slider_label += " (Default - No Change)";
+        } else if (cpu_cores_value == max_cores_int) {
+            slider_label += " (All Cores)";
+        } else {
+            slider_label += " (" + std::to_string(cpu_cores_value) + " Core" + (cpu_cores_value > 1 ? "s" : "") + ")";
+        }
+
+        const char* format_str = (cpu_cores_value == 0) ? "Default" : "%d";
+
+        int slider_temp_value = cpu_cores_value;
+
+        if (imgui.SliderInt(slider_label.c_str(), &slider_temp_value, slider_min, slider_max, format_str)) {
+            int new_cpu_cores_value = slider_temp_value;
+            if (new_cpu_cores_value > 0 && new_cpu_cores_value < MIN_CPU_CORES_SELECTABLE) {
+                new_cpu_cores_value = MIN_CPU_CORES_SELECTABLE;
+            }
+
+            settings::g_mainTabSettings.cpu_cores.SetValue(new_cpu_cores_value);
+            LogInfo("CPU cores set to %d (0 = default/no change)", new_cpu_cores_value);
+            cpu_cores_value = new_cpu_cores_value;
+        }
+
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "Controls CPU core affinity for the game process:\n\n"
+                "- 0 (Default): No change to process affinity\n"
+                "- %d-%d: Limit game to use specified number of CPU cores\n\n"
+                "Note: Changes take effect immediately. Game restart may be required for full effect.",
+                MIN_CPU_CORES_SELECTABLE, max_cores_int);
+        }
+
+        if (cpu_cores_value > 0) {
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "= %d core%s", cpu_cores_value, cpu_cores_value > 1 ? "s" : "");
+        }
+
+        imgui.Spacing();
+        if (cpu_cores_value == 0) {
+            imgui.TextColored(ui::colors::TEXT_DIMMED, ICON_FK_FILE " No CPU affinity change (using default)");
+        } else {
+            imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " CPU affinity set to %d core%s", cpu_cores_value,
+                              cpu_cores_value > 1 ? "s" : "");
+        }
+
+        imgui.Unindent();
+    }
+}
+
+static void DrawMainTabOptionalPanelWindowButtons(display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.Spacing();
+    DrawWindowControlButtons(imgui);
+}
+
+static void DrawMainTabOptionalPanelOverlayWindows(display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.Spacing();
+    g_rendering_ui_section.store("ui:tab:main_new:overlay_windows", std::memory_order_release);
+    if (imgui.CollapsingHeader("Overlay Windows", ImGuiTreeNodeFlags_None)) {
+        imgui.Indent();
+
+        HWND game_window = display_commanderhooks::GetGameWindow();
+        if (game_window != nullptr && IsWindow(game_window) != FALSE) {
+            static DWORD last_check_time = 0;
+            DWORD current_time = GetTickCount();
+
+            static std::vector<display_commander::utils::OverlayWindowInfo> overlay_list;
+            if (current_time - last_check_time > 500) {
+                overlay_list = display_commander::utils::DetectOverlayWindows(game_window);
+                last_check_time = current_time;
+            }
+
+            if (overlay_list.empty()) {
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "No overlay windows detected");
+            } else {
+                imgui.Text("Detected %zu overlay window(s):", overlay_list.size());
+                imgui.Spacing();
+
+                if (imgui.BeginTable("OverlayWindows", 6,
+                                     ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
+                    imgui.TableSetupColumn("Window Title", ImGuiTableColumnFlags_WidthStretch);
+                    imgui.TableSetupColumn("Process", ImGuiTableColumnFlags_WidthStretch);
+                    imgui.TableSetupColumn("PID", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+                    imgui.TableSetupColumn("Z-Order", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+                    imgui.TableSetupColumn("Overlap Area", ImGuiTableColumnFlags_WidthFixed, 170.0f);
+                    imgui.TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, 200.0f);
+                    imgui.TableHeadersRow();
+
+                    for (const auto& overlay : overlay_list) {
+                        imgui.TableNextRow();
+
+                        imgui.TableSetColumnIndex(0);
+                        std::string title_utf8 =
+                            overlay.window_title.empty()
+                                ? "(No Title)"
+                                : std::string(overlay.window_title.begin(), overlay.window_title.end());
+                        imgui.TextUnformatted(title_utf8.c_str());
+
+                        imgui.TableSetColumnIndex(1);
+                        std::string process_utf8 =
+                            overlay.process_name.empty()
+                                ? "(Unknown)"
+                                : std::string(overlay.process_name.begin(), overlay.process_name.end());
+                        imgui.TextUnformatted(process_utf8.c_str());
+
+                        imgui.TableSetColumnIndex(2);
+                        imgui.Text("%lu", overlay.process_id);
+
+                        imgui.TableSetColumnIndex(3);
+                        if (overlay.is_above_game) {
+                            imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_WARNING);
+                            imgui.Text(ICON_FK_WARNING " Above");
+                            imgui.PopStyleColor();
+                        } else {
+                            imgui.TextColored(ui::colors::TEXT_DIMMED, "Below");
+                        }
+
+                        imgui.TableSetColumnIndex(4);
+                        if (overlay.overlaps_game) {
+                            imgui.Text("%ld px (%.1f%%)", overlay.overlapping_area_pixels,
+                                       overlay.overlapping_area_percent);
+                        } else {
+                            imgui.TextColored(ui::colors::TEXT_DIMMED, "No overlap");
+                        }
+
+                        imgui.TableSetColumnIndex(5);
+                        if (overlay.overlaps_game) {
+                            imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_WARNING);
+                            imgui.Text(ICON_FK_WARNING " Overlapping");
+                            imgui.PopStyleColor();
+                        } else if (overlay.is_visible) {
+                            imgui.TextColored(ui::colors::TEXT_DIMMED, "Visible");
+                        } else {
+                            imgui.TextColored(ui::colors::TEXT_DIMMED, "Hidden");
+                        }
+                    }
+
+                    imgui.EndTable();
+                }
+            }
+        } else {
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "Game window not detected");
+        }
+
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "Shows all visible windows that overlap with the game window.\n"
+                "Windows can be above or below the game in Z-order.\n"
+                "Overlapping windows may cause performance issues.");
+        }
+
+        imgui.Unindent();
+    }
+}
+
+static void DrawMainTabOptionalPanelsInOrder(display_commander::ui::GraphicsApi api,
+                                             display_commander::ui::IImGuiWrapper& imgui,
+                                             reshade::api::effect_runtime* runtime) {
+    (void)api;
+    const std::vector<MainTabOptionalSectionKind> order =
+        MainTabParseOptionalSectionOrder(settings::g_mainTabSettings.main_tab_optional_section_order.GetValue());
+    for (MainTabOptionalSectionKind k : order) {
+        switch (k) {
+            case MainTabOptionalSectionKind::DcFolders:
+                if (settings::g_mainTabSettings.show_main_tab_dc_folders.GetValue()) {
+                    DrawMainTabOptionalPanelDcFolders(imgui, runtime);
+                }
+                break;
+            case MainTabOptionalSectionKind::BrightnessAutoHdr:
+                if (settings::g_mainTabSettings.show_main_tab_brightness_autohdr.GetValue()) {
+                    DrawMainTabOptionalPanelBrightnessAutoHdr(imgui, runtime);
+                }
+                break;
+            case MainTabOptionalSectionKind::TextureFiltering:
+                if (settings::g_mainTabSettings.show_main_tab_texture_filtering.GetValue()) {
+                    DrawMainTabOptionalPanelTextureFiltering(imgui);
+                }
+                break;
+            case MainTabOptionalSectionKind::AudioControl:
+                if (settings::g_mainTabSettings.show_main_tab_audio_control.GetValue()) {
+                    DrawMainTabOptionalPanelAudioControl(imgui);
+                }
+                break;
+            case MainTabOptionalSectionKind::CpuControl:
+                if (settings::g_mainTabSettings.show_main_tab_cpu_control.GetValue()) {
+                    DrawMainTabOptionalPanelCpuControl(imgui);
+                }
+                break;
+            case MainTabOptionalSectionKind::WindowButtons:
+                if (settings::g_mainTabSettings.show_main_tab_window_action_buttons.GetValue()) {
+                    DrawMainTabOptionalPanelWindowButtons(imgui);
+                }
+                break;
+            case MainTabOptionalSectionKind::OverlayWindows:
+                if (settings::g_mainTabSettings.show_main_tab_overlay_windows.GetValue()) {
+                    DrawMainTabOptionalPanelOverlayWindows(imgui);
+                }
+                break;
+        }
+    }
+}
+
 void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui) {
     DrawMainNewTab(api, imgui, nullptr);
 }
@@ -2912,7 +3730,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         }
 
         // Ko-fi support button
-        imgui.Spacing();
+        imgui.SameLine();
         imgui.TextColored(ui::colors::TEXT_LABEL, "Support the project:");
         imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_SPECIAL);
         if (imgui.Button(ICON_FK_PLUS " Buy me a coffee on Ko-fi")) {
@@ -2958,17 +3776,10 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                 imgui.TextColored(ui::colors::TEXT_WARNING, "Display Commander: new version available on GitHub (%s)",
                                   s_dc_latest_on_github.c_str());
             } else {
-                imgui.TextColored(ui::colors::TEXT_SUCCESS, "Display Commander: using latest");
+              //  imgui.TextColored(ui::colors::TEXT_SUCCESS, "Display Commander: using latest");
             }
         }
         // status == 3: no line shown (check failed)
-    }
-    // DC folders (paths, Add DC shaders checkbox, then Display Commander / ReShade / Addons version UI)
-    g_rendering_ui_section.store("ui:tab:main_new:dc_folders", std::memory_order_release);
-    if (imgui.CollapsingHeader("DC folders", ImGuiTreeNodeFlags_None)) {
-        imgui.Indent();
-        DrawUpdatesSectionContent(imgui, runtime);
-        imgui.Unindent();
     }
 
     // Display Settings Section
@@ -2977,241 +3788,6 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         imgui.Indent();
         DrawDisplaySettings(api, imgui, runtime);
         imgui.Unindent();
-    }
-
-    if ((g_reshade_module != nullptr)) {
-        imgui.Spacing();
-
-        // Brightness and AutoHDR (Display Commander ReShade effects)
-        g_rendering_ui_section.store("ui:tab:main_new:brightness_autohdr", std::memory_order_release);
-        if (imgui.CollapsingHeader("Brightness and AutoHDR", ImGuiTreeNodeFlags_None)) {
-            imgui.Indent();
-            if (CheckboxSetting(settings::g_mainTabSettings.brightness_autohdr_section_enabled,
-                                "Load DC's shaders (Brightness, AutoHDR)", imgui)) {
-                // Value gates ApplyDisplayCommanderBrightness and ApplyDisplayCommanderAutoHdr only.
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx(
-                    "When on: Brightness, AutoHDR and related controls are active (DC's ReShade effects are applied). "
-                    "When off: the whole Brightness and AutoHDR section is disabled.");
-            }
-            if (!settings::g_mainTabSettings.brightness_autohdr_section_enabled.GetValue()) {
-                imgui.BeginDisabled();
-            }
-            imgui.SetNextItemWidth(400.0f);
-            if (SliderFloatSetting(settings::g_mainTabSettings.brightness_percent, "Brightness (%)", "%.0f", imgui)) {
-                // Value is applied in OnReShadePresent each frame
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx(
-                    "Adjust brightness via Display Commander's ReShade effect (0-500%%, 100%% = neutral).\n"
-                    "Requires DisplayCommander_Control.fx to be in ReShade's Shaders folder and effect reload (e.g. "
-                    "Ctrl+Shift+F5) or game restart.");
-            }
-            // Windows SDR content brightness: only when HDR is on for the game's display
-            {
-                HMONITOR mon = display_commander::display::sdr_white_level::GetGameMonitorForSdrBrightness();
-                bool hdr_supported = false;
-                bool hdr_enabled = true;
-                if (mon != nullptr) {
-                    // display_commander::display::hdr_control::GetHdrStateForMonitor(mon, &//hdr_supported,
-                    // &hdr_enabled);
-                }
-                if (hdr_enabled && mon != nullptr) {
-                    imgui.SetNextItemWidth(400.0f);
-                    if (SliderFloatSetting(settings::g_mainTabSettings.sdr_content_brightness_nits,
-                                           "SDR content brightness (Windows WIP)", "%.0f nits", imgui)) {
-                        display_commander::display::sdr_white_level::SetSdrWhiteLevelNits(
-                            mon, settings::g_mainTabSettings.sdr_content_brightness_nits.GetValue());
-                    }
-                    if (imgui.IsItemHovered()) {
-                        imgui.SetTooltipEx(
-                            "Windows SDR content brightness when HDR is on (Settings > Display > HDR). "
-                            "80–480 nits. Affects the display where the game runs.");
-                    }
-                    // warning doesn't restore itself back when game shuts down
-                    imgui.TextColored(ui::colors::TEXT_WARNING,
-                                      "Warning: SDR content brightness (Windows) does not restore itself back when "
-                                      "game shuts down. Shown even when HDR is off.");
-                }
-            }
-            imgui.SetNextItemWidth(400.0f);
-            if (ComboSettingWrapper(settings::g_mainTabSettings.swapchain_colorspace, "Swapchain colorspace", imgui)) {
-                // Value is applied in OnReShadePresent each frame (DECODE_METHOD)
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx(
-                    "How to interpret the backbuffer (decode). Auto = detect from pipeline. Default Auto.");
-            }
-            imgui.SetNextItemWidth(400.0f);
-            if (ComboSettingWrapper(settings::g_mainTabSettings.brightness_colorspace, "Color Space", imgui)) {
-                // Value is applied in OnReShadePresent each frame (ENCODE_METHOD)
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx(
-                    "Output/encode color space. Auto = match pipeline. sRGB = linearize, multiply, encode.");
-            }
-            {
-                const reshade::api::device_api api = g_last_reshade_device_api.load();
-                const bool is_dxgi = (api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11
-                                      || api == reshade::api::device_api::d3d12);
-                const bool renodx_loaded = g_is_renodx_loaded.load(std::memory_order_relaxed);
-                if (is_dxgi && !renodx_loaded) {
-                    if (CheckboxSetting(settings::g_mainTabSettings.swapchain_hdr_upgrade, "Swapchain HDR Upgrade",
-                                        imgui)) {
-                        // Applied in create_swapchain (desc) and init_swapchain (ResizeBuffers + color space)
-                    }
-                    if (imgui.IsItemHovered()) {
-                        imgui.SetTooltipEx(
-                            "Upgrades the swap chain to HDR (scRGB or HDR10) on creation. Requires DXGI (D3D10/11/12) "
-                            "and Windows HDR or an HDR display. Game restart may be needed.");
-                    }
-                    if (settings::g_mainTabSettings.swapchain_hdr_upgrade.GetValue()) {
-                        if (ComboSettingWrapper(settings::g_mainTabSettings.swapchain_hdr_upgrade_mode, "HDR mode",
-                                                imgui)) {
-                            // Value applied on next create_swapchain / init_swapchain
-                        }
-                        if (imgui.IsItemHovered()) {
-                            imgui.SetTooltipEx(
-                                "scRGB = 16-bit float linear. HDR10 = 10-bit PQ (ST.2084). Change may require game "
-                                "restart.");
-                        }
-                        imgui.TextColored(
-                            ui::colors::TEXT_WARNING,
-                            "May cause black screen issue. For best compatibility use \"RenoDX Unity mod\" to do "
-                            "generic SDR->HDR upgrade (for non unity games).");
-                    }
-                } else if (!is_dxgi) {
-                    const char* api_label = "this API";
-                    switch (api) {
-                        case reshade::api::device_api::d3d9:   api_label = "D3D9"; break;
-                        case reshade::api::device_api::opengl: api_label = "OpenGL"; break;
-                        case reshade::api::device_api::vulkan: api_label = "Vulkan"; break;
-                        default:                               break;
-                    }
-                    imgui.Text("Use RenoDX to upgrade swapchain to HDR (%s).", api_label);
-                    if (imgui.IsItemHovered()) {
-                        imgui.SetTooltipEx(
-                            "Swapchain HDR Upgrade is only available for DXGI (D3D10/11/12). For %s use RenoDX: "
-                            "https://github.com/clshortfuse/renodx",
-                            api_label);
-                    }
-                }
-            }
-            if (CheckboxSetting(settings::g_mainTabSettings.auto_hdr, "AutoHDR Perceptual Boost", imgui)) {
-                // Value is applied in OnReShadePresent each frame
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx(
-                    "Runs DisplayCommander_PerceptualBoost.fx. Use 'Swapchain HDR Upgrade' for SDR->HDR upgrade.");
-            }
-            // HDR10 / scRGB color fix is independent of "Load DC's shaders" (DXGI swapchain/ReShade color space only)
-            if (!settings::g_mainTabSettings.brightness_autohdr_section_enabled.GetValue()) {
-                imgui.EndDisabled();
-            }
-            // HDR10 / scRGB color fix (DXGI only): 10-bit HDR10 or 16-bit scRGB back buffer
-            {
-                const reshade::api::device_api api = g_last_reshade_device_api.load();
-                const bool is_dxgi = (api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11
-                                      || api == reshade::api::device_api::d3d12);
-
-                auto show_checkbox = (g_show_auto_colorspace_fix_in_main_tab.load(std::memory_order_relaxed));
-                bool auto_colorspace = settings::g_advancedTabSettings.auto_colorspace.GetValue();
-                bool swap_chain_upgrade = settings::g_mainTabSettings.swapchain_hdr_upgrade.GetValue();
-                if (is_dxgi && (show_checkbox || !auto_colorspace || swap_chain_upgrade)) {
-                    if (imgui.Checkbox("HDR10 / scRGB color fix", &auto_colorspace)) {
-                        settings::g_advancedTabSettings.auto_colorspace.SetValue(auto_colorspace);
-                    }
-                    if (imgui.IsItemHovered()) {
-                        imgui.SetTooltipEx(
-                            "Sets DXGI swap chain and ReShade color space to match the back buffer: "
-                            "10-bit HDR10 (R10G10B10A2) -> HDR10 (ST2084), 16-bit FP (R16G16B16A16) -> scRGB (Linear). "
-                            "No change for 8-bit (SDR). Improves compatibility with RenoDX HDR10 mode. DirectX 11/12.");
-                    }
-                }
-            }
-            if (!settings::g_mainTabSettings.brightness_autohdr_section_enabled.GetValue()) {
-                imgui.BeginDisabled();
-            }
-            if (settings::g_mainTabSettings.auto_hdr.GetValue()) {
-                // Warning when 8-bit backbuffer: recommend RenoDX for SDR->HDR upgrade (format from runtime or desc)
-                bool backbuffer_8bit = false;
-                if (runtime != nullptr) {
-                    reshade::api::device* device = runtime->get_device();
-                    if (device != nullptr) {
-                        reshade::api::resource bb = runtime->get_back_buffer(0);
-                        if (bb != 0) {
-                            const auto fmt = device->get_resource_desc(bb).texture.format;
-                            backbuffer_8bit = (fmt == reshade::api::format::r8g8b8a8_unorm
-                                               || fmt == reshade::api::format::b8g8r8a8_unorm);
-                        }
-                    }
-                }
-                if (!backbuffer_8bit) {
-                    auto desc_ptr = g_last_swapchain_desc_post.load();
-                    if (desc_ptr != nullptr) {
-                        const auto fmt = desc_ptr->back_buffer.texture.format;
-                        backbuffer_8bit = (fmt == reshade::api::format::r8g8b8a8_unorm
-                                           || fmt == reshade::api::format::b8g8r8a8_unorm);
-                    }
-                }
-                if (backbuffer_8bit) {
-                    imgui.TextColored(::ui::colors::ICON_WARNING, ICON_FK_WARNING
-                                      " 8-bit buffer. "
-                                      "Recommend RenoDX for SDR->HDR swapchain upgrade.");
-                }
-                imgui.SetNextItemWidth(400.0f);
-                if (SliderFloatSetting(settings::g_mainTabSettings.auto_hdr_strength, "Auto HDR strength", "%.2f",
-                                       imgui)) {
-                    // Value is applied in OnReShadePresent each frame
-                }
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltipEx("Profile 3 effect strength (0.0 = no effect, 1.0 = full effect, up to 2.0).");
-                }
-            }
-            // Misc subsection: Gamma, Contrast, Saturation (less prominent)
-            ui::colors::PushNestedHeaderColors(&imgui);
-            if (imgui.CollapsingHeader("Misc", ImGuiTreeNodeFlags_None)) {
-                imgui.Indent();
-                if (SliderFloatSetting(settings::g_mainTabSettings.gamma_value, "Gamma", "%.2f", imgui)) {
-                    // Value is applied in OnReShadePresent each frame
-                }
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltipEx(
-                        "Gamma correction (0.5–2.0, 1.0 = neutral). Applied in DisplayCommander_Control.fx with "
-                        "Brightness.");
-                }
-                if (SliderFloatSetting(settings::g_mainTabSettings.contrast_value, "Contrast", "%.2f", imgui)) {
-                    // Value is applied in OnReShadePresent each frame
-                }
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltipEx(
-                        "Contrast (0.0–2.0, 1.0 = neutral). Applied in DisplayCommander_Control.fx with Brightness.");
-                }
-                if (SliderFloatSetting(settings::g_mainTabSettings.saturation_value, "Saturation", "%.2f", imgui)) {
-                    // Value is applied in OnReShadePresent each frame
-                }
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltipEx(
-                        "Saturation (0.0 = grayscale, 1.0 = neutral, up to 2.0). Applied in "
-                        "DisplayCommander_Control.fx with Brightness.");
-                }
-                if (SliderFloatSetting(settings::g_mainTabSettings.hue_degrees, "Hue (degrees)", "%.1f", imgui)) {
-                    // Value is applied in OnReShadePresent each frame
-                }
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltipEx(
-                        "Hue shift (-15 to +15 degrees, 0 = neutral). Applied in DisplayCommander_Control.fx with "
-                        "Brightness.");
-                }
-                imgui.Unindent();
-            }
-            ui::colors::PopNestedHeaderColors(&imgui);
-            if (!settings::g_mainTabSettings.brightness_autohdr_section_enabled.GetValue()) {
-                imgui.EndDisabled();
-            }
-            imgui.Unindent();
-        }
     }
 
     imgui.Spacing();
@@ -3226,179 +3802,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
 
     imgui.Spacing();
 
-    // Texture Filtering / Sampler State Section
-    g_rendering_ui_section.store("ui:tab:main_new:texture_filtering", std::memory_order_release);
-    if (imgui.CollapsingHeader("Texture Filtering", ImGuiTreeNodeFlags_None)) {
-        imgui.Indent();
-
-        // Display call count
-        uint32_t d3d11_count = g_d3d_sampler_event_counters[D3D_SAMPLER_EVENT_CREATE_SAMPLER_STATE_D3D11].load();
-        uint32_t d3d12_count = g_d3d_sampler_event_counters[D3D_SAMPLER_EVENT_CREATE_SAMPLER_D3D12].load();
-        uint32_t total_count = d3d11_count + d3d12_count;
-
-        imgui.Text("CreateSampler Calls: %u", total_count);
-        if (d3d11_count > 0) {
-            imgui.SameLine();
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "(D3D11: %u)", d3d11_count);
-        }
-        if (d3d12_count > 0) {
-            imgui.SameLine();
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "(D3D12: %u)", d3d12_count);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Total number of CreateSamplerState (D3D11) and CreateSampler (D3D12) calls intercepted.");
-        }
-
-        // Show statistics if we have any calls
-        if (total_count > 0) {
-            imgui.Spacing();
-            imgui.Separator();
-            imgui.Spacing();
-
-            // Filter Mode Statistics
-            imgui.TextColored(ui::colors::TEXT_LABEL, "Filter Modes (Original Game Requests):");
-            imgui.Indent();
-
-            uint32_t point_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_POINT].load();
-            uint32_t linear_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_LINEAR].load();
-            uint32_t aniso_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_ANISOTROPIC].load();
-            uint32_t comp_point_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_COMPARISON_POINT].load();
-            uint32_t comp_linear_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_COMPARISON_LINEAR].load();
-            uint32_t comp_aniso_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_COMPARISON_ANISOTROPIC].load();
-            uint32_t other_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_OTHER].load();
-
-            if (point_count > 0) {
-                imgui.Text("  Point: %u", point_count);
-            }
-            if (linear_count > 0) {
-                imgui.Text("  Linear: %u", linear_count);
-            }
-            if (aniso_count > 0) {
-                imgui.Text("  Anisotropic: %u", aniso_count);
-            }
-            if (comp_point_count > 0) {
-                imgui.Text("  Comparison Point: %u", comp_point_count);
-            }
-            if (comp_linear_count > 0) {
-                imgui.Text("  Comparison Linear: %u", comp_linear_count);
-            }
-            if (comp_aniso_count > 0) {
-                imgui.Text("  Comparison Anisotropic: %u", comp_aniso_count);
-            }
-            if (other_count > 0) {
-                imgui.Text("  Other: %u", other_count);
-            }
-
-            imgui.Unindent();
-            imgui.Spacing();
-
-            // Address Mode Statistics
-            imgui.TextColored(ui::colors::TEXT_LABEL, "Address Modes (U Coordinate):");
-            imgui.Indent();
-
-            uint32_t wrap_count = g_sampler_address_mode_counters[SAMPLER_ADDRESS_WRAP].load();
-            uint32_t mirror_count = g_sampler_address_mode_counters[SAMPLER_ADDRESS_MIRROR].load();
-            uint32_t clamp_count = g_sampler_address_mode_counters[SAMPLER_ADDRESS_CLAMP].load();
-            uint32_t border_count = g_sampler_address_mode_counters[SAMPLER_ADDRESS_BORDER].load();
-            uint32_t mirror_once_count = g_sampler_address_mode_counters[SAMPLER_ADDRESS_MIRROR_ONCE].load();
-
-            if (wrap_count > 0) {
-                imgui.Text("  Wrap: %u", wrap_count);
-            }
-            if (mirror_count > 0) {
-                imgui.Text("  Mirror: %u", mirror_count);
-            }
-            if (clamp_count > 0) {
-                imgui.Text("  Clamp: %u", clamp_count);
-            }
-            if (border_count > 0) {
-                imgui.Text("  Border: %u", border_count);
-            }
-            if (mirror_once_count > 0) {
-                imgui.Text("  Mirror Once: %u", mirror_once_count);
-            }
-
-            imgui.Unindent();
-            imgui.Spacing();
-
-            // Anisotropy Level Statistics (only for anisotropic filters)
-            uint32_t total_aniso_samplers = 0;
-            for (int i = 0; i < MAX_ANISOTROPY_LEVELS; ++i) {
-                total_aniso_samplers += g_sampler_anisotropy_level_counters[i].load();
-            }
-
-            if (total_aniso_samplers > 0) {
-                imgui.TextColored(ui::colors::TEXT_LABEL, "Anisotropic Filtering Levels (Original Game Requests):");
-                imgui.Indent();
-
-                // Show only levels that have been used
-                for (int i = 0; i < MAX_ANISOTROPY_LEVELS; ++i) {
-                    uint32_t count = g_sampler_anisotropy_level_counters[i].load();
-                    if (count > 0) {
-                        int level = i + 1;  // Convert from 0-based index to 1-based level
-                        imgui.Text("  %dx: %u", level, count);
-                    }
-                }
-
-                imgui.Unindent();
-                imgui.Spacing();
-            }
-
-            imgui.Separator();
-        }
-
-        imgui.Spacing();
-
-        // Max Anisotropy Override
-        // Only affects existing anisotropic filters
-        if (SliderIntSetting(settings::g_mainTabSettings.max_anisotropy, "Anisotropic Level", "%d", imgui)) {
-            LogInfo("Max anisotropy set to %d", settings::g_mainTabSettings.max_anisotropy.GetValue());
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Override maximum anisotropic filtering level (1-16) for existing anisotropic filters.\n"
-                "Set to 0 (Game default) to preserve the game's original AF settings.\n"
-                "Only affects samplers that already use anisotropic filtering.");
-        }
-
-        imgui.Spacing();
-
-        // Mipmap LOD Bias
-        float lod_bias = settings::g_mainTabSettings.force_mipmap_lod_bias.GetValue();
-        if (imgui.SliderFloat("Mipmap LOD Bias", &lod_bias, -5.0f, 5.0f, lod_bias == 0.0f ? "Game Default" : "%.2f")) {
-            settings::g_mainTabSettings.force_mipmap_lod_bias.SetValue(lod_bias);
-            LogInfo("Mipmap LOD bias set to %.2f", lod_bias);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Use a small (i.e. -0.6'ish) negative LOD bias to sharpen DLSS and FSR games");
-        }
-
-        // Reset button for LOD bias
-        if (lod_bias != 0.0f) {
-            imgui.SameLine();
-            if (imgui.Button("Game Default##Mipmap LOD Bias")) {
-                settings::g_mainTabSettings.force_mipmap_lod_bias.SetValue(0.0f);
-                LogInfo("Mipmap LOD bias reset to game default");
-            }
-        }
-
-        imgui.Spacing();
-        imgui.TextColored(ui::colors::TEXT_WARNING,
-                          ICON_FK_WARNING " Game restart may be required for changes to take full effect.");
-
-        imgui.Unindent();
-    }
-
-    imgui.Spacing();
-
-    // Audio Settings Section
-    g_rendering_ui_section.store("ui:tab:main_new:audio", std::memory_order_release);
-    if (imgui.CollapsingHeader("Audio Control", ImGuiTreeNodeFlags_None)) {
-        imgui.Indent();
-        DrawAudioSettings(imgui);
-        imgui.Unindent();
-    }
+    DrawMainTabOptionalPanelsInOrder(api, imgui, runtime);
 
     imgui.Spacing();
 
@@ -3603,204 +4007,6 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                 "- In foreground: Hide taskbar while game is in foreground, show when in background\n"
                 "- Always: Always hide the taskbar while the game is running.\n\n"
                 "Taskbar is restored when the addon unloads.");
-        }
-
-        imgui.Unindent();
-    }
-
-    imgui.Spacing();
-
-    // CPU Control Section
-    g_rendering_ui_section.store("ui:tab:main_new:cpu", std::memory_order_release);
-    if (imgui.CollapsingHeader("CPU Control", ImGuiTreeNodeFlags_None)) {
-        imgui.Indent();
-
-        // Get CPU core count for display
-        SYSTEM_INFO sys_info = {};
-        GetSystemInfo(&sys_info);
-        DWORD max_cores = sys_info.dwNumberOfProcessors;
-
-        // Update maximum if needed
-        settings::UpdateCpuCoresMaximum();
-
-        int cpu_cores_value = settings::g_mainTabSettings.cpu_cores.GetValue();
-        int max_cores_int = static_cast<int>(max_cores);
-
-        // Clamp invalid values (1 to MIN_CPU_CORES_SELECTABLE-1) to MIN_CPU_CORES_SELECTABLE or 0
-        if (cpu_cores_value > 0 && cpu_cores_value < MIN_CPU_CORES_SELECTABLE) {
-            cpu_cores_value = MIN_CPU_CORES_SELECTABLE;
-            settings::g_mainTabSettings.cpu_cores.SetValue(cpu_cores_value);
-        }
-
-        // Use actual CPU cores value in slider, but we'll handle invalid values (1-5) by clamping
-        // Slider range: 0, then MIN_CPU_CORES_SELECTABLE to max_cores_int
-        int slider_min = 0;
-        int slider_max = max_cores_int;
-
-        // Create label for slider
-        std::string slider_label = "CPU Cores";
-        if (cpu_cores_value == 0) {
-            slider_label += " (Default - No Change)";
-        } else if (cpu_cores_value == max_cores_int) {
-            slider_label += " (All Cores)";
-        } else {
-            slider_label += " (" + std::to_string(cpu_cores_value) + " Core" + (cpu_cores_value > 1 ? "s" : "") + ")";
-        }
-
-        // Format string for slider display
-        const char* format_str = (cpu_cores_value == 0) ? "Default" : "%d";
-
-        // Use a temporary variable for the slider to handle invalid values
-        int slider_temp_value = cpu_cores_value;
-
-        if (imgui.SliderInt(slider_label.c_str(), &slider_temp_value, slider_min, slider_max, format_str)) {
-            // Clamp invalid values (1 to MIN_CPU_CORES_SELECTABLE-1) to MIN_CPU_CORES_SELECTABLE
-            int new_cpu_cores_value = slider_temp_value;
-            if (new_cpu_cores_value > 0 && new_cpu_cores_value < MIN_CPU_CORES_SELECTABLE) {
-                new_cpu_cores_value = MIN_CPU_CORES_SELECTABLE;
-            }
-
-            settings::g_mainTabSettings.cpu_cores.SetValue(new_cpu_cores_value);
-            LogInfo("CPU cores set to %d (0 = default/no change)", new_cpu_cores_value);
-            cpu_cores_value = new_cpu_cores_value;  // Update for display below
-        }
-
-        // Show tooltip for slider
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Controls CPU core affinity for the game process:\n\n"
-                "- 0 (Default): No change to process affinity\n"
-                "- %d-%d: Limit game to use specified number of CPU cores\n\n"
-                "Note: Changes take effect immediately. Game restart may be required for full effect.",
-                MIN_CPU_CORES_SELECTABLE, max_cores_int);
-        }
-
-        // Show actual CPU cores value next to slider for clarity
-        if (cpu_cores_value > 0) {
-            imgui.SameLine();
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "= %d core%s", cpu_cores_value, cpu_cores_value > 1 ? "s" : "");
-        }
-
-        // Display current status
-        imgui.Spacing();
-        if (cpu_cores_value == 0) {
-            imgui.TextColored(ui::colors::TEXT_DIMMED, ICON_FK_FILE " No CPU affinity change (using default)");
-        } else {
-            imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " CPU affinity set to %d core%s", cpu_cores_value,
-                              cpu_cores_value > 1 ? "s" : "");
-        }
-
-        imgui.Unindent();
-    }
-
-    imgui.Spacing();
-
-    // Window Controls Section
-    DrawWindowControlButtons(imgui);
-
-    imgui.Spacing();
-
-    // Overlay Windows Detection Section
-    g_rendering_ui_section.store("ui:tab:main_new:overlay_windows", std::memory_order_release);
-    if (imgui.CollapsingHeader("Overlay Windows", ImGuiTreeNodeFlags_None)) {
-        imgui.Indent();
-
-        HWND game_window = display_commanderhooks::GetGameWindow();
-        if (game_window != nullptr && IsWindow(game_window) != FALSE) {
-            static DWORD last_check_time = 0;
-            DWORD current_time = GetTickCount();
-
-            // Update overlay list every 500ms to avoid performance impact
-            static std::vector<display_commander::utils::OverlayWindowInfo> overlay_list;
-            if (current_time - last_check_time > 500) {
-                overlay_list = display_commander::utils::DetectOverlayWindows(game_window);
-                last_check_time = current_time;
-            }
-
-            if (overlay_list.empty()) {
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "No overlay windows detected");
-            } else {
-                imgui.Text("Detected %zu overlay window(s):", overlay_list.size());
-                imgui.Spacing();
-
-                // Create a table-like display
-                if (imgui.BeginTable("OverlayWindows", 6,
-                                     ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
-                    imgui.TableSetupColumn("Window Title", ImGuiTableColumnFlags_WidthStretch);
-                    imgui.TableSetupColumn("Process", ImGuiTableColumnFlags_WidthStretch);
-                    imgui.TableSetupColumn("PID", ImGuiTableColumnFlags_WidthFixed, 80.0f);
-                    imgui.TableSetupColumn("Z-Order", ImGuiTableColumnFlags_WidthFixed, 100.0f);
-                    imgui.TableSetupColumn("Overlap Area", ImGuiTableColumnFlags_WidthFixed, 170.0f);
-                    imgui.TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, 200.0f);
-                    imgui.TableHeadersRow();
-
-                    for (const auto& overlay : overlay_list) {
-                        imgui.TableNextRow();
-
-                        // Window Title
-                        imgui.TableSetColumnIndex(0);
-                        std::string title_utf8 =
-                            overlay.window_title.empty()
-                                ? "(No Title)"
-                                : std::string(overlay.window_title.begin(), overlay.window_title.end());
-                        imgui.TextUnformatted(title_utf8.c_str());
-
-                        // Process Name
-                        imgui.TableSetColumnIndex(1);
-                        std::string process_utf8 =
-                            overlay.process_name.empty()
-                                ? "(Unknown)"
-                                : std::string(overlay.process_name.begin(), overlay.process_name.end());
-                        imgui.TextUnformatted(process_utf8.c_str());
-
-                        // PID
-                        imgui.TableSetColumnIndex(2);
-                        imgui.Text("%lu", overlay.process_id);
-
-                        // Z-Order (Above/Below)
-                        imgui.TableSetColumnIndex(3);
-                        if (overlay.is_above_game) {
-                            imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_WARNING);
-                            imgui.Text(ICON_FK_WARNING " Above");
-                            imgui.PopStyleColor();
-                        } else {
-                            imgui.TextColored(ui::colors::TEXT_DIMMED, "Below");
-                        }
-
-                        // Overlapping Area
-                        imgui.TableSetColumnIndex(4);
-                        if (overlay.overlaps_game) {
-                            imgui.Text("%ld px (%.1f%%)", overlay.overlapping_area_pixels,
-                                       overlay.overlapping_area_percent);
-                        } else {
-                            imgui.TextColored(ui::colors::TEXT_DIMMED, "No overlap");
-                        }
-
-                        // Status
-                        imgui.TableSetColumnIndex(5);
-                        if (overlay.overlaps_game) {
-                            imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_WARNING);
-                            imgui.Text(ICON_FK_WARNING " Overlapping");
-                            imgui.PopStyleColor();
-                        } else if (overlay.is_visible) {
-                            imgui.TextColored(ui::colors::TEXT_DIMMED, "Visible");
-                        } else {
-                            imgui.TextColored(ui::colors::TEXT_DIMMED, "Hidden");
-                        }
-                    }
-
-                    imgui.EndTable();
-                }
-            }
-        } else {
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "Game window not detected");
-        }
-
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Shows all visible windows that overlap with the game window.\n"
-                "Windows can be above or below the game in Z-order.\n"
-                "Overlapping windows may cause performance issues.");
         }
 
         imgui.Unindent();

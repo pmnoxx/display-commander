@@ -3420,36 +3420,43 @@ static void DrawMainTabOptionalPanelsInOrder(display_commander::ui::GraphicsApi 
         switch (k) {
             case MainTabOptionalSectionKind::DcFolders:
                 if (settings::g_mainTabSettings.show_main_tab_dc_folders.GetValue()) {
+                    imgui.Spacing();
                     DrawMainTabOptionalPanelDcFolders(imgui, runtime);
                 }
                 break;
             case MainTabOptionalSectionKind::BrightnessAutoHdr:
                 if (settings::g_mainTabSettings.show_main_tab_brightness_autohdr.GetValue()) {
+                    imgui.Spacing();
                     DrawMainTabOptionalPanelBrightnessAutoHdr(imgui, runtime);
                 }
                 break;
             case MainTabOptionalSectionKind::TextureFiltering:
                 if (settings::g_mainTabSettings.show_main_tab_texture_filtering.GetValue()) {
+                    imgui.Spacing();
                     DrawMainTabOptionalPanelTextureFiltering(imgui);
                 }
                 break;
             case MainTabOptionalSectionKind::AudioControl:
                 if (settings::g_mainTabSettings.show_main_tab_audio_control.GetValue()) {
+                    imgui.Spacing();
                     DrawMainTabOptionalPanelAudioControl(imgui);
                 }
                 break;
             case MainTabOptionalSectionKind::CpuControl:
                 if (settings::g_mainTabSettings.show_main_tab_cpu_control.GetValue()) {
+                    imgui.Spacing();
                     DrawMainTabOptionalPanelCpuControl(imgui);
                 }
                 break;
             case MainTabOptionalSectionKind::WindowButtons:
                 if (settings::g_mainTabSettings.show_main_tab_window_action_buttons.GetValue()) {
+                    imgui.Spacing();
                     DrawMainTabOptionalPanelWindowButtons(imgui);
                 }
                 break;
             case MainTabOptionalSectionKind::OverlayWindows:
                 if (settings::g_mainTabSettings.show_main_tab_overlay_windows.GetValue()) {
+                    imgui.Spacing();
                     DrawMainTabOptionalPanelOverlayWindows(imgui);
                 }
                 break;
@@ -3799,8 +3806,6 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         display_commander::widgets::resolution_widget::DrawResolutionWidget(imgui);
         imgui.Unindent();
     }
-
-    imgui.Spacing();
 
     DrawMainTabOptionalPanelsInOrder(api, imgui, runtime);
 
@@ -4721,7 +4726,6 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
 static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::IImGuiWrapper& imgui,
                                                         const std::function<void()>& drawPclStatsCheckbox) {
     // Reflex combo is always shown in Advanced FPS limiter settings (unified for all modes)
-    imgui.Spacing();
     if (!::IsNativeFramePacingInSync()) {
         // Check if we're running on D3D9 and show warning
         const reshade::api::device_api current_api = g_last_reshade_device_api.load();

@@ -6,6 +6,10 @@ Known issues:
 - Witcher 3: fps gets halfed while using FG in the UI.
 - Sometimes config .toml file gets delete during save.
 
+## v0.12.628
+- [ui] **Main tab UI optimizations** - Tighter layout when optional Main tab sections are all off: no empty vertical gap before Input / Window Control. When you enable optional panels, vertical spacing is applied only ahead of each section that actually draws (DC folders, brightness and AutoHDR, texture filtering, audio, CPU, window buttons, overlay windows).
+  Details: `DrawMainTabOptionalPanelsInOrder` in `ui/new_ui/main_new_tab.cpp`.
+
 ## v0.12.627
 - [ui] **Main tab license block only when needed** - The license / third-party notice prompt at the bottom of the Main tab is shown only when the bundled license presentation version is newer than what you already accepted. After acceptance, that footer is omitted so the tab stays compact. The “Disagree” control that terminated the game was removed.
   Details: `DrawMainTabLegalSection` in `ui/new_ui/help_tab.cpp`.

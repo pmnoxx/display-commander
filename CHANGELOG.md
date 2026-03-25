@@ -6,6 +6,14 @@ Known issues:
 - Witcher 3: fps gets halfed while using FG in the UI.
 - Sometimes config .toml file gets delete during save.
 
+Feature protosal:
+- Add injected reflex support for Vulkan.
+- Add fixed for Vulkan games with broken Reflex.
+
+## v0.13.0 (2026-03-24)
+
+- [cleanup] **Version line** - Bumped to **0.13.0** (minor); patch counter reset for the 0.13.x series. Details: `DISPLAY_COMMANDER_VERSION_*` in `src/addons/display_commander/CMakeLists.txt`.
+
 ## v0.12.630
 - [bugfix] **`GetFontSize()` is const on `IImGuiWrapper`** - Declaring the method `const` matches how `get_ui_scale` / `scale_px` take a `const` wrapper reference, so the project builds cleanly with MSVC.
   Details: `imgui_wrapper_base.hpp`, `imgui_wrapper_reshade.hpp`, `imgui_wrapper_standalone.*`.

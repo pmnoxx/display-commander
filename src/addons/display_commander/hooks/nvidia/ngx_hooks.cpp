@@ -199,16 +199,19 @@ using NVSDK_NGX_Parameter_GetULL_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_P
 using NVSDK_NGX_Parameter_GetVoidPointer_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter* InParameter,
                                                                              const char* InName, void** OutValue);
 
-// NGX initialization function pointer types (DLL/Core interface: see docs/ngx_hooks_signature_audit.md)
+// NGX initialization function pointer types (matches nvsdk_ngx.h when NGX_SNIPPET_BUILD is undefined: Init includes
+// InFeatureInfo before InSDKVersion; NGX_SNIPPET_BUILD driver builds use 4-arg Init — same export name, different ABI)
 using NVSDK_NGX_D3D12_Init_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(unsigned long long InApplicationId,
                                                                const wchar_t* InApplicationDataPath,
-                                                               ID3D12Device* InDevice, NVSDK_NGX_Version InSDKVersion);
+                                                               ID3D12Device* InDevice,
+                                                               const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
+                                                               NVSDK_NGX_Version InSDKVersion);
 using NVSDK_NGX_D3D12_Init_Ext_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(unsigned long long InApplicationId,
                                                                    const wchar_t* InApplicationDataPath,
                                                                    ID3D12Device* InDevice,
                                                                    NVSDK_NGX_Version InSDKVersion,
                                                                    const NVSDK_NGX_Parameter* InParameters);
-using NVSDK_NGX_D3D12_Init_ProjectID_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(
+using NVSDK_NGX_D3D12_Init_with_ProjectID_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(
     const char* InProjectId, NVSDK_NGX_EngineType InEngineType, const char* InEngineVersion,
     const wchar_t* InApplicationDataPath, ID3D12Device* InDevice, const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
     NVSDK_NGX_Version InSDKVersion);
@@ -227,13 +230,15 @@ using NVSDK_NGX_D3D12_EvaluateFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(ID3D12
 
 using NVSDK_NGX_D3D11_Init_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(unsigned long long InApplicationId,
                                                                const wchar_t* InApplicationDataPath,
-                                                               ID3D11Device* InDevice, NVSDK_NGX_Version InSDKVersion);
+                                                               ID3D11Device* InDevice,
+                                                               const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
+                                                               NVSDK_NGX_Version InSDKVersion);
 using NVSDK_NGX_D3D11_Init_Ext_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(unsigned long long InApplicationId,
                                                                    const wchar_t* InApplicationDataPath,
                                                                    ID3D11Device* InDevice,
                                                                    NVSDK_NGX_Version InSDKVersion,
                                                                    const NVSDK_NGX_Parameter* InParameters);
-using NVSDK_NGX_D3D11_Init_ProjectID_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(
+using NVSDK_NGX_D3D11_Init_with_ProjectID_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(
     const char* InProjectId, NVSDK_NGX_EngineType InEngineType, const char* InEngineVersion,
     const wchar_t* InApplicationDataPath, ID3D11Device* InDevice, const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
     NVSDK_NGX_Version InSDKVersion);
@@ -314,7 +319,7 @@ static NVSDK_NGX_Result NVSDK_CONV DLSSOptimalSettingsCallback_Proxy(NVSDK_NGX_P
 // NGX initialization function originals
 NVSDK_NGX_D3D12_Init_pfn NVSDK_NGX_D3D12_Init_Original = nullptr;
 NVSDK_NGX_D3D12_Init_Ext_pfn NVSDK_NGX_D3D12_Init_Ext_Original = nullptr;
-NVSDK_NGX_D3D12_Init_ProjectID_pfn NVSDK_NGX_D3D12_Init_ProjectID_Original = nullptr;
+NVSDK_NGX_D3D12_Init_with_ProjectID_pfn NVSDK_NGX_D3D12_Init_with_ProjectID_Original = nullptr;
 NVSDK_NGX_D3D12_GetParameters_pfn NVSDK_NGX_D3D12_GetParameters_Original = nullptr;
 NVSDK_NGX_D3D12_GetCapabilityParameters_pfn NVSDK_NGX_D3D12_GetCapabilityParameters_Original = nullptr;
 NVSDK_NGX_D3D12_AllocateParameters_pfn NVSDK_NGX_D3D12_AllocateParameters_Original = nullptr;
@@ -326,7 +331,7 @@ NVSDK_NGX_D3D12_EvaluateFeature_C_pfn NVSDK_NGX_D3D12_EvaluateFeature_C_Original
 
 NVSDK_NGX_D3D11_Init_pfn NVSDK_NGX_D3D11_Init_Original = nullptr;
 NVSDK_NGX_D3D11_Init_Ext_pfn NVSDK_NGX_D3D11_Init_Ext_Original = nullptr;
-NVSDK_NGX_D3D11_Init_ProjectID_pfn NVSDK_NGX_D3D11_Init_ProjectID_Original = nullptr;
+NVSDK_NGX_D3D11_Init_with_ProjectID_pfn NVSDK_NGX_D3D11_Init_with_ProjectID_Original = nullptr;
 NVSDK_NGX_D3D11_GetParameters_pfn NVSDK_NGX_D3D11_GetParameters_Original = nullptr;
 NVSDK_NGX_D3D11_GetCapabilityParameters_pfn NVSDK_NGX_D3D11_GetCapabilityParameters_Original = nullptr;
 NVSDK_NGX_D3D11_AllocateParameters_pfn NVSDK_NGX_D3D11_AllocateParameters_Original = nullptr;
@@ -1089,9 +1094,10 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetVoidPointer_Detour(NVSDK_NGX_
     return res;
 }
 
-// D3D12 Init detour (DLL/Core: 4 params)
+// D3D12 Init detour (nvsdk_ngx.h: InFeatureInfo then InSDKVersion)
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_Detour(unsigned long long InApplicationId,
                                                         const wchar_t* InApplicationDataPath, ID3D12Device* InDevice,
+                                                        const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
                                                         NVSDK_NGX_Version InSDKVersion) {
     CALL_GUARD(utils::get_now_ns());
     g_ngx_counters.d3d12_init_count.fetch_add(1);
@@ -1100,7 +1106,8 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_Detour(unsigned long long InApp
     LogInfo("NGX D3D12 Init called - AppId: %llu", InApplicationId);
 
     if (NVSDK_NGX_D3D12_Init_Original != nullptr) {
-        return NVSDK_NGX_D3D12_Init_Original(InApplicationId, InApplicationDataPath, InDevice, InSDKVersion);
+        return NVSDK_NGX_D3D12_Init_Original(InApplicationId, InApplicationDataPath, InDevice, InFeatureInfo,
+                                             InSDKVersion);
     }
 
     return NVSDK_NGX_Result_Fail;
@@ -1125,8 +1132,8 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_Ext_Detour(unsigned long long I
     return NVSDK_NGX_Result_Fail;
 }
 
-// D3D12 Init ProjectID detour
-NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_ProjectID_Detour(
+// D3D12 Init_with_ProjectID detour
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_with_ProjectID_Detour(
     const char* InProjectId, NVSDK_NGX_EngineType InEngineType, const char* InEngineVersion,
     const wchar_t* InApplicationDataPath, ID3D12Device* InDevice, const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
     NVSDK_NGX_Version InSDKVersion) {
@@ -1137,8 +1144,8 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_ProjectID_Detour(
 
     LogInfo("NGX D3D12 Init ProjectID called - ProjectId: %s", InProjectId ? InProjectId : "null");
 
-    if (NVSDK_NGX_D3D12_Init_ProjectID_Original != nullptr) {
-        return NVSDK_NGX_D3D12_Init_ProjectID_Original(InProjectId, InEngineType, InEngineVersion,
+    if (NVSDK_NGX_D3D12_Init_with_ProjectID_Original != nullptr) {
+        return NVSDK_NGX_D3D12_Init_with_ProjectID_Original(InProjectId, InEngineType, InEngineVersion,
                                                        InApplicationDataPath, InDevice, InFeatureInfo, InSDKVersion);
     }
 
@@ -1362,9 +1369,10 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_EvaluateFeature_C_Detour(ID3D11Devic
     return NVSDK_NGX_Result_Fail;
 }
 
-// D3D11 Init detour (DLL/Core: 4 params)
+// D3D11 Init detour (nvsdk_ngx.h: InFeatureInfo then InSDKVersion)
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_Detour(unsigned long long InApplicationId,
                                                         const wchar_t* InApplicationDataPath, ID3D11Device* InDevice,
+                                                        const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
                                                         NVSDK_NGX_Version InSDKVersion) {
     CALL_GUARD(utils::get_now_ns());
     g_ngx_counters.d3d11_init_count.fetch_add(1);
@@ -1373,7 +1381,8 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_Detour(unsigned long long InApp
     LogInfo("NGX D3D11 Init called - AppId: %llu", InApplicationId);
 
     if (NVSDK_NGX_D3D11_Init_Original != nullptr) {
-        return NVSDK_NGX_D3D11_Init_Original(InApplicationId, InApplicationDataPath, InDevice, InSDKVersion);
+        return NVSDK_NGX_D3D11_Init_Original(InApplicationId, InApplicationDataPath, InDevice, InFeatureInfo,
+                                             InSDKVersion);
     }
 
     return NVSDK_NGX_Result_Fail;
@@ -1474,8 +1483,8 @@ static void SafeLogWString(const char* name, const wchar_t* str) {
     }
 }
 
-// D3D11 Init ProjectID detour
-NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_ProjectID_Detour(
+// D3D11 Init_with_ProjectID detour
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_with_ProjectID_Detour(
     const char* InProjectId, NVSDK_NGX_EngineType InEngineType, const char* InEngineVersion,
     const wchar_t* InApplicationDataPath, ID3D11Device* InDevice, const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
     NVSDK_NGX_Version InSDKVersion) {
@@ -1531,7 +1540,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_ProjectID_Detour(
     }
 
     LogInfo("  InSDKVersion: 0x%08X", InSDKVersion);
-    LogInfo("  Original function pointer: 0x%p", NVSDK_NGX_D3D11_Init_ProjectID_Original);
+    LogInfo("  Original function pointer: 0x%p", NVSDK_NGX_D3D11_Init_with_ProjectID_Original);
 
     // Validate critical arguments before calling original function
     bool has_errors = false;
@@ -1564,7 +1573,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_ProjectID_Detour(
         }
     }
 
-    if (NVSDK_NGX_D3D11_Init_ProjectID_Original == nullptr) {
+    if (NVSDK_NGX_D3D11_Init_with_ProjectID_Original == nullptr) {
         LogError("CRITICAL: Original function pointer is nullptr!");
         return NVSDK_NGX_Result_Fail;
     }
@@ -1574,11 +1583,11 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_ProjectID_Detour(
         return NVSDK_NGX_Result_Fail;
     }
 
-    LogInfo("Calling original NVSDK_NGX_D3D11_Init_ProjectID function...");
+    LogInfo("Calling original NVSDK_NGX_D3D11_Init_with_ProjectID function...");
 
-    NVSDK_NGX_Result result = NVSDK_NGX_D3D11_Init_ProjectID_Original(
+    NVSDK_NGX_Result result = NVSDK_NGX_D3D11_Init_with_ProjectID_Original(
         InProjectId, InEngineType, InEngineVersion, InApplicationDataPath, InDevice, InFeatureInfo, InSDKVersion);
-    LogInfo("NVSDK_NGX_D3D11_Init_ProjectID returned: 0x%08X", result);
+    LogInfo("NVSDK_NGX_D3D11_Init_with_ProjectID returned: 0x%08X", result);
     return result;
 }
 
@@ -1959,8 +1968,8 @@ static const NGXHookEntry kNGXHooks[kNGXHookCount] = {
      .detour = reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D12_Init_Ext_Detour),
      .original = reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_Init_Ext_Original)},
     {.name = "NVSDK_NGX_D3D12_Init_with_ProjectID",
-     .detour = reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D12_Init_ProjectID_Detour),
-     .original = reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_Init_ProjectID_Original)},
+     .detour = reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D12_Init_with_ProjectID_Detour),
+     .original = reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_Init_with_ProjectID_Original)},
     {.name = "NVSDK_NGX_D3D12_Shutdown1",
      .detour = reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D12_Shutdown1_Detour),
      .original = reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_Shutdown1_Original)},
@@ -1983,8 +1992,8 @@ static const NGXHookEntry kNGXHooks[kNGXHookCount] = {
      .detour = reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D11_Init_Ext_Detour),
      .original = reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Init_Ext_Original)},
     {.name = "NVSDK_NGX_D3D11_Init_with_ProjectID",
-     .detour = reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D11_Init_ProjectID_Detour),
-     .original = reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Init_ProjectID_Original)},
+     .detour = reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D11_Init_with_ProjectID_Detour),
+     .original = reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Init_with_ProjectID_Original)},
     {.name = "NVSDK_NGX_D3D11_Shutdown1",
      .detour = reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D11_Shutdown1_Detour),
      .original = reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Shutdown1_Original)},

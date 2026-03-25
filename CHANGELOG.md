@@ -12,6 +12,14 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.6 (2026-03-25)
+
+- [hooks] **NGX D3D11/D3D12 Init: InFeatureInfo parameter** - `NVSDK_NGX_D3D11_Init` / `NVSDK_NGX_D3D12_Init` typedefs and detours now include `const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo` before `InSDKVersion`, matching public `nvsdk_ngx.h` when `NGX_SNIPPET_BUILD` is not defined. NVIDIA documents an alternate 4-argument Init for `NGX_SNIPPET_BUILD` (driver/snippet); if a loaded module used that ABI, the same export name would be incompatible.
+  Details: `hooks/nvidia/ngx_hooks.cpp`.
+
+- [cleanup] [hooks] **D3D11/D3D12 Init_with_ProjectID hook identifiers** - Renamed internal `NVSDK_NGX_D3D11_Init_ProjectID_*` and `NVSDK_NGX_D3D12_Init_ProjectID_*` typedef/original/detour symbols to `*_Init_with_ProjectID_*` so they match the exported NGX APIs `NVSDK_NGX_D3D11_Init_with_ProjectID` / `NVSDK_NGX_D3D12_Init_with_ProjectID`. Behavior unchanged.
+  Details: `hooks/nvidia/ngx_hooks.cpp`.
+
 ## v0.13.5 (2026-03-24)
 
 - [cleanup] [hooks] **CALL_GUARD_NO_TS on NGX helpers without guards** - Added crash/exit call-site tracking to `DLSSOptimalSettingsCallback_Proxy`, `UntrackNGXHandle`, `GetFeatureFromHandle`, `ApplyDLSSPresetParameters`, `CleanupNGXHandleTracking`, `ResetNGXPresetInitialization`, `CleanupNGXHooks`, and `ApplyNGXParameterOverride` in `ngx_hooks.cpp`. Skipped trivial one-line helpers and hot UI getters (`IsDLSSEnabled`, etc.) to limit overhead and tracker noise.

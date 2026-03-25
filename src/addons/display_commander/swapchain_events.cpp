@@ -313,13 +313,6 @@ void DoInitializationWithHwnd(HWND hwnd) {
 
     LogInfo("[DoInitializationWithHwnd]: Initialization completed");
 
-    if (InstallStreamlineHooks(nullptr)) {
-        LogInfo("[DoInitializationWithHwnd]: Streamline hooks installed successfully");
-    } else {
-        LogInfo("[DoInitializationWithHwnd]: Streamline hooks not installed (Streamline not detected)");
-    }
-    LogInfo("[DoInitializationWithHwnd] after InstallStreamlineHooks");
-
     // Retry XInput hooks for any XInput DL L already loaded (e.g. before first present)
     LogInfo("[DoInitializationWithHwnd] before InstallXInputHooks (retry)");
     if (display_commanderhooks::InstallXInputHooks(nullptr)) {

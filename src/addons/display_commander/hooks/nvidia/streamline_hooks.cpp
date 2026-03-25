@@ -26,12 +26,17 @@
 // Streamline DLSS-G types (from sl_dlss_g.h)
 #include "sl_dlss_g.h"
 
-// Streamline loader exports (match sl_core_api.h PFun_sl*)
+// Streamline loader / feature function pointer types (sl_core_api.h PFun_sl*, sl_dlss.h, sl_dlss_g.h, plugin slSetData)
 using slInit_pfn = sl::Result (*)(const sl::Preferences& pref, uint64_t sdkVersion);
 using slIsFeatureSupported_pfn = sl::Result (*)(sl::Feature feature, const sl::AdapterInfo& adapterInfo);
 using slGetNativeInterface_pfn = sl::Result (*)(void* proxyInterface, void** baseInterface);
 using slUpgradeInterface_pfn = sl::Result (*)(void** baseInterface);
 using slGetFeatureFunction_pfn = sl::Result (*)(sl::Feature feature, const char* functionName, void*& function);
+using slDLSSGetOptimalSettings_pfn = sl::Result (*)(const sl::DLSSOptions& options, sl::DLSSOptimalSettings& settings);
+using slDLSSSetOptions_pfn = sl::Result (*)(const sl::ViewportHandle& viewport, const sl::DLSSOptions& options);
+using slDLSSGSetOptions_pfn = sl::Result (*)(const sl::ViewportHandle& viewport, const sl::DLSSGOptions& options);
+using slSetData_pfn = sl::Result (*)(const sl::BaseStructure* inputs, sl::CommandBuffer* cmdBuffer);
+using slDLSSGGetState_pfn = sl::Result (*)(const sl::ViewportHandle& viewport, sl::DLSSGState& state, const sl::DLSSGOptions* options);
 
 static slInit_pfn slInit_Original = nullptr;
 static slIsFeatureSupported_pfn slIsFeatureSupported_Original = nullptr;
@@ -78,24 +83,17 @@ static const StreamlineLoaderHookEntry kStreamlineLoaderHooks[static_cast<std::s
      .original = reinterpret_cast<LPVOID*>(&slGetFeatureFunction_Original)},
 };
 
-// slDLSSGetOptimalSettings (sl_dlss.h PFun_slDLSSGetOptimalSettings) - via slGetFeatureFunction
-using slDLSSGetOptimalSettings_pfn = sl::Result (*)(const sl::DLSSOptions& options, sl::DLSSOptimalSettings& settings);
+// slDLSSGetOptimalSettings / slDLSSSetOptions / slDLSSGSetOptions / slSetData — originals via slGetFeatureFunction (or plugin for slSetData)
 static slDLSSGetOptimalSettings_pfn slDLSSGetOptimalSettings_Original = nullptr;
 static std::atomic<bool> g_slDLSSGetOptimalSettings_hook_installed{false};
 
-// slDLSSSetOptions (sl_dlss.h PFun_slDLSSSetOptions) - via slGetFeatureFunction
-using slDLSSSetOptions_pfn = sl::Result (*)(const sl::ViewportHandle& viewport, const sl::DLSSOptions& options);
 static slDLSSSetOptions_pfn slDLSSSetOptions_Original = nullptr;
 static std::atomic<bool> g_slDLSSSetOptions_hook_installed{false};
 
-// slDLSSGSetOptions (sl_dlss_g.h PFun_slDLSSGSetOptions) - via slGetFeatureFunction
-using slDLSSGSetOptions_pfn = sl::Result (*)(const sl::ViewportHandle& viewport, const sl::DLSSGOptions& options);
 static slDLSSGSetOptions_pfn slDLSSGSetOptions_Original = nullptr;
 static std::atomic<bool> g_slDLSSGSetOptions_hook_installed{false};
 
-// slSetData: plugin internal (Streamline plugin_manager PFun_slSetDataInternal)
-using slSetDataInternal_pfn = sl::Result (*)(const sl::BaseStructure* inputs, sl::CommandBuffer* cmdBuffer);
-static slSetDataInternal_pfn slSetData_Original = nullptr;
+static slSetData_pfn slSetData_Original = nullptr;
 static std::atomic<bool> g_slSetData_hook_installed{false};
 
 // Track SDK version from slInit calls
@@ -514,9 +512,7 @@ static sl::Result slSetData_Detour(const sl::BaseStructure* inputs, sl::CommandB
     return sl::Result::eErrorInvalidParameter;
 }
 
-// slDLSSGGetState (sl_dlss_g.h PFun_slDLSSGGetState) - via slGetFeatureFunction
-using slDLSSGGetState_pfn =
-    sl::Result (*)(const sl::ViewportHandle& viewport, sl::DLSSGState& state, const sl::DLSSGOptions* options);
+// slDLSSGGetState — original via slGetFeatureFunction
 static slDLSSGGetState_pfn slDLSSGGetState_Original = nullptr;
 static std::atomic<bool> g_slDLSSGGetState_hook_installed{false};
 
@@ -685,6 +681,10 @@ void InitializePreventSLUpgradeInterface() {
 }
 
 bool InstallStreamlineHooks(HMODULE streamline_module) { // sl.interposer.dll
+    if (streamline_module == nullptr) {
+        LogError("Streamline not detected - sl.interposer.dll not loaded");
+        return false;
+    }
     // Check if Streamline hooks should be suppressed
     if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
             display_commanderhooks::HookType::STREAMLINE)) {
@@ -692,15 +692,6 @@ bool InstallStreamlineHooks(HMODULE streamline_module) { // sl.interposer.dll
         return false;
     }
 
-    // Check if Streamline DLLs are loaded
-    HMODULE sl_interposer = streamline_module;
-    if (sl_interposer == nullptr) {
-        sl_interposer = GetModuleHandleW(L"sl.interposer.dll");
-        if (sl_interposer == nullptr) {
-            LogInfo("Streamline not detected - sl.interposer.dll not loaded");
-            return false;
-        }
-    }
 
     static bool g_streamline_hooks_installed = false;
     if (g_streamline_hooks_installed) {
@@ -716,7 +707,7 @@ bool InstallStreamlineHooks(HMODULE streamline_module) { // sl.interposer.dll
     LogInfo("Installing Streamline hooks...");
 
     for (const auto& entry : kStreamlineLoaderHooks) {
-        FARPROC target = GetProcAddress(sl_interposer, entry.name);
+        FARPROC target = GetProcAddress(streamline_module, entry.name);
         if (target == nullptr) {
             LogError("Streamline: %s not exported by sl.interposer.dll", entry.name);
            // RollbackStreamlineLoaderHooks();

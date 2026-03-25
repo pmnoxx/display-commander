@@ -1,6 +1,6 @@
 **When releasing:** the version is stored in one place only. Update `src/addons/display_commander/CMakeLists.txt` (`DISPLAY_COMMANDER_VERSION_MAJOR`/`MINOR`/`PATCH`). CMake passes these into the build; `version.hpp` uses them and derives the version string. Do not edit `version.hpp` for version numbers. See `VERSION_BUMPING.md` for the bump script.
 
-**Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
+**Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[critical]` – Severe bug (crashes, wrong module/DLL, data loss risk). `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 Known issues:
 - Witcher 3: fps gets halfed while using FG in the UI.
@@ -11,6 +11,11 @@ Feature protosal:
 - Add injected reflex support for Vulkan.
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
+
+## v0.13.2 (2026-03-24)
+
+- [critical] [bugfix] [hooks] **Fixed loading wrong `sl.interposer.dll` version** - Display Commander now resolves and hooks the expected Streamline interposer module for the current process/session instead of attaching to an incorrect version.
+  Details: `hooks/loadlibrary_hooks.cpp`, `hooks/nvidia/streamline_hooks.cpp`.
 
 ## v0.13.1 (2026-03-24)
 

@@ -25,7 +25,7 @@ AdvancedTabSettings::AdvancedTabSettings()
       enqueue_gpu_completion("EnqueueGpuCompletion", true, "DisplayCommander"),
       hide_hdr_capabilities("HideHDRCapabilities", false, "DisplayCommander"),
       enable_flip_chain("EnableFlipChain", false, "DisplayCommander"),
-      auto_colorspace("AutoColorspace2", true, "DisplayCommander"),
+      auto_colorspace("AutoColorspace", false, "DisplayCommander"),
 
       // Minimal NVIDIA Reflex controls
       reflex_auto_configure("ReflexAutoConfigure", false, "DisplayCommander"),

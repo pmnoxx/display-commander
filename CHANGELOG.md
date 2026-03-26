@@ -10,6 +10,11 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.13 (2026-03-26)
+
+- [bugfix] [settings] **Turned off HDR10 / scRGB color fix by default** - Disabled the default per-game `AutoColorspace` override so SDR titles aren't forced into HDR/scRGB color space, reducing washed-out/incorrect SDR colors.
+  Details: `src/addons/display_commander/res/game_default_overrides.toml`.
+
 ## v0.13.12 (2026-03-26)
 
 - [bugfix] [hooks] [compatibility] **Fixed FPS drop in UI in Death Stranding 2** - Improved NGX/DLSS-G parameter handling so UI-triggered frame pacing drops are avoided, fixing FPS degradation seen in Death Stranding 2.

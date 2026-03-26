@@ -4,12 +4,16 @@
 
 Known issues:
 - Sometimes config .toml file gets deleted during save.
-- Reflex + boost causes fps drop. (Add warning, or now show + boost option)
 
 Feature protosal:
 - Add injected reflex support for Vulkan.
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
+
+## v0.13.11 (2026-03-25)
+
+- [ui] [settings] **Clearer warning for Low Latency + Boost mode** - Updated the Reflex mode label text to explicitly warn that **Low Latency + Boost** can cause issues, helping users choose safer defaults when a game behaves poorly with boost enabled.
+  Details: `settings/main_tab_settings.cpp`.
 
 ## v0.13.10 (2026-03-25)
 

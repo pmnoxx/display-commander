@@ -53,13 +53,14 @@ MainTabSettings::MainTabSettings()
       use_reflex_markers_as_fps_limiter("use_reflex_markers_as_fps_limiter", true, "DisplayCommander"),
       reflex_fps_limiter_max_queued_frames("reflex_fps_limiter_max_queued_frames", 2,
                                            {"Game default", "1", "2", "3", "4", "5", "6"}, "DisplayCommander"),
-      native_reflex_fps_preset("native_reflex_fps_preset", static_cast<int>(FpsLimiterPreset::kLowLatencyNativePacing),
-                               {"Pace real frames Low-latency (Use native frame pacing)",
-                                "Pace real frames Low-latency (Use Reflex Latency Markers, max queued=1)",
-                                "Pace real frames Balanced (Use Reflex Latency Markers, max queued=2)",
-                                "Pace real frames Stability (Use Reflex Latency Markers, max queued=3)",
-                                "Pace generated frames (FPS limiter on generated frames)",
-                                "Pace generated (safe) - Use Reshade APIs as fallback", "Custom (configure manually)"},
+      native_reflex_fps_preset("native_reflex_fps_preset", static_cast<int>(FpsLimiterPreset::kDCPaceLockQ2),
+                               {"Low latency mode - pace game simulation thread only (bad frame pacing)",
+                                "DCPaceLock(q=1) (recommended, low latency, good frame pacing)",
+                                "DCPaceLock(q=2) (default, +1 frame time latency penalty, use if q=1 is not good enough)",
+                                "DCPaceLock(q=3) (+2 frame time latency penalty, use if q=2 is not good enough)",
+                                "Pace native rendered frames only (pre-FG, stable at latency penalty)",
+                                "Pace generated Frames",
+                                "Custom (configure manually)"},
                                "DisplayCommander"),
       use_streamline_proxy_fps_limiter("use_streamline_proxy_fps_limiter", false, "DisplayCommander"),
       native_pacing_sim_start_only("native_pacing_sim_start_only_doff", false, "DisplayCommander"),
@@ -390,7 +391,7 @@ void GetNativeReflexPresetOverrides(FpsLimiterPreset preset, NativeReflexPresetO
             out.delay_present_start_after_sim_enabled = false;
             out.safe_mode_fps_limiter = false;
             break;
-        case FpsLimiterPreset::kLowLatencyMarkers:
+        case FpsLimiterPreset::kDCPaceLockQ1:
             out.limit_real_frames = true;
             out.use_reflex_markers_as_fps_limiter = true;
             out.reflex_fps_limiter_max_queued_frames = 1;
@@ -399,7 +400,7 @@ void GetNativeReflexPresetOverrides(FpsLimiterPreset preset, NativeReflexPresetO
             out.delay_present_start_after_sim_enabled = false;
             out.safe_mode_fps_limiter = false;
             break;
-        case FpsLimiterPreset::kBalanced:
+        case FpsLimiterPreset::kDCPaceLockQ2:
             out.limit_real_frames = true;
             out.use_reflex_markers_as_fps_limiter = true;
             out.reflex_fps_limiter_max_queued_frames = 2;
@@ -408,7 +409,7 @@ void GetNativeReflexPresetOverrides(FpsLimiterPreset preset, NativeReflexPresetO
             out.delay_present_start_after_sim_enabled = false;
             out.safe_mode_fps_limiter = false;
             break;
-        case FpsLimiterPreset::kStability:
+        case FpsLimiterPreset::kDCPaceLockQ3:
             out.limit_real_frames = true;
             out.use_reflex_markers_as_fps_limiter = true;
             out.reflex_fps_limiter_max_queued_frames = 3;

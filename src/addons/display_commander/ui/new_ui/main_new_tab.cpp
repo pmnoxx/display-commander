@@ -4853,7 +4853,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
     if (::IsNativeFramePacingInSync()) {
         const int raw = settings::g_mainTabSettings.native_reflex_fps_preset.GetValue();
         if (raw < 0 || raw > static_cast<int>(FpsLimiterPreset::kCustom)) {
-            settings::g_mainTabSettings.native_reflex_fps_preset.SetValue(FpsLimiterPreset::kBalanced);
+            settings::g_mainTabSettings.native_reflex_fps_preset.SetValue(FpsLimiterPreset::kDCPaceLockQ2);
         }
         FpsLimiterPreset preset = settings::g_mainTabSettings.native_reflex_fps_preset.GetEnumValue();
         imgui.Spacing();
@@ -4865,7 +4865,8 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
-                "Quick presets for FPS limiter when the game has native Reflex. Custom allows manual configuration.");
+                "Quick presets for FPS limiter when the game has native Reflex. DCPaceLock (q=1–3) is Display "
+                "Commander’s pacing for frame generation with lower latency. Custom allows manual configuration.");
         }
 
         const bool show_custom_options = (preset == FpsLimiterPreset::kCustom);

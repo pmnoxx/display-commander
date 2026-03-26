@@ -12,6 +12,11 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.9 (2026-03-25)
+
+- [ui] [settings] **DC's own fps limiter has been renamed to DCPaceLocks** - The three presets that use Reflex latency markers with different parameters are now labeled **DCPaceLock (q=1)**, **(q=2)**, and **(q=3)** in the FPS limiter preset combo. DCPaceLock is Display Commander’s frame-pacing approach aimed at smoother pacing with frame generation while keeping latency lower than naive pacing-only setups.
+  Details: `main_tab_settings.cpp` combo labels; `FpsLimiterPreset` comment in `globals.hpp`.
+
 ## v0.13.8 (2026-03-25)
 
 - [cleanup] [hooks] **Clarified NGX snippet/Core ABI context** - Documented and validated that `NGX_SNIPPET_BUILD` in official NGX headers represents a separate snippet/Core-facing ABI variant (not the default public SDK calling pattern), helping choose the correct hook signature branch for Init variants.

@@ -1494,7 +1494,7 @@ static bool ShouldActivateFg2Limiter() {
     }
     // only with kLowLatencyNativePacing preset and 0-3 presets
     if (settings::g_mainTabSettings.native_reflex_fps_preset.GetValue()
-        > static_cast<int>(FpsLimiterPreset::kStability)) {
+        > static_cast<int>(FpsLimiterPreset::kDCPaceLockQ3)) {
         return false;
     }
     const DLSSGSummaryLite lite = GetDLSSGSummaryLite();

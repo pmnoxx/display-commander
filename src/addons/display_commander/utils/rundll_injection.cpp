@@ -1,8 +1,8 @@
 // RunDLL entry points for process injection: StartAndInject and WaitAndInject.
 // Moved from main_entry.cpp to simplify main_entry and to make future injection refactors easier.
 
-#include "config/display_commander_config.hpp"
-#include "utils/rundll_injection_helpers.hpp"
+#include "../config/display_commander_config.hpp"
+#include "rundll_injection_helpers.hpp"
 
 #include <windows.h>
 #include <cstring>

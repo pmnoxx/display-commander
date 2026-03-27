@@ -7,8 +7,7 @@
 #include "../ui/ui_display_tab.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
-#include "display/display_cache.hpp"
-#include "utils/logging.hpp"
+#include "../display/display_cache.hpp"
 
 #include <sstream>
 

@@ -13,10 +13,10 @@
 #include "../hooks/hook_suppression_manager.hpp"
 #include "../latency/reflex_provider.hpp"
 #include "detour_call_tracker.hpp"
-#include "globals.hpp"
+#include "../globals.hpp"
 #include "logging.hpp"
-#include "settings/advanced_tab_settings.hpp"
-#include "settings/main_tab_settings.hpp"
+#include "../settings/advanced_tab_settings.hpp"
+#include "../settings/main_tab_settings.hpp"
 
 
 bool IsReflexAvailable() {

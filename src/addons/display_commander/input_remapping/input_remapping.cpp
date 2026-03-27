@@ -15,7 +15,7 @@
 #include "../settings/main_tab_settings.hpp"
 #include "../utils/logging.hpp"
 #include "../widgets/xinput_widget/xinput_widget.hpp"
-#include "utils/srwlock_wrapper.hpp"
+#include "../utils/srwlock_wrapper.hpp"
 
 
 namespace display_commander::input_remapping {

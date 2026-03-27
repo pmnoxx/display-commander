@@ -1,3 +1,6 @@
+
+#include <toml++/toml.hpp>
+
 #include "chords_file.hpp"
 #include "toml_line_parser.hpp"
 #include "../utils/general_utils.hpp"
@@ -9,7 +12,6 @@
 #include <fstream>
 #include <map>
 #include <string>
-#include <toml++/toml.hpp>
 
 #include <windows.h>
 
@@ -95,7 +97,15 @@ void TryMigrateFromGameConfig() {
     // Try .toml - DisplayCommander table and optionally InputRemapping
     if (std::filesystem::exists(toml_path)) {
         try {
+#if TOML_EXCEPTIONS
             toml::table tbl = toml::parse_file(toml_path.string());
+#else
+            auto pr = toml::parse_file(toml_path.string());
+            if (!pr) {
+                // ignore parse errors (same as catch below when exceptions are used)
+            } else {
+            toml::table tbl = std::move(pr).table();
+#endif
             int migrated = 0;
             auto* dc = tbl.get("DisplayCommander");
             if (dc && dc->is_table()) {
@@ -146,6 +156,9 @@ void TryMigrateFromGameConfig() {
                         toml_path.string().c_str());
                 SaveChordsFile();
             }
+#if !TOML_EXCEPTIONS
+            }
+#endif
         } catch (const toml::parse_error&) {
             // Ignore
         }

@@ -20,6 +20,8 @@
 
 #include <Windows.h>
 
+#undef what
+
 namespace display_commander::config {
 
 namespace {
@@ -150,7 +152,20 @@ void LoadFromResource() {
 
     std::string content(static_cast<const char*>(pData), size);
     try {
+#if TOML_EXCEPTIONS
         toml::table tbl = toml::parse(content);
+#else
+        auto pr = toml::parse(content);
+        if (!pr) {
+            static std::atomic<bool> s_warned_parse{false};
+            if (!s_warned_parse.exchange(true)) {
+                LogWarn("Game default overrides: parse error %s",
+                        std::string(pr.error().description()).c_str());
+            }
+            return;
+        }
+        toml::table tbl = std::move(pr).table();
+#endif
         std::vector<std::string> path;
         CollectLeafTables(tbl, path, g_override_map);
         g_loaded = true;
@@ -158,7 +173,7 @@ void LoadFromResource() {
     } catch (const toml::parse_error& e) {
         static std::atomic<bool> s_warned_parse{false};
         if (!s_warned_parse.exchange(true)) {
-            LogWarn("Game default overrides: parse error %s", e.what());
+            LogWarn("Game default overrides: parse error %s", std::string(e.description()).c_str());
         }
         return;
     }

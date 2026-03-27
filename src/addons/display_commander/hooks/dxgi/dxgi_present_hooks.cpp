@@ -17,7 +17,6 @@
 #include "../hook_suppression_manager.hpp"
 #include "../present_traffic_tracking.hpp"
 #include "dxgi_gpu_completion.hpp"
-#include "utils/logging.hpp"
 
 #include <dwmapi.h>
 #include <MinHook.h>

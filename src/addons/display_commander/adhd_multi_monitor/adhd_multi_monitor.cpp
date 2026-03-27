@@ -6,8 +6,8 @@
 #include "../utils/logging.hpp"
 #include "../utils/srwlock_wrapper.hpp"
 #include "../utils/timing.hpp"
-#include "hooks/windows_hooks/api_hooks.hpp"
-#include "hooks/system/display_settings_hooks.hpp"
+#include "../hooks/windows_hooks/api_hooks.hpp"
+#include "../hooks/system/display_settings_hooks.hpp"
 
 // Undefine Windows min/max macros to avoid conflicts with std::min/std::max
 #ifdef min

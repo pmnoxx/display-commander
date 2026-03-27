@@ -62,8 +62,8 @@
 #include "help_tab.hpp"
 #include "new_ui_tabs.hpp"
 #include "settings_wrapper.hpp"
-#include "utils/detour_call_tracker.hpp"
-#include "version.hpp"
+#include "../../utils/detour_call_tracker.hpp"
+#include "../../version.hpp"
 
 #include "imgui.h"
 

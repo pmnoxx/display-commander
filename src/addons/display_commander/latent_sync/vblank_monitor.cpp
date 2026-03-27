@@ -3,7 +3,7 @@
 #include "../globals.hpp"
 #include "../hooks/windows_hooks/api_hooks.hpp"
 #include "../utils/logging.hpp"
-#include "utils/timing.hpp"
+#include "../utils/timing.hpp"
 #include <dxgi1_6.h>
 #include <iomanip>
 #include <sstream>

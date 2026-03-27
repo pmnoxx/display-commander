@@ -2,7 +2,7 @@
 
 #include "../performance_types.hpp"
 #include "../ui/new_ui/settings_wrapper.hpp"
-#include "globals.hpp"
+#include "../globals.hpp"
 
 #include <atomic>
 #include <vector>

@@ -1,10 +1,10 @@
 // Source Code <Display Commander>
 //
 // Group 1 — Source Code (Display Commander)
-#include "hooks/dbghelp/dbghelp_original_hooks.hpp"
-#include "hooks/dbghelp/dbghelp_private_loader.hpp"
-#include "hooks/hook_suppression_manager.hpp"
-#include "utils/logging.hpp"
+#include "dbghelp_original_hooks.hpp"
+#include "dbghelp_private_loader.hpp"
+#include "../hook_suppression_manager.hpp"
+#include "../../utils/logging.hpp"
 
 //
 // Group 2 — ReShade / ImGui

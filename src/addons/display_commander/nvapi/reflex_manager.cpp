@@ -10,7 +10,7 @@
 #include "../utils.hpp"
 #include "../utils/logging.hpp"
 #include "nvapi_init.hpp"
-#include "utils/timing.hpp"
+#include "../utils/timing.hpp"
 
 // Include Streamline PCLStats header for PCLSTATS_MARKER macro
 // Path is relative to src/addons/display_commander from external/Streamline

@@ -1,7 +1,7 @@
 // Source Code <Display Commander>
 #include "no_inject_windows.hpp"
 
-#include "ui/standalone_ui_settings_bridge.hpp"
+#include "../ui/standalone_ui_settings_bridge.hpp"
 
 // Libraries <Windows.h>
 #include <Windows.h>

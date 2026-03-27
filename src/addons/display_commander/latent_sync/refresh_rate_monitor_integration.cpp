@@ -5,7 +5,7 @@
 #include <memory>
 #include <string>
 #include "../utils/logging.hpp"
-#include "display/display_cache.hpp"
+#include "../display/display_cache.hpp"
 #include "refresh_rate_monitor.hpp"
 
 // Example of how to integrate RefreshRateMonitor with existing code

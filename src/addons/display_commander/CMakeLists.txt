@@ -1,5 +1,12 @@
-# Display Commander Addon CMakeLists.txt
+# Version (single source of truth for addon and exe; used by common_options and version.rc)
+set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
+set(DISPLAY_COMMANDER_VERSION_MINOR 13)
+set(DISPLAY_COMMANDER_VERSION_PATCH 17)
 
+# Repository root (this file: src/addons/display_commander/CMakeLists.txt → ../../..).
+set(_dc_repo_root "${CMAKE_CURRENT_LIST_DIR}/../../..")
+
+# Sources: CMakeLists dir *.cpp, utils/*.cpp, proxy_dll/*.cpp (GLOB_RECURSE over those roots).
 file(GLOB_RECURSE DISPLAY_COMMANDER_SOURCES
   CONFIGURE_DEPENDS
   ${CMAKE_CURRENT_LIST_DIR}/*.cpp
@@ -21,10 +28,6 @@ if(DISPLAY_COMMANDER_DLL_SOURCES STREQUAL "")
   message(FATAL_ERROR "No sources found under src/addons/display_commander")
 endif()
 
-# Version (single source of truth for addon and exe; used by common_options and version.rc)
-set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
-set(DISPLAY_COMMANDER_VERSION_MINOR 13)
-set(DISPLAY_COMMANDER_VERSION_PATCH 16)
 set(DISPLAY_COMMANDER_VERSION_STRING "${DISPLAY_COMMANDER_VERSION_MAJOR}.${DISPLAY_COMMANDER_VERSION_MINOR}.${DISPLAY_COMMANDER_VERSION_PATCH}.${GIT_COMMIT_COUNT}")
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)
   set(DISPLAY_COMMANDER_BITNESS "32-bit")
@@ -71,20 +74,20 @@ endif()
 if(EXPERIMENTAL_FEATURES)
   target_compile_definitions(display_commander_common_options INTERFACE EXPERIMENTAL_FEATURES=1)
 endif()
+# Includes: repo include/ first; third-party as SYSTEM (never put bare SYSTEM on its own line — MSVC can emit -I.../SYSTEM).
 target_include_directories(display_commander_common_options INTERFACE
-  ${CMAKE_CURRENT_LIST_DIR}/../../../src
-  ${CMAKE_CURRENT_LIST_DIR}/../../../src/addons/display_commander
-  ${CMAKE_CURRENT_LIST_DIR}/../../../include
-  SYSTEM
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../../../external/reshade/include>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../../../external/reshade>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../../../external/reshade/deps/imgui>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../../../external/Streamline/include>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../../../external/nvapi>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../../../external/nvidia-dlss/include>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../../../external/minhook/include>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../../../external/vulkan-headers/include>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../../../external/tomlplusplus/include>
+  "${_dc_repo_root}/include"
+)
+target_include_directories(display_commander_common_options SYSTEM INTERFACE
+  $<BUILD_INTERFACE:${_dc_repo_root}/external/reshade/include>
+  $<BUILD_INTERFACE:${_dc_repo_root}/external/reshade>
+  $<BUILD_INTERFACE:${_dc_repo_root}/external/reshade/deps/imgui>
+  $<BUILD_INTERFACE:${_dc_repo_root}/external/Streamline/include>
+  $<BUILD_INTERFACE:${_dc_repo_root}/external/nvapi>
+  $<BUILD_INTERFACE:${_dc_repo_root}/external/nvidia-dlss/include>
+  $<BUILD_INTERFACE:${_dc_repo_root}/external/minhook/include>
+  $<BUILD_INTERFACE:${_dc_repo_root}/external/vulkan-headers/include>
+  $<BUILD_INTERFACE:${_dc_repo_root}/external/tomlplusplus/include>
 )
 if(MSVC)
   # Single /arch flag: MSVC does not allow multiple /arch options (x86 build was failing with /arch:SSE2 /arch:AVX /arch:AVX2).
@@ -137,48 +140,29 @@ if(MSVC)
   )
 endif()
 
-# System libraries removed (xinput, dinput8, winmm, dbghelp) to avoid DLL dependency issues - they are loaded dynamically
-# Version library is needed for GetFileVersionInfo functions
-# DXGI library is needed for DXGI interface IIDs
-# ETW libraries (tdh/advapi32) are needed for PresentMon-style tracing
-# WinInet library is needed for HTTP downloads (shader packages list)
-# bcrypt for SHA256 (ReShade installer signature verification)
-# opengl32 not linked: when used as opengl32.dll proxy we export gl*/wgl*; linking opengl32.lib would conflict.
-# Standalone UI and imgui_impl_opengl3 use runtime loader (see opengl_loader and imgui embedded loader).
-target_link_libraries(zzz_display_commander PRIVATE  setupapi tdh advapi32 wininet bcrypt user32)
+# System libs: xinput/dinput/winmm/dbghelp are dynamic-load only. setupapi/tdh/advapi32/wininet/bcrypt/user32: version info,
+# ETW (PresentMon-style), HTTP, crypto, Win32. No opengl32.lib (proxy exports; standalone UI loads GL at runtime).
+target_link_libraries(zzz_display_commander PRIVATE setupapi tdh advapi32 wininet bcrypt user32)
 
-# NVAPI: load system nvapi64.dll at runtime via nvapi_loader (no nvapi64.lib). Headers still from external/nvapi.
-# MinHook library
-if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../../../external/minhook")
-  # MinHook source files
+# MinHook (static); NVAPI is loaded at runtime (nvapi_loader), headers only from external/nvapi.
+if(EXISTS "${_dc_repo_root}/external/minhook")
   set(MINHOOK_SOURCES
-    ${CMAKE_CURRENT_LIST_DIR}/../../../external/minhook/src/buffer.c
-    ${CMAKE_CURRENT_LIST_DIR}/../../../external/minhook/src/hook.c
-    ${CMAKE_CURRENT_LIST_DIR}/../../../external/minhook/src/trampoline.c
-    ${CMAKE_CURRENT_LIST_DIR}/../../../external/minhook/src/hde/hde32.c
-    ${CMAKE_CURRENT_LIST_DIR}/../../../external/minhook/src/hde/hde64.c
+    ${_dc_repo_root}/external/minhook/src/buffer.c
+    ${_dc_repo_root}/external/minhook/src/hook.c
+    ${_dc_repo_root}/external/minhook/src/trampoline.c
+    ${_dc_repo_root}/external/minhook/src/hde/hde32.c
+    ${_dc_repo_root}/external/minhook/src/hde/hde64.c
   )
-
-  # Create MinHook static library
   add_library(minhook STATIC ${MINHOOK_SOURCES})
-
-  # MinHook compile definitions
   target_compile_definitions(minhook PRIVATE MH_STATIC=1)
-
-  # MinHook include directories
-  target_include_directories(minhook PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../../../external/minhook/include)
-
-  # Use static runtime linking for MinHook as well
+  target_include_directories(minhook PRIVATE "${_dc_repo_root}/external/minhook/include")
   if(MSVC)
     set_property(TARGET minhook PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
   endif()
-
-  # Link MinHook to display commander
   target_link_libraries(zzz_display_commander PRIVATE minhook)
-
   message(STATUS "MinHook library configured successfully")
 else()
-  message(FATAL_ERROR "MinHook not found at ${CMAKE_CURRENT_LIST_DIR}/../../../external/minhook. Run: git submodule update --init --recursive")
+  message(FATAL_ERROR "MinHook not found at ${_dc_repo_root}/external/minhook. Run: git submodule update --init --recursive")
 endif()
 
 # Output naming
@@ -193,8 +177,8 @@ set_target_properties(zzz_display_commander PROPERTIES
   LINK_OPTIONS "$<$<C_COMPILER_ID:MSVC>:/DEF:${CMAKE_CURRENT_LIST_DIR}/proxy_dll/exports.def>"
 )
 
-# Copy NvidiaProfileInspectorRevamped Reference.xml next to the addon DLL so NVPI reference data can be loaded at runtime.
-set(NVPI_REFERENCE_XML "${CMAKE_CURRENT_LIST_DIR}/../../../external/NvidiaProfileInspectorRevamped/nspector/Reference.xml")
+# Optional: copy NVPI Reference.xml next to the addon for runtime NVPI reference data.
+set(NVPI_REFERENCE_XML "${_dc_repo_root}/external/NvidiaProfileInspectorRevamped/nspector/Reference.xml")
 if(EXISTS "${NVPI_REFERENCE_XML}")
   add_custom_command(TARGET zzz_display_commander POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${NVPI_REFERENCE_XML}" "$<TARGET_FILE_DIR:zzz_display_commander>/Reference.xml"
@@ -211,8 +195,8 @@ set(DC_PERCEPTUALBOOST_FX "${CMAKE_CURRENT_LIST_DIR}/res/effects/DisplayCommande
 set(DC_COLOR_FXH "${CMAKE_CURRENT_LIST_DIR}/res/effects/color.fxh")
 set(DC_RESHADE_FXH "${CMAKE_CURRENT_LIST_DIR}/res/effects/ReShade.fxh")
 set(DC_GAME_DEFAULT_OVERRIDES_TOML "${CMAKE_CURRENT_LIST_DIR}/res/game_default_overrides.toml")
-set(DC_LICENSE_SRC "${CMAKE_CURRENT_LIST_DIR}/../../../LICENSE")
-set(DC_THIRD_PARTY_NOTICES_SRC "${CMAKE_CURRENT_LIST_DIR}/../../../THIRD_PARTY_NOTICES.txt")
+set(DC_LICENSE_SRC "${_dc_repo_root}/LICENSE")
+set(DC_THIRD_PARTY_NOTICES_SRC "${_dc_repo_root}/THIRD_PARTY_NOTICES.txt")
 set(DC_SHADER_RC "${CMAKE_CURRENT_BINARY_DIR}/shader_effect.rc")
 if(EXISTS "${DC_CONTROL_FX}")
   if(NOT EXISTS "${DC_LICENSE_SRC}")
@@ -270,7 +254,7 @@ endif()
 # ImDrawList=ImDrawListStandalone, avoiding LNK2005 duplicate symbol errors: ReShade's reshade_overlay.hpp
 # provides inline ImDrawList::AddLine/AddRect/AddCircle etc., while imgui_draw.cpp provides the real
 # implementations; renaming ImDrawList for the standalone build keeps the two symbol sets distinct.
-set(IMGUI_DIR "${CMAKE_CURRENT_LIST_DIR}/../../../external/reshade/deps/imgui")
+set(IMGUI_DIR "${_dc_repo_root}/external/reshade/deps/imgui")
 set(IMGUI_STANDALONE_SOURCES
   ${IMGUI_DIR}/imgui.cpp
   ${IMGUI_DIR}/imgui_draw.cpp
@@ -281,49 +265,8 @@ set(IMGUI_STANDALONE_SOURCES
 )
 add_library(imgui_standalone_obj OBJECT ${IMGUI_STANDALONE_SOURCES})
 target_compile_definitions(imgui_standalone_obj PRIVATE ImGui=ImGuiStandalone ImDrawList=ImDrawListStandalone)
-target_include_directories(imgui_standalone_obj
-  PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/../../../external/reshade/deps/imgui
-  ${CMAKE_CURRENT_LIST_DIR}/../../../external/reshade/deps/imgui/backends
-)
+target_include_directories(imgui_standalone_obj PRIVATE ${IMGUI_DIR})
 if(MSVC)
   set_property(TARGET imgui_standalone_obj PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 target_sources(zzz_display_commander PRIVATE $<TARGET_OBJECTS:imgui_standalone_obj>)
-set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/ui/cli_standalone_ui.cpp PROPERTIES COMPILE_DEFINITIONS "ImGui=ImGuiStandalone;ImDrawList=ImDrawListStandalone")
-set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/ui/imgui_wrapper_standalone.cpp PROPERTIES COMPILE_DEFINITIONS "ImGui=ImGuiStandalone;ImDrawList=ImDrawListStandalone")
-
-# ---------------------------------------------------------------------------
-# Standalone .exe target: same codebase as the DLL, different entry point.
-# Uses display_commander_objs (common code compiled once) + main_entry.cpp (with BUILD_EXE) + main_exe.cpp.
-# ---------------------------------------------------------------------------
-add_executable(display_commander_exe WIN32
-  ${CMAKE_CURRENT_LIST_DIR}/main_entry.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/main_exe.cpp
-  ${CMAKE_CURRENT_BINARY_DIR}/version.rc
-)
-target_sources(display_commander_exe PRIVATE
-  $<TARGET_OBJECTS:display_commander_objs>
-  $<TARGET_OBJECTS:imgui_standalone_obj>
-)
-if(EXISTS "${DC_CONTROL_FX}")
-  target_sources(display_commander_exe PRIVATE ${DC_SHADER_RC})
-  add_dependencies(display_commander_exe copy_shader_files_for_rc)
-  set_source_files_properties(${DC_SHADER_RC} PROPERTIES GENERATED TRUE)
-endif()
-target_compile_definitions(display_commander_exe PRIVATE DISPLAY_COMMANDER_BUILD_EXE)
-target_link_libraries(display_commander_exe PRIVATE display_commander_common_options setupapi tdh advapi32 wininet bcrypt shell32)
-target_link_libraries(display_commander_exe PRIVATE minhook)
-if(MSVC)
-  set_property(TARGET display_commander_exe PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-  set_target_properties(display_commander_exe PROPERTIES
-    PDB_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-    PDB_NAME "display_commander_exe"
-  )
-endif()
-# Exe output name by platform (Launcher = Games + Settings window, same UI as rundll32 Launcher)
-if(CMAKE_GENERATOR_PLATFORM STREQUAL "Win32" OR CMAKE_EXE_LINKER_FLAGS MATCHES "/machine:X86" OR CMAKE_SIZEOF_VOID_P EQUAL 4)
-  set_target_properties(display_commander_exe PROPERTIES OUTPUT_NAME "Display Commander Launcher32")
-else()
-  set_target_properties(display_commander_exe PROPERTIES OUTPUT_NAME "Display Commander Launcher")
-endif()

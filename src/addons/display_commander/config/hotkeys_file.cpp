@@ -1,3 +1,6 @@
+
+#include <toml++/toml.hpp>
+
 #include "hotkeys_file.hpp"
 #include "toml_line_parser.hpp"
 #include "../utils/general_utils.hpp"
@@ -10,7 +13,6 @@
 #include <map>
 #include <sstream>
 #include <string>
-#include <toml++/toml.hpp>
 
 #include <windows.h>
 
@@ -123,7 +125,15 @@ void TryMigrateFromGameIni() {
     // Try .toml (current format)
     if (std::filesystem::exists(toml_path)) {
         try {
+#if TOML_EXCEPTIONS
             toml::table tbl = toml::parse_file(toml_path.string());
+#else
+            auto pr = toml::parse_file(toml_path.string());
+            if (!pr) {
+                // ignore parse errors
+            } else {
+            toml::table tbl = std::move(pr).table();
+#endif
             auto* dc = tbl.get("DisplayCommander");
             if (dc && dc->is_table()) {
                 std::map<std::string, std::string> kv_map;
@@ -143,6 +153,9 @@ void TryMigrateFromGameIni() {
                     SaveHotkeysFile();
                 }
             }
+#if !TOML_EXCEPTIONS
+            }
+#endif
         } catch (const toml::parse_error&) {
             // Ignore parse errors
         }

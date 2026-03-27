@@ -312,10 +312,15 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
             g_global_frame_id.load(std::memory_order_relaxed), std::memory_order_relaxed);
     }
 
-    const ReflexMarkerTypes nvapi_markers = {
+ /*   const ReflexMarkerTypes nvapi_markers = {
         static_cast<int>(NV_LATENCY_MARKER_TYPE::SIMULATION_START),
         static_cast<int>(NV_LATENCY_MARKER_TYPE::PRESENT_START),
         static_cast<int>(NV_LATENCY_MARKER_TYPE::PRESENT_END),
+    };*/
+    const ReflexMarkerTypes nvapi_markers = {
+        static_cast<int>(NV_LATENCY_MARKER_TYPE::SIMULATION_START),
+        static_cast<int>(NV_LATENCY_MARKER_TYPE::PRESENT_START) - 1,
+        static_cast<int>(NV_LATENCY_MARKER_TYPE::PRESENT_END) - 2,
     };
     const int r = ProcessReflexMarkerFpsLimiter(
         FpsLimiterCallSite::reflex_marker, static_cast<int>(pSetLatencyMarkerParams->markerType),

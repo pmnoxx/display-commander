@@ -10,12 +10,20 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.17 (2026-03-27)
+
+- [cleanup] [compatibility] **Build system and includes** - Addon sources no longer assume the whole `display_commander` folder is on the compiler include path: headers use explicit relative paths. CMake lists repo `include/` and third-party deps separately so MSVC does not get a fake `-I…/SYSTEM` path. Config files that use toml++ in “no exceptions” mode are handled correctly (`parse_result` / `parse_error::description()`).
+  Details: `src/addons/display_commander/CMakeLists.txt`; `#include` updates across `config/`, `display/`, `hooks/`, `ui/`, etc. Optional Release IPO/LTO can be enabled at configure time to shrink the DLL later (see CMake `DISPLAY_COMMANDER_ENABLE_IPO`).
+
+## v0.13.16
+
+- [removal] [ui] **Removed running-games process controls from Games tab** - Simplified the Games tab by removing the session process list/actions (focus/minimize/restart/stop/kill), keeping Steam launch management only.
+  Details: removed `process_window_enumerator.*` and deleted related UI/actions from `ui/new_ui/games_tab.cpp`; also removed remaining debug/init references in `advanced_tab.cpp` and `main_entry.cpp`.
+
 ## v0.13.15 (2026-03-27)
 
 - [bugfix] **Removed deadlock in running-games refresh path** - Fixed a freeze/hang issue caused by `RefreshRunningGamesCache`, so game list refresh no longer deadlocks and the addon remains responsive.
   Details: synchronized refresh flow to avoid lock-order contention during running-games cache updates.
-- [removal] [ui] **Removed running-games process controls from Games tab** - Simplified the Games tab by removing the session process list/actions (focus/minimize/restart/stop/kill), keeping Steam launch management only.
-  Details: removed `process_window_enumerator.*` and deleted related UI/actions from `ui/new_ui/games_tab.cpp`; also removed remaining debug/init references in `advanced_tab.cpp` and `main_entry.cpp`.
 
 ## v0.13.14 (2026-03-26)
 

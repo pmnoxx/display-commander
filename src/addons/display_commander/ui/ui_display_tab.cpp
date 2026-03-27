@@ -1,5 +1,5 @@
 #include "ui_display_tab.hpp"
-#include "display/display_cache.hpp"
+#include "../display/display_cache.hpp"
 #include "../globals.hpp"
 #include <iomanip>
 #include <sstream>

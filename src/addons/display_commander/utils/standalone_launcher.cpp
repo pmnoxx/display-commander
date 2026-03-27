@@ -3,7 +3,7 @@
 // Group 1 — Source Code (Display Commander)
 #include "standalone_launcher.hpp"
 #include "general_utils.hpp"
-#include "globals.hpp"
+#include "../globals.hpp"
 
 // Group 2 — ReShade / ImGui
 // (none)

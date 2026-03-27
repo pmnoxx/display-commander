@@ -6,16 +6,16 @@
 #include <string>
 #include "../../display/hdr_control.hpp"
 #include "../../display/query_display.hpp"
-#include "display/display_cache.hpp"
-#include "display/display_initial_state.hpp"
-#include "display/display_restore.hpp"
+#include "../../display/display_cache.hpp"
+#include "../../display/display_initial_state.hpp"
+#include "../../display/display_restore.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/system/display_settings_hooks.hpp"
 #include "../../resolution_helpers.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../utils.hpp"
 #include "../../utils/logging.hpp"
-#include "utils/timing.hpp"
+#include "../../utils/timing.hpp"
 
 namespace display_commander::widgets::resolution_widget {
 

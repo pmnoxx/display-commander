@@ -1,6 +1,6 @@
 #include "vram_info.hpp"
-#include "globals.hpp"
-#include "utils/srwlock_wrapper.hpp"
+#include "../globals.hpp"
+#include "../utils/srwlock_wrapper.hpp"
 #include <dxgi1_4.h>
 #include <wrl/client.h>
 

@@ -1,10 +1,10 @@
-#include "display/display_restore.hpp"
-#include "display/display_cache.hpp"
-#include "display/display_initial_state.hpp"
-#include "globals.hpp"
-#include "hooks/system/display_settings_hooks.hpp"
-#include "utils.hpp"
-#include "utils/logging.hpp"
+#include "display_restore.hpp"
+#include "display_cache.hpp"
+#include "display_initial_state.hpp"
+#include "../globals.hpp"
+#include "../hooks/system/display_settings_hooks.hpp"
+#include "../utils.hpp"
+#include "../utils/logging.hpp"
 #include <atomic>
 #include <map>
 #include <memory>

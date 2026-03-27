@@ -17,10 +17,9 @@
 #include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"
 #include "../imgui_wrapper_base.hpp"
-#include "display/display_cache.hpp"
+#include "../../display/display_cache.hpp"
 #include "imgui.h"
 #include "settings_wrapper.hpp"
-#include "utils/timing.hpp"
 
 #include <algorithm>
 #include <array>

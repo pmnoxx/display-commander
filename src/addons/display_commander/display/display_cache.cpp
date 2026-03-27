@@ -1,9 +1,9 @@
-#include "display/display_cache.hpp"
-#include "display/query_display.hpp"
-#include "globals.hpp"
-#include "settings/main_tab_settings.hpp"
-#include "utils.hpp"
-#include "utils/logging.hpp"
+#include "display_cache.hpp"
+#include "query_display.hpp"
+#include "../globals.hpp"
+#include "../settings/main_tab_settings.hpp"
+#include "../utils.hpp"
+#include "../utils/logging.hpp"
 
 #include <windows.h>
 #include <wingdi.h>

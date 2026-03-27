@@ -2,9 +2,9 @@
 
 #include "../res/ui_colors.hpp"
 #include "../utils.hpp"
-#include "nvapi/nvidia_profile_search.hpp"
-#include "nvapi/nvpi_reference.hpp"
-#include "nvapi/run_nvapi_setdword_as_admin.hpp"
+#include "../nvapi/nvidia_profile_search.hpp"
+#include "../nvapi/nvpi_reference.hpp"
+#include "../nvapi/run_nvapi_setdword_as_admin.hpp"
 
 #include <windows.h>
 

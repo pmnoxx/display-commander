@@ -1,3 +1,6 @@
+
+#include <toml++/toml.hpp>
+
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "display_commander_config.hpp"
 #include "chords_file.hpp"
@@ -17,7 +20,9 @@
 #include <filesystem>
 #include <fstream>
 #include <sstream>
-#include <toml++/toml.hpp>
+
+
+#undef what
 
 namespace display_commander::config {
 
@@ -119,7 +124,15 @@ class TomlFile {
 
     bool LoadFromFile(const std::string& filepath) {
         try {
+#if TOML_EXCEPTIONS
             toml::table tbl = toml::parse_file(filepath);
+#else
+            auto pr = toml::parse_file(filepath);
+            if (!pr) {
+                return false;
+            }
+            toml::table tbl = std::move(pr).table();
+#endif
             sections_.clear();
 
             for (auto&& [k, v] : tbl) {

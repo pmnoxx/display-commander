@@ -1,8 +1,8 @@
 #pragma once
 
 #include "../settings/main_tab_settings.hpp"
-#include "globals.hpp"
-#include "utils/logging.hpp"
+#include "../globals.hpp"
+#include "logging.hpp"
 
 #define ImTextureID ImU64
 #define WIN32_LEAN_AND_MEAN

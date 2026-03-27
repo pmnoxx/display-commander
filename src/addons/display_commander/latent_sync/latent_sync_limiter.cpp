@@ -3,7 +3,7 @@
 #include "../globals.hpp"
 #include "../settings/main_tab_settings.hpp"
 #include "../utils/logging.hpp"
-#include "utils/timing.hpp"
+#include "../utils/timing.hpp"
 
 static uint64_t s_last_scan_time = 0;
 

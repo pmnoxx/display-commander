@@ -1,6 +1,6 @@
 #include "srwlock_registry.hpp"
 #include "display_commander_logger.hpp"
-#include "globals.hpp"
+#include "../globals.hpp"
 #include "logging.hpp"
 #include "srwlock_wrapper.hpp"
 

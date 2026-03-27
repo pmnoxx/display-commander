@@ -16,7 +16,7 @@
 #include "../hooks/hook_suppression_manager.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
-#include "globals.hpp"
+#include "../globals.hpp"
 
 // Function pointer types
 typedef HRESULT(WINAPI* PFN_CreateDXGIFactory)(REFIID riid, void** ppFactory);

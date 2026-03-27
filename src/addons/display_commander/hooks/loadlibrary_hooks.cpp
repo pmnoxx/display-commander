@@ -37,7 +37,7 @@
 #include "nvidia/pclstats_etw_hooks.hpp"
 #include "nvidia/streamline_hooks.hpp"
 #include "opengl/opengl_hooks.hpp"
-#include "utils/srwlock_wrapper.hpp"
+#include "../utils/srwlock_wrapper.hpp"
 #include "vulkan/nvlowlatencyvk_hooks.hpp"
 #include "vulkan/vulkan_loader_hooks.hpp"
 #include "windows_hooks/api_hooks.hpp"

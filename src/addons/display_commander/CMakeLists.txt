@@ -1,7 +1,7 @@
 # Version (single source of truth for addon; used by common_options and version.rc)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 13)
-set(DISPLAY_COMMANDER_VERSION_PATCH 21)
+set(DISPLAY_COMMANDER_VERSION_PATCH 22)
 
 # Repository root (this file: src/addons/display_commander/CMakeLists.txt → ../../..).
 set(_dc_repo_root "${CMAKE_CURRENT_LIST_DIR}/../../..")
@@ -74,14 +74,6 @@ if(MSVC)
   target_compile_options(display_commander_common_options INTERFACE
     /bigobj ${DC_MSVC_ARCH} /utf-8 /D_ENABLE_EXTENDED_ALIGNED_STORAGE
     /wd4191 /wd4244 /wd4267 /wd4996 /wd4005
-  )
-  target_compile_options(display_commander_common_options INTERFACE
-    $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:/Zi>
-    $<$<CONFIG:Release>:/Zi>
-  )
-  target_link_options(display_commander_common_options INTERFACE
-    $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:/DEBUG>
-    $<$<CONFIG:Release>:/DEBUG>
   )
 endif()
 

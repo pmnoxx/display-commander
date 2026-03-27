@@ -10,6 +10,11 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.22 (2026-03-27)
+
+- [cleanup] **Smaller Release addon DLL** - Release builds of the addon are much smaller on disk (about 9 MiB down to about 3.5 MiB in typical setups), which speeds copying and loads a bit lighter.
+  Details: `src/addons/display_commander/CMakeLists.txt` — removed MSVC `/Zi` and `/DEBUG` from shared `display_commander_common_options` (they applied to all configs via that interface), reducing embedded debug overhead in the shipped DLL.
+
 ## v0.13.21 (2026-03-27)
 
 - [cleanup] **Incremental builds** - Removed CMake `BUILD_DATE` / `BUILD_TIME` compile definitions so ordinary builds do not recompile every source file after each configure. Version display still shows the full version string (including git commit count).

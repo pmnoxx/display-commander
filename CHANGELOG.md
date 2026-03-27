@@ -10,6 +10,16 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.20 (2026-03-27)
+
+- [ui] [settings] **Higher FPS limit slider maximum** - The Main tab FPS limit sliders can now be set up to twice the previous maximum (still derived from monitor refresh data), so you can choose higher caps when needed.
+  Details: `UpdateFpsLimitMaximums()` in `settings/main_tab_settings.cpp`.
+
+## v0.13.19 (2026-03-27)
+
+- [hooks] [settings] **DbgHelp hooks off by default** - Display Commander no longer installs MinHook detours on the process’s `dbghelp.dll` unless you turn that option back on in hook suppression. That avoids interfering with games and tools that rely on DbgHelp for stacks or symbols.
+  Details: default `DbghelpHooks` suppression is now enabled in `settings/hook_suppression_settings.cpp`; internal stack traces still use the private `dbghelp` loader.
+
 ## v0.13.18 (2026-03-27)
 
 - [removal] [ui] **Standalone / independent UI removed** - Temporatiliy removed Stanalone / Indepedent UI in attempt to fix the build scripts.

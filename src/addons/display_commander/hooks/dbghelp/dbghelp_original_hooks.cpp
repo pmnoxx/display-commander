@@ -283,6 +283,10 @@ BOOL WINAPI StackWalkEx_Detour(DWORD machine_type, HANDLE h_process, HANDLE h_th
 }  // namespace
 
 bool InstallDbgHelpOriginalHooks(HMODULE dbghelp_module) {
+    const bool supressed = true;
+    if (supressed) {
+        return false;
+    }
     if (!dbghelp_module) {
         return false;
     }

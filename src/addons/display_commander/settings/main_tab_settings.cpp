@@ -510,9 +510,9 @@ void UpdateFpsLimitMaximums() {
     // Get the maximum refresh rate across all monitors
     double max_refresh_rate = display_cache::g_displayCache.GetMaxRefreshRateAcrossAllMonitors();
 
-    // Update the maximum values for FPS limit settings
-    // Add some buffer (e.g., 10%) to allow for slightly higher FPS than max refresh rate
-    float max_fps = max(60.f, static_cast<float>(max_refresh_rate));
+    // Base cap from monitor capabilities (at least 60 FPS); slider allows up to 2× for headroom above refresh.
+    const float base_max_fps = max(60.f, static_cast<float>(max_refresh_rate));
+    const float max_fps = base_max_fps * 2.f;
 
     // Update the maximum values
     if (g_mainTabSettings.fps_limit.GetMax() != max_fps) {
@@ -520,8 +520,8 @@ void UpdateFpsLimitMaximums() {
         g_mainTabSettings.fps_limit.SetMax(max_fps);
         g_mainTabSettings.fps_limit_background.SetMax(max_fps);
 
-        LogInfo("Updated FPS limit maximum %.1f->%.1f FPS (based on max monitor refresh rate of %.1f Hz)", old_fps,
-                max_fps, max_refresh_rate);
+        LogInfo("Updated FPS limit maximum %.1f->%.1f FPS (2× base cap %.1f, max monitor refresh %.1f Hz)", old_fps,
+                max_fps, base_max_fps, max_refresh_rate);
     }
 }
 

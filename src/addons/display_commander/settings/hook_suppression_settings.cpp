@@ -8,6 +8,7 @@ HookSuppressionSettings::HookSuppressionSettings()
     // Most hooks are enabled by default (false) for normal operation
     // Only hooks that are typically not needed or can cause issues are blacklisted by default
     // DInput/DInput8: blacklisted by default to avoid input or compatibility issues
+    // DbgHelp: blacklisted by default to avoid MinHook on the game's dbghelp.dll
     : suppress_dxgi_factory_hooks("DxgiFactoryHooks", false, "DisplayCommander.HookSuppression"),
       suppress_dxgi_swapchain_hooks("DxgiSwapchainHooks", false, "DisplayCommander.HookSuppression"),
       suppress_sl_proxy_dxgi_swapchain_hooks("SlProxyDxgiSwapchainHooks", false, "DisplayCommander.HookSuppression"),
@@ -33,7 +34,8 @@ HookSuppressionSettings::HookSuppressionSettings()
       suppress_nvapi_hooks("NvapiHooks", false, "DisplayCommander.HookSuppression"),
       suppress_process_exit_hooks("ProcessExitHooks", false, "DisplayCommander.HookSuppression"),
       suppress_window_proc_hooks("WindowProcHooks", false, "DisplayCommander.HookSuppression"),
-      suppress_dbghelp_hooks("DbghelpHooks", false, "DisplayCommander.HookSuppression"),
+      suppress_dbghelp_hooks("DbghelpHooks", true,
+                             "DisplayCommander.HookSuppression"),  // BLACKLISTED: avoid MinHook on game's dbghelp
       suppress_d3d9_hooks("D3D9Hooks", false, "DisplayCommander.HookSuppression"),
       suppress_vulkan_loader_hooks("VulkanLoaderHooks", false, "DisplayCommander.HookSuppression"),
       dxgi_factory_hooks_installed("DxgiFactoryHooks", false, "DisplayCommander.HooksInstalled"),

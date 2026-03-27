@@ -15,6 +15,7 @@
 #include "hooks/windows_hooks/api_hooks.hpp"
 #include "hooks/windows_hooks/window_proc_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
+#include "imgui.h"
 #include "input_remapping/input_remapping.hpp"
 #include "latency/gpu_completion_monitoring.hpp"
 #include "latency/reflex_provider.hpp"
@@ -628,10 +629,11 @@ void OnPerformanceOverlay_DisplayCommanderWindow(reshade::api::effect_runtime* r
             last_saved_y = saved_y;
         }
     }
-    overlay_wrapper.SetNextWindowSize(ImVec2(fixed_width, 0.0f), ImGuiCond_Always);
+    overlay_wrapper.SetNextWindowSize(ImVec2(fixed_width, 2160.0f), ImGuiCond_Always);
+
     bool window_open = true;
     if (overlay_wrapper.Begin("Display Commander", &window_open,
-                              ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize)) {
+                             ImGuiWindowFlags_AlwaysAutoResize)) {
         if (enabled_experimental_features) {
             autoclick::UpdateLastUIDrawTime();
         }

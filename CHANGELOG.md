@@ -10,6 +10,11 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.23 (2026-03-27)
+
+- [bugfix] [ui] **Display Commander overlay opens with hotkey** - Opening the Display Commander panel with its hotkey (default: End) no longer produces a tiny window or a failed build: the overlay gets a stable minimum height, a maximum height of at least 1000 pixels (or your display height if larger), and sizing uses `ImGui::GetIO().DisplaySize` so it works with ReShade’s ImGui exports (calling `GetMainViewport` from the addon was not linked).
+  Details: `OnPerformanceOverlay_DisplayCommanderWindow` in `main_entry.cpp` (`SetNextWindowSizeConstraints`, `(std::max)(…)` for MSVC `min`/`max` macros).
+
 ## v0.13.22 (2026-03-27)
 
 - [cleanup] **CI uses MinSizeRel** - GitHub Actions `build` and `nightly` workflows configure and build the addon with `CMAKE_BUILD_TYPE=MinSizeRel` (MSVC `/O1` defaults) so published artifacts are smaller than a typical Release build.

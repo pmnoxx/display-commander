@@ -12,8 +12,12 @@ Feature protosal:
 
 ## v0.13.22 (2026-03-27)
 
+- [cleanup] **CI uses MinSizeRel** - GitHub Actions `build` and `nightly` workflows configure and build the addon with `CMAKE_BUILD_TYPE=MinSizeRel` (MSVC `/O1` defaults) so published artifacts are smaller than a typical Release build.
+  Details: `.github/workflows/build.yml`, `.github/workflows/nightly.yml` (the separate `build-debug` job remains Debug).
 - [cleanup] **Smaller Release addon DLL** - Release builds of the addon are much smaller on disk (about 9 MiB down to about 3.5 MiB in typical setups), which speeds copying and loads a bit lighter.
   Details: `src/addons/display_commander/CMakeLists.txt` — removed MSVC `/Zi` and `/DEBUG` from shared `display_commander_common_options` (they applied to all configs via that interface), reducing embedded debug overhead in the shipped DLL.
+- [cleanup] **CMake: addon build simplified** - Display Commander addon CMake now uses one module target (no object/interface indirection), a single MSVC block for compile and runtime/PDB, MinHook links only `hde32` or `hde64` for the current arch, and embedded shader RCDATA is generated from `res/shader_effect.rc.in` instead of huge inline strings and a helper `write_shader_rc.cmake` script.
+- [bugfix] [cleanup] **`shader_effect.rc.in` in repository** - The RC template file is committed at `src/addons/display_commander/res/shader_effect.rc.in` so CMake `configure_file` succeeds on clean clones and CI (the simplify commit referenced the path but omitted the file).
 
 ## v0.13.21 (2026-03-27)
 

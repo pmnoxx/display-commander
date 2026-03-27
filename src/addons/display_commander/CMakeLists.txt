@@ -1,4 +1,4 @@
-# Version (single source of truth for addon; used by common_options and version.rc)
+# Version (single source of truth for addon; used by compile definitions and version.rc)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 13)
 set(DISPLAY_COMMANDER_VERSION_PATCH 22)
@@ -6,17 +6,16 @@ set(DISPLAY_COMMANDER_VERSION_PATCH 22)
 # Repository root (this file: src/addons/display_commander/CMakeLists.txt → ../../..).
 set(_dc_repo_root "${CMAKE_CURRENT_LIST_DIR}/../../..")
 
-# Sources: CMakeLists dir *.cpp, utils/*.cpp, proxy_dll/*.cpp (GLOB_RECURSE over those roots).
+# All addon .cpp under this directory (recursive).
 file(GLOB_RECURSE DISPLAY_COMMANDER_SOURCES
   CONFIGURE_DEPENDS
+
   ${CMAKE_CURRENT_LIST_DIR}/*.cpp
 )
+
+
 # ReShade ImGui wrapper is header-only (included from experimental_tab.cpp) to avoid undefined ImGui symbols at link
 list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/imgui_wrapper_reshade\\.cpp$")
-set(DISPLAY_COMMANDER_DLL_SOURCES ${DISPLAY_COMMANDER_SOURCES})
-# Common sources for the object library (main_entry.cpp is linked only into the addon DLL).
-set(DISPLAY_COMMANDER_COMMON_SOURCES ${DISPLAY_COMMANDER_DLL_SOURCES})
-list(FILTER DISPLAY_COMMANDER_COMMON_SOURCES EXCLUDE REGEX ".*/main_entry\\.cpp$")
 
 set(DISPLAY_COMMANDER_VERSION_STRING "${DISPLAY_COMMANDER_VERSION_MAJOR}.${DISPLAY_COMMANDER_VERSION_MINOR}.${DISPLAY_COMMANDER_VERSION_PATCH}.${GIT_COMMIT_COUNT}")
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)
@@ -30,38 +29,36 @@ configure_file(
   @ONLY
 )
 
-# Common compile options, definitions, and includes shared by DLL and exe (and by the object library).
-# Reduces duplication and, with the object library below, compiles shared sources once for both targets.
-add_library(display_commander_common_options INTERFACE)
+add_library(zzz_display_commander MODULE
+  ${DISPLAY_COMMANDER_SOURCES}
+  ${CMAKE_CURRENT_BINARY_DIR}/version.rc
+)
+target_sources(zzz_display_commander PRIVATE ${CMAKE_CURRENT_LIST_DIR}/proxy_dll/exports.def)
 
-
-
-target_compile_definitions(display_commander_common_options INTERFACE
+target_compile_definitions(zzz_display_commander PRIVATE
   GIT_COMMIT_COUNT=${GIT_COMMIT_COUNT}
   DISPLAY_COMMANDER_VERSION_MAJOR=${DISPLAY_COMMANDER_VERSION_MAJOR}
   DISPLAY_COMMANDER_VERSION_MINOR=${DISPLAY_COMMANDER_VERSION_MINOR}
   DISPLAY_COMMANDER_VERSION_PATCH=${DISPLAY_COMMANDER_VERSION_PATCH}
 )
 if(EXPERIMENTAL_TAB)
-  target_compile_definitions(display_commander_common_options INTERFACE EXPERIMENTAL_TAB=1)
+  target_compile_definitions(zzz_display_commander PRIVATE EXPERIMENTAL_TAB=1)
 endif()
 if(EXPERIMENTAL_FEATURES)
-  target_compile_definitions(display_commander_common_options INTERFACE EXPERIMENTAL_FEATURES=1)
+  target_compile_definitions(zzz_display_commander PRIVATE EXPERIMENTAL_FEATURES=1)
 endif()
 # Includes: repo include/ first; third-party as SYSTEM (never put bare SYSTEM on its own line — MSVC can emit -I.../SYSTEM).
-target_include_directories(display_commander_common_options INTERFACE
+target_include_directories(zzz_display_commander PRIVATE
   "${_dc_repo_root}/include"
 )
-target_include_directories(display_commander_common_options SYSTEM INTERFACE
+target_include_directories(zzz_display_commander SYSTEM PRIVATE
   $<BUILD_INTERFACE:${_dc_repo_root}/external/reshade/include>
-  $<BUILD_INTERFACE:${_dc_repo_root}/external/reshade>
   $<BUILD_INTERFACE:${_dc_repo_root}/external/reshade/deps/imgui>
   $<BUILD_INTERFACE:${_dc_repo_root}/external/Streamline/include>
   $<BUILD_INTERFACE:${_dc_repo_root}/external/nvapi>
-  $<BUILD_INTERFACE:${_dc_repo_root}/external/nvidia-dlss/include>
   $<BUILD_INTERFACE:${_dc_repo_root}/external/minhook/include>
   $<BUILD_INTERFACE:${_dc_repo_root}/external/vulkan-headers/include>
-  $<BUILD_INTERFACE:${_dc_repo_root}/external/tomlplusplus/include>
+  $<BUILD_INTERFACE:${_dc_repo_root}/external/tomlplusplus/include> # 100kb
 )
 if(MSVC)
   # Single /arch flag: MSVC does not allow multiple /arch options (x86 build was failing with /arch:SSE2 /arch:AVX /arch:AVX2).
@@ -71,31 +68,10 @@ if(MSVC)
     set(DC_MSVC_ARCH "/arch:AVX2")
   endif()
   # Suppress warnings: 4191 unsafe cast, 4244/4267 conversion loss, 4996 deprecated CRT, 4005 macro redefinition
-  target_compile_options(display_commander_common_options INTERFACE
+  target_compile_options(zzz_display_commander PRIVATE
     /bigobj ${DC_MSVC_ARCH} /utf-8 /D_ENABLE_EXTENDED_ALIGNED_STORAGE
     /wd4191 /wd4244 /wd4267 /wd4996 /wd4005
   )
-endif()
-
-# Object library: all sources except main_entry.cpp. Compiled once and linked into the addon DLL.
-add_library(display_commander_objs OBJECT ${DISPLAY_COMMANDER_COMMON_SOURCES})
-target_link_libraries(display_commander_objs PRIVATE display_commander_common_options)
-if(MSVC)
-  set_property(TARGET display_commander_objs PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-endif()
-# DLL target: entry + resources + object libraries (common code compiled once)
-add_library(zzz_display_commander MODULE
-  ${CMAKE_CURRENT_LIST_DIR}/main_entry.cpp
-  ${CMAKE_CURRENT_BINARY_DIR}/version.rc
-)
-target_sources(zzz_display_commander PRIVATE
-  $<TARGET_OBJECTS:display_commander_objs>
-  ${CMAKE_CURRENT_LIST_DIR}/proxy_dll/exports.def
-)
-target_link_libraries(zzz_display_commander PRIVATE display_commander_common_options)
-
-# DLL-specific: static runtime, PDB name (compile options come from display_commander_common_options)
-if(MSVC)
   set_property(TARGET zzz_display_commander PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
   set_target_properties(zzz_display_commander PROPERTIES
     PDB_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
@@ -113,9 +89,12 @@ if(EXISTS "${_dc_repo_root}/external/minhook")
     ${_dc_repo_root}/external/minhook/src/buffer.c
     ${_dc_repo_root}/external/minhook/src/hook.c
     ${_dc_repo_root}/external/minhook/src/trampoline.c
-    ${_dc_repo_root}/external/minhook/src/hde/hde32.c
-    ${_dc_repo_root}/external/minhook/src/hde/hde64.c
   )
+  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    list(APPEND MINHOOK_SOURCES ${_dc_repo_root}/external/minhook/src/hde/hde64.c)
+  else()
+    list(APPEND MINHOOK_SOURCES ${_dc_repo_root}/external/minhook/src/hde/hde32.c)
+  endif()
   add_library(minhook STATIC ${MINHOOK_SOURCES})
   target_compile_definitions(minhook PRIVATE MH_STATIC=1)
   target_include_directories(minhook PRIVATE "${_dc_repo_root}/external/minhook/include")
@@ -135,10 +114,7 @@ else()
   set(TARGET_SUFFIX ".addon64")
 endif()
 
-set_target_properties(zzz_display_commander PROPERTIES
-  SUFFIX "${TARGET_SUFFIX}"
-  LINK_OPTIONS "$<$<C_COMPILER_ID:MSVC>:/DEF:${CMAKE_CURRENT_LIST_DIR}/proxy_dll/exports.def>"
-)
+set_target_properties(zzz_display_commander PROPERTIES SUFFIX "${TARGET_SUFFIX}")
 
 # Optional: copy NVPI Reference.xml next to the addon for runtime NVPI reference data.
 set(NVPI_REFERENCE_XML "${_dc_repo_root}/external/NvidiaProfileInspectorRevamped/nspector/Reference.xml")
@@ -169,15 +145,28 @@ if(EXISTS "${DC_CONTROL_FX}")
     message(WARNING "THIRD_PARTY_NOTICES.txt not found at ${DC_THIRD_PARTY_NOTICES_SRC} - embedded notices resource (306) will be missing")
   endif()
   if(EXISTS "${DC_PERCEPTUALBOOST_FX}")
-    set(DC_SHADER_RC_BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_Control.fx" "${CMAKE_CURRENT_BINARY_DIR}/color.fxh" "${CMAKE_CURRENT_BINARY_DIR}/ReShade.fxh" "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_PerceptualBoost.fx" "${CMAKE_CURRENT_BINARY_DIR}/game_default_overrides.toml" "${CMAKE_CURRENT_BINARY_DIR}/DC_LICENSE.txt" "${CMAKE_CURRENT_BINARY_DIR}/THIRD_PARTY_NOTICES.txt")
-    set(DC_SHADER_RC_CONTENT "// Generated - embeds DisplayCommander shaders, game_default_overrides, and legal text in DLL\n#pragma code_page(65001)\n#define IDR_CONTROL_FX 300\n#define IDR_COLOR_FXH 301\n#define IDR_RESHADE_FXH 302\n#define IDR_PERCEPTUALBOOST_FX 303\n#define IDR_GAME_DEFAULT_OVERRIDES 304\n#define IDR_DC_LICENSE 305\n#define IDR_THIRD_PARTY_NOTICES 306\nIDR_CONTROL_FX RCDATA \"DisplayCommander_Control.fx\"\nIDR_COLOR_FXH RCDATA \"color.fxh\"\nIDR_RESHADE_FXH RCDATA \"ReShade.fxh\"\nIDR_PERCEPTUALBOOST_FX RCDATA \"DisplayCommander_PerceptualBoost.fx\"\nIDR_GAME_DEFAULT_OVERRIDES RCDATA \"game_default_overrides.toml\"\nIDR_DC_LICENSE RCDATA \"DC_LICENSE.txt\"\nIDR_THIRD_PARTY_NOTICES RCDATA \"THIRD_PARTY_NOTICES.txt\"\n")
+    set(DC_SHADER_PERCEPTUAL_DEFINE "#define IDR_PERCEPTUALBOOST_FX 303")
+    set(DC_SHADER_PERCEPTUAL_RCDATA "IDR_PERCEPTUALBOOST_FX RCDATA \"DisplayCommander_PerceptualBoost.fx\"")
   else()
-    set(DC_SHADER_RC_BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_Control.fx" "${CMAKE_CURRENT_BINARY_DIR}/color.fxh" "${CMAKE_CURRENT_BINARY_DIR}/ReShade.fxh" "${CMAKE_CURRENT_BINARY_DIR}/game_default_overrides.toml" "${CMAKE_CURRENT_BINARY_DIR}/DC_LICENSE.txt" "${CMAKE_CURRENT_BINARY_DIR}/THIRD_PARTY_NOTICES.txt")
-    set(DC_SHADER_RC_CONTENT "// Generated - embeds DisplayCommander shaders, game_default_overrides, and legal text in DLL\n#pragma code_page(65001)\n#define IDR_CONTROL_FX 300\n#define IDR_COLOR_FXH 301\n#define IDR_RESHADE_FXH 302\n#define IDR_GAME_DEFAULT_OVERRIDES 304\n#define IDR_DC_LICENSE 305\n#define IDR_THIRD_PARTY_NOTICES 306\nIDR_CONTROL_FX RCDATA \"DisplayCommander_Control.fx\"\nIDR_COLOR_FXH RCDATA \"color.fxh\"\nIDR_RESHADE_FXH RCDATA \"ReShade.fxh\"\nIDR_GAME_DEFAULT_OVERRIDES RCDATA \"game_default_overrides.toml\"\nIDR_DC_LICENSE RCDATA \"DC_LICENSE.txt\"\nIDR_THIRD_PARTY_NOTICES RCDATA \"THIRD_PARTY_NOTICES.txt\"\n")
+    set(DC_SHADER_PERCEPTUAL_DEFINE "")
+    set(DC_SHADER_PERCEPTUAL_RCDATA "")
   endif()
-  # Generate shader_effect.rc at build time (so it exists after clean); script is written at configure time.
-  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/write_shader_rc.cmake"
-    "file(WRITE \"${DC_SHADER_RC}\" [[${DC_SHADER_RC_CONTENT}]])\n")
+  configure_file(
+    ${CMAKE_CURRENT_LIST_DIR}/res/shader_effect.rc.in
+    ${DC_SHADER_RC}
+    @ONLY
+  )
+  set(DC_SHADER_RC_COPIED_BYPRODUCTS
+    "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_Control.fx"
+    "${CMAKE_CURRENT_BINARY_DIR}/color.fxh"
+    "${CMAKE_CURRENT_BINARY_DIR}/ReShade.fxh"
+    "${CMAKE_CURRENT_BINARY_DIR}/game_default_overrides.toml"
+    "${CMAKE_CURRENT_BINARY_DIR}/DC_LICENSE.txt"
+    "${CMAKE_CURRENT_BINARY_DIR}/THIRD_PARTY_NOTICES.txt"
+  )
+  if(EXISTS "${DC_PERCEPTUALBOOST_FX}")
+    list(APPEND DC_SHADER_RC_COPIED_BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_PerceptualBoost.fx")
+  endif()
   add_custom_target(copy_shader_files_for_rc ALL
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_CONTROL_FX}" "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_Control.fx"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_COLOR_FXH}" "${CMAKE_CURRENT_BINARY_DIR}/color.fxh"
@@ -185,9 +174,8 @@ if(EXISTS "${DC_CONTROL_FX}")
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_GAME_DEFAULT_OVERRIDES_TOML}" "${CMAKE_CURRENT_BINARY_DIR}/game_default_overrides.toml"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_LICENSE_SRC}" "${CMAKE_CURRENT_BINARY_DIR}/DC_LICENSE.txt"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_THIRD_PARTY_NOTICES_SRC}" "${CMAKE_CURRENT_BINARY_DIR}/THIRD_PARTY_NOTICES.txt"
-    COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_BINARY_DIR}/write_shader_rc.cmake"
     COMMENT "Copy DisplayCommander shader files, game_default_overrides.toml, LICENSE, and THIRD_PARTY_NOTICES to build dir for resource embedding"
-    BYPRODUCTS ${DC_SHADER_RC_BYPRODUCTS} ${DC_SHADER_RC}
+    BYPRODUCTS ${DC_SHADER_RC_COPIED_BYPRODUCTS}
   )
   if(EXISTS "${DC_PERCEPTUALBOOST_FX}")
     add_custom_command(TARGET copy_shader_files_for_rc POST_BUILD
@@ -199,7 +187,6 @@ if(EXISTS "${DC_CONTROL_FX}")
   endif()
   target_sources(zzz_display_commander PRIVATE ${DC_SHADER_RC})
   add_dependencies(zzz_display_commander copy_shader_files_for_rc)
-  set_source_files_properties(${DC_SHADER_RC} PROPERTIES GENERATED TRUE)
   if(NOT EXISTS "${DC_COLOR_FXH}")
     message(WARNING "color.fxh not found at ${DC_COLOR_FXH} - resource 301 will be missing")
   endif()

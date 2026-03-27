@@ -46,7 +46,6 @@
 #include "utils/logging.hpp"
 #include "utils/no_inject_windows.hpp"
 #include "utils/platform_api_detector.hpp"
-#include "utils/process_window_enumerator.hpp"
 #include "utils/reshade_load_path.hpp"
 #include "utils/reshade_vulkan_layer_detector.hpp"
 #include "utils/safe_remove.hpp"
@@ -1777,7 +1776,6 @@ void DoInitializationWithoutHwndSafe_Early(HMODULE h_module) {
     }
     LogInfo("DLLMain (DisplayCommander) %lld h_module: 0x%p", utils::get_now_ns(),
             reinterpret_cast<uintptr_t>(h_module));
-    display_commander::utils::RegisterCurrentProcessWithDisplayCommanderMutex();
     settings::LoadAllSettingsAtStartup();
     display_commanderhooks::InstallLoadLibraryHooks();
     LogCurrentLogLevel();

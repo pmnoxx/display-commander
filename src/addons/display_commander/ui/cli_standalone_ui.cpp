@@ -12,7 +12,6 @@
 #include "ui/new_ui/addons_tab.hpp"
 #include "ui/new_ui/advanced_tab.hpp"
 #include "ui/new_ui/experimental_tab.hpp"
-#include "ui/new_ui/games_tab.hpp"
 #include "ui/new_ui/hotkeys_tab.hpp"
 #include "ui/new_ui/main_new_tab_standalone.hpp"
 #include "ui/new_ui/notes_tab.hpp"
@@ -454,12 +453,6 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
                     ui::new_ui::DrawMainNewTab(ui::new_ui::GetGraphicsApiFromLastDeviceApi(), gui);
                     gui.EndTabItem();
                 }
-                if (show_all || settings::g_mainTabSettings.show_games_tab.GetValue()) {
-                    if (gui.BeginTabItem("Games", nullptr, 0)) {
-                        ui::new_ui::DrawGamesTab(gui);
-                        gui.EndTabItem();
-                    }
-                }
                 if (show_all || settings::g_mainTabSettings.show_advanced_tab.GetValue()) {
                     if (gui.BeginTabItem("Advanced", nullptr, 0)) {
                         ui::new_ui::DrawAdvancedTab(ui::new_ui::GetGraphicsApiFromLastDeviceApi(), gui);
@@ -830,10 +823,6 @@ void RunStandaloneGamesOnlyUI(HINSTANCE hInst) {
                       ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse
                           | ImGuiWindowFlags_NoTitleBar)) {
             if (gui.BeginTabBar("##LauncherTabs", 0)) {
-                if (gui.BeginTabItem("Games", nullptr, 0)) {
-                    ui::new_ui::DrawGamesTab(gui);
-                    gui.EndTabItem();
-                }
                 if (gui.BeginTabItem("Settings", nullptr, 0)) {
                     DrawLauncherSettingsTab(gui);
                     gui.EndTabItem();

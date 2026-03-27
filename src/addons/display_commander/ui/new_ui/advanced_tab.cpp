@@ -17,7 +17,6 @@
 #include "../../utils/logging.hpp"
 #include "../../utils/mpo_registry.hpp"
 #include "../../utils/platform_api_detector.hpp"
-#include "../../utils/process_window_enumerator.hpp"
 #include "../../utils/steam_achievement_cache.hpp"
 #include "../../utils/texture_tracker.hpp"
 #include "../../utils/timing.hpp"
@@ -127,19 +126,6 @@ void DrawAdvancedTab(display_commander::ui::GraphicsApi api, display_commander::
     // Debug Tools Section
     if (imgui.CollapsingHeader("Debug Tools", wrapper_flags::TreeNodeFlags_None)) {
         imgui.Indent();
-
-        if (imgui.Button(ICON_FK_FILE " Log All Processes & Windows")) {
-            LogInfo("Button clicked: Starting process and window enumeration...");
-            display_commander::utils::LogAllProcessesAndWindows();
-            LogInfo("Button handler: Process and window enumeration function returned");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Enumerates all running processes and their windows, logging detailed information to the log file.\n"
-                "Useful for debugging overlay detection and window management issues.");
-        }
-
-        imgui.Spacing();
 
         if (imgui.Button(ICON_FK_SEARCH " Print Detour Call Tracker Info")) {
             const uint64_t now_ns = static_cast<uint64_t>(utils::get_now_ns());

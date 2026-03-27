@@ -14,6 +14,8 @@ Feature protosal:
 
 - [bugfix] **Removed deadlock in running-games refresh path** - Fixed a freeze/hang issue caused by `RefreshRunningGamesCache`, so game list refresh no longer deadlocks and the addon remains responsive.
   Details: synchronized refresh flow to avoid lock-order contention during running-games cache updates.
+- [removal] [ui] **Removed running-games process controls from Games tab** - Simplified the Games tab by removing the session process list/actions (focus/minimize/restart/stop/kill), keeping Steam launch management only.
+  Details: removed `process_window_enumerator.*` and deleted related UI/actions from `ui/new_ui/games_tab.cpp`; also removed remaining debug/init references in `advanced_tab.cpp` and `main_entry.cpp`.
 
 ## v0.13.14 (2026-03-26)
 

@@ -11,7 +11,6 @@
 #include "addons_tab.hpp"
 #include "advanced_tab.hpp"
 #include "experimental_tab.hpp"
-#include "games_tab.hpp"
 #include "hotkeys_tab.hpp"
 #include "main_new_tab.hpp"
 #include "notes_tab.hpp"
@@ -293,21 +292,6 @@ void InitializeNewUI() {
             }
         },
         false);  // Main tab is not advanced
-
-    g_tab_manager.AddTab(
-        "Games", "games",
-        [](reshade::api::effect_runtime* runtime) {
-            (void)runtime;
-            try {
-                display_commander::ui::ImGuiWrapperReshade wrapper;
-                ui::new_ui::DrawGamesTab(wrapper);
-            } catch (const std::exception& e) {
-                LogError("Error drawing Games tab: %s", e.what());
-            } catch (...) {
-                LogError("Unknown error drawing Games tab");
-            }
-        },
-        true);  // Games tab: visibility gated by show_games_tab (default on)
 
     g_tab_manager.AddTab(
         "Advanced", "advanced",

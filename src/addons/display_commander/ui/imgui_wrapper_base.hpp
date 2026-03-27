@@ -2,8 +2,7 @@
 
 /**
  * Base types and interface for ImGui abstraction.
- * Shared UI code (e.g. Nvidia Profile tab) uses IImGuiWrapper so it can run
- * with either ReShade's ImGui or the standalone ImGui (ImGuiStandalone).
+ * Shared UI code (e.g. Nvidia Profile tab) uses IImGuiWrapper with ReShade's ImGui.
  * Uses ImGui's ImVec2/ImVec4 for layout and colors.
  */
 

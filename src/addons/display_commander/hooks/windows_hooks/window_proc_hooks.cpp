@@ -201,12 +201,11 @@ static bool IsWindowFromCurrentProcess(HWND hwnd) {
 struct CountOtherWindowsData {
     DWORD pid;
     HWND exclude;
-    HWND standalone;
     int count;
 };
 static BOOL CALLBACK EnumCountOtherProcessWindows(HWND hwnd, LPARAM lParam) {
     CountOtherWindowsData* d = reinterpret_cast<CountOtherWindowsData*>(lParam);
-    if (hwnd == d->exclude || hwnd == d->standalone) {
+    if (hwnd == d->exclude) {
         return TRUE;
     }
     DWORD pid = 0;
@@ -217,8 +216,7 @@ static BOOL CALLBACK EnumCountOtherProcessWindows(HWND hwnd, LPARAM lParam) {
     return TRUE;
 }
 static int CountOtherProcessWindows(HWND exclude_hwnd) {
-    CountOtherWindowsData data = {GetCurrentProcessId(), exclude_hwnd,
-                                  g_standalone_ui_hwnd.load(std::memory_order_acquire), 0};
+    CountOtherWindowsData data = {GetCurrentProcessId(), exclude_hwnd, 0};
     EnumWindows(EnumCountOtherProcessWindows, reinterpret_cast<LPARAM>(&data));
     return data.count;
 }
@@ -226,10 +224,6 @@ static int CountOtherProcessWindows(HWND exclude_hwnd) {
 // Process window message - returns true if message should be suppressed
 // This function contains the logic previously in WindowProc_Detour
 bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    if (hwnd == g_standalone_ui_hwnd.load(std::memory_order_acquire)) {
-        return false;
-    }
-
     // Check if continue rendering is enabled
     // Special-K style: set ping signal when ping message is received, inject marker on next SIMULATION_START
     if (PCLSTATS_IS_PING_MSG_ID(uMsg)) {
@@ -408,8 +402,7 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             // Only trigger exit when no other game windows exist (e.g. multi-window games closing one window)
             if (CountOtherProcessWindows(hwnd) == 0) {
                 if (g_no_exit_mode.load(std::memory_order_acquire)) {
-                    LogInfo("WM_QUIT: .NO_EXIT active - blocking quit HWND: 0x%p; opening independent UI.", hwnd);
-                    RequestShowIndependentWindow();
+                    LogInfo("WM_QUIT: .NO_EXIT active - blocking quit HWND: 0x%p.", hwnd);
                     ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
                     return true;  // Suppress message so window does not close
                 }
@@ -424,8 +417,7 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         case WM_CLOSE:
             if (CountOtherProcessWindows(hwnd) == 0) {
                 if (g_no_exit_mode.load(std::memory_order_acquire)) {
-                    LogInfo("WM_CLOSE: .NO_EXIT active - blocking close HWND: 0x%p; opening independent UI.", hwnd);
-                    RequestShowIndependentWindow();
+                    LogInfo("WM_CLOSE: .NO_EXIT active - blocking close HWND: 0x%p.", hwnd);
                     ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
                     return true;  // Suppress message so window does not close
                 }
@@ -439,8 +431,7 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         case WM_DESTROY:
             if (CountOtherProcessWindows(hwnd) == 0) {
                 if (g_no_exit_mode.load(std::memory_order_acquire)) {
-                    LogInfo("WM_DESTROY: .NO_EXIT active - blocking destroy HWND: 0x%p; opening independent UI.", hwnd);
-                    RequestShowIndependentWindow();
+                    LogInfo("WM_DESTROY: .NO_EXIT active - blocking destroy HWND: 0x%p.", hwnd);
                     ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
                     return true;  // Suppress message so window does not close
                 }

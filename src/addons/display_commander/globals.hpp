@@ -271,19 +271,12 @@ class UnifiedParameterMap {
 // DLL initialization state
 extern std::atomic<bool> g_dll_initialization_complete;
 
-// No-ReShade mode: .NO_RESHADE or .NORESHADE file present in game exe dir; ReShade not loaded, standalone settings UI
-// used
+// No-ReShade mode: .NO_RESHADE or .NORESHADE file present in game exe dir; ReShade not loaded
 extern std::atomic<bool> g_no_reshade_mode;
 // No-DC mode: .NODC file present in game exe dir; ReShade is loaded (proxy only), addon does not register or run
 extern std::atomic<bool> g_no_dc_mode;
-// .UI file present in game exe dir: start game with independent UI window open (ReShade path only)
-extern std::atomic<bool> g_start_with_independent_ui;
-// .NO_EXIT file present: block process/window exit (ExitProcess, WM_CLOSE, etc.); open independent UI when blocked
-// (debug)
+// .NO_EXIT file present: block process/window exit (ExitProcess, WM_CLOSE, etc.) (debug)
 extern std::atomic<bool> g_no_exit_mode;
-// When true, TryStartStandaloneUIFromSafeContext() will start the standalone settings UI (e.g. from LoadLibrary detour)
-extern std::atomic<bool> g_standalone_ui_pending;
-void TryStartStandaloneUIFromSafeContext();
 
 // Wine/Proton detection - cached on first call (ntdll wine_get_version present)
 bool IsUsingWine();
@@ -609,14 +602,6 @@ extern std::atomic<bool> g_force_flip_discard_upgrade_done;
 /** When true, show the "HDR10 / scRGB color fix" checkbox in the main tab. Default true. */
 extern std::atomic<bool> g_show_auto_colorspace_fix_in_main_tab;
 extern std::atomic<HWND> g_last_swapchain_hwnd;
-/** HWND of the standalone settings UI window (No ReShade). Set by standalone UI; used to exclude it when inferring game
- * window from foreground. */
-extern std::atomic<HWND> g_standalone_ui_hwnd;
-
-/** Show the independent settings window from ReShade overlay (no-op when not in ReShade or window already open). */
-void RequestShowIndependentWindow();
-/** Request close of the independent settings window (posts WM_CLOSE). */
-void CloseIndependentWindow();
 extern std::atomic<bool> g_shutdown;
 extern std::atomic<bool> g_muted_applied;
 

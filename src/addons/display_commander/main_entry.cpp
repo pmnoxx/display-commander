@@ -119,10 +119,6 @@ void HandleSafemode();
 // Forward declaration for loading addons from Plugins directory
 void LoadAddonsFromPluginsDirectory();
 
-// Standalone settings UI when .NO_RESHADE (no ReShade loaded); implemented in ui/cli_standalone_ui.cpp
-void RunStandaloneSettingsUI(HINSTANCE hInst);
-void RunStandaloneGamesOnlyUI(HINSTANCE hInst);
-
 // Export for multi-proxy coordination: other DC instances (dxgi, winmm, version.dll) scan this to decide HOOKED vs
 // PROXY_DLL_ONLY
 extern "C" __declspec(dllexport) int GetDisplayCommanderState() {
@@ -185,7 +181,7 @@ ReShadeDetectionDebugInfo g_reshade_debug_info;
 void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
     CALL_GUARD(utils::get_now_ns());
     if (runtime != nullptr && should_skip_addon_injection_for_window(static_cast<HWND>(runtime->get_hwnd()))) {
-        return;  // Don't draw DC UI for no-inject windows (e.g. independent standalone UI)
+        return;  // Don't draw DC UI for no-inject windows
     }
     // Ensure the current overlay runtime is in our list (fallback if init_effect_runtime was missed, e.g. addon load
     // order)
@@ -1089,52 +1085,12 @@ void OverrideReShadeSettings(reshade::api::effect_runtime* runtime) {
 // ReShade loaded status (declared here so it's available to LoadAddonsFromPluginsDirectory)
 std::atomic<bool> g_wait_and_inject_stop(false);
 
-// No-ReShade mode and standalone UI (see globals.hpp)
+// No-ReShade mode (see globals.hpp)
 std::atomic<bool> g_no_reshade_mode(false);
-std::atomic<bool> g_standalone_ui_pending(false);
 // No-DC mode: .NODC present - load ReShade only, do not register as addon (proxy-only)
 std::atomic<bool> g_no_dc_mode(false);
-// .UI file: open independent UI at start (cleared after first use in continuous_monitoring)
-std::atomic<bool> g_start_with_independent_ui(false);
-// .NO_EXIT: block exit and open independent UI when game tries to exit (debugging)
+// .NO_EXIT: block process/window exit (debugging)
 std::atomic<bool> g_no_exit_mode(false);
-
-void TryStartStandaloneUIFromSafeContext() {
-    if (!g_no_reshade_mode.load() || !g_standalone_ui_pending.load()) {
-        return;
-    }
-    g_standalone_ui_pending.store(false);
-    HMODULE hmod = g_hmodule;
-    if (!hmod) {
-        return;
-    }
-    std::thread t([hmod]() { RunStandaloneSettingsUI(static_cast<HINSTANCE>(hmod)); });
-    t.detach();
-}
-
-// Show the independent (standalone) settings window from ReShade overlay. Only when running in ReShade.
-void RequestShowIndependentWindow() {
-    if (g_no_reshade_mode.load()) {
-        return;
-    }
-    if (g_standalone_ui_hwnd.load(std::memory_order_acquire) != nullptr) {
-        return;  // already open
-    }
-    HMODULE hmod = g_hmodule;
-    if (!hmod) {
-        return;
-    }
-    std::thread t([hmod]() { RunStandaloneSettingsUI(static_cast<HINSTANCE>(hmod)); });
-    t.detach();
-}
-
-// Request close of the independent settings window (posts WM_CLOSE).
-void CloseIndependentWindow() {
-    HWND h = g_standalone_ui_hwnd.load(std::memory_order_acquire);
-    if (h != nullptr) {
-        PostMessageW(h, WM_CLOSE, 0, 0);
-    }
-}
 
 // Helper function to check if an addon is enabled (whitelist approach)
 static bool IsAddonEnabledForLoading(const std::string& addon_name, const std::string& addon_file) {
@@ -2008,8 +1964,7 @@ void ProcessAttach_CheckNoReShadeMode() {
     if (DirectoryHasFileWithSegment(dc_config_dir, {L"NO_RESHADE", L"NORESHADE"})) {
         g_no_reshade_mode.store(true);
         OutputDebugStringA(
-            "[DisplayCommander] .NO_RESHADE/.NORESHADE (or .* variant) found - ReShade will not be loaded; standalone "
-            "settings UI will start.\n");
+            "[DisplayCommander] .NO_RESHADE/.NORESHADE (or .* variant) found - ReShade will not be loaded.\n");
     }
     if (DirectoryHasFileWithSegment(dc_config_dir, {L"NODC"})) {
         g_no_dc_mode.store(true);
@@ -2017,17 +1972,10 @@ void ProcessAttach_CheckNoReShadeMode() {
             "[DisplayCommander] .NODC (or .NODC.*) found - ReShade will be loaded; Display Commander will not "
             "register as addon (proxy-only).\n");
     }
-    if (DirectoryHasFileWithSegment(dc_config_dir, {L"UI"})) {
-        g_start_with_independent_ui.store(true);
-        OutputDebugStringA(
-            "[DisplayCommander] .UI (or .UI.*) found - independent settings window will open at start (ReShade "
-            "path).\n");
-    }
     if (DirectoryHasFileWithSegment(dc_config_dir, {L"NO_EXIT", L"NOEXIT"})) {
         g_no_exit_mode.store(true);
         OutputDebugStringA(
-            "[DisplayCommander] .NO_EXIT/.NOEXIT (or .* variant) found - game exit will be blocked; independent UI "
-            "opens when exit is attempted (debugging).\n");
+            "[DisplayCommander] .NO_EXIT/.NOEXIT (or .* variant) found - game exit will be blocked (debugging).\n");
     }
 }
 
@@ -2617,7 +2565,6 @@ void ProcessAttach_NoReShadeModeInit(HMODULE h_module) {
     utils::initialize_qpc_timing_constants();
     DoInitializationWithoutHwndSafe(h_module);
     ProcessAttach_LoadDllsFromConfigDirectory(L"before_reshade");
-    g_standalone_ui_pending.store(true);
 }
 
 void ProcessAttach_RegisterAndPostInit(HMODULE h_module, const std::wstring& entry_point) {
@@ -3180,14 +3127,12 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             if ((g_reshade_module == nullptr) && !g_no_reshade_mode.load()) {
                 ProcessAttach_TryLoadReShadeWhenNotLoaded(h_module, found_proxy);
             }
-            // If ReShade still not loaded, use standalone UI (same as .NORESHADE)
+            // If ReShade still not loaded, treat as no-ReShade mode (hooks without ReShade overlay)
             if (g_reshade_module == nullptr) {
                 const bool was_no_reshade = g_no_reshade_mode.load();
                 g_no_reshade_mode.store(true);
                 if (!was_no_reshade) {
-                    OutputDebugStringA(
-                        "[main_entry] ReShade not found - starting with standalone settings UI (same as "
-                        ".NORESHADE).\n");
+                    OutputDebugStringA("[main_entry] ReShade not found - no-ReShade mode (same as .NORESHADE).\n");
                 }
             }
 
@@ -3331,46 +3276,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     }
 
     return TRUE;
-}
-#endif  // !DISPLAY_COMMANDER_BUILD_EXE
-
-// Standalone entry: same init as no-ReShade DLL path, then run Games-tab-only UI on main thread.
-// Used by: (1) .exe build (main_exe.cpp), (2) rundll32 Launcher export (DLL build).
-// Set HOOKED so DoInitializationWithoutHwndSafe_Late runs (StartContinuousMonitoring), which fills the
-// running-games cache so the Games tab can show other processes with the addon loaded.
-// Single-instance: a named mutex prevents multiple Launcher/exe copies; if one is already running we bring it to focus
-// and exit.
-void RunDisplayCommanderStandalone(HINSTANCE hInst) {
-#ifdef _WIN64
-    static const wchar_t* kLauncherMutexName = L"Local\\DisplayCommander_LauncherMutex64";
-#else
-    static const wchar_t* kLauncherMutexName = L"Local\\DisplayCommander_LauncherMutex32";
-#endif
-    HANDLE launcher_mutex = CreateMutexW(nullptr, FALSE, kLauncherMutexName);
-    if (launcher_mutex != nullptr && GetLastError() == ERROR_ALREADY_EXISTS) {
-        CloseHandle(launcher_mutex);
-        HWND existing = FindWindowW(L"DisplayCommanderGamesUI", nullptr);
-        if (existing != nullptr) {
-            ShowWindow(existing, SW_RESTORE);
-            SetForegroundWindow(existing);
-        }
-        return;
-    }
-    // Hold mutex for process lifetime (do not close launcher_mutex so only one instance runs).
-
-    g_shutdown.store(false);
-    g_display_commander_state.store(DisplayCommanderState::DC_STATE_HOOKED, std::memory_order_release);
-    ProcessAttach_NoReShadeModeInit(reinterpret_cast<HMODULE>(hInst));
-    RunStandaloneGamesOnlyUI(hInst);
-}
-
-#if !defined(DISPLAY_COMMANDER_BUILD_EXE)
-// rundll32 entry: e.g. rundll32.exe zzz_display_commander.addon64,Launcher
-extern "C" __declspec(dllexport) void CALLBACK Launcher(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine, int nCmdShow) {
-    (void)hwnd;
-    (void)lpszCmdLine;
-    (void)nCmdShow;
-    RunDisplayCommanderStandalone(hInst);
 }
 #endif  // !DISPLAY_COMMANDER_BUILD_EXE
 

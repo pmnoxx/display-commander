@@ -186,7 +186,6 @@ struct HotkeyDebugInfo {
     bool hotkeys_enabled = false;
     bool game_in_foreground = false;
     bool ui_open = false;
-    bool independent_ui_in_foreground = false;
     bool game_hwnd_valid = false;
     HWND current_foreground_hwnd = nullptr;
     HWND game_hwnd = nullptr;
@@ -374,32 +373,6 @@ void InitializeHotkeyDefinitions() {
              std::ostringstream oss;
              oss << "Display Commander UI " << (new_state ? "enabled" : "disabled") << " via hotkey";
              LogInfo(oss.str().c_str());
-         }},
-        {"independent_ui", "Independent UI Toggle", "pagedown",
-         "Open/focus or minimize the standalone independent settings window (ReShade only). No close.",
-         []() {
-             if (g_no_reshade_mode.load(std::memory_order_acquire)) return;
-             HWND indep = g_standalone_ui_hwnd.load(std::memory_order_acquire);
-             HWND fg = display_commanderhooks::GetForegroundWindow_Direct();
-             HWND game = g_last_swapchain_hwnd.load(std::memory_order_acquire);
-
-             if (indep == nullptr) {
-                 // Window not open: open and bring focus (window activates on creation via SW_SHOWDEFAULT)
-                 settings::g_mainTabSettings.show_independent_window.SetValue(true);
-                 RequestShowIndependentWindow();
-                 LogInfo("Independent UI opened via hotkey");
-             } else if (fg == indep) {
-                 // Independent UI is focused: minimize it and focus the game
-                 ShowWindow_Direct(indep, SW_MINIMIZE);
-                 if (game != nullptr) {
-                     SetForegroundWindow(game);
-                 }
-                 LogInfo("Independent UI minimized, game focused via hotkey");
-             } else {
-                 // Game or other is focused: focus the independent UI window
-                 SetForegroundWindow(indep);
-                 LogInfo("Independent UI focused via hotkey");
-             }
          }},
         {"performance_overlay", "Performance Overlay Toggle", "ctrl shift o", "Toggle the performance overlay",
          []() {
@@ -701,8 +674,6 @@ void InitializeHotkeyDefinitions() {
             DeserializeHotkeyFromConfigString(settings.hotkey_input_blocking.GetValue());
         g_hotkey_definitions[static_cast<size_t>(HotkeyId::DisplayCommanderUi)].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_display_commander_ui.GetValue());
-        g_hotkey_definitions[static_cast<size_t>(HotkeyId::IndependentUi)].parsed =
-            DeserializeHotkeyFromConfigString(settings.hotkey_independent_ui.GetValue());
         g_hotkey_definitions[static_cast<size_t>(HotkeyId::PerformanceOverlay)].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_performance_overlay.GetValue());
         g_hotkey_definitions[static_cast<size_t>(HotkeyId::Stopwatch)].parsed =
@@ -883,8 +854,6 @@ void SyncHotkeySettingsFromParsed() {
         SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::InputBlocking)].parsed));
     s.hotkey_display_commander_ui.SetValue(
         SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::DisplayCommanderUi)].parsed));
-    s.hotkey_independent_ui.SetValue(
-        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::IndependentUi)].parsed));
     s.hotkey_performance_overlay.SetValue(
         SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::PerformanceOverlay)].parsed));
     s.hotkey_stopwatch.SetValue(
@@ -963,7 +932,6 @@ void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
                         break;
                     case HotkeyId::InputBlocking: setting_ptr = &settings.hotkey_input_blocking; break;
                     case HotkeyId::DisplayCommanderUi: setting_ptr = &settings.hotkey_display_commander_ui; break;
-                    case HotkeyId::IndependentUi: setting_ptr = &settings.hotkey_independent_ui; break;
                     case HotkeyId::PerformanceOverlay: setting_ptr = &settings.hotkey_performance_overlay; break;
                     case HotkeyId::Stopwatch: setting_ptr = &settings.hotkey_stopwatch; break;
                     case HotkeyId::VolumeUp: setting_ptr = &settings.hotkey_volume_up; break;
@@ -1189,17 +1157,6 @@ void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
             ui::colors::PopIconColor(&imgui);
         }
 
-        // Independent UI window in foreground
-        if (g_hotkey_debug_info.independent_ui_in_foreground) {
-            ui::colors::PushIconColor(&imgui, ui::colors::ICON_SUCCESS);
-            imgui.Text(ICON_FK_OK " Independent UI window: In foreground");
-            ui::colors::PopIconColor(&imgui);
-        } else {
-            ui::colors::PushIconColor(&imgui, ui::colors::ICON_DISABLED);
-            imgui.Text(ICON_FK_MINUS " Independent UI window: Not in foreground");
-            ui::colors::PopIconColor(&imgui);
-        }
-
         imgui.Unindent();
 
         // Block reason
@@ -1259,16 +1216,13 @@ void ProcessExclusiveKeyGroups() {
         return;
     }
 
-    // Check if game is in foreground, overlay UI is open, or independent UI window is in foreground (same as
-    // ProcessHotkeys)
+    // Check if game is in foreground or overlay UI is open (same as ProcessHotkeys)
     HWND game_hwnd = g_last_swapchain_hwnd.load();
     HWND foreground_hwnd = display_commanderhooks::GetForegroundWindow_Direct();
-    HWND standalone_hwnd = g_standalone_ui_hwnd.load(std::memory_order_acquire);
     bool is_game_in_foreground = (game_hwnd != nullptr && foreground_hwnd == game_hwnd);
     bool is_ui_open = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
-    bool is_independent_ui_in_foreground = (standalone_hwnd != nullptr && foreground_hwnd == standalone_hwnd);
 
-    if (!is_game_in_foreground && !is_ui_open && !is_independent_ui_in_foreground) {
+    if (!is_game_in_foreground && !is_ui_open) {
         return;
     }
 
@@ -1420,14 +1374,12 @@ void ProcessHotkeys() {
     display_commanderhooks::keyboard_tracker::IsKeyDown(VK_LEFT);
     display_commanderhooks::keyboard_tracker::IsKeyDown(VK_RIGHT);
 
-    // Handle keyboard shortcuts when game is in foreground, overlay UI is open, or independent UI window is focused
+    // Handle keyboard shortcuts when game is in foreground or overlay UI is open
     HWND game_hwnd = g_last_swapchain_hwnd.load();
     HWND foreground_hwnd = display_commanderhooks::GetForegroundWindow_Direct();
-    HWND standalone_hwnd = g_standalone_ui_hwnd.load(std::memory_order_acquire);
     bool is_game_in_foreground = (game_hwnd != nullptr && foreground_hwnd == game_hwnd);
     bool is_ui_open = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
-    bool is_independent_ui_in_foreground = (standalone_hwnd != nullptr && foreground_hwnd == standalone_hwnd);
-    bool allow_hotkeys = is_game_in_foreground || is_ui_open || is_independent_ui_in_foreground;
+    bool allow_hotkeys = is_game_in_foreground || is_ui_open;
 
     // Update debug info
     g_hotkey_debug_info.game_hwnd = game_hwnd;
@@ -1435,7 +1387,6 @@ void ProcessHotkeys() {
     g_hotkey_debug_info.current_foreground_hwnd = foreground_hwnd;
     g_hotkey_debug_info.game_in_foreground = is_game_in_foreground;
     g_hotkey_debug_info.ui_open = is_ui_open;
-    g_hotkey_debug_info.independent_ui_in_foreground = is_independent_ui_in_foreground;
 
     static auto last_foreground_time_ns = utils::get_now_ns();
     if (is_game_in_foreground) {
@@ -1454,7 +1405,7 @@ void ProcessHotkeys() {
 
     // Update exclusive key groups - simulate key presses for keys that became active
     display_commanderhooks::exclusive_key_groups::Update();
-    // Allow hotkeys if game in foreground, overlay UI open, or independent UI window focused
+    // Allow hotkeys if game in foreground or overlay UI open
     if (!allow_hotkeys) {
         // Win+Up (restore) grace: allow for a short time after leaving foreground, or forever if setting is 61.
         // Use the configured Win+Up hotkey (may be remapped in Hotkeys tab).

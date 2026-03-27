@@ -10,6 +10,10 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.18 (2026-03-27)
+
+- [removal] [ui] **Standalone / independent UI removed** - Temporatiliy removed Stanalone / Indepedent UI in attempt to fix the build scripts.
+
 ## v0.13.17 (2026-03-27)
 
 - [cleanup] [compatibility] **Build system and includes** - Addon sources no longer assume the whole `display_commander` folder is on the compiler include path: headers use explicit relative paths. CMake lists repo `include/` and third-party deps separately so MSVC does not get a fake `-I…/SYSTEM` path. Config files that use toml++ in “no exceptions” mode are handled correctly (`parse_result` / `parse_error::description()`).

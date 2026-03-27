@@ -389,7 +389,6 @@ std::wstring ExtractModuleName(const std::wstring& fullPath) {
 // Hooked LoadLibraryA function
 HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
     CALL_GUARD(utils::get_now_ns());
-    TryStartStandaloneUIFromSafeContext();
     const HMODULE load_caller = GetCallingDLL();
     const std::string caller_str = GetCallerModulePathForLog(load_caller);
     std::string timestamp = GetCurrentTimestamp();

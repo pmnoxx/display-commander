@@ -92,8 +92,7 @@ void WINAPI ExitProcess_Detour(UINT uExitCode) {
     LogExitCallerAndStackTrace("ExitProcess", caller_mod);
 
     if (g_no_exit_mode.load(std::memory_order_acquire)) {
-        LogInfo("ExitProcess: .NO_EXIT active - blocking exit (exit code %u); opening independent UI.", uExitCode);
-        RequestShowIndependentWindow();
+        LogInfo("ExitProcess: .NO_EXIT active - blocking exit (exit code %u).", uExitCode);
         return;  // Block exit
     }
 
@@ -118,10 +117,9 @@ BOOL WINAPI TerminateProcess_Detour(HANDLE hProcess, UINT uExitCode) {
         if (g_no_exit_mode.load(std::memory_order_acquire)) {
             GetProcessImagePathForLog(GetCurrentProcess(), current_pid, image_path, MAX_PATH);
             LogInfo(
-                "TerminateProcess: .NO_EXIT active - blocking terminate (target current process, exit code %u); "
-                "opening independent UI. image: %ls",
+                "TerminateProcess: .NO_EXIT active - blocking terminate (target current process, exit code %u). "
+                "image: %ls",
                 uExitCode, image_path[0] ? image_path : L"(unknown)");
-            RequestShowIndependentWindow();
             return FALSE;  // Block termination
         }
         HMODULE caller_mod = GetCallingDLL();  // capture as early as possible (before any other calls)

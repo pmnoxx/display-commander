@@ -126,24 +126,17 @@ bool IsAppInBackground() {
     DWORD foreground_pid = 0;
     GetWindowThreadProcessId(current_foreground_hwnd, &foreground_pid);
 
-    if (current_foreground_hwnd == g_standalone_ui_hwnd.load(std::memory_order_acquire)) {
-        return true;
-    }
     return foreground_pid != current_pid;
 }
 
 // When g_last_swapchain_hwnd is null (e.g. no-ReShade mode, no Present yet), try to set it from the current
-// foreground window if that window belongs to this process and is not the standalone settings UI window.
+// foreground window if that window belongs to this process.
 void TrySetGameWindowFromForeground() {
     if (g_last_swapchain_hwnd.load(std::memory_order_acquire) != nullptr) {
         return;
     }
     HWND fg = display_commanderhooks::GetForegroundWindow_Direct();
     if (fg == nullptr || IsWindow(fg) == FALSE) {
-        return;
-    }
-    HWND standalone_hwnd = g_standalone_ui_hwnd.load(std::memory_order_acquire);
-    if (standalone_hwnd != nullptr && fg == standalone_hwnd) {
         return;
     }
     DWORD fg_pid = 0;
@@ -920,21 +913,6 @@ void ContinuousMonitoringThread() {
                 CALL_GUARD(utils::get_now_ns());
                 g_continuous_monitoring_section.store("auto_apply_trigger", std::memory_order_release);
                 ui::new_ui::AutoApplyTrigger();
-            }
-
-            // Independent window: open/close based on main-tab setting (ReShade only)
-            if (!g_no_reshade_mode.load(std::memory_order_acquire)) {
-                // .UI file: open independent UI at start (once per run)
-                if (g_start_with_independent_ui.exchange(false, std::memory_order_acq_rel)) {
-                    settings::g_mainTabSettings.show_independent_window.SetValue(true);
-                }
-                bool want_show = settings::g_mainTabSettings.show_independent_window.GetValue();
-                HWND standalone = g_standalone_ui_hwnd.load(std::memory_order_acquire);
-                if (want_show && standalone == nullptr) {
-                    RequestShowIndependentWindow();
-                } else if (!want_show && standalone != nullptr) {
-                    CloseIndependentWindow();
-                }
             }
 
             // Auto-apply resolution on game start

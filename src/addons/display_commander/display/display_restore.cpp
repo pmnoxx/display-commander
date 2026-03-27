@@ -196,14 +196,14 @@ void RestoreAllIfEnabled() {
         LogInfo("RestoreAllIfEnabled: Skipping restore because resolution was never applied");
         return;
     }
-    
+
     auto current_data = s_data.load();
     if (current_data->devices_changed.empty()) {
         LogInfo("RestoreAllIfEnabled: No devices were marked as changed, nothing to restore");
         return;
     }
-    
-    LogInfo("RestoreAllIfEnabled: Found %zu devices marked as changed, proceeding with restore", 
+
+    LogInfo("RestoreAllIfEnabled: Found %zu devices marked as changed, proceeding with restore",
             current_data->devices_changed.size());
     RestoreAll();
 }

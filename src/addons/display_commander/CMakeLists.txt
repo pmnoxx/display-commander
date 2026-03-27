@@ -1,7 +1,7 @@
-# Version (single source of truth for addon and exe; used by common_options and version.rc)
+# Version (single source of truth for addon; used by common_options and version.rc)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 13)
-set(DISPLAY_COMMANDER_VERSION_PATCH 17)
+set(DISPLAY_COMMANDER_VERSION_PATCH 18)
 
 # Repository root (this file: src/addons/display_commander/CMakeLists.txt → ../../..).
 set(_dc_repo_root "${CMAKE_CURRENT_LIST_DIR}/../../..")
@@ -10,23 +10,15 @@ set(_dc_repo_root "${CMAKE_CURRENT_LIST_DIR}/../../..")
 file(GLOB_RECURSE DISPLAY_COMMANDER_SOURCES
   CONFIGURE_DEPENDS
   ${CMAKE_CURRENT_LIST_DIR}/*.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/utils/*.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/proxy_dll/*.cpp
 )
 # ReShade ImGui wrapper is header-only (included from experimental_tab.cpp) to avoid undefined ImGui symbols at link
 list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/imgui_wrapper_reshade\\.cpp$")
-# main_exe.cpp is only for the standalone .exe target; DLL must not link it (RunDisplayCommanderStandalone is exe-only).
 set(DISPLAY_COMMANDER_DLL_SOURCES ${DISPLAY_COMMANDER_SOURCES})
-list(FILTER DISPLAY_COMMANDER_DLL_SOURCES EXCLUDE REGEX ".*/main_exe\\.cpp$")
-# Common sources compiled once into an object library and linked into both DLL and exe (main_entry.cpp differs by define).
+# Common sources for the object library (main_entry.cpp is linked only into the addon DLL).
 set(DISPLAY_COMMANDER_COMMON_SOURCES ${DISPLAY_COMMANDER_DLL_SOURCES})
 list(FILTER DISPLAY_COMMANDER_COMMON_SOURCES EXCLUDE REGEX ".*/main_entry\\.cpp$")
 # jump_list.cpp is exe-only (uses DISPLAY_COMMANDER_BUILD_EXE for Win32 Jump List; not linked into DLL).
 list(FILTER DISPLAY_COMMANDER_COMMON_SOURCES EXCLUDE REGEX ".*/jump_list\\.cpp$")
-
-if(DISPLAY_COMMANDER_DLL_SOURCES STREQUAL "")
-  message(FATAL_ERROR "No sources found under src/addons/display_commander")
-endif()
 
 set(DISPLAY_COMMANDER_VERSION_STRING "${DISPLAY_COMMANDER_VERSION_MAJOR}.${DISPLAY_COMMANDER_VERSION_MINOR}.${DISPLAY_COMMANDER_VERSION_PATCH}.${GIT_COMMIT_COUNT}")
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)
@@ -111,15 +103,12 @@ if(MSVC)
   )
 endif()
 
-# Object library: all sources except main_entry.cpp (and main_exe.cpp). Compiled once and linked into both DLL and exe.
+# Object library: all sources except main_entry.cpp. Compiled once and linked into the addon DLL.
 add_library(display_commander_objs OBJECT ${DISPLAY_COMMANDER_COMMON_SOURCES})
 target_link_libraries(display_commander_objs PRIVATE display_commander_common_options)
 if(MSVC)
   set_property(TARGET display_commander_objs PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
-set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/ui/cli_standalone_ui.cpp PROPERTIES COMPILE_DEFINITIONS "ImGui=ImGuiStandalone;ImDrawList=ImDrawListStandalone")
-set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/ui/imgui_wrapper_standalone.cpp PROPERTIES COMPILE_DEFINITIONS "ImGui=ImGuiStandalone;ImDrawList=ImDrawListStandalone")
-
 # DLL target: entry + resources + object libraries (common code compiled once)
 add_library(zzz_display_commander MODULE
   ${CMAKE_CURRENT_LIST_DIR}/main_entry.cpp
@@ -247,26 +236,3 @@ if(EXISTS "${DC_CONTROL_FX}")
     message(WARNING "DisplayCommander_PerceptualBoost.fx not found at ${DC_PERCEPTUALBOOST_FX} - resource 303 will be missing")
   endif()
 endif()
-
-# Standalone UIs (RunStandaloneSettingsUI, RunStandaloneGamesOnlyUI) use a second ImGui in namespace
-# ImGuiStandalone to avoid symbol clash with ReShade's ImGui. No separate .exe.
-# Use an OBJECT library so standalone ImGui is compiled exactly once with ImGui=ImGuiStandalone and
-# ImDrawList=ImDrawListStandalone, avoiding LNK2005 duplicate symbol errors: ReShade's reshade_overlay.hpp
-# provides inline ImDrawList::AddLine/AddRect/AddCircle etc., while imgui_draw.cpp provides the real
-# implementations; renaming ImDrawList for the standalone build keeps the two symbol sets distinct.
-set(IMGUI_DIR "${_dc_repo_root}/external/reshade/deps/imgui")
-set(IMGUI_STANDALONE_SOURCES
-  ${IMGUI_DIR}/imgui.cpp
-  ${IMGUI_DIR}/imgui_draw.cpp
-  ${IMGUI_DIR}/imgui_tables.cpp
-  ${IMGUI_DIR}/imgui_widgets.cpp
-  ${IMGUI_DIR}/backends/imgui_impl_win32.cpp
-  ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
-)
-add_library(imgui_standalone_obj OBJECT ${IMGUI_STANDALONE_SOURCES})
-target_compile_definitions(imgui_standalone_obj PRIVATE ImGui=ImGuiStandalone ImDrawList=ImDrawListStandalone)
-target_include_directories(imgui_standalone_obj PRIVATE ${IMGUI_DIR})
-if(MSVC)
-  set_property(TARGET imgui_standalone_obj PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-endif()
-target_sources(zzz_display_commander PRIVATE $<TARGET_OBJECTS:imgui_standalone_obj>)

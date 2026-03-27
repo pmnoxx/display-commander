@@ -28,7 +28,6 @@ enum class HotkeyId : int {
     Autoclick,
     InputBlocking,
     DisplayCommanderUi,
-    IndependentUi,
     PerformanceOverlay,
     Stopwatch,
     VolumeUp,

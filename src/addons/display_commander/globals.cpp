@@ -1021,7 +1021,7 @@ DLSSGSummary GetDLSSGSummary() {
     g_ngx_parameters.get_as_int("DLSSG.Mode", dllssg_mode);
     g_ngx_parameters.get_as_int("DLSSG.EnableInterp", enable_interp);
 
-    bool is_fg_enabled = (dllssg_mode != -1 ? dllssg_mode == 1 : enable_interp == 1);
+    bool is_fg_enabled = (dllssg_mode != -1 ? dllssg_mode >= 1 : enable_interp == 1);
     if (is_fg_enabled) {
         // DLSS-G is enabled, check MultiFrameCount for mode
         unsigned int multi_frame_count;
@@ -1263,7 +1263,7 @@ DLSSGSummaryLite GetDLSSGSummaryLite() {
     g_ngx_parameters.get_as_int("DLSSG.Mode", dllssg_mode);
     g_ngx_parameters.get_as_int("DLSSG.EnableInterp", enable_interp);
 
-    bool is_fg_enabled = (dllssg_mode != -1 ? dllssg_mode == 1 : enable_interp == 1);
+    bool is_fg_enabled = (dllssg_mode != -1 ? dllssg_mode >= 1 : enable_interp == 1);
 
     if (is_fg_enabled) {
         unsigned int multi_frame_count;

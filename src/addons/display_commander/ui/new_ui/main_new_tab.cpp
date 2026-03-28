@@ -6356,6 +6356,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                          || api == display_commander::ui::GraphicsApi::D3D12;
     // Show graphics/API libraries loaded by the host (game), not by Display Commander or ReShade
     {
+        /*
         const std::string host_apis = display_commanderhooks::GetHostLoadedGraphicsApisString();
         if (!host_apis.empty()) {
             imgui.TextColored(ui::colors::TEXT_DIMMED, "APIs (loaded by host): %s", host_apis.c_str());
@@ -6364,7 +6365,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                     "Graphics/API libraries that the game (or host process) loaded via LoadLibrary.\n"
                     "Excludes loads where the caller was Display Commander or ReShade.");
             }
-        }
+        }*/
         std::string traffic_apis = display_commanderhooks::GetPresentTrafficApisString();
         const bool smooth_motion_loaded = g_smooth_motion_dll_loaded.load(std::memory_order_relaxed);
         if (smooth_motion_loaded) {
@@ -7797,7 +7798,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         g_ngx_parameters.get_as_int("DLSSG.Mode", dllssg_mode);
         g_ngx_parameters.get_as_int("DLSSG.EnableInterp", enable_interp);
 
-        bool is_fg_enabled = (dllssg_mode != -1 ? dllssg_mode == 1 : enable_interp == 1);
+        bool is_fg_enabled = (dllssg_mode != -1 ? dllssg_mode >= 1 : enable_interp == 1);
 
 
         if (show_fg_mode) {

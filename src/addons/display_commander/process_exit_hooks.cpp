@@ -392,6 +392,12 @@ LONG WINAPI VectoredExceptionHandler(PEXCEPTION_POINTERS ex) {
             return EXCEPTION_CONTINUE_SEARCH;
         }
     }
+    static int unique_exception_report_count = 0;
+    unique_exception_report_count++;
+    if (unique_exception_report_count > 25) {
+        LogErrorThrottled(1, "Vectored exception handler: limit of 25 unique crash reports reached, skipping");
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
 
     dbghelp_loader::LoadDbgHelp();
 

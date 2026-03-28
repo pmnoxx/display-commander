@@ -11,6 +11,11 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.34 (2026-03-28)
+
+- [cleanup] **Cap vectored crash reports to prevent infinite logs** - The vectored exception handler now prints full crash reports for at most **25 distinct exception addresses** per process. Further unique addresses are skipped (with a throttled log) so log spam and repeated heavy stack traces cannot grow without bound when a game throws many different faults.
+  Details: `process_exit_hooks.cpp` (`VectoredExceptionHandler`).
+
 ## v0.13.33 (2026-03-28)
 
 - [bugfix] [critical] **Sleep timer crash** - Fixed a crash that could occur when the FPS limiter / `wait_until_ns` path used a **single shared waitable timer** from more than one thread. The timer handle is now **per-thread** (`thread_local` inside `wait_until_qpc`); callers use `utils::wait_until_ns(target_ns)` with no shared handle. Global timer variables were removed from swapchain, NVAPI delay, autoclick, and latent sync code.

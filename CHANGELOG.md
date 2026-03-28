@@ -10,6 +10,15 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.26 (2026-03-27)
+
+- [bugfix] [compatibility] **Steam platform detection restored** - `steam_api.dll` / `steam_api64.dll` are recognized again for “which launcher” logging and the Main tab platform list. This is name-only detection (loaded modules and game folder); there is still no Steam API introspection (`GetProcAddress` / achievements / overlay hooks).
+  Details: `platform_api_detector.hpp` / `platform_api_detector.cpp` (`PlatformAPI::Steam`, `DetectPlatformAPIFromDLLName`, local scan list, `DetectAndLogPlatformAPIs`).
+
+## v0.13.25 (2026-03-27)
+
+- [removal] [bugfix] [compatibility] **Removed Steam-related code** - Removed anymore steam achivements/steam launcher code. Potencial fix for steam not detecting the game running.
+
 ## v0.13.24 (2026-03-27)
 
 - [bugfix] [hooks] [compatibility] **FPS limiter / FG detection in Wuthering Waves (post–v0.13.12)** - Frame generation was treated as off due to changes in **v0.13.12**.

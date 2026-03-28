@@ -50,7 +50,6 @@
 #include "utils/reshade_load_path.hpp"
 #include "utils/reshade_vulkan_layer_detector.hpp"
 #include "utils/safe_remove.hpp"
-#include "utils/steam_achievement_cache.hpp"
 #include "utils/timing.hpp"
 #include "utils/version_check.hpp"
 #include "version.hpp"
@@ -74,7 +73,6 @@
 #include <array>
 #include <cctype>
 #include <cstdio>
-#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -677,68 +675,6 @@ void OnPerformanceOverlay_TestWindow(reshade::api::effect_runtime* runtime, bool
     overlay_wrapper.End();
 }
 
-void OnSteamAchievementOverlay(reshade::api::effect_runtime* /*runtime*/) {
-    // Bump state is updated only by the continuous-monitoring thread (RefreshSteamAchievementCacheFromBackground).
-    // Main thread only reads cached state and draws the overlay; no Steam API or blocking work here.
-    const int64_t now_ns = utils::get_now_ns();
-    if (!display_commander::utils::IsSteamAchievementBumpActiveNonBlocking(now_ns)) {
-        return;
-    }
-    int bump_unlocked = 0;
-    int bump_total = 0;
-    display_commander::utils::GetSteamAchievementBumpDisplayNonBlocking(&bump_unlocked, &bump_total);
-    char bump_display_name[256] = {};
-    char bump_description[512] = {};
-    char bump_debug[1024] = {};
-    display_commander::utils::GetSteamAchievementBumpTextNonBlocking(bump_display_name, sizeof(bump_display_name),
-                                                                     bump_description, sizeof(bump_description),
-                                                                     bump_debug, sizeof(bump_debug));
-    float vertical_spacing = settings::g_mainTabSettings.overlay_vertical_spacing.GetValue();
-    float horizontal_spacing = settings::g_mainTabSettings.overlay_horizontal_spacing.GetValue();
-    const bool performance_overlay_shown = settings::g_mainTabSettings.show_test_overlay.GetValue();
-    float steam_y = 10.0f + vertical_spacing;
-    if (performance_overlay_shown) {
-        steam_y += 75.0f;
-    }
-    float bg_alpha = settings::g_mainTabSettings.overlay_background_alpha.GetValue();
-    display_commander::ui::ImGuiWrapperReshade overlay_wrapper;
-    overlay_wrapper.SetNextWindowPos(ImVec2(10.0f + horizontal_spacing, steam_y), ImGuiCond_Always, ImVec2(0.f, 0.f));
-    overlay_wrapper.SetNextWindowBgAlpha(bg_alpha);
-    overlay_wrapper.SetNextWindowSize(ImVec2(800, 0), ImGuiCond_Always);
-    if (overlay_wrapper.Begin("Steam Achievements", nullptr,
-                              ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize
-                                  | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar
-                                  | ImGuiWindowFlags_AlwaysAutoResize)) {
-        if (bump_display_name[0] != '\0') {
-            overlay_wrapper.TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Achievement unlocked: %s", bump_display_name);
-        } else {
-            overlay_wrapper.TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Achievement unlocked!");
-        }
-        if (bump_description[0] != '\0') {
-            overlay_wrapper.TextColored(ImVec4(0.7f, 0.9f, 0.7f, 1.0f), "%s", bump_description);
-        }
-        overlay_wrapper.TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "%d / %d achievements", bump_unlocked, bump_total);
-        if (bump_debug[0] != '\0') {
-            std::string overlay_debug;
-            overlay_debug.reserve(static_cast<size_t>(std::strlen(bump_debug)));
-            for (const char* line = bump_debug; line != nullptr && *line != '\0';) {
-                const char* end = std::strchr(line, '\n');
-                const size_t len = end ? static_cast<size_t>(end - line) : std::strlen(line);
-                const std::string line_str(line, len);
-                if (!line_str.empty() && line_str.find("SteamUserStats export not found") == std::string::npos) {
-                    if (!overlay_debug.empty()) overlay_debug += '\n';
-                    overlay_debug += line_str;
-                }
-                line = end ? end + 1 : line + len;
-            }
-            if (!overlay_debug.empty()) {
-                overlay_wrapper.TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "%s", overlay_debug.c_str());
-            }
-        }
-    }
-    overlay_wrapper.End();
-}
-
 void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
     CALL_GUARD(utils::get_now_ns());
     if (runtime != nullptr) {
@@ -767,9 +703,6 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
         }
     }
 
-    if (settings::g_advancedTabSettings.show_steam_achievement_notifications.GetValue()) {
-        OnSteamAchievementOverlay(runtime);
-    }
     if (!settings::g_mainTabSettings.show_test_overlay.GetValue()) {
         return;
     }

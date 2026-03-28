@@ -142,13 +142,6 @@ class AdvancedTabSettings {
     // is provided). Off by default.
     BoolSetting dump_textures_enabled;
 
-    // Steam achievement overlay: show notifications even when performance overlay is off. Off by default.
-    BoolSetting show_steam_achievement_notifications;
-    // When enabled, show a message whenever the achievement unlocked count increases. Off by default.
-    BoolSetting show_steam_achievement_counter_increased;
-    // When enabled, play a system sound when a new Steam achievement is unlocked. Off by default.
-    BoolSetting play_sound_on_achievement;
-
     // All settings (for load, UI, etc.)
     std::vector<SettingBase*> GetAllSettings();
 

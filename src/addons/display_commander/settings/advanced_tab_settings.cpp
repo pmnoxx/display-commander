@@ -77,10 +77,7 @@ AdvancedTabSettings::AdvancedTabSettings()
       d3d11_texture_caching_1d_enabled("D3D11TextureCaching1DEnabled", false, "DisplayCommander"),
       d3d11_texture_caching_3d_enabled("D3D11TextureCaching3DEnabled", false, "DisplayCommander"),
       texture_cache_content_hash_cap_kb("TextureCacheContentHashCapKb", 64, 1, 1048576, "DisplayCommander"),
-      dump_textures_enabled("DumpTexturesEnabled", false, "DisplayCommander"),
-      show_steam_achievement_notifications("ShowSteamAchievementNotifications", false, "DisplayCommander"),
-      show_steam_achievement_counter_increased("ShowSteamAchievementCounterIncreased", false, "DisplayCommander"),
-      play_sound_on_achievement("PlaySoundOnAchievement", false, "DisplayCommander") {}
+      dump_textures_enabled("DumpTexturesEnabled", false, "DisplayCommander") {}
 
 void AdvancedTabSettings::LoadAll() {
     // Get all settings for smart logging
@@ -116,8 +113,7 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
             &presentmon_provider_dxgkrnl, &presentmon_provider_dxgi, &presentmon_provider_dwm,
             &presentmon_provider_d3d9, &disable_dpi_scaling, &enable_dx11_vtable_hooks, &texture_tracking_enabled,
             &d3d11_texture_caching_enabled, &d3d11_texture_caching_1d_enabled, &d3d11_texture_caching_3d_enabled,
-            &texture_cache_content_hash_cap_kb, &dump_textures_enabled, &show_steam_achievement_notifications,
-            &show_steam_achievement_counter_increased, &play_sound_on_achievement};
+            &texture_cache_content_hash_cap_kb, &dump_textures_enabled};
 }
 
 std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetSettingsToSave() {
@@ -154,10 +150,7 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetSettingsToSave() {
             &d3d11_texture_caching_1d_enabled,
             &d3d11_texture_caching_3d_enabled,
             &texture_cache_content_hash_cap_kb,
-            &dump_textures_enabled,
-            &show_steam_achievement_notifications,
-            &show_steam_achievement_counter_increased,
-            &play_sound_on_achievement};
+            &dump_textures_enabled};
 }
 
 }  // namespace settings

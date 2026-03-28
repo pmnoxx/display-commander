@@ -11,6 +11,11 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.35 (2026-03-28)
+
+- [bugfix] [hooks] **Flip-chain upgrade: two back buffers, not three** - When enabling the experimental flip swap chain, the addon now raises the back buffer count only to **2** (the minimum flip model needs) instead of **3**, reducing extra VRAM and matching the usual DXGI flip requirement.
+  Details: `OnCreateSwapchainCapture2` flip upgrade path in `swapchain_events.cpp` (log message aligned with the count).
+
 ## v0.13.34 (2026-03-28)
 
 - [cleanup] **Cap vectored crash reports to prevent infinite logs** - The vectored exception handler now prints full crash reports for at most **25 distinct exception addresses** per process. Further unique addresses are skipped (with a throttled log) so log spam and repeated heavy stack traces cannot grow without bound when a game throws many different faults.

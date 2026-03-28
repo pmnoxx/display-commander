@@ -665,10 +665,10 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
                 || settings::g_advancedTabSettings.enable_flip_chain.GetValue())) {
             // Check if current present mode is NOT a flip model
 
-            if (desc.back_buffer_count < 3) {
-                LogInfo("DXGI FLIP UPGRADE: Increasing back buffer count from %u to 3", desc.back_buffer_count);
+            if (desc.back_buffer_count < 2) {
+                LogInfo("DXGI FLIP UPGRADE: Increasing back buffer count from %u to 2", desc.back_buffer_count);
 
-                desc.back_buffer_count = 3;
+                desc.back_buffer_count = 2;
                 modified = true;
             }
             if (desc.back_buffer.texture.samples != 1) {

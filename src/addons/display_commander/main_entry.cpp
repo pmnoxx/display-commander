@@ -2496,7 +2496,7 @@ void ProcessAttach_NoReShadeModeInit(HMODULE h_module) {
     auto dc_dir = g_dc_config_directory.load(std::memory_order_acquire);
     display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize(
         (dc_dir && !dc_dir->empty()) ? std::optional<std::wstring_view>(*dc_dir) : std::nullopt);
-    display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
+    //display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
     utils::initialize_qpc_timing_constants();
     DoInitializationWithoutHwndSafe(h_module);
     ProcessAttach_LoadDllsFromConfigDirectory(L"before_reshade");
@@ -3022,7 +3022,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             auto dc_dir = g_dc_config_directory.load(std::memory_order_acquire);
             display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize(
                 (dc_dir && !dc_dir->empty()) ? std::optional<std::wstring_view>(*dc_dir) : std::nullopt);
-            display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
+            //display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
 
             // If loaded as .dll proxy, detect and rename unused DC proxy DLLs in the same directory.
             if (display_commander::utils::IsLoadedWithDLLExtension(static_cast<void*>(h_module))) {
@@ -3296,7 +3296,7 @@ void StartInjectionInternal(bool forever) {
     auto dc_dir = g_dc_config_directory.load(std::memory_order_acquire);
     display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize(
         (dc_dir && !dc_dir->empty()) ? std::optional<std::wstring_view>(*dc_dir) : std::nullopt);
-    display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
+    //display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
 
     // Check if hook is already active
     if (g_injection_active.load(std::memory_order_acquire)) {

@@ -81,7 +81,7 @@ void OnHandleExit(ExitSource source, const std::string& message) {
         CopyGameIniFilesToReshadeConfigBackupFolder();
     }
 
-    display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
+    //display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
     display_commander::logger::FlushLogs();
 
     if (presentmon::kPresentMonEnabled) {

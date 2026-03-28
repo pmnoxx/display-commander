@@ -4,16 +4,22 @@
 
 Known issues:
 - Sometimes config .toml file gets deleted during save.
+- Dishonored renodx d3d9 -> d3d11 requires to set fps to 2x.
 
 Feature protosal:
 - Add injected reflex support for Vulkan.
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.28 (2026-03-27)
+
+- [cleanup] **Faster log disk writes** - Buffered `DisplayCommander.log` output with flush on shutdown/explicit flush instead of every line, reducing disk I/O during normal logging.
+
 ## v0.13.27 (2026-03-27)
 
-- [hooks] [compatibility] **Call of Duty: Black Ops III** - Display Commander no longer installs ChangeDisplaySettings / ShowWindow display-settings hooks when the game executable is `BlackOps3.exe`, avoiding conflicts with that title’s display handling.
-  Details: `game_fixes/game_exe_hook_skip.*`; skip in `InstallDisplaySettingsHooks` only.
+- [hooks] **Reflex latency stat ring** - `ProcessReflexMarkerFpsLimiter` records marker timestamps into `RecordLatencyStatNow` for types 0..5; `NvAPI_D3D_Sleep_Detour` calls `RecordNvapiD3dSleepLatencyStatNow()` (lane 6, estimated NVAPI frame id = last SIMULATION_START + 1, implemented in `latency_stat_ring.cpp`).
+  Details: `nvapi_hooks.cpp`, `new_root/latency/latency_stat_ring.*`.
+- [hooks] [compatibility] **Call of Duty: Black Ops III - boiii.exe compatibility fix** - Disable ChangeDisplaySettings.
 - [cleanup] [hooks] **Quieter logs** - Print less to logs.
 
 ## v0.13.26 (2026-03-27)

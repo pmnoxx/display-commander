@@ -27,7 +27,7 @@ extern "C" __declspec(dllexport) void CALLBACK StartAndInject(HWND hwnd, HINSTAN
 
     // Initialize config system for logging
     display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
-    display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
+    //display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
 
     // Parse exe path from command line
     std::string exe_path_ansi;
@@ -125,7 +125,7 @@ extern "C" __declspec(dllexport) void CALLBACK WaitAndInject(HWND hwnd, HINSTANC
 
     // Initialize config system for logging
     display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
-    display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
+    //display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
 
     // Parse exe name from command line
     std::string exe_name_ansi;

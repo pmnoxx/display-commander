@@ -11,6 +11,11 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.30 (2026-03-28)
+
+- [ui] **More quick FPS limit buttons** - On monitors at 60 Hz and above, the Main tab quick FPS presets (refresh ÷ N) used to stop at six divisors; they now use the same up-to-15 range as lower refresh rates, so you get more one-click caps (e.g. half, third, quarter refresh and beyond).
+  Details: `DrawQuickFpsLimitChanger` in `ui/new_ui/main_new_tab.cpp` (removed `max_divisor` cap for `y >= 60`).
+
 ## v0.13.29 (2026-03-27)
 
 - [bugfix] [hooks] **D3D9Ex FPS limiter (double post-present)** - Fix fps limiter requiring 2x framerate.

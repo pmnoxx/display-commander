@@ -4019,8 +4019,7 @@ void DrawQuickFpsLimitChanger(display_commander::ui::IImGuiWrapper& imgui) {
             if (selected) ui::colors::PopSelectedButtonColors(&imgui);
         }
         first = false;
-        const int max_divisor = (y >= 60) ? 6 : 15;
-        for (int x = 1; x <= max_divisor; ++x) {
+        for (int x = 1; x <= 15; ++x) {
             int candidate_rounded = static_cast<int>(std::round(refresh_hz / x));
             float candidate_precise = static_cast<float>(refresh_hz / x);
             constexpr int k_quick_fps_min = 40;

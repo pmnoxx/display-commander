@@ -61,7 +61,7 @@ AdvancedTabSettings::AdvancedTabSettings()
       suppress_wgi_for_non_unity_games("SuppressWgiForNonUnityGames", false, "DisplayCommander"),
       debug_layer_enabled("DebugLayerEnabled", false, "DisplayCommander"),
       debug_break_on_severity("DebugBreakOnSeverity", false, "DisplayCommander"),
-      auto_hide_discord_overlay("AutoHideDiscordOverlay", true, "DisplayCommander"),
+      auto_hide_discord_overlay("AutoHideDiscordOverlay_default_off", false, "DisplayCommander"),
       suppress_window_changes("SuppressWindowChanges", false, "DisplayCommander.Safemode"),
       enable_dxgi_refresh_rate_vrr_detection("EnableDxgiRefreshRateVrrDetection", false, "DisplayCommander"),
       win_up_grace_seconds("WinUpGraceSeconds", 1, 0, 61, "DisplayCommander"),

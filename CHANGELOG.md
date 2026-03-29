@@ -13,6 +13,15 @@ Feature protosal:
 
 
 
+## v0.13.39 (2026-03-29)
+
+- [ui] **VSync & Tearing header** - The **VSync & Tearing** collapsible header is shown again on the Main tab (same pattern as other sections), so you can fold that block instead of it always staying expanded.
+  Details: `DrawDisplaySettings_VSyncAndTearing` in `main_new_tab.cpp`.
+- [settings] **Auto-hide Discord Overlay default off** - **Auto-hide Discord Overlay** (Advanced tab) defaults to **off**, so Display Commander does not hide Discord’s overlay unless you enable it. The setting is stored as `AutoHideDiscordOverlay_default_off` (previously `AutoHideDiscordOverlay`, which defaulted to on).
+  Details: `auto_hide_discord_overlay` in `advanced_tab_settings.cpp`.
+- [ui] **Advanced Settings → Features** - On the Main tab, the collapsible section previously titled **Advanced Settings** is now **Features** (behavior unchanged).
+  Details: `CollapsingHeader("Features")` and `DrawAdvancedSettings` in `main_new_tab.cpp`.
+
 ## v0.13.38 (2026-03-29)
 
 - [ui] **Black curtain terminology** - Main tab checkboxes and Hotkeys tab no longer use “ADHD” in user-facing text. **Black curtain (game display)** replaces “ADHD on game display”; **Black curtain (other displays)** replaces “ADHD Multi-Monitor Mode.” The default hotkey row and input-remapping notifications use the same names. The background window title is now “Display Commander Black Curtain.” Config keys (`adhd_*`, `HotkeyAdhdToggle`, etc.) are unchanged for compatibility.

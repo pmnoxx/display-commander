@@ -5031,7 +5031,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
     imgui.Spacing();
     g_rendering_ui_section.store("ui:tab:main_new:advanced_settings", std::memory_order_release);
     ui::colors::PushHeaderColors(&imgui);
-    const bool advanced_settings_open = imgui.CollapsingHeader("Advanced Settings", ImGuiTreeNodeFlags_None);
+    const bool advanced_settings_open = imgui.CollapsingHeader("Features", ImGuiTreeNodeFlags_None);
     ui::colors::PopCollapsingHeaderColors(&imgui);
     if (advanced_settings_open) {
         imgui.Indent();
@@ -7298,12 +7298,11 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(display_commande
 }
 
 void DrawDisplaySettings_VSyncAndTearing(display_commander::ui::IImGuiWrapper& imgui) {
-    (void)imgui;
     CALL_GUARD(utils::get_now_ns());
 
     g_rendering_ui_section.store("ui:tab:main_new:vsync_tearing", std::memory_order_release);
     ui::colors::PushHeader2Colors(&imgui);
-    const bool vsync_tearing_open = true;// imgui.CollapsingHeader("VSync & Tearing", ImGuiTreeNodeFlags_None);
+    const bool vsync_tearing_open = imgui.CollapsingHeader("VSync & Tearing", ImGuiTreeNodeFlags_None);
     ui::colors::PopCollapsingHeaderColors(&imgui);
     if (vsync_tearing_open) {
         imgui.Indent();

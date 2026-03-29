@@ -1948,7 +1948,8 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
-                "Shows the Vulkan (Experimental) tab for Reflex / frame pacing controls and debug info.");
+                "Shows the Vulkan (Experimental) tab for Reflex / frame pacing controls and debug info.\n"
+                "The tab is only present in builds compiled with CMake option EXPERIMENTAL_FEATURES=ON.");
         }
     }
 

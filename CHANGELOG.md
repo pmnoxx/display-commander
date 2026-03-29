@@ -11,6 +11,10 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.37 (2026-03-28)
+
+- [experimental] [ui] **Removed Vulkan (Experimental) tab** - Tab is no longer needed.
+
 ## v0.13.36 (2026-03-28)
 
 - [ui] **Terminology** - Renamed the term "Back Buffer" to "Buffer" to avoid confusing terminology.

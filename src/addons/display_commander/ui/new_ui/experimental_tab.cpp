@@ -619,11 +619,11 @@ void DrawBackbufferFormatOverride(display_commander::ui::IImGuiWrapper& imgui) {
 
     imgui.Spacing();
 
-    if (CheckboxSetting(settings::g_experimentalTabSettings.buffer_format_override_enabled,
+    if (CheckboxSetting(settings::g_experimentalTabSettings.backbuffer_format_override_enabled,
                         "Enable Backbuffer Format Override", imgui)) {
         LogInfo(
             "Backbuffer format override %s",
-            settings::g_experimentalTabSettings.buffer_format_override_enabled.GetValue() ? "enabled" : "disabled");
+            settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue() ? "enabled" : "disabled");
     }
 
     if (imgui.IsItemHovered()) {
@@ -631,7 +631,7 @@ void DrawBackbufferFormatOverride(display_commander::ui::IImGuiWrapper& imgui) {
             "Override the backbuffer format during swapchain creation.\nRequires restart to take effect.");
     }
 
-    if (settings::g_experimentalTabSettings.buffer_format_override_enabled.GetValue()) {
+    if (settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {
         imgui.Spacing();
         imgui.Text("Target Format:");
 

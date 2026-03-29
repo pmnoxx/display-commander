@@ -706,7 +706,7 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
         }
 
         // Apply backbuffer format override if enabled (all APIs)
-        if (settings::g_experimentalTabSettings.buffer_format_override_enabled.GetValue()) {
+        if (settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {
             reshade::api::format original_format = desc.back_buffer.texture.format;
             reshade::api::format target_format =
                 GetFormatFromComboValue(settings::g_experimentalTabSettings.backbuffer_format_override.GetValue());
@@ -854,7 +854,7 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
         }
 
         // Apply backbuffer format override if enabled (all APIs)
-        if (settings::g_experimentalTabSettings.buffer_format_override_enabled.GetValue()) {
+        if (settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {
             reshade::api::format original_format = desc.back_buffer.texture.format;
             reshade::api::format target_format =
                 GetFormatFromComboValue(settings::g_experimentalTabSettings.backbuffer_format_override.GetValue());
@@ -935,7 +935,7 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
         }
 
         // Apply backbuffer format override if enabled (all APIs)
-        if (settings::g_experimentalTabSettings.buffer_format_override_enabled.GetValue()) {
+        if (settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {
             reshade::api::format original_format = desc.back_buffer.texture.format;
             reshade::api::format target_format =
                 GetFormatFromComboValue(settings::g_experimentalTabSettings.backbuffer_format_override.GetValue());

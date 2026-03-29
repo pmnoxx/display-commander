@@ -42,7 +42,7 @@ class ExperimentalTabSettings {
     FixedIntArraySetting sequence_interval;  // Click intervals in ms
 
     // Backbuffer format override settings
-    BoolSetting buffer_format_override_enabled;
+    BoolSetting backbuffer_format_override_enabled;
     ComboSetting backbuffer_format_override;
 
     // Buffer resolution upgrade settings

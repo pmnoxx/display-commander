@@ -22,7 +22,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
       sequence_interval("SequenceInterval", 5, 3000, 100, 60000,
                         "DisplayCommander.Experimental")  // 5 elements, default 3000ms, range 100-60000ms
       ,
-      buffer_format_override_enabled("BackbufferFormatOverrideEnabled", false, "DisplayCommander.Experimental"),
+      backbuffer_format_override_enabled("BackbufferFormatOverrideEnabled", false, "DisplayCommander.Experimental"),
       backbuffer_format_override(
           "BackbufferFormatOverride", 0,
           {"R8G8B8A8_UNORM (8-bit)", "R10G10B10A2_UNORM (10-bit)", "R16G16B16A16_FLOAT (16-bit HDR)"},
@@ -165,7 +165,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &sequence_x,
         &sequence_y,
         &sequence_interval,
-        &buffer_format_override_enabled,
+        &backbuffer_format_override_enabled,
         &backbuffer_format_override,
         &buffer_resolution_upgrade_enabled,
         &buffer_resolution_upgrade_width,

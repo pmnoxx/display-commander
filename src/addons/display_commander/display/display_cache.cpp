@@ -361,8 +361,8 @@ std::vector<std::string> DisplayCache::GetMonitorLabels() const {
             }
 
             // Format: [DeviceID] Friendly Name - Resolution @ PreciseRefreshRateHz [Raw: num/den]
-            std::string simple_device_id = WideCharToUTF8(display->simple_device_id);
-            oss << "[" << simple_device_id << "] " << friendly_name << " - " << display->GetCurrentResolutionString()
+            // std::string simple_device_id = WideCharToUTF8(display->simple_device_id);
+            oss <<friendly_name << " - " << display->GetCurrentResolutionString()
                 << "@" << rate_str << "Hz";
             labels.push_back(oss.str());
         }
@@ -430,8 +430,9 @@ std::vector<DisplayInfoForUI> DisplayCache::GetDisplayInfoForUI() const {
         }
 
         // Format: [ExtendedDeviceID] Friendly Name - Resolution @ PreciseRefreshRateHz [Raw: num/den]
-        std::string simple_device_id = WideCharToUTF8(display->simple_device_id);
-        oss << "[" << simple_device_id << "] " << info.friendly_name << " - " << info.current_resolution << "@"
+        //std::string simple_device_id = WideCharToUTF8(display->simple_device_id);
+        //oss << "[" << simple_device_id << "] " <<
+        oss <<info.friendly_name << " - " << info.current_resolution << "@"
             << rate_str << "Hz";
         info.display_label = oss.str();
 

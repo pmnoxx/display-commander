@@ -679,8 +679,11 @@ bool GetChosenFpsLimiter(FpsLimiterCallSite caller_enum);
  * reshade_addon_event). */
 FpsLimiterCallSite GetChosenFrameTimeLocation();
 
-/** Returns display name for a FPS limiter call site ("reflex_marker", "reflex_marker_vk_nvll", etc.). */
+/** Stable identifier for logs / debugging ("reflex_marker", "dxgi_swapchain", etc.). */
 const char* FpsLimiterSiteName(FpsLimiterCallSite site);
+
+/** Short user-facing description of the call site (Main tab, overlay). */
+const char* FpsLimiterSiteDisplayName(FpsLimiterCallSite site);
 
 /** Marker type constants for ProcessReflexMarkerFpsLimiter. Pass API-specific values (e.g. NVAPI vs Vulkan NVLL)
  * so the implementation can compare marker_type and index into buffers without hardcoding one API. */
@@ -697,8 +700,7 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
                                   const ReflexMarkerTypes& marker_types,
                                   const std::function<int()>& send_present_end_to_driver);
 
-/** Returns display name of the current chosen FPS limiter source ("reflex_marker", "dxgi_swapchain", etc.) or "unset".
- */
+/** User-facing label for the current chosen FPS limiter source; see FpsLimiterSiteDisplayName. "Not chosen yet" if unset. */
 const char* GetChosenFpsLimiterSiteName();
 
 /** True when native frame pacing is active and in sync (reflex_marker path hit recently, within 1s). */

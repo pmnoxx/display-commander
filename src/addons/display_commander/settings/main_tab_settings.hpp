@@ -213,6 +213,10 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_main_tab_window_action_buttons;
     /** Main tab: show Overlay Windows section. Default off. */
     ui::new_ui::BoolSetting show_main_tab_overlay_windows;
+    /** Main tab: show Input Control section (blocking, clip cursor, remapping toggle). Default off. */
+    ui::new_ui::BoolSetting show_main_tab_input_control;
+    /** Main tab: show NVIDIA Control section (driver profile: Smooth Motion, RTX HDR, low latency, etc.). Default off. */
+    ui::new_ui::BoolSetting show_main_tab_nvidia_control;
     /** Comma-separated stable IDs for optional main tab panel order (see main_new_tab.cpp). */
     ui::new_ui::StringSetting main_tab_optional_section_order;
 

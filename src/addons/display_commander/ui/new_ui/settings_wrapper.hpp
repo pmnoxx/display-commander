@@ -6,6 +6,8 @@ struct IImGuiWrapper;
 }
 }  // namespace display_commander
 
+struct ImVec4;
+
 #include <atomic>
 #include <functional>
 #include <reshade_imgui.hpp>
@@ -448,7 +450,8 @@ bool ComboSettingWrapper(ComboSetting& setting, const char* label, display_comma
                          float combo_width = 0.f);
 template <typename EnumType>
 bool ComboSettingEnumWrapper(ComboSettingEnum<EnumType>& setting, const char* label,
-                             display_commander::ui::IImGuiWrapper& imgui, float combo_width = 0.f);
+                             display_commander::ui::IImGuiWrapper& imgui, float combo_width = 0.f,
+                             const ImVec4* label_text_color = nullptr);
 
 // Utility function to load all settings for a tab
 // Smart logging function that only logs settings changed from default values

@@ -294,6 +294,27 @@ const char* FpsLimiterSiteName(FpsLimiterCallSite site) {
     }
 }
 
+const char* FpsLimiterSiteDisplayName(FpsLimiterCallSite site) {
+    switch (site) {
+        case FpsLimiterCallSite::reflex_marker:                    return "NVAPI Reflex marker";
+        case FpsLimiterCallSite::reflex_marker_vk_nvll:            return "Vulkan NvLowLatencyVk";
+        case FpsLimiterCallSite::reflex_marker_vk_loader:          return "Vulkan loader (present path)";
+        case FpsLimiterCallSite::reflex_marker_pclstats_etw:       return "PCLStats (ETW) marker";
+        case FpsLimiterCallSite::dxgi_swapchain1:                  return "DXGI 1.x swapchain Present";
+        case FpsLimiterCallSite::dxgi_swapchain:                   return "DXGI swapchain Present";
+        case FpsLimiterCallSite::dxgi_swapchain1_streamline_proxy: return "Streamline DXGI 1.x proxy";
+        case FpsLimiterCallSite::dxgi_swapchain_streamline_proxy:  return "Streamline DXGI proxy";
+        case FpsLimiterCallSite::dx9_present:                      return "Direct3D 9 Present";
+        case FpsLimiterCallSite::dx9_presentex:                    return "Direct3D 9 PresentEx";
+        case FpsLimiterCallSite::opengl_swapbuffers:               return "OpenGL SwapBuffers";
+        case FpsLimiterCallSite::ddraw_flip:                       return "DirectDraw Flip";
+        case FpsLimiterCallSite::reshade_addon_event:              return "ReShade addon present";
+        case FpsLimiterCallSite::vk_queue_present_khr:             return "Vulkan vkQueuePresentKHR";
+        case FpsLimiterCallSite::dxgi_factory_wrapper:             return "DXGI factory (CreateSwapChain)";
+        default:                                                   return "Unknown";
+    }
+}
+
 FpsLimiterCallSite GetChosenFrameTimeLocation() {
     const uint8_t chosen = g_chosen_fps_limiter_site.load(std::memory_order_relaxed);
     if (chosen == kFpsLimiterChosenUnset) {
@@ -346,7 +367,7 @@ void ChooseFpsLimiter(uint64_t timestamp_ns, FpsLimiterCallSite caller_enum) {
     if (prev != new_index) {
         const char* old_name =
             (prev == kFpsLimiterChosenUnset) ? "unset" : FpsLimiterSiteName(static_cast<FpsLimiterCallSite>(prev));
-        LogInfo("FPS limiter source: %s -> %s", old_name, FpsLimiterSiteName(new_chosen));
+        LogInfo("FPS limiter: %s -> %s", old_name, FpsLimiterSiteName(new_chosen));
     }
 
     // 2. Record this call site with current timestamp (so future decisions see it within 1s).
@@ -364,9 +385,9 @@ bool GetChosenFpsLimiter(FpsLimiterCallSite caller_enum) {
 const char* GetChosenFpsLimiterSiteName() {
     const uint8_t chosen = g_chosen_fps_limiter_site.load(std::memory_order_relaxed);
     if (chosen == kFpsLimiterChosenUnset) {
-        return "unset";
+        return "Not chosen yet";
     }
-    return FpsLimiterSiteName(static_cast<FpsLimiterCallSite>(chosen));
+    return FpsLimiterSiteDisplayName(static_cast<FpsLimiterCallSite>(chosen));
 }
 
 bool IsNativeFramePacingInSync() {

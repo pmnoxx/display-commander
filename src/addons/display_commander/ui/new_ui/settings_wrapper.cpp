@@ -680,24 +680,34 @@ bool ComboSettingWrapper(ComboSetting& setting, const char* label, display_comma
 
 template <typename EnumType>
 bool ComboSettingEnumWrapper(ComboSettingEnum<EnumType>& setting, const char* label,
-                             display_commander::ui::IImGuiWrapper& imgui, float combo_width) {
+                             display_commander::ui::IImGuiWrapper& imgui, float combo_width,
+                             const ImVec4* label_text_color) {
     imgui.BeginGroup();
+    const int stack_id = static_cast<int>(reinterpret_cast<uintptr_t>(&setting));
+    if (label_text_color != nullptr) {
+        imgui.PushID(stack_id);
+    }
     if (combo_width > 0.f) {
         imgui.SetNextItemWidth(combo_width);
     }
     int value = setting.GetValue();
     const auto& labels = setting.GetLabels();
     int count = static_cast<int>(labels.size());
-    bool changed = imgui.Combo(label, &value, labels.data(), count);
+    const char* combo_lbl = (label_text_color != nullptr) ? "##enumcombo" : label;
+    bool changed = imgui.Combo(combo_lbl, &value, labels.data(), count);
     if (changed) {
         setting.SetValue(value);
+    }
+    if (label_text_color != nullptr) {
+        imgui.SameLine();
+        imgui.TextColored(*label_text_color, "%s", label);
     }
     int current = setting.GetValue();
     int def = setting.GetDefaultValue();
     if (current != def) {
         const char* def_label = (def >= 0 && def < count) ? labels[static_cast<size_t>(def)] : "Default";
         imgui.SameLine();
-        imgui.PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
+        imgui.PushID(label_text_color != nullptr ? 1 : stack_id);
         if (imgui.SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
             setting.SetValue(def);
             changed = true;
@@ -707,6 +717,9 @@ bool ComboSettingEnumWrapper(ComboSettingEnum<EnumType>& setting, const char* la
         }
         imgui.PopID();
     }
+    if (label_text_color != nullptr) {
+        imgui.PopID();
+    }
     imgui.EndGroup();
     return changed;
 }
@@ -714,29 +727,29 @@ bool ComboSettingEnumWrapper(ComboSettingEnum<EnumType>& setting, const char* la
 // Explicit template instantiations for ComboSettingEnum and ComboSettingEnumWrapper
 template class ComboSettingEnum<ScreensaverMode>;
 template bool ComboSettingEnumWrapper<ScreensaverMode>(ComboSettingEnum<ScreensaverMode>&, const char*,
-                                                       display_commander::ui::IImGuiWrapper&, float);
+                                                       display_commander::ui::IImGuiWrapper&, float, const ImVec4*);
 template class ComboSettingEnum<OnPresentReflexMode>;
 template bool ComboSettingEnumWrapper<OnPresentReflexMode>(ComboSettingEnum<OnPresentReflexMode>&, const char*,
-                                                           display_commander::ui::IImGuiWrapper&, float);
+                                                           display_commander::ui::IImGuiWrapper&, float, const ImVec4*);
 template class ComboSettingEnum<FrameTimeMode>;
 template bool ComboSettingEnumWrapper<FrameTimeMode>(ComboSettingEnum<FrameTimeMode>&, const char*,
-                                                     display_commander::ui::IImGuiWrapper&, float);
+                                                     display_commander::ui::IImGuiWrapper&, float, const ImVec4*);
 template class ComboSettingEnum<WindowMode>;
 template bool ComboSettingEnumWrapper<WindowMode>(ComboSettingEnum<WindowMode>&, const char*,
-                                                  display_commander::ui::IImGuiWrapper&, float);
+                                                  display_commander::ui::IImGuiWrapper&, float, const ImVec4*);
 template class ComboSettingEnum<InputBlockingMode>;
 template bool ComboSettingEnumWrapper<InputBlockingMode>(ComboSettingEnum<InputBlockingMode>&, const char*,
-                                                         display_commander::ui::IImGuiWrapper&, float);
+                                                         display_commander::ui::IImGuiWrapper&, float, const ImVec4*);
 template class ComboSettingEnum<LogLevel>;
 template bool ComboSettingEnumWrapper<LogLevel>(ComboSettingEnum<LogLevel>&, const char*,
-                                                display_commander::ui::IImGuiWrapper&, float);
+                                                display_commander::ui::IImGuiWrapper&, float, const ImVec4*);
 template class ComboSettingEnum<TaskbarHideMode>;
 template bool ComboSettingEnumWrapper<TaskbarHideMode>(ComboSettingEnum<TaskbarHideMode>&, const char*,
-                                                       display_commander::ui::IImGuiWrapper&, float);
+                                                       display_commander::ui::IImGuiWrapper&, float, const ImVec4*);
 
 template class ComboSettingEnum<FpsLimiterPreset>;
 template bool ComboSettingEnumWrapper<FpsLimiterPreset>(ComboSettingEnum<FpsLimiterPreset>&, const char*,
-                                                       display_commander::ui::IImGuiWrapper&, float);
+                                                        display_commander::ui::IImGuiWrapper&, float, const ImVec4*);
 
 // Smart logging function that only logs settings changed from default values
 void LoadTabSettingsWithSmartLogging(const std::vector<SettingBase*>& settings, const std::string& tab_name) {

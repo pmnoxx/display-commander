@@ -11,6 +11,19 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.38 (2026-03-29)
+
+- [ui] [settings] **Input Control as optional Main tab panel** - **Input Control** (input blocking, clip cursor, gamepad remapping toggle) is no longer always shown after the other optional panels. Turn it on under **Advanced** → **Main tab optional panels** → **Show Input Control**. It participates in **Panel order** with id `input_control` (default: before **DC folders**).
+  Details: `show_main_tab_input_control`, `MainTabOptionalSectionKind::InputControl`, `DrawMainTabOptionalPanelInputControl` in `main_new_tab.cpp`; `main_tab_settings.*`.
+- [ui] **FPS limiter column alignment** - On the Main tab, **FPS Limiter Mode**, advanced **Reflex**, **FPS limiter preset**, and **ReShade runtime** use the same horizontal label column as the FPS Limit and Background FPS Limit rows (measured checkbox gutter; Dummy + SameLine). Inside the indented Advanced block, one ImGui indent level is subtracted so those controls still line up with the slider rows above.
+  Details: `PushFpsLimiterSliderColumnAlign`, `DrawDisplaySettings_FpsLimiterAdvanced`, `DrawDisplaySettings_FpsLimiterOnPresentSync` in `main_new_tab.cpp`.
+- [ui] **FPS Limiter Mode → Reflex spacing** - **FPS Limiter Debug** (experimental) is drawn after the advanced FPS block so it no longer sits between **FPS Limiter Mode** and **Reflex**; removed the extra vertical `Spacing` before the Reflex row.
+  Details: `DrawDisplaySettings_FpsLimiter` / `DrawDisplaySettings_FpsLimiterAdvanced` in `main_new_tab.cpp`.
+- [ui] **FPS limiter source labels** - The Main tab and performance overlay now describe the active FPS limiter with plain-language names (for example DXGI swapchain Present, NVAPI Reflex marker) instead of internal identifiers like `dxgi_swapchain`. The line is labeled **FPS limiter source** instead of “Limiter path,” and the overlay checkbox is **FPS limiter source**.
+  Details: `FpsLimiterSiteDisplayName()` in `globals.cpp`; `GetChosenFpsLimiterSiteName()` returns the user-facing string; `main_new_tab.cpp`.
+- [ui] **Window Mode / Target Display layout** - **Window Mode** and **Target Display** show the combo first and the caption after it on the same row (same order). **Window Mode** still uses `TEXT_LABEL` for the caption to match **Refresh rate:**. Removed the extra `Spacing()` between the VRAM/RAM line and **Target Display** so the block is tighter. **Target Display** no longer uses horizontal centering so the combo lines up with **Render resolution** / VRAM above. Both rows use a leading **Dummy** spacer (`GetMainTabCheckboxColumnGutter` + `PushFpsLimiterSliderColumnAlign`) so they line up with the FPS Limit / Background FPS checkbox column. The FPS limiter block uses the same gutter value (ImGui frame height + item spacing) for mode/advanced alignment instead of re-measuring after the checkbox.
+  Details: `GetMainTabCheckboxColumnGutter`, `ComboSettingEnumWrapper` colored-label path in `settings_wrapper.cpp`; Target Display row in `DrawDisplaySettings_DisplayAndTarget` (`main_new_tab.cpp`).
+
 ## v0.13.37 (2026-03-28)
 
 - [experimental] [ui] **Removed Vulkan (Experimental) tab** - Tab is no longer needed.

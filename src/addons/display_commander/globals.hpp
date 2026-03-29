@@ -1438,7 +1438,7 @@ struct DLSSModelProfile {
 // Function to get DLSS/DLSS-G summary from NGX parameters
 DLSSGSummary GetDLSSGSummary();
 
-// Main tab: show \"DLSS Information\" header without building full summary (cheap vs GetDLSSGSummary).
+// Main tab optional \"DLSS Control\" panel: cheap gate before calling GetDLSSGSummary (DLSS DLL loaded / feature seen).
 bool ShouldShowDlssInformationSection();
 
 // DLSS-G frame generation mode (used by FPS limiter; call GetDLSSGSummaryLite every frame)

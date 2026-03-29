@@ -217,6 +217,10 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_main_tab_input_control;
     /** Main tab: show NVIDIA Control section (driver profile: Smooth Motion, RTX HDR, low latency, etc.). Default off. */
     ui::new_ui::BoolSetting show_main_tab_nvidia_control;
+    /** Main tab: show DLSS Control section (status, presets, overrides, NGX hooks hint). Default off. */
+    ui::new_ui::BoolSetting show_main_tab_dlss_control;
+    /** Main tab: show DXGI Control (flip-discard upgrade, max frame latency, buffer count). Default off. */
+    ui::new_ui::BoolSetting show_main_tab_dxgi_control;
     /** Comma-separated stable IDs for optional main tab panel order (see main_new_tab.cpp). */
     ui::new_ui::StringSetting main_tab_optional_section_order;
 

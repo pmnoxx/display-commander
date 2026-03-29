@@ -185,10 +185,12 @@ MainTabSettings::MainTabSettings()
       show_main_tab_overlay_windows("show_main_tab_overlay_windows", false, "DisplayCommander"),
       show_main_tab_input_control("show_main_tab_input_control", false, "DisplayCommander"),
       show_main_tab_nvidia_control("show_main_tab_nvidia_control", false, "DisplayCommander"),
+      show_main_tab_dlss_control("show_main_tab_dlss_control", false, "DisplayCommander"),
+      show_main_tab_dxgi_control("show_main_tab_dxgi_control", false, "DisplayCommander"),
       main_tab_optional_section_order(
           "main_tab_optional_section_order",
           "brightness_autohdr,texture_filtering,audio_control,cpu_control,window_buttons,overlay_windows,input_control,"
-          "nvidia_control,dc_folders",
+          "nvidia_control,dlss_control,dxgi_control,dc_folders",
           "DisplayCommander"),
       vulkan_nvll_hooks_enabled("vulkan_nvll_hooks_enabled_don", true, "DisplayCommander"),
       vulkan_vk_loader_hooks_enabled("vulkan_vk_loader_hooks_enabled_don", true, "DisplayCommander"),
@@ -349,6 +351,8 @@ MainTabSettings::MainTabSettings()
         &show_main_tab_overlay_windows,
         &show_main_tab_input_control,
         &show_main_tab_nvidia_control,
+        &show_main_tab_dlss_control,
+        &show_main_tab_dxgi_control,
         &main_tab_optional_section_order,
         &vulkan_nvll_hooks_enabled,
         &vulkan_vk_loader_hooks_enabled,

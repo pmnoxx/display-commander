@@ -13,10 +13,14 @@ Feature protosal:
 
 
 
+## v0.13.43 (2026-03-29)
+
+- [bugfix] **NVAPI actual refresh rate monitor** - Ignores Adaptive Sync samples whose implied frame time exceeds 100 ms (reduces graph spikes from poll timeouts / stale flip timestamps).
+  Details: `kMaxImpliedFrameTimeMs` in `nvapi_actual_refresh_rate_monitor.cpp`.
+
 ## v0.13.42 (2026-03-29)
 
-- [cleanup] **NVAPI GPU util sampling on monitoring thread** - The performance overlay only sets `g_nvapi_gpu_util_request_frame_id` from `g_global_frame_id`; continuous monitoring runs `NvAPI_GPU_GetDynamicPstatesInfoEx` when the request is at most 100 frames old and at least 100 frames have passed since the last query.
-  Details: `globals.hpp` (`g_nvapi_gpu_util_request_frame_id`, `g_nvapi_gpu_util_last_query_frame_id`), `gpu_dynamic_utilization.*`, `continuous_monitoring.cpp`, `main_new_tab.cpp`.
+- [cleanup] **NVAPI GPU util sampling on monitoring thread** - Off-loaded work off the main rendering thread.
 
 ## v0.13.41 (2026-03-29)
 

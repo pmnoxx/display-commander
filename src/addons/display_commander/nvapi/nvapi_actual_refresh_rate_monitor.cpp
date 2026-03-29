@@ -25,6 +25,8 @@ constexpr double TIMESTAMP_UNITS_PER_SEC = 1e7;
 constexpr size_t RECENT_SAMPLES_SIZE = 256;
 // After this many consecutive NvAPI_DISP_GetAdaptiveSyncData failures, UI shows a warning.
 constexpr uint32_t FAILURE_WARNING_THRESHOLD = 1000;
+// Drop intervals that imply average flip spacing above this (stale timestamps / poll timeouts skew Hz).
+constexpr double kMaxImpliedFrameTimeMs = 50.0;
 
 std::atomic<bool> g_active{false};
 std::atomic<uint32_t> g_consecutive_failures{0};
@@ -103,8 +105,9 @@ void MonitorThreadFunc() {
                 double window_sec = static_cast<double>(delta_time) / TIMESTAMP_UNITS_PER_SEC;
                 if (window_sec > 0.0) {
                     double rate_hz = static_cast<double>(delta_count) / window_sec;
-                    // Sanity: typical range 24–240 Hz
-                    if (rate_hz >= 1.0 && rate_hz <= 1000.0) {
+                    // Sanity: typical range 24–240 Hz; ignore >100 ms implied frame time (timeout / bad deltas).
+                    const double implied_frame_ms = 1000.0 / rate_hz;
+                    if (rate_hz >= 1.0 && rate_hz <= 1000.0 && implied_frame_ms <= kMaxImpliedFrameTimeMs) {
                         g_actual_refresh_rate_hz.store(rate_hz, std::memory_order_relaxed);
                         for (size_t i = 0; i < (std::min)(100U, delta_count); i++) {
                             PushSample(rate_hz);

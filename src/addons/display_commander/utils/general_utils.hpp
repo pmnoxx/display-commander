@@ -212,13 +212,13 @@ inline bool Is64BitBuild() {
 #endif
 }
 
-// Same as Is64BitBuild(); use where 64-bit check is needed (e.g. Reflex UI only on 64-bit)
+// Same as Is64BitBuild(); use where build bitness matters (e.g. NVAPI stats overlay).
 inline bool is_64_bit() {
     return Is64BitBuild();
 }
 
-// True when Reflex UI/controls should be shown: 64-bit and (native Reflex was called or NVAPI
-// initialized with D3D device). Use for Reflex mode selector and related UI.
+// True when Reflex UI/controls should be shown: native Reflex was detected or ReflexProvider
+// initialized with D3D device. Use for Reflex mode selector and related UI.
 bool IsReflexAvailable();
 
 // Calling DLL detection utility (similar to Special-K's SK_GetCallingDLL)

@@ -325,7 +325,7 @@ void DrawDxgiOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui) {
 }
 
 // Draw NVAPI stats subsection (5 checkboxes + warning + refresh poll slider). Whole subsection is disabled when NVAPI
-// is not initialized or when running 32-bit (NVAPI overlay stats are 64-bit only).
+// is not initialized. (Optional NVAPI overlay stats remain 64-bit build only via is_64_bit().)
 void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Columns(1);  // Reset to single column
     imgui.Separator();

@@ -20,7 +20,6 @@
 
 
 bool IsReflexAvailable() {
-    if (!is_64_bit()) return false;
     if (g_native_reflex_detected.load(std::memory_order_acquire)) return true;
     ReflexProvider* p = g_reflexProvider.get();
     return p != nullptr && p->IsInitialized();

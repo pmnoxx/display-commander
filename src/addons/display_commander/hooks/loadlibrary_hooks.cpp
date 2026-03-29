@@ -1660,7 +1660,8 @@ bool IsModuleLoaded(const std::wstring& moduleName) {
 static const std::wstring* GetInterestingModulePatterns(size_t* out_count) {
     static const std::wstring k_patterns[] = {L"dxgi.dll",          L"d3d11.dll",   L"d3d12.dll",
                                               L"sl.interposer.dll", L"xinput",      L"windows.gaming.input",
-                                              L"gameinput",         L"nvapi64.dll", L"nvlowlatencyvk.dll",
+                                              L"gameinput",         L"nvapi64.dll", L"nvapi.dll",
+                                              L"nvlowlatencyvk.dll",
                                               L"vulkan-1.dll",      L"_nvngx.dll",  L"dbghelp.dll"};
     *out_count = sizeof(k_patterns) / sizeof(k_patterns[0]);
     return k_patterns;
@@ -2040,8 +2041,12 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
         }
     }
 
-    // NVAPI hooks
+    // NVAPI hooks (nvapi64.dll on x64, nvapi.dll on WoW64 / 32-bit process)
+#if defined(_M_AMD64) || defined(__x86_64__)
     else if (lowerModuleName.find(L"nvapi64.dll") != std::wstring::npos) {
+#else
+    else if (lowerModuleName.find(L"nvapi.dll") != std::wstring::npos) {
+#endif
         if (InstallNVAPIHooks(hModule)) {
             LogInfo("NVAPI hooks installed successfully");
         } else {

@@ -13,6 +13,10 @@ Feature protosal:
 
 
 
+## v0.13.40 (2026-03-29)
+
+- [ui] [hooks] **Reflex UI and NVAPI hooks on 32-bit D3D11/D3D12** - Added support for reflex injection in 32-bit games.
+
 ## v0.13.39 (2026-03-29)
 
 - [ui] **VSync & Tearing header** - The **VSync & Tearing** collapsible header is shown again on the Main tab (same pattern as other sections), so you can fold that block instead of it always staying expanded.

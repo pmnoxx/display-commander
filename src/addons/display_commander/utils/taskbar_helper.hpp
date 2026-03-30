@@ -4,13 +4,13 @@
 namespace display_commander {
 namespace utils {
 
-// Update taskbar visibility based on foreground state and mode.
-// mode: 0 = no change (do not hide), 1 = hide when in_foreground, 2 = always hide.
-// Only changes window state when the desired visibility changes.
-void UpdateTaskbarVisibility(bool in_foreground, int mode);
+// Taskbar hide/show feature removed. Keep no-op stubs so existing call sites remain harmless.
+inline void UpdateTaskbarVisibility(bool in_foreground, int mode) {
+    (void)in_foreground;
+    (void)mode;
+}
 
-// Restore the taskbar if it was hidden by us (e.g. on addon unload). Call from exit handler.
-void RestoreTaskbarIfHidden();
+inline void RestoreTaskbarIfHidden() {}
 
 }  // namespace utils
 }  // namespace display_commander

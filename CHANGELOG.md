@@ -12,6 +12,16 @@ Feature protosal:
 - Add fix for games with broken native reflex.
 
 
+## v0.13.53 (2026-03-29)
+
+- [removal] [cleanup] **Taskbar helper implementation removed** - Display Commander no longer performs taskbar hide/show actions at runtime. This removes one source of shell/taskbar state changes while keeping existing call sites safe.
+  Details: deleted `utils/taskbar_helper.cpp`; `utils/taskbar_helper.hpp` now provides no-op inline stubs for `UpdateTaskbarVisibility` and `RestoreTaskbarIfHidden`.
+
+## v0.13.52 (2026-03-29)
+
+- [removal] [cleanup] **Disable `dlls_to_load` folder scanning** - Display Commander no longer reads or creates `dlls_to_load`, `dlls_to_load/before_reshade`, or `dlls_to_load/after_reshade` during startup. This removes folder-based pre/post-ReShade DLL loading without changing normal addon/proxy loading paths.
+  Details: `ProcessAttach_LoadDllsFromConfigDirectory` is now a no-op; references in README were updated accordingly.
+
 ## v0.13.51 (2026-03-29)
 
 - [cleanup] **Post-ReShade addons load in place** - `.dc64r` / `.dc32r` / `.dcr` addons are now loaded directly from the addon directory instead of being copied or hard-linked into a per-process temp folder. This simplifies cleanup and matches the behavior of before-ReShade addons; updating those DLLs now typically requires restarting the game.

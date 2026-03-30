@@ -1,40 +1,22 @@
-[submodule "external/reshade"]
-	path = external/reshade
-	url = https://github.com/pmnoxx/reshade.git
-	branch = main
-
-[submodule "external/gtl"]
-	path = external/gtl
-	url = https://github.com/pmem/gtl
-
-[submodule "external/Streamline"]
-	path = external/Streamline
-	url = https://github.com/NVIDIA-RTX/Streamline
+[submodule "external/minhook"]
+	path = external/minhook
+	url = https://github.com/TsudaKageyu/minhook.git
 [submodule "external/nvapi"]
 	path = external/nvapi
 	url = https://github.com/NVIDIA/nvapi
 [submodule "external/nvidia-dlss"]
 	path = external/nvidia-dlss
 	url = https://github.com/NVIDIA/DLSS.git
-[submodule "external/ForkAwesome"]
-	path = external/ForkAwesome
-	url = https://github.com/ForkAwesome/Fork-Awesome.git
-
-
-[submodule "external/minhook"]
-	path = external/minhook
-	url = https://github.com/TsudaKageyu/minhook.git
-[submodule "external/XInput_HID"]
-	path = external/XInput_HID
-	url = https://github.com/SpecialKO/XInput_HID.git
-
-[submodule "external/vulkan-headers"]
-	path = external/vulkan-headers
-	url = https://github.com/KhronosGroup/Vulkan-Headers.git
-
-[submodule "external/NvidiaProfileInspectorRevamped"]
-	path = external/NvidiaProfileInspectorRevamped
-	url = https://github.com/xHybred/NvidiaProfileInspectorRevamped.git
+[submodule "external/reshade"]
+	path = external/reshade
+	url = https://github.com/pmnoxx/reshade.git
+	branch = main
+[submodule "external/Streamline"]
+	path = external/Streamline
+	url = https://github.com/NVIDIA-RTX/Streamline
 [submodule "external/tomlplusplus"]
 	path = external/tomlplusplus
 	url = https://github.com/marzer/tomlplusplus.git
+[submodule "external/vulkan-headers"]
+	path = external/vulkan-headers
+	url = https://github.com/KhronosGroup/Vulkan-Headers.git

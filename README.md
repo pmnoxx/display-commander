@@ -166,7 +166,7 @@ Prerequisites:
 3. and place ReFramework here:
    - `./dinput8.dll`
 
-This works because Display Commander loads `dlls_to_load/before_reshade/` **before** it initializes ReShade.
+This works because Display Commander loads as `winmm.dll` first, then you chain ReShade as `dxgi.dll` with ReFramework as `dinput8.dll`.
 
 ### Method 2 (ReFramework as `dinput8.dll`, ReShade as `dxgi.dll`, DC as addon)
 

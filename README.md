@@ -93,7 +93,7 @@ Note: Applying window operations from the main thread can crash some apps. This 
   - `.DC_CONFIG_IN_DLL` — store config and ReShade data in the addon folder instead of the game folder
   - `.DLL_DETECTOR` — copy addon to `dlls_loaded` and exit (for detecting which DLLs the game loads)
   See [Expert: Flag files in the game directory](docs/EXPERT_FLAG_FILES.md).
-- **Addon directory DLL loading**: From the same folder as the addon, **.dc64 / .dc32 / .dc / .asi** are loaded before ReShade; **.dc64r / .dc32r / .dcr** are loaded after ReShade (for addons that need the ReShade API). Post-ReShade addons use a temp copy so originals can be updated while the game runs.
+- **Addon directory DLL loading**: From the same folder as the addon, **.dc64 / .dc32 / .dc / .asi** are loaded before ReShade; **.dc64r / .dc32r / .dcr** are loaded after ReShade (for addons that need the ReShade API). All of these DLLs are loaded in place; Windows keeps them locked while the game is running, so you may need to exit the game before overwriting them with newer builds.
 - **NVIDIA Profile (Inspector)**: View and edit driver profile for the current game; apply as administrator
 - **CPU control**: Core affinity and process priority (Main / Settings tab in standalone)
 - **Prevent display sleep & screensaver**: Keep display awake while gaming

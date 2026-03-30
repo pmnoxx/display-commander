@@ -12,6 +12,11 @@ Feature protosal:
 - Add fix for games with broken native reflex.
 
 
+## v0.13.51 (2026-03-29)
+
+- [cleanup] **Post-ReShade addons load in place** - `.dc64r` / `.dc32r` / `.dcr` addons are now loaded directly from the addon directory instead of being copied or hard-linked into a per-process temp folder. This simplifies cleanup and matches the behavior of before-ReShade addons; updating those DLLs now typically requires restarting the game.
+  Details: `ProcessAttach_LoadLocalAddonDllsAfterReShade` now scans the addon directory and calls `LoadLibraryW` on matching files; `CleanupPostReShadeAddonTempDir` and `utils/safe_remove.*` were removed; `LoadDllsFromConfigDirectory` uses a shared extension-aware helper.
+
 ## v0.13.50 (2026-03-29)
 
 - [removal] [cleanup] **Platform API detector** - Removed `utils/platform_api_detector.*` (DLL-name heuristics for Steam/Epic/GOG/etc., game-directory scan, `TestWhitelist` store-path patterns, and debug logging). **ReShade load-from-Documents** path in `ProcessAttach_TryLoadReShadeWhenNotLoaded` no longer refuses when no platform DLL is detected and the exe path is not on the old whitelist.

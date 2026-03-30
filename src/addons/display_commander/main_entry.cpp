@@ -47,7 +47,6 @@
 #include "utils/no_inject_windows.hpp"
 #include "utils/reshade_load_path.hpp"
 #include "utils/reshade_vulkan_layer_detector.hpp"
-#include "utils/safe_remove.hpp"
 #include "utils/timing.hpp"
 #include "utils/version_check.hpp"
 #include "version.hpp"
@@ -1875,9 +1874,13 @@ void ProcessAttach_LoadLocalAddonDlls(HMODULE h_module) {
     }
 }
 
-// Loads .dc64/.dc32/.dc/.asi/.dll from dlls_dir (non-recursive). Creates the folder if missing. Alphabetical order.
-// Skips ReShade and Display Commander by product name. log_prefix used in debug output (e.g. "dlls_to_load/before_reshade").
-static void LoadDllsFromDirectory(const std::filesystem::path& dlls_dir, const char* log_prefix) {
+// Loads DLLs with the given extensions from dlls_dir (non-recursive). Creates the folder if missing. Alphabetical
+// order. Skips ReShade and Display Commander by product name. log_prefix used in debug output (e.g.
+// "dlls_to_load/before_reshade").
+template <size_t N>
+static void LoadDllsFromDirectoryWithExtensions(const std::filesystem::path& dlls_dir,
+                                                const std::wstring (&extensions)[N],
+                                                const char* log_prefix) {
     std::error_code ec;
     if (!std::filesystem::exists(dlls_dir, ec)) {
         std::filesystem::create_directories(dlls_dir, ec);
@@ -1885,12 +1888,7 @@ static void LoadDllsFromDirectory(const std::filesystem::path& dlls_dir, const c
     } else if (!std::filesystem::is_directory(dlls_dir, ec)) {
         return;
     }
-#ifdef _WIN64
-    const std::wstring ext_list[] = {L".dc64", L".dc", L".asi", L".dll"};
-#else
-    const std::wstring ext_list[] = {L".dc32", L".dc", L".asi", L".dll"};
-#endif
-    const std::set<std::wstring> ext_match(ext_list, ext_list + 4);
+    const std::set<std::wstring> ext_match(extensions, extensions + N);
     std::vector<std::filesystem::path> to_load;
     for (const auto& entry : std::filesystem::directory_iterator(
              dlls_dir, std::filesystem::directory_options::skip_permission_denied, ec)) {
@@ -1928,26 +1926,24 @@ void ProcessAttach_LoadDllsFromConfigDirectory(std::wstring_view subdir) {
     auto dc_dir = g_dc_config_directory.load(std::memory_order_acquire);
     if (dc_dir == nullptr || dc_dir->empty()) return;
     const std::filesystem::path base = std::filesystem::path(*dc_dir) / L"dlls_to_load";
+#ifdef _WIN64
+    const std::wstring before_ext_list[] = {L".dc64", L".dc", L".asi", L".dll"};
+#else
+    const std::wstring before_ext_list[] = {L".dc32", L".dc", L".asi", L".dll"};
+#endif
     if (subdir == L"before_reshade") {
-        LoadDllsFromDirectory(base, "dlls_to_load");
-        LoadDllsFromDirectory(base / L"before_reshade", "dlls_to_load/before_reshade");
+        LoadDllsFromDirectoryWithExtensions(base, before_ext_list, "dlls_to_load");
+        LoadDllsFromDirectoryWithExtensions(base / L"before_reshade", before_ext_list,
+                                            "dlls_to_load/before_reshade");
     } else if (subdir == L"after_reshade") {
-        LoadDllsFromDirectory(base / L"after_reshade", "dlls_to_load/after_reshade");
+        LoadDllsFromDirectoryWithExtensions(base / L"after_reshade", before_ext_list,
+                                            "dlls_to_load/after_reshade");
     }
 }
 
-namespace {
-const std::wstring kPostReShadeTempExtensions[] = {L".dc64r", L".dc32r", L".dcr"};
-}
-
-// Post-ReShade addon dir: .dc64r / .dc32r / .dcr. We hard-link into global Display_Commander\tmp\<pid>;
-// when cross-volume (hard link not possible), we create a local tmp\<pid> in the addon dir and copy there
-// so the copy stays on the same volume. LoadLibrary from the chosen path so originals can be updated while running.
+// Post-ReShade addon dir: .dc64r / .dc32r / .dcr. Load directly from the addon directory so these behave like
+// before-ReShade addons, but with ReShade APIs available.
 void ProcessAttach_LoadLocalAddonDllsAfterReShade(HMODULE h_module) {
-    std::filesystem::path base_dc = display_commander::utils::GetLocalDcDirectory();
-    if (base_dc.empty()) {
-        return;  // Avoid using relative path "tmp\<pid>" which could target cwd and cause data loss
-    }
     WCHAR addon_path[MAX_PATH];
     if (GetModuleFileNameW(h_module, addon_path, MAX_PATH) <= 0) return;
     std::filesystem::path addon_dir = std::filesystem::path(addon_path).parent_path();
@@ -1957,26 +1953,8 @@ void ProcessAttach_LoadLocalAddonDllsAfterReShade(HMODULE h_module) {
     const std::wstring ext_list[] = {L".dc32r", L".dcr"};
 #endif
     const std::set<std::wstring> ext_match(ext_list, ext_list + 2);
-    const DWORD pid = GetCurrentProcessId();
-    wchar_t pid_buf[32];
-    swprintf_s(pid_buf, L"%lu", static_cast<unsigned long>(pid));
-    std::filesystem::path global_temp_dir = base_dc / L"tmp" / pid_buf;
-    if (!display_commander::utils::IsSafeTempSubdirPath(global_temp_dir)) {
-        return;  // Never iterate/delete from a path that could be the Display_Commander root
-    }
     std::error_code ec;
-    display_commander::utils::SafeRemoveAll(global_temp_dir, kPostReShadeTempExtensions, ec);
-    if (!std::filesystem::exists(global_temp_dir, ec)) {
-        std::filesystem::create_directories(global_temp_dir, ec);
-    }
-    if (ec) {
-        char msg[384];
-        snprintf(msg, sizeof(msg), "[DisplayCommander] Failed to create global temp dir for post-ReShade addons: %s\n",
-                 ec.message().c_str());
-        OutputDebugStringA(msg);
-        return;
-    }
-    std::filesystem::path local_temp_dir;  // created only when cross-volume forces a copy
+    std::vector<std::filesystem::path> to_load;
     for (const auto& entry : std::filesystem::directory_iterator(
              addon_dir, std::filesystem::directory_options::skip_permission_denied, ec)) {
         if (ec) break;
@@ -1984,72 +1962,27 @@ void ProcessAttach_LoadLocalAddonDllsAfterReShade(HMODULE h_module) {
         std::wstring ext = entry.path().extension().wstring();
         std::transform(ext.begin(), ext.end(), ext.begin(), ::towlower);
         if (!ext_match.contains(ext)) continue;
-        const std::wstring path_w = entry.path().wstring();
+        to_load.push_back(entry.path());
+    }
+    if (ec || to_load.empty()) {
+        return;
+    }
+    std::sort(to_load.begin(), to_load.end(),
+              [](const std::filesystem::path& a, const std::filesystem::path& b) {
+                  return a.filename().wstring() < b.filename().wstring();
+              });
+    for (const auto& path : to_load) {
+        const std::wstring path_w = path.wstring();
         const std::wstring product = GetFileProductNameW(path_w);
         if (!product.empty() && _wcsicmp(product.c_str(), L"ReShade") == 0 && g_reshade_module != nullptr) continue;
         if (!product.empty() && _wcsicmp(product.c_str(), L"Display Commander") == 0) continue;
-        std::filesystem::path dest_path = global_temp_dir / entry.path().filename();
-        bool loaded = false;
-        if (CreateHardLinkW(dest_path.c_str(), path_w.c_str(), nullptr)) {
-            loaded = true;
-        } else if (GetLastError() == ERROR_INVALID_PARAMETER) {
-            // Cross-volume: use local tmp in addon dir (same volume), create only when needed
-            if (local_temp_dir.empty()) {
-                local_temp_dir = addon_dir / L"tmp" / pid_buf;
-                if (!display_commander::utils::IsSafeTempSubdirPath(local_temp_dir)) {
-                    local_temp_dir.clear();
-                    continue;
-                }
-                display_commander::utils::SafeRemoveAll(local_temp_dir, kPostReShadeTempExtensions, ec);
-                if (!std::filesystem::exists(local_temp_dir, ec)) {
-                    std::filesystem::create_directories(local_temp_dir, ec);
-                }
-                if (ec) {
-                    char msg[384];
-                    snprintf(msg, sizeof(msg),
-                             "[DisplayCommander] Failed to create local temp dir for post-ReShade addons: %s\n",
-                             ec.message().c_str());
-                    OutputDebugStringA(msg);
-                    local_temp_dir.clear();
-                    continue;
-                }
-            }
-            dest_path = local_temp_dir / entry.path().filename();
-            if (CopyFileW(path_w.c_str(), dest_path.c_str(), FALSE)) {
-                loaded = true;
-            }
-        }
-        if (!loaded) {
-            char msg[384];
-            snprintf(msg, sizeof(msg), "[DisplayCommander] CreateHardLink/CopyFile failed for %s (error %lu)\n",
-                     entry.path().filename().string().c_str(), GetLastError());
-            OutputDebugStringA(msg);
-            continue;
-        }
-        HMODULE mod = LoadLibraryW(dest_path.c_str());
+        HMODULE mod = LoadLibraryW(path_w.c_str());
         if (mod != nullptr) {
-            std::string name = entry.path().filename().string();
+            std::string name = path.filename().string();
             char msg[384];
             snprintf(msg, sizeof(msg), "[DisplayCommander] Loaded .dc64r/.dc32r/.dcr DLL (after ReShade): %s\n",
                      name.c_str());
             OutputDebugStringA(msg);
-        }
-    }
-}
-
-void CleanupPostReShadeAddonTempDir() {
-    const DWORD pid = GetCurrentProcessId();
-    const std::wstring pid_str = std::to_wstring(pid);
-    std::error_code ec;
-    std::filesystem::path base_dc = display_commander::utils::GetLocalDcDirectory();
-    if (!base_dc.empty()) {
-        display_commander::utils::SafeRemoveAll(base_dc / L"tmp" / pid_str, kPostReShadeTempExtensions, ec);
-    }
-    if (g_hmodule != nullptr) {
-        WCHAR module_path[MAX_PATH];
-        if (GetModuleFileNameW(g_hmodule, module_path, MAX_PATH) > 0) {
-            std::filesystem::path module_tmp = std::filesystem::path(module_path).parent_path() / L"tmp" / pid_str;
-            display_commander::utils::SafeRemoveAll(module_tmp, kPostReShadeTempExtensions, ec);
         }
     }
 }
@@ -2877,9 +2810,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             // Clean up PresentMon (must stop ETW session to prevent system-wide resource leaks)
             // ETW sessions are system-wide and persist until explicitly stopped
             // If not stopped, they can interfere with future processes
-
-            // Try to remove post-ReShade addon temp dir (may fail while loaded DLLs still hold files)
-            CleanupPostReShadeAddonTempDir();
 
             // Note: reshade::unregister_addon() will automatically unregister all events and overlays
             // registered by this add-on, so manual unregistration is not needed and can cause issues

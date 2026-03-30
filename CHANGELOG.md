@@ -20,6 +20,12 @@ Feature protosal:
   Details: removed UI + `ShowClock` override from `src/addons/display_commander/ui/new_ui/addons_tab.cpp` and `src/addons/display_commander/main_entry.cpp`.
 - [removal] [cleanup] [hooks] **Swapchain power-saving GPU event handlers removed** - Removed the background power-saving ReShade event handlers module (`swapchain_events_power_saving`) so DC no longer suppresses dispatch/copy/update/draw-related GPU operations via this feature path.
   Details: removed the module integration from `src/addons/display_commander/main_entry.cpp` and `src/addons/display_commander/swapchain_events.cpp`, and deleted `src/addons/display_commander/swapchain_events_power_saving.cpp`.
+- [removal] [cleanup] [hooks] **PE static import logging removed** - Display Commander no longer logs per-module “known DLL” markers or static-import DLL name lists when modules are loaded.
+  Details: removed `../utils/pe_static_imports.hpp` usage from `src/addons/display_commander/hooks/loadlibrary_hooks.cpp` and deleted `src/addons/display_commander/utils/pe_static_imports.cpp`.
+- [removal] [cleanup] **ReShade replace-after-exit script removed** - Display Commander no longer provides the “Replace with global after game closes” helper that started a background script to copy the global ReShade DLL after the game exited.
+  Details: removed `src/addons/display_commander/utils/reshade_replace_after_exit.cpp`.
+- [removal] [ui] **DC Service status UI removed** - Display Commander no longer shows DC Service (RunDLL auto-injection) start/stop status indicators in the Advanced tab.
+  Details: removed `DrawDcServiceStatusIndicators` / `DrawDcServiceSection` wiring from `src/addons/display_commander/ui/new_ui/advanced_tab.cpp` and deleted `src/addons/display_commander/utils/dc_service_status.cpp`.
 - [removal] [cleanup] **RunDLL NvAPI SetDWORD entry points removed** - Display Commander no longer exposes `RunDLL_NvAPI_SetDWORD` and the helper `RunNvApiSetDwordAsAdmin`, removing the rundll32/UAC elevation workflow for per-exe NVAPI profile setting edits.
   Details: removed the export/helper implementation from `src/addons/display_commander/main_entry.cpp` and deleted `src/addons/display_commander/nvapi/run_nvapi_setdword_as_admin.hpp`.
 - [removal] [cleanup] [hooks] **RunDLL injection entry points removed** - Display Commander no longer exposes or runs the rundll32-based process injection commands (`Start`, `Stop`, `Service30`, `StartAndInject`, `WaitAndInject`), removing legacy remote-injection and global CBT-hook paths.

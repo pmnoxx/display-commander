@@ -50,7 +50,6 @@
 #include "../../utils/overlay_window_detector.hpp"
 #include "../../utils/perf_measurement.hpp"
 #include "../../utils/reshade_load_path.hpp"
-#include "../../utils/reshade_replace_after_exit.hpp"
 #include "../../widgets/resolution_widget/resolution_widget.hpp"
 #include "new_ui_tabs.hpp"
 #include "settings_wrapper.hpp"

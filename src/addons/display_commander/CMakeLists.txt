@@ -115,17 +115,6 @@ endif()
 
 set_target_properties(zzz_display_commander PROPERTIES SUFFIX "${TARGET_SUFFIX}")
 
-# Optional: copy NVPI Reference.xml next to the addon for runtime NVPI reference data.
-set(NVPI_REFERENCE_XML "${_dc_repo_root}/external/NvidiaProfileInspectorRevamped/nspector/Reference.xml")
-if(EXISTS "${NVPI_REFERENCE_XML}")
-  add_custom_command(TARGET zzz_display_commander POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${NVPI_REFERENCE_XML}" "$<TARGET_FILE_DIR:zzz_display_commander>/Reference.xml"
-    COMMENT "Copy Reference.xml (NVPI) next to addon DLL"
-  )
-  message(STATUS "NVPI Reference.xml will be copied from NvidiaProfileInspectorRevamped submodule")
-else()
-  message(STATUS "NVPI Reference.xml not found (optional). Run: git submodule update --init external/NvidiaProfileInspectorRevamped")
-endif()
 
 # Embed game_default_overrides.toml in the DLL (RCDATA 304).
 set(DC_GAME_DEFAULT_OVERRIDES_TOML "${CMAKE_CURRENT_LIST_DIR}/res/game_default_overrides.toml")

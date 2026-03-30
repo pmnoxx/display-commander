@@ -12,6 +12,16 @@ Feature protosal:
 - Add fix for games with broken native reflex.
 
 
+## v0.13.48 (2026-03-29)
+
+- [removal] [ui] **Advanced tab Debug Tools** - Removed the **Print Detour Call Tracker Info** button and the **Debug Tools** collapsible (it had no other controls). Detour call tracking code remains for other uses.
+
+## v0.13.47 (2026-03-29)
+
+- [removal] [ui] [settings] **Network updates and downloads** - Removed all WinInet/GitHub/reshade.me usage from the addon: no automatic “check for updates”, no Download buttons for Display Commander or ReShade, no remote ReShade version list or “newest version” / “download debug” UI in DC folders. The addon no longer links `wininet.lib`.
+  Details: deleted `reshade_version_download.*`; slimmed `version_check` to version-string helpers and `GetDownloadDirectory()`; `reshade_load_path` uses an offline version list only.
+- [settings] **DC Shaders/Textures paths** - Display Commander always adds its Shaders/Textures folders to ReShade `EffectSearchPaths` and `TextureSearchPaths` when overriding ReShade settings. Removed the `add_dc_to_reshade_shader_paths` setting and the code path that removed those paths from config.
+
 ## v0.13.46 (2026-03-29)
 
 - [removal] [ui] **Main tab VSync & Tearing** - Removed `DrawDisplaySettings_VSyncAndTearing_Checkboxes_NoReshadeMode` (traffic-based DXGI/D3D9 controls and “Last D3D9 (no-ReShade)” status). The section always uses `DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade` now.

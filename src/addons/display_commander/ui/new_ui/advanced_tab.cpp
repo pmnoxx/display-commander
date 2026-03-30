@@ -12,7 +12,6 @@
 #include "../../swapchain_events.hpp"
 #include "../../ui/imgui_wrapper_base.hpp"
 #include "../../utils/dc_service_status.hpp"
-#include "../../utils/detour_call_tracker.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/mpo_registry.hpp"
@@ -21,8 +20,6 @@
 
 #include <algorithm>
 #include <atomic>
-#include <cstdio>
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -118,68 +115,6 @@ void DrawAdvancedTab(display_commander::ui::GraphicsApi api, display_commander::
         DrawNewExperimentalFeatures(imgui);
     }
 
-    imgui.Spacing();
-
-    // Debug Tools Section
-    if (imgui.CollapsingHeader("Debug Tools", wrapper_flags::TreeNodeFlags_None)) {
-        imgui.Indent();
-
-        if (imgui.Button(ICON_FK_SEARCH " Print Detour Call Tracker Info")) {
-            const uint64_t now_ns = static_cast<uint64_t>(utils::get_now_ns());
-            LogInfo("=== Detour Call Tracker (manual trigger) ===");
-
-            std::string all_latest = detour_call_tracker::FormatAllLatestCalls(now_ns);
-            if (!all_latest.empty()) {
-                std::istringstream iss(all_latest);
-                std::string line;
-                while (std::getline(iss, line)) {
-                    if (!line.empty() && line.back() == '\r') {
-                        line.pop_back();
-                    }
-                    if (!line.empty()) {
-                        LogInfo("%s", line.c_str());
-                    }
-                }
-            }
-
-            std::string recent = detour_call_tracker::FormatRecentDetourCalls(now_ns, 64);
-            if (!recent.empty()) {
-                std::istringstream iss(recent);
-                std::string line;
-                while (std::getline(iss, line)) {
-                    if (!line.empty() && line.back() == '\r') {
-                        line.pop_back();
-                    }
-                    if (!line.empty()) {
-                        LogInfo("%s", line.c_str());
-                    }
-                }
-            }
-
-            std::string undestroyed = detour_call_tracker::FormatUndestroyedGuards(now_ns);
-            if (!undestroyed.empty()) {
-                std::istringstream iss(undestroyed);
-                std::string line;
-                while (std::getline(iss, line)) {
-                    if (!line.empty() && line.back() == '\r') {
-                        line.pop_back();
-                    }
-                    if (!line.empty()) {
-                        LogInfo("%s", line.c_str());
-                    }
-                }
-            }
-
-            LogInfo("=== End Detour Call Tracker ===");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Log detour call tracker info to ReShade log: all call sites (by last call), recent calls, and "
-                "undestroyed guards.\nUseful for debugging stuck threads or crashes without proper cleanup.");
-        }
-
-        imgui.Unindent();
-    }
 }
 
 void DrawFeaturesEnabledByDefault(display_commander::ui::IImGuiWrapper& imgui) {

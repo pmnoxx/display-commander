@@ -7,7 +7,6 @@
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/reshade_load_path.hpp"
-#include "../../utils/reshade_version_download.hpp"
 #include "../imgui_wrapper_base.hpp"
 
 // Libraries <ReShade> / <imgui>

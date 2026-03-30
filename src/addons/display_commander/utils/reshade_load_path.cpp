@@ -23,7 +23,7 @@ constexpr const char* KEY_LOAD_SOURCE = "ReshadeLoadSource";  // legacy, for mig
 constexpr const char* KEY_SELECTED_VERSION = "ReshadeSelectedVersion";
 constexpr const char* DEFAULT_VERSION = "6.7.3";
 
-// Fallback when GitHub fetch fails or has not run yet.
+// Offline version list (no network fetch).
 static const char* const RESHADE_VERSIONS_FALLBACK[] = {"6.6.2", "6.7.3"};
 static const size_t RESHADE_VERSIONS_FALLBACK_COUNT =
     sizeof(RESHADE_VERSIONS_FALLBACK) / sizeof(RESHADE_VERSIONS_FALLBACK[0]);
@@ -31,7 +31,7 @@ static const size_t RESHADE_VERSIONS_FALLBACK_COUNT =
 // When SpecificVersion is selected but that version is not installed, we load the highest available
 // version instead (see ChooseReshadeVersionResult.fallback_selected / fallback_loaded).
 
-// Combined list: hardcoded "6.6.2", "6.7.3" plus GitHub tags (>= 6.6.2), sorted descending. Built once per app start.
+// Combined list: hardcoded versions only, sorted descending. Built once per app start.
 static std::vector<std::string> s_reshade_versions_combined;
 static std::vector<const char*> s_reshade_version_ptrs;
 static std::atomic<bool> s_version_list_built{false};
@@ -86,26 +86,8 @@ static void EnsureReShadeVersionListFetched() {
         return;
     }
     namespace vc = display_commander::utils::version_check;
-    // Start with hardcoded versions
     s_reshade_versions_combined.assign(RESHADE_VERSIONS_FALLBACK,
                                        RESHADE_VERSIONS_FALLBACK + RESHADE_VERSIONS_FALLBACK_COUNT);
-    std::vector<std::string> from_github;
-    std::string error;
-    if (vc::FetchReShadeVersionsFromGitHub(from_github, &error)) {
-        for (const std::string& v : from_github) {
-            if (std::find(s_reshade_versions_combined.begin(), s_reshade_versions_combined.end(), v)
-                == s_reshade_versions_combined.end()) {
-                s_reshade_versions_combined.push_back(v);
-            }
-        }
-    }
-    std::string reshade_me_version;
-    if (vc::FetchReShadeLatestFromReshadeMe(&reshade_me_version, nullptr)) {
-        if (std::find(s_reshade_versions_combined.begin(), s_reshade_versions_combined.end(), reshade_me_version)
-            == s_reshade_versions_combined.end()) {
-            s_reshade_versions_combined.push_back(reshade_me_version);
-        }
-    }
     std::sort(s_reshade_versions_combined.begin(), s_reshade_versions_combined.end(),
               [](const std::string& a, const std::string& b) { return vc::CompareVersions(a, b) > 0; });
     s_reshade_version_ptrs.resize(s_reshade_versions_combined.size());

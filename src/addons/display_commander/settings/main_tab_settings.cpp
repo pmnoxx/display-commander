@@ -189,7 +189,6 @@ MainTabSettings::MainTabSettings()
       upgrade_compare_min_mag_linear_mip_point("upgrade_compare_min_mag_linear_mip_point", false, "DisplayCommander"),
       max_anisotropy("max_anisotropy", 0, 0, 16, "DisplayCommander"),
       force_mipmap_lod_bias("force_mipmap_lod_bias", 0.0f, -5.0f, 5.0f, "DisplayCommander"),
-      add_dc_to_reshade_shader_paths("add_dc_to_reshade_shader_paths", true, "DisplayCommander"),
       auto_reshade_config_backup("auto_reshade_config_backup", false, "DisplayCommander"),
       auto_enable_disable_hdr("auto_enable_disable_hdr", false, "DisplayCommander"),
       auto_apply_maxmdl_1000_hdr_metadata("auto_apply_maxmdl_1000_hdr_metadata", false, "DisplayCommander") {
@@ -324,7 +323,6 @@ MainTabSettings::MainTabSettings()
         &upgrade_compare_min_mag_linear_mip_point,
         &max_anisotropy,
         &force_mipmap_lod_bias,
-        &add_dc_to_reshade_shader_paths,
         &auto_reshade_config_backup,
         &auto_enable_disable_hdr,
         &auto_apply_maxmdl_1000_hdr_metadata,

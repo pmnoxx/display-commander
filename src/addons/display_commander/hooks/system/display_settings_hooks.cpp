@@ -1,6 +1,5 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "display_settings_hooks.hpp"
-#include "../../game_fixes/game_exe_hook_skip.hpp"
 #include "../../globals.hpp"
 #include "../../settings/advanced_tab_settings.hpp"
 #include "../../utils.hpp"
@@ -138,11 +137,6 @@ bool InstallDisplaySettingsHooks() {
     if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
             display_commanderhooks::HookType::DISPLAY_SETTINGS)) {
         LogInfo("Display settings hooks installation suppressed by user setting");
-        return false;
-    }
-
-    if (display_commander::game_fixes::ShouldSkipDisplaySettingsHooksForProcess()) {
-        LogInfo("Display settings hooks installation skipped (game-specific fix)");
         return false;
     }
 

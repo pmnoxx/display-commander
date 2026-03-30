@@ -53,8 +53,6 @@
 #include "../../utils/platform_api_detector.hpp"
 #include "../../utils/reshade_load_path.hpp"
 #include "../../utils/reshade_replace_after_exit.hpp"
-#include "../../utils/reshade_version_download.hpp"
-#include "../../utils/version_check.hpp"
 #include "../../widgets/resolution_widget/resolution_widget.hpp"
 #include "new_ui_tabs.hpp"
 #include "settings_wrapper.hpp"
@@ -1873,7 +1871,6 @@ display_commander::ui::GraphicsApi GetGraphicsApiFromLastDeviceApi() {
 
 static void DrawUpdatesDisplayCommanderHeader(display_commander::ui::IImGuiWrapper& imgui) {
     using namespace display_commander::utils;
-    using namespace display_commander::utils::version_check;
 
     ui::colors::PushHeaderColors(&imgui);
     const bool updates_dc_open = imgui.CollapsingHeader("Display Commander", ImGuiTreeNodeFlags_None);
@@ -2031,24 +2028,6 @@ static void DrawUpdatesDisplayCommanderHeader(display_commander::ui::IImGuiWrapp
                               dc_msg_ptr->c_str());
         }
 
-        // Latest debug on GitHub (fetched when section first shown)
-        static std::string s_dc_latest_debug_ver;
-        static std::atomic<int> s_dc_debug_status{0};  // 0=not started, 1=checking, 2=ok, 3=error
-        static std::atomic<bool> s_dc_debug_fetched{false};
-        if (!s_dc_debug_fetched.load()) {
-            s_dc_debug_fetched.store(true);
-            s_dc_debug_status.store(1);
-            std::thread([]() {
-                std::string ver, err;
-                if (FetchLatestDebugReleaseVersion(&ver, &err)) {
-                    s_dc_latest_debug_ver = ver;
-                    s_dc_debug_status.store(2);
-                } else {
-                    s_dc_latest_debug_ver = err.empty() ? "Fetch failed" : err;
-                    s_dc_debug_status.store(3);
-                }
-            }).detach();
-        }
         size_t debug_count = 0;
         const char* const* debug_list = GetDcInstalledVersionListDebug(&debug_count);
         if (debug_count > 0 && debug_list != nullptr) {
@@ -2061,45 +2040,8 @@ static void DrawUpdatesDisplayCommanderHeader(display_commander::ui::IImGuiWrapp
         } else {
             imgui.Text("Cached debug (Display_Commander/Debug): (none)");
         }
-        std::string dc_debug_display_ver = s_dc_latest_debug_ver;
-        if (s_dc_debug_status.load() == 2 && !dc_debug_display_ver.empty()
-            && dc_debug_display_ver.find_first_not_of("0123456789.") == std::string::npos) {
-            std::string norm = NormalizeVersionToXyz(dc_debug_display_ver);
-            if (!norm.empty()) dc_debug_display_ver = norm;
-        }
-        imgui.Text("Newest debug available: %s", dc_debug_display_ver.empty() ? "..." : dc_debug_display_ver.c_str());
-        if (s_dc_debug_status.load() == 1) {
-            imgui.SameLine();
-            imgui.TextDisabled("(checking...)");
-        }
-        // Download: debug only, to global DC folder.
+
         imgui.Spacing();
-        static std::atomic<std::string*> s_dc_dl_err{nullptr};
-        if (imgui.Button(ICON_FK_FLOPPY " Download latest debug")) {
-            std::string* old_err = s_dc_dl_err.exchange(nullptr);
-            delete old_err;
-            std::thread([]() {
-                std::string err;
-                if (DownloadDcLatestDebugToDebugFolder(&err)) {
-                    LogInfo(
-                        "Display Commander latest debug downloaded to global folder (Display_Commander/Debug/X.Y.Z)");
-                } else {
-                    std::string msg = err.empty() ? "Download failed" : err;
-                    LogError("DC debug download: %s", msg.c_str());
-                    s_dc_dl_err.store(new std::string(msg));
-                }
-            }).detach();
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Download latest debug from GitHub to the global Display Commander folder "
-                "(Display_Commander\\Debug\\X.Y.Z).");
-        }
-        std::string* err_ptr = s_dc_dl_err.load();
-        if (err_ptr != nullptr && !err_ptr->empty()) {
-            imgui.SameLine();
-            imgui.TextColored(ui::colors::TEXT_ERROR, "%s", err_ptr->c_str());
-        }
 
         // Open folder (global Display Commander folder)
         std::filesystem::path dc_global = GetDisplayCommanderAppDataFolder();
@@ -2128,9 +2070,6 @@ static void DrawUpdatesDisplayCommanderHeader(display_commander::ui::IImGuiWrapp
 static void DrawUpdatesReshadeHeader(display_commander::ui::IImGuiWrapper& imgui,
                                      const std::filesystem::path& game_dir) {
     using namespace display_commander::utils;
-    using namespace display_commander::utils::version_check;
-
-    static int s_reshade_dl_index = 0;
 
     if (!display_commanderhooks::g_hooked_before_reshade.load()) {
         // Not running as DLL proxy: show as which module ReShade is loaded (and its version), and option to replace
@@ -2183,34 +2122,6 @@ static void DrawUpdatesReshadeHeader(display_commander::ui::IImGuiWrapper& imgui
             }
         }
 
-        // Upgrade global ReShade: version selector + Download button (same as in Reshade collapsing header)
-        size_t ver_count = 0;
-        const char* const* ver_list = GetReshadeVersionList(&ver_count);
-        if (s_reshade_dl_index >= static_cast<int>(ver_count)) s_reshade_dl_index = 0;
-        if (ver_count > 0 && ver_list != nullptr) {
-            std::vector<const char*> ver_ptrs;
-            for (size_t i = 0; i < ver_count; ++i) ver_ptrs.push_back(ver_list[i]);
-            imgui.Combo("Version to download", &s_reshade_dl_index, ver_ptrs.data(), static_cast<int>(ver_count));
-            ReshadeDownloadStatus dl_status = GetReshadeDownloadStatus();
-            bool can_dl =
-                (dl_status != ReshadeDownloadStatus::Downloading && dl_status != ReshadeDownloadStatus::Extracting);
-            imgui.SameLine();
-            if (can_dl && imgui.Button(ICON_FK_FLOPPY " Download")) {
-                StartReshadeVersionDownloadToGlobalRoot(std::string(ver_list[s_reshade_dl_index]));
-            }
-            if (imgui.IsItemHovered() && can_dl) {
-                imgui.SetTooltipEx("Overwrites the global ReShade folder with the selected version.");
-            }
-            if (dl_status == ReshadeDownloadStatus::Downloading || dl_status == ReshadeDownloadStatus::Extracting) {
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "%s",
-                                  dl_status == ReshadeDownloadStatus::Downloading ? "Downloading..." : "Extracting...");
-            } else if (dl_status == ReshadeDownloadStatus::Error) {
-                const char* err = GetReshadeDownloadStatusMessage();
-                imgui.TextColored(ui::colors::TEXT_ERROR, "%s", err && *err ? err : "Download failed");
-            } else if (dl_status == ReshadeDownloadStatus::Ready) {
-                imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Ready");
-            }
-        }
         return;
     }
     ui::colors::PushHeaderColors(&imgui);
@@ -2238,74 +2149,11 @@ static void DrawUpdatesReshadeHeader(display_commander::ui::IImGuiWrapper& imgui
                 "By default we prefer local > global. This checkbox changes preference to global > local.");
         }
 
-        // Newest version available (green = up to date, red = newer exists)
-        size_t remote_count = 0;
-        const char* const* remote_versions = GetReshadeVersionList(&remote_count);
-        std::string newest_available;
-        if (remote_count > 0 && remote_versions != nullptr) {
-            newest_available = remote_versions[0];  // list is sorted descending
-        }
-        std::filesystem::path load_path =
-            game_dir.empty() ? GetReshadeDirectoryForLoading() : GetReshadeDirectoryForLoading(game_dir);
-        std::string loaded_ver = load_path.empty() ? "" : GetReshadeVersionInDirectory(load_path);
-        if (!loaded_ver.empty() && loaded_ver.size() >= 3) {
-            std::string loaded_norm = NormalizeVersionToXyz(loaded_ver);
-            if (!loaded_norm.empty()) loaded_ver = loaded_norm;
-        }
-        imgui.Text("ReShade newest version available: %s", newest_available.empty() ? "..." : newest_available.c_str());
-        if (!newest_available.empty() && !loaded_ver.empty()) {
-            int cmp = CompareVersions(loaded_ver, newest_available);
-            if (cmp >= 0) {
-                imgui.SameLine();
-                imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Up to date");
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltipEx("Version info from: GitHub (crosire/reshade), reshade.me");
-                }
-            } else {
-                imgui.SameLine();
-                imgui.TextColored(ui::colors::TEXT_ERROR, ICON_FK_WARNING " Newer version available");
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltipEx("%s -> %s\n\nVersion info from: GitHub (crosire/reshade), reshade.me",
-                                       loaded_ver.c_str(), newest_available.c_str());
-                }
-            }
-        }
-
-        // Download subsection: version selector (remote only), Download button (overwrites global root)
-        imgui.Spacing();
-        size_t ver_count = 0;
-        const char* const* ver_list = GetReshadeVersionList(&ver_count);
-        if (s_reshade_dl_index >= static_cast<int>(ver_count)) s_reshade_dl_index = 0;
-        if (ver_count > 0 && ver_list != nullptr) {
-            std::vector<const char*> ver_ptrs;
-            for (size_t i = 0; i < ver_count; ++i) ver_ptrs.push_back(ver_list[i]);
-            imgui.Combo("Version to download", &s_reshade_dl_index, ver_ptrs.data(), static_cast<int>(ver_count));
-            ReshadeDownloadStatus dl_status = GetReshadeDownloadStatus();
-            bool can_dl =
-                (dl_status != ReshadeDownloadStatus::Downloading && dl_status != ReshadeDownloadStatus::Extracting);
-            imgui.SameLine();
-            if (can_dl && imgui.Button(ICON_FK_FLOPPY " Download")) {
-                StartReshadeVersionDownloadToGlobalRoot(std::string(ver_list[s_reshade_dl_index]));
-            }
-            if (imgui.IsItemHovered() && can_dl) {
-                imgui.SetTooltipEx("Overwrites the global ReShade folder with the selected version.");
-            }
-            if (dl_status == ReshadeDownloadStatus::Downloading || dl_status == ReshadeDownloadStatus::Extracting) {
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "%s",
-                                  dl_status == ReshadeDownloadStatus::Downloading ? "Downloading..." : "Extracting...");
-            } else if (dl_status == ReshadeDownloadStatus::Error) {
-                const char* err = GetReshadeDownloadStatusMessage();
-                imgui.TextColored(ui::colors::TEXT_ERROR, "%s", err && *err ? err : "Download failed");
-            } else if (dl_status == ReshadeDownloadStatus::Ready) {
-                imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Ready");
-            }
-        }
-
         // Delete local ReShade (game folder): safe because we never load that copy directly.
         bool local_reshade_exists = !game_dir.empty() && !GetReshadeVersionInDirectory(game_dir).empty();
         static std::atomic<std::string*> s_delete_local_reshade_msg{nullptr};
         if (local_reshade_exists) {
-            imgui.SameLine();
+            imgui.Spacing();
             if (imgui.Button(ICON_FK_MINUS " Delete local ReShade")) {
                 std::string* old_msg = s_delete_local_reshade_msg.exchange(nullptr);
                 delete old_msg;
@@ -2340,7 +2188,6 @@ static void DrawUpdatesReshadeHeader(display_commander::ui::IImGuiWrapper& imgui
 static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgui,
                                       reshade::api::effect_runtime* runtime) {
     using namespace display_commander::utils;
-    using namespace display_commander::utils::version_check;
 
     std::filesystem::path game_dir;
     {
@@ -2350,11 +2197,7 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
         }
     }
 
-    // Top block: Add DC Shaders/Textures checkbox + Open folder buttons (per private_docs/dc_folders_main_tab_spec.md)
-    if (CheckboxSetting(settings::g_mainTabSettings.add_dc_to_reshade_shader_paths,
-                        "Add DC Shaders/Textures to ReShade paths", imgui)) {
-        OverrideReShadeSettings(runtime);
-    }
+    imgui.TextDisabled("DC Shaders/Textures paths are always added to ReShade search paths.");
     if (imgui.IsItemHovered()) {
         std::string effect_display = "—";
         std::string texture_display = "—";
@@ -2382,12 +2225,8 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
             }
             if (!combined.empty()) texture_display = std::move(combined);
         }
-        imgui.SetTooltipEx(
-            "When on: Display Commander adds its Shaders/Textures folder to ReShade's EffectSearchPaths and "
-            "TextureSearchPaths. When off: DC removes those paths from ReShade config.\n\n"
-            "EffectSearchPaths: %s\n"
-            "TextureSearchPaths: %s",
-            effect_display.c_str(), texture_display.c_str());
+        imgui.SetTooltipEx("EffectSearchPaths: %s\nTextureSearchPaths: %s", effect_display.c_str(),
+                           texture_display.c_str());
     }
     const bool backup_effective = settings::g_advancedTabSettings.auto_enable_reshade_config_backup.GetValue()
                                   || settings::g_mainTabSettings.auto_reshade_config_backup.GetValue();
@@ -4237,85 +4076,6 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
     {
         imgui.TextColored(ui::colors::TEXT_DEFAULT, "Version: %s", DISPLAY_COMMANDER_VERSION_STRING);
 
-        // Version check and update UI
-        {
-            using namespace display_commander::utils::version_check;
-            auto& state = GetVersionCheckState();
-
-            // Check for updates on first load (only once)
-            static bool initial_check_done = false;
-            if (!initial_check_done && !state.checking.load()) {
-                CheckForUpdates();
-                initial_check_done = true;
-            }
-
-            imgui.SameLine();
-            imgui.Spacing();
-            imgui.SameLine();
-
-            VersionComparison status = state.status.load();
-            std::string* latest_version_ptr = state.latest_version.load();
-            std::string* error_ptr = state.error_message.load();
-
-            if (status == VersionComparison::Checking) {
-                imgui.TextColored(ui::colors::TEXT_DIMMED, ICON_FK_REFRESH " Checking for updates...");
-            } else if (status == VersionComparison::UpdateAvailable && latest_version_ptr != nullptr) {
-                imgui.TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Update available: v%s",
-                                  latest_version_ptr->c_str());
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltipEx("Version info from: GitHub (Display Commander stable releases)");
-                }
-                imgui.SameLine();
-
-// Determine if we're 64-bit or 32-bit (simplified check - you may want to improve this)
-#ifdef _WIN64
-                bool is_64bit = true;
-#else
-                bool is_64bit = false;
-#endif
-
-                std::string* download_url = is_64bit ? state.download_url_64.load() : state.download_url_32.load();
-                if (download_url != nullptr && !download_url->empty()) {
-                    if (imgui.Button("Download")) {
-                        // Run download in background thread
-                        std::thread download_thread([is_64bit]() {
-                            if (DownloadUpdate(is_64bit)) {
-                                LogInfo("Update downloaded successfully");
-                            } else {
-                                LogError("Failed to download update");
-                            }
-                        });
-                        download_thread.detach();
-                    }
-                    if (imgui.IsItemHovered()) {
-                        auto download_dir = GetDownloadDirectory();
-                        std::string download_path_str = download_dir.string();
-                        imgui.SetTooltipEx(
-                            "Download will be saved to:\n%s\nFilename: zzz_display_commander_BUILD.addon%s",
-                            download_path_str.c_str(), is_64bit ? "64" : "32");
-                    }
-                }
-            } else if (status == VersionComparison::UpToDate) {
-                imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Up to date");
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltipEx("Version info from: GitHub (Display Commander stable releases)");
-                }
-            } else if (status == VersionComparison::CheckFailed && error_ptr != nullptr) {
-                imgui.TextColored(ui::colors::TEXT_ERROR, ICON_FK_WARNING " Check failed: %s", error_ptr->c_str());
-            }
-
-            // Manual check button
-            imgui.SameLine();
-            if (imgui.SmallButton(ICON_FK_REFRESH)) {
-                if (!state.checking.load()) {
-                    CheckForUpdates();
-                }
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx("Check for updates");
-            }
-        }
-
         // Display current graphics API with feature level/version
         const reshade::api::device_api api = g_last_reshade_device_api.load();
         imgui.SameLine();
@@ -4391,46 +4151,6 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx("Support Display Commander development with a coffee!");
         }
-    }
-    // Display Commander update status (one check per app start), above Updates section
-    {
-        using namespace display_commander::utils::version_check;
-        static std::atomic<bool> s_dc_update_check_started{false};
-        static std::atomic<int> s_dc_update_status{0};  // 0=not started, 1=checking, 2=got version, 3=failed
-        static std::string s_dc_latest_on_github;
-        static std::string s_dc_update_check_error;
-        if (!s_dc_update_check_started.load()) {
-            s_dc_update_check_started.store(true);
-            s_dc_update_status.store(1);
-            std::thread([]() {
-                std::string ver, err;
-                if (FetchLatestDebugReleaseVersion(&ver, &err)) {
-                    s_dc_latest_on_github = ver;
-                    s_dc_update_status.store(2);
-                } else {
-                    s_dc_update_check_error = err.empty() ? "Check failed" : err;
-                    s_dc_update_status.store(3);
-                }
-            }).detach();
-        }
-        const int status = s_dc_update_status.load();
-        if (status == 1) {
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "Display Commander: checking for updates...");
-        } else if (status == 2 && !s_dc_latest_on_github.empty()) {
-            std::string current = NormalizeVersionToXyz(DISPLAY_COMMANDER_VERSION_STRING);
-            if (current.empty()) current = ParseVersionString(DISPLAY_COMMANDER_VERSION_STRING);
-            bool newer_available = false;
-            if (!current.empty() && s_dc_latest_on_github.find_first_not_of("0123456789.") == std::string::npos) {
-                newer_available = (CompareVersions(current, s_dc_latest_on_github) < 0);
-            }
-            if (newer_available) {
-                imgui.TextColored(ui::colors::TEXT_WARNING, "Display Commander: new version available on GitHub (%s)",
-                                  s_dc_latest_on_github.c_str());
-            } else {
-              //  imgui.TextColored(ui::colors::TEXT_SUCCESS, "Display Commander: using latest");
-            }
-        }
-        // status == 3: no line shown (check failed)
     }
 
     // Display Settings Section

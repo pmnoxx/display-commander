@@ -13,6 +13,10 @@ Feature protosal:
 
 ## Unreleased
 
+## v0.13.58 (2026-03-29)
+- [settings] [ui] [compatibility] **ReShade screenshots/shader-path toggles are now local and instant** - The Addons tab checkboxes for `./Screenshots` and global shader/texture search paths now use local Display Commander config keys instead of marker files, and apply to ReShade immediately when clicked.
+  Details: `src/addons/display_commander/ui/new_ui/addons_tab.cpp` now stores these toggles in `[DisplayCommander] ReShadeScreenshotPathEnabled` and `ReShadeGlobalShadersTexturesPathsEnabled` and re-runs `OverrideReShadeSettings` on toggle; `src/addons/display_commander/main_entry.cpp` now reads those local keys and also removes previously injected ReShade paths/settings when toggles are turned off.
+
 ## v0.13.57 (2026-03-29)
 - [new feature] [ui] [settings] **Addon URL download list in ReShade tab** - You can now keep a list of addon URLs, add/remove rows with `+`/`-`, and click **Download** next to each URL to fetch addons directly into Display Commander’s global ReShade Addons folder.
   Details: implemented URL list persistence (`ADDONS.AddonDownloadUrls`) and per-row download/install flow in `src/addons/display_commander/ui/new_ui/addons_tab.cpp`; successful downloads are auto-enabled in `ADDONS.EnabledAddons`.

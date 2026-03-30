@@ -601,6 +601,24 @@ void OverrideReShadeSettings_ScreenshotPaths(reshade::api::effect_runtime* runti
     }
 }
 
+constexpr const char* kDisplayCommanderSection = "DisplayCommander";
+constexpr const char* kConfigKeyGlobalShadersPathsEnabled = "ReShadeGlobalShadersTexturesPathsEnabled";
+constexpr const char* kConfigKeyScreenshotPathEnabled = "ReShadeScreenshotPathEnabled";
+
+bool IsGlobalShadersPathsConfigEnabled() {
+    bool enabled = false;
+    display_commander::config::get_config_value_ensure_exists(kDisplayCommanderSection, kConfigKeyGlobalShadersPathsEnabled,
+                                                               enabled, false);
+    return enabled;
+}
+
+bool IsScreenshotPathConfigEnabled() {
+    bool enabled = false;
+    display_commander::config::get_config_value_ensure_exists(kDisplayCommanderSection, kConfigKeyScreenshotPathEnabled,
+                                                               enabled, false);
+    return enabled;
+}
+
 void OverrideReShadeSettings_LoadFromDllMainOnce(reshade::api::effect_runtime* runtime) {
     bool load_from_dll_main_set_once = false;
     display_commander::config::get_config_value("DisplayCommander", "LoadFromDllMainSetOnce",
@@ -618,47 +636,7 @@ void OverrideReShadeSettings_LoadFromDllMainOnce(reshade::api::effect_runtime* r
     }
 }
 
-std::filesystem::path GetGlobalShadersMarkerPathNoCreate() {
-    std::filesystem::path dc_root = GetDisplayCommanderAppDataRootPathNoCreate();
-    if (dc_root.empty()) {
-        return std::filesystem::path();
-    }
-    return dc_root / L".GLOBAL_SHADERS";
-}
-
-bool IsGlobalShadersMarkerEnabled() {
-    std::filesystem::path marker_path = GetGlobalShadersMarkerPathNoCreate();
-    if (marker_path.empty()) {
-        return false;
-    }
-
-    std::error_code ec;
-    return std::filesystem::is_regular_file(marker_path, ec) && !ec;
-}
-
-std::filesystem::path GetScreenshotPathMarkerPathNoCreate() {
-    std::filesystem::path dc_root = GetDisplayCommanderAppDataRootPathNoCreate();
-    if (dc_root.empty()) {
-        return std::filesystem::path();
-    }
-    return dc_root / L".SCREENSHOT_PATH";
-}
-
-bool IsScreenshotPathMarkerEnabled() {
-    std::filesystem::path marker_path = GetScreenshotPathMarkerPathNoCreate();
-    if (marker_path.empty()) {
-        return false;
-    }
-
-    std::error_code ec;
-    return std::filesystem::is_regular_file(marker_path, ec) && !ec;
-}
-
-void OverrideReShadeSettings_AddDisplayCommanderPaths(reshade::api::effect_runtime* runtime) {
-    if (!IsGlobalShadersMarkerEnabled()) {
-        LogInfo("Skipping global ReShade Shaders/Textures path injection (.GLOBAL_SHADERS marker is missing)");
-        return;
-    }
+void OverrideReShadeSettings_AddDisplayCommanderPaths(reshade::api::effect_runtime* runtime, bool enabled) {
 
     std::filesystem::path dc_base_dir = GetDisplayCommanderReshadeRootFolder();
     if (dc_base_dir.empty()) {
@@ -687,8 +665,8 @@ void OverrideReShadeSettings_AddDisplayCommanderPaths(reshade::api::effect_runti
         return;
     }
 
-    auto addPathToSearchPaths = [runtime](const char* section, const char* key,
-                                          const std::filesystem::path& path_to_add) -> bool {
+    auto syncPathInSearchPaths = [runtime, enabled](const char* section, const char* key,
+                                                    const std::filesystem::path& path_to_sync) -> bool {
         char buffer[4096] = {0};
         size_t buffer_size = sizeof(buffer);
         std::vector<std::string> existing_paths;
@@ -702,7 +680,7 @@ void OverrideReShadeSettings_AddDisplayCommanderPaths(reshade::api::effect_runti
                 ptr += path.length() + 1;
             }
         }
-        std::string path_str = path_to_add.string();
+        std::string path_str = path_to_sync.string();
         path_str += "\\**";
         auto normalizeForComparison = [](const std::string& path) -> std::string {
             std::string normalized = path;
@@ -712,28 +690,45 @@ void OverrideReShadeSettings_AddDisplayCommanderPaths(reshade::api::effect_runti
             return normalized;
         };
         std::string normalized_path = normalizeForComparison(path_str);
+        bool found_existing = false;
+        std::vector<std::string> updated_paths;
+        updated_paths.reserve(existing_paths.size());
         for (const auto& existing_path : existing_paths) {
             std::string normalized_existing = normalizeForComparison(existing_path);
             if (normalized_path.length() == normalized_existing.length()
                 && std::equal(normalized_path.begin(), normalized_path.end(), normalized_existing.begin(),
                               [](char a, char b) { return std::tolower(a) == std::tolower(b); })) {
-                LogInfo("Path already exists in ReShade %s::%s: %s", section, key, normalized_path.c_str());
-                return false;
+                found_existing = true;
+                if (enabled) {
+                    updated_paths.push_back(existing_path);
+                }
+                continue;
             }
+            updated_paths.push_back(existing_path);
         }
-        existing_paths.push_back(path_str);
+
+        if (enabled && !found_existing) {
+            updated_paths.push_back(path_str);
+        }
+
+        if ((enabled && found_existing) || (!enabled && !found_existing)) {
+            LogInfo("ReShade %s::%s unchanged for path %s (enabled=%d)", section, key, normalized_path.c_str(),
+                    enabled ? 1 : 0);
+            return false;
+        }
+
         std::string combined;
-        for (const auto& path : existing_paths) {
+        for (const auto& path : updated_paths) {
             combined += path;
             combined += '\0';
         }
         reshade::set_config_value(runtime, section, key, combined.c_str(), combined.size());
-        LogInfo("Added path to ReShade %s::%s: %s", section, key, path_str.c_str());
+        LogInfo("%s path in ReShade %s::%s: %s", enabled ? "Added" : "Removed", section, key, path_str.c_str());
         return true;
     };
 
-    addPathToSearchPaths("GENERAL", "EffectSearchPaths", shaders_dir);
-    addPathToSearchPaths("GENERAL", "TextureSearchPaths", textures_dir);
+    syncPathInSearchPaths("GENERAL", "EffectSearchPaths", shaders_dir);
+    syncPathInSearchPaths("GENERAL", "TextureSearchPaths", textures_dir);
 }
 }  // namespace
 
@@ -748,11 +743,25 @@ void OverrideReShadeSettings(reshade::api::effect_runtime* runtime) {
 
     OverrideReShadeSettings_WindowConfig(runtime);
     OverrideReShadeSettings_TutorialAndUpdates(runtime);
-    if (IsScreenshotPathMarkerEnabled()) {
+    if (IsScreenshotPathConfigEnabled()) {
         OverrideReShadeSettings_ScreenshotPaths(runtime);
+    } else {
+        // Restore defaults when this local toggle is disabled and the config still points to .\Screenshots.
+        static constexpr const char kScreenshots[] = ".\\Screenshots";
+        static constexpr const char kGameRoot[] = ".\\";
+        char buf[1024];
+        size_t sz = sizeof(buf);
+        if (reshade::get_config_value(runtime, "SCREENSHOT", "SavePath", buf, &sz) && std::string(buf) == kScreenshots) {
+            reshade::set_config_value(runtime, "SCREENSHOT", "SavePath", kGameRoot);
+        }
+        sz = sizeof(buf);
+        if (reshade::get_config_value(runtime, "SCREENSHOT", "PostSaveCommandWorkingDirectory", buf, &sz)
+            && std::string(buf) == kScreenshots) {
+            reshade::set_config_value(runtime, "SCREENSHOT", "PostSaveCommandWorkingDirectory", kGameRoot);
+        }
     }
     OverrideReShadeSettings_LoadFromDllMainOnce(runtime);
-    OverrideReShadeSettings_AddDisplayCommanderPaths(runtime);
+    OverrideReShadeSettings_AddDisplayCommanderPaths(runtime, IsGlobalShadersPathsConfigEnabled());
 
     LogInfo("ReShade settings override completed successfully");
 }

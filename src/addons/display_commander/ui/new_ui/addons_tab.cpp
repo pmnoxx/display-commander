@@ -1,5 +1,6 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "addons_tab.hpp"
+#include "../../addon.hpp"
 #include "../../config/display_commander_config.hpp"
 #include "../forkawesome.h"
 #include "../ui_colors.hpp"
@@ -29,12 +30,33 @@
 
 // Libraries <Windows>
 #include <psapi.h>
+#include <shellapi.h>
 #include <ShlObj.h>
 #include <winhttp.h>
 
 namespace ui::new_ui {
 
 namespace {
+constexpr const char* kDisplayCommanderSection = "DisplayCommander";
+constexpr const char* kConfigKeyGlobalShadersPathsEnabled = "ReShadeGlobalShadersTexturesPathsEnabled";
+constexpr const char* kConfigKeyScreenshotPathEnabled = "ReShadeScreenshotPathEnabled";
+
+bool GetLocalReShadeSettingBool(const char* key, bool default_value) {
+    bool value = default_value;
+    display_commander::config::get_config_value_ensure_exists(kDisplayCommanderSection, key, value, default_value);
+    return value;
+}
+
+void SetLocalReShadeSettingBool(const char* key, bool value, const char* save_reason) {
+    display_commander::config::set_config_value(kDisplayCommanderSection, key, value);
+    display_commander::config::save_config(save_reason);
+}
+
+void ApplyReShadeSettingsImmediately() {
+    // Re-apply to currently selected runtime so checkbox changes are visible immediately.
+    OverrideReShadeSettings(GetSelectedReShadeRuntime());
+}
+
 // Global addon list
 std::vector<AddonInfo> g_addon_list;
 std::atomic<bool> g_addon_list_dirty(true);  // Set to true to trigger refresh
@@ -88,62 +110,12 @@ std::filesystem::path GetDocumentsDirectory() {
     return std::filesystem::path(localappdata_path);
 }
 
-std::filesystem::path GetGlobalShadersMarkerFilePathNoCreate() {
-    std::filesystem::path dc_root = GetDisplayCommanderAppDataRootPathNoCreate();
-    if (dc_root.empty()) {
-        return std::filesystem::path();
-    }
-    return dc_root / L".GLOBAL_SHADERS";
-}
-
 bool IsGlobalShadersEnabled() {
-    std::filesystem::path marker_path = GetGlobalShadersMarkerFilePathNoCreate();
-    if (marker_path.empty()) {
-        return false;
-    }
-
-    std::error_code ec;
-    return std::filesystem::is_regular_file(marker_path, ec) && !ec;
+    return GetLocalReShadeSettingBool(kConfigKeyGlobalShadersPathsEnabled, false);
 }
 
 bool SetGlobalShadersEnabled(bool enabled) {
-    std::filesystem::path marker_path = GetGlobalShadersMarkerFilePathNoCreate();
-    if (enabled) {
-        std::filesystem::path dc_root = GetDisplayCommanderAppDataFolder();
-        if (dc_root.empty()) {
-            LogWarn("Failed to enable global shaders/textures paths: Display Commander app data folder is unavailable");
-            return false;
-        }
-        marker_path = dc_root / L".GLOBAL_SHADERS";
-
-        std::error_code ec;
-        std::filesystem::create_directories(dc_root, ec);
-        if (ec) {
-            LogWarn("Failed to enable global shaders/textures paths: cannot create directory %ls (error: %s)",
-                    dc_root.c_str(), ec.message().c_str());
-            return false;
-        }
-
-        std::ofstream marker_file(marker_path, std::ios::out | std::ios::trunc);
-        if (!marker_file.good()) {
-            LogWarn("Failed to enable global shaders/textures paths: cannot create marker file %ls", marker_path.c_str());
-            return false;
-        }
-        marker_file.close();
-        return true;
-    }
-
-    if (marker_path.empty()) {
-        return true;
-    }
-
-    std::error_code ec;
-    std::filesystem::remove(marker_path, ec);
-    if (ec) {
-        LogWarn("Failed to disable global shaders/textures paths: cannot remove marker file %ls (error: %s)",
-                marker_path.c_str(), ec.message().c_str());
-        return false;
-    }
+    SetLocalReShadeSettingBool(kConfigKeyGlobalShadersPathsEnabled, enabled, "ReShade global shaders/textures toggle");
     return true;
 }
 
@@ -178,48 +150,13 @@ bool SetPerGameFoldersEnabled(bool enabled) {
     return !ec;
 }
 
-std::filesystem::path GetScreenshotPathMarkerFilePathNoCreate() {
-    std::filesystem::path dc_root = GetDisplayCommanderAppDataRootPathNoCreate();
-    if (dc_root.empty()) {
-        return std::filesystem::path();
-    }
-    return dc_root / L".SCREENSHOT_PATH";
-}
-
 bool IsScreenshotPathEnabled() {
-    std::filesystem::path marker_path = GetScreenshotPathMarkerFilePathNoCreate();
-    if (marker_path.empty()) {
-        return false;
-    }
-
-    std::error_code ec;
-    return std::filesystem::is_regular_file(marker_path, ec) && !ec;
+    return GetLocalReShadeSettingBool(kConfigKeyScreenshotPathEnabled, false);
 }
 
 bool SetScreenshotPathEnabled(bool enabled) {
-    std::filesystem::path marker_path = GetScreenshotPathMarkerFilePathNoCreate();
-    if (enabled) {
-        std::filesystem::path dc_root = GetDisplayCommanderAppDataFolder();
-        if (dc_root.empty()) {
-            return false;
-        }
-        marker_path = dc_root / L".SCREENSHOT_PATH";
-        std::error_code ec;
-        std::filesystem::create_directories(dc_root, ec);
-        if (ec) {
-            return false;
-        }
-        std::ofstream marker_file(marker_path, std::ios::out | std::ios::trunc);
-        return marker_file.good();
-    }
-
-    if (marker_path.empty()) {
-        return true;
-    }
-
-    std::error_code ec;
-    std::filesystem::remove(marker_path, ec);
-    return !ec;
+    SetLocalReShadeSettingBool(kConfigKeyScreenshotPathEnabled, enabled, "ReShade screenshot path toggle");
+    return true;
 }
 
 std::filesystem::path GetCurrentGameFolderGlobal() {
@@ -1223,20 +1160,16 @@ void DrawShadersHeader(display_commander::ui::IImGuiWrapper& imgui) {
         bool global_shaders_enabled = IsGlobalShadersEnabled();
         if (imgui.Checkbox("Enable global shaders/textures paths", &global_shaders_enabled)) {
             if (!SetGlobalShadersEnabled(global_shaders_enabled)) {
-                // Keep UI strictly in sync with marker-file existence.
                 global_shaders_enabled = IsGlobalShadersEnabled();
+            } else {
+                ApplyReShadeSettingsImmediately();
             }
         }
         if (imgui.IsItemHovered()) {
-            std::filesystem::path marker_path = GetGlobalShadersMarkerFilePathNoCreate();
-            if (marker_path.empty()) {
-                marker_path = std::filesystem::path(L"%localappdata%") / L"Programs" / L"Display_Commander"
-                              / L".GLOBAL_SHADERS";
-            }
             imgui.SetTooltipEx(
                 "When enabled, Display Commander adds global Shaders/Textures paths to ReShade.\n"
-                "State is controlled by: %s",
-                GetPathRelativeToDocuments(marker_path).c_str());
+                "Stored as local config key: [%s] %s",
+                kDisplayCommanderSection, kConfigKeyGlobalShadersPathsEnabled);
         }
 
         imgui.Spacing();
@@ -1440,15 +1373,13 @@ void DrawScreenshotsHeader(display_commander::ui::IImGuiWrapper& imgui) {
     if (imgui.Checkbox("Add ./Screenshots path to ReShade settings", &enabled)) {
         if (!SetScreenshotPathEnabled(enabled)) {
             enabled = IsScreenshotPathEnabled();
+        } else {
+            ApplyReShadeSettingsImmediately();
         }
     }
     if (imgui.IsItemHovered()) {
-        std::filesystem::path marker_path = GetScreenshotPathMarkerFilePathNoCreate();
-        if (marker_path.empty()) {
-            marker_path = std::filesystem::path(L"%localappdata%") / L"Programs" / L"Display_Commander"
-                          / L".SCREENSHOT_PATH";
-        }
-        imgui.SetTooltipEx("Enabled only when marker exists: %s", GetPathRelativeToDocuments(marker_path).c_str());
+        imgui.SetTooltipEx("Stored as local config key: [%s] %s", kDisplayCommanderSection,
+                           kConfigKeyScreenshotPathEnabled);
     }
 
     imgui.Spacing();

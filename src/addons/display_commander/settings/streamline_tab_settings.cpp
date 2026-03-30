@@ -1,6 +1,14 @@
+// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "streamline_tab_settings.hpp"
-#include "../utils.hpp"
 #include "../utils/logging.hpp"
+
+// Libraries <ReShade> / <imgui>
+
+// Libraries <standard C++>
+
+// Libraries <Windows.h> — before other Windows headers
+
+// Libraries <Windows>
 
 namespace settings {
 

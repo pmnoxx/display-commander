@@ -1,23 +1,14 @@
+// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
+// Libraries <ReShade> / <imgui>
+// Libraries <standard C++>
+// Libraries <Windows.h> — before other Windows headers
+// Libraries <Windows>
+
 #include "nvidia_profile_search.hpp"
-#include "../utils.hpp"
-#include "nvapi_loader.hpp"
-#include "nvpi_reference.hpp"
 
-#include <nvapi.h>
-#include <NvApiDriverSettings.h>
-
-#include <Windows.h>
-#include <algorithm>
-#include <array>
 #include <cstring>
-#include <cwchar>
-#include <fstream>
-#include <map>
-#include <set>
-#include <sstream>
-#include <string>
-#include <vector>
 
+#if 0
 namespace display_commander::nvapi {
 
 namespace {
@@ -1546,5 +1537,91 @@ std::vector<std::uint32_t> GetRtxHdrSettingIds() {
               ids.end());
     return ids;
 }
+
+}  // namespace display_commander::nvapi
+
+#endif
+
+namespace display_commander::nvapi {
+
+bool FindApplicationByPathForCurrentExe(NvDRSSessionHandle /*hSession*/, NvDRSProfileHandle* ph_profile,
+                                        NVDRS_APPLICATION* p_app) {
+    if (ph_profile != nullptr) *ph_profile = nullptr;
+    if (p_app != nullptr) memset(p_app, 0, sizeof(*p_app));
+    return false;
+}
+
+NvidiaProfileSearchResult GetCachedProfileSearchResult() {
+    NvidiaProfileSearchResult r;
+    r.success = false;
+    r.error = "NVIDIA profile search removed";
+    return r;
+}
+
+void InvalidateProfileSearchCache() {}
+
+ProfileFpsLimitResult GetProfileFpsLimit() {
+    ProfileFpsLimitResult out;
+    out.has_profile = false;
+    out.error = "NVIDIA profile search removed";
+    return out;
+}
+
+std::pair<bool, std::string> SetProfileFpsLimit(std::uint32_t /*value*/) {
+    return {false, "NVIDIA profile search removed"};
+}
+
+std::vector<std::pair<std::uint32_t, std::string>> GetProfileFpsLimitOptions() { return {}; }
+
+std::vector<std::pair<std::uint32_t, std::string>> GetSettingAvailableValues(std::uint32_t /*settingId*/) {
+    return {};
+}
+
+std::pair<bool, std::string> SetProfileSetting(std::uint32_t /*settingId*/, std::uint32_t /*value*/) {
+    return {false, "NVIDIA profile search removed"};
+}
+
+std::pair<bool, std::string> CreateProfileForCurrentExe() { return {false, "NVIDIA profile search removed"}; }
+
+bool HasDisplayCommanderProfile(const NvidiaProfileSearchResult& /*r*/) { return false; }
+
+std::pair<bool, std::string> DeleteDisplayCommanderProfileForCurrentExe() {
+    return {false, "NVIDIA profile search removed"};
+}
+
+DlssDriverPresetStatus GetDlssDriverPresetStatus() {
+    DlssDriverPresetStatus out;
+    out.has_profile = false;
+    out.profile_error = "NVIDIA profile search removed";
+    return out;
+}
+
+std::pair<bool, std::string> ClearDriverDlssPresetOverride() {
+    return {false, "NVIDIA profile search removed"};
+}
+
+std::pair<bool, std::string> SetOrDeleteProfileSettingForExe(const std::wstring& /*exePath*/,
+                                                               std::uint32_t /*settingId*/, bool /*deleteSetting*/,
+                                                               std::uint32_t /*valueIfSet*/) {
+    return {false, "NVIDIA profile search removed"};
+}
+
+std::vector<DriverAvailableSetting> GetDriverAvailableSettings() { return {}; }
+
+std::pair<bool, std::string> DumpDriverSettingsToFile(const std::string& /*filePath*/) {
+    return {false, "NVIDIA profile search removed"};
+}
+
+std::vector<ImportantProfileSetting> GetDriverSettingsWithProfileValues() { return {}; }
+
+std::pair<bool, std::string> DeleteProfileSettingForCurrentExe(std::uint32_t /*settingId*/) {
+    return {false, "NVIDIA profile search removed"};
+}
+
+std::string GetSettingDriverDebugTooltip(std::uint32_t /*settingId*/, const std::string& /*displayNameUtf8*/) {
+    return {};
+}
+
+std::vector<std::uint32_t> GetRtxHdrSettingIds() { return {}; }
 
 }  // namespace display_commander::nvapi

@@ -18,8 +18,8 @@
 
 #include <imgui.h>
 
-// For wrapper-based overloads (standalone UI); path from res/ to ui/
-#include "../ui/imgui_wrapper_base.hpp"
+// For wrapper-based overloads (standalone UI)
+#include "imgui_wrapper_base.hpp"
 
 namespace ui::colors {
 

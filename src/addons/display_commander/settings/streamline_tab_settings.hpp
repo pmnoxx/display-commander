@@ -1,7 +1,8 @@
 #pragma once
 
-#include <string>
 #include "../ui/new_ui/settings_wrapper.hpp"
+
+#include <vector>
 
 namespace settings {
 

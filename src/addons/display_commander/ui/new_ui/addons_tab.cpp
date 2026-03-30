@@ -1,8 +1,8 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "addons_tab.hpp"
 #include "../../config/display_commander_config.hpp"
-#include "../../res/forkawesome.h"
-#include "../../res/ui_colors.hpp"
+#include "../forkawesome.h"
+#include "../ui_colors.hpp"
 #include "../../settings/reshade_tab_settings.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"

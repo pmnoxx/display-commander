@@ -9,7 +9,6 @@
 #include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"
 #include "../system/debug_output_hooks.hpp"
-#include "../input/dinput_hooks.hpp"
 #include "../system/display_settings_hooks.hpp"
 #include "dpi_hooks.hpp"
 #include "../../globals.hpp"
@@ -666,9 +665,6 @@ void UninstallApiHooks() {
 
     // Uninstall LoadLibrary hooks
     UninstallLoadLibraryHooks();
-
-    // Uninstall DirectInput hooks
-    UninstallDirectInputHooks();
 
     // Uninstall OpenGL hooks
     UninstallOpenGLHooks();

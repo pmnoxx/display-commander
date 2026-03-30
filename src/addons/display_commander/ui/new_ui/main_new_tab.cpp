@@ -33,8 +33,8 @@
 #include "../../nvapi/reflex_manager.hpp"
 #include "../../performance_types.hpp"
 #include "../../presentmon/presentmon_manager.hpp"
-#include "../../res/forkawesome.h"
-#include "../../res/ui_colors.hpp"
+#include "../forkawesome.h"
+#include "../ui_colors.hpp"
 #include "../../settings/advanced_tab_settings.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../settings/main_tab_settings.hpp"
@@ -2672,13 +2672,17 @@ static void DrawMainTabOptionalPanelNvidiaControl(display_commander::ui::IImGuiW
             } else {
                 imgui.TextColored(ui::colors::TEXT_DIMMED, "No NVIDIA profile for this game.");
             }
-            if (imgui.Button("Create profile##MainTabNvidia")) {
-                auto [ok, err] = display_commander::nvapi::CreateProfileForCurrentExe();
-                if (ok) {
-                    s_nvidiaMainTabSetError.clear();
-                    display_commander::nvapi::InvalidateProfileSearchCache();
-                } else {
-                    s_nvidiaMainTabSetError = err;
+            const bool nvapi_profile_search_removed = (!r.error.empty() &&
+                                                         r.error.find("removed") != std::string::npos);
+            if (!nvapi_profile_search_removed) {
+                if (imgui.Button("Create profile##MainTabNvidia")) {
+                    auto [ok, err] = display_commander::nvapi::CreateProfileForCurrentExe();
+                    if (ok) {
+                        s_nvidiaMainTabSetError.clear();
+                        display_commander::nvapi::InvalidateProfileSearchCache();
+                    } else {
+                        s_nvidiaMainTabSetError = err;
+                    }
                 }
             }
             if (imgui.IsItemHovered()) {

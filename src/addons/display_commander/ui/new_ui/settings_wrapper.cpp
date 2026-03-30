@@ -7,7 +7,7 @@
 #include "../imgui_wrapper_base.hpp"
 
 #include <reshade_imgui.hpp>
-#include "../../res/forkawesome.h"
+#include "../forkawesome.h"
 
 #include <algorithm>
 #include <cmath>

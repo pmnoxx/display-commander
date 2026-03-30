@@ -11,7 +11,7 @@
 #include "../../hooks/system/timeslowdown_hooks.hpp"
 #include "../../hooks/input/windows_gaming_input_hooks.hpp"
 #include "../../hooks/input/xinput_hooks.hpp"
-#include "../../res/ui_colors.hpp"
+#include "../../ui/ui_colors.hpp"
 #include "../../settings/advanced_tab_settings.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../settings/hook_suppression_settings.hpp"

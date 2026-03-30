@@ -1,22 +1,18 @@
 #pragma once
 
-#include <ddraw.h>
-#include <atomic>
+// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
+// Libraries <ReShade> / <imgui>
+// Libraries <standard C++>
+
+// Libraries <Windows.h> — before other Windows headers
+#include <Windows.h>
+
+// Libraries <Windows>
 
 namespace display_commanderhooks::ddraw {
 
-// IDirectDrawSurface::Flip - present equivalent for DirectDraw
-typedef HRESULT(STDMETHODCALLTYPE* IDirectDrawSurface_Flip_pfn)(LPDIRECTDRAWSURFACE This,
-                                                                LPDIRECTDRAWSURFACE lpDDSurfaceTargetOverride,
-                                                                DWORD dwFlags);
-
-HRESULT STDMETHODCALLTYPE IDirectDrawSurface_Flip_Detour(LPDIRECTDRAWSURFACE This,
-                                                        LPDIRECTDRAWSURFACE lpDDSurfaceTargetOverride, DWORD dwFlags);
-
-// Install hooks when ddraw.dll is loaded (DirectDrawCreate/CreateEx -> CreateSurface -> Flip).
-// Skips if hModule is our own (proxy mode).
-bool InstallDDrawHooks(HMODULE hModule);
-
-extern std::atomic<bool> g_ddraw_present_hooks_installed;
+// DDraw hook support removed.
+// Kept only as a stub signature so existing integration can compile without DirectDraw detours.
+bool InstallDDrawHooks(HMODULE hmodule);
 
 }  // namespace display_commanderhooks::ddraw

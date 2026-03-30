@@ -26,7 +26,7 @@ enum class GraphicsApi : std::uint32_t {
 };
 
 /**
- * For colors in shared/wrapper UI code, use res/ui_colors.hpp and ui::colors::* (e.g. ui::colors::TEXT_WARNING).
+ * For colors in shared/wrapper UI code, use ui/ui_colors.hpp and ui::colors::* (e.g. ui::colors::TEXT_WARNING).
  * The wrapper API uses ImVec4/ImVec2 directly.
  */
 

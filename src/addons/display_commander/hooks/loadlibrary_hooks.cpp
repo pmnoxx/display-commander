@@ -21,10 +21,7 @@
 #include "../utils/general_utils.hpp"  // GetDefaultDlssOverrideFolder, GetCallingDLL
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
-#include "ddraw/ddraw_present_hooks.hpp"
 #include "hook_suppression_manager.hpp"
-#include "input/dinput_hooks.hpp"
-#include "input/game_input_hooks.hpp"
 #include "input/windows_gaming_input_hooks.hpp"
 #include "input/xinput_hooks.hpp"
 #include "nvidia/ngx_hooks.hpp"
@@ -1615,14 +1612,7 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
         }
     }
 
-    // GameInput (IGameInput) hooks – GameInput.dll exports GameInputCreate
-    else if (lowerModuleName.find(L"gameinput.dll") != std::wstring::npos) {
-        if (InstallGameInputHooks(hModule)) {
-            LogInfo("[OnModuleLoaded] GameInput hooks installed successfully");
-        } else {
-            LogInfo("[OnModuleLoaded] GameInput hooks not installed (export not found or already installed)");
-        }
-    }
+    // GameInput hooks removed.
     // Windows.Gaming.Input (WinRT) hooks – RoGetActivationFactory from combase
     else if (lowerModuleName.find(L"windows.gaming.input.dll") != std::wstring::npos) {
         if (InstallWindowsGamingInputHooks(hModule)) {
@@ -1684,30 +1674,6 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
             LogInfo(
                 "[OnModuleLoaded] OpenGL hooks not installed (e.g. suppressed, already installed, or opengl32 not "
                 "ready)");
-        }
-    }
-    // ddraw.dll – DirectDraw present (Flip) and FPS limiter
-    else if (lowerModuleName.find(L"ddraw.dll") != std::wstring::npos) {
-        if (display_commanderhooks::ddraw::InstallDDrawHooks(hModule)) {
-            LogInfo("[OnModuleLoaded] DDraw hooks installed successfully");
-        } else {
-            LogInfo("[OnModuleLoaded] DDraw hooks not installed (e.g. already installed, shutdown, or proxy mode)");
-        }
-    }
-    // dinput8.dll – DirectInput 8 create hook
-    else if (lowerModuleName.find(L"dinput8.dll") != std::wstring::npos) {
-        if (InstallDirectInput8Hooks(hModule)) {
-            LogInfo("[OnModuleLoaded] DirectInput 8 hooks installed");
-        } else {
-            LogInfo("[OnModuleLoaded] DirectInput 8 hooks not installed (e.g. suppressed or already installed)");
-        }
-    }
-    // dinput.dll – legacy DirectInput create hooks (DirectInputCreateA/W)
-    else if (lowerModuleName.find(L"dinput.dll") != std::wstring::npos) {
-        if (InstallDirectInputHooks(hModule)) {
-            LogInfo("[OnModuleLoaded] DirectInput hooks installed");
-        } else {
-            LogInfo("[OnModuleLoaded] DirectInput hooks not installed (e.g. suppressed or already installed)");
         }
     }
     // Generic logging for other modules

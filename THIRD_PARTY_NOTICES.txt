@@ -19,7 +19,7 @@ NVIDIA DLSS / NGX SDK headers      | external/nvidia-dlss         | NVIDIA propr
 Khronos Vulkan-Headers             | external/vulkan-headers      | Apache-2.0 OR MIT (see external/vulkan-headers/LICENSE.md)
 toml++                             | external/tomlplusplus        | MIT
 NvidiaProfileInspectorRevamped data| external/NvidiaProfileInspectorRevamped | MIT (Reference.xml may be copied next to builds; see submodule LICENSE)
-Fork Awesome (icons, font data)    | external/ForkAwesome; res/forkawesome.h | SIL Open Font License 1.1
+Fork Awesome (icons, font data)    | external/ForkAwesome; ui/forkawesome.h | SIL Open Font License 1.1
 
 
 -------------------------------------------------------------------------------
@@ -321,7 +321,7 @@ when the submodule is present.
 Fork Awesome
 -------------------------------------------------------------------------------
 The Fork Awesome icon font is used in the UI (see external/ForkAwesome and
-src/addons/display_commander/res/forkawesome.h). Typical attribution:
+src/addons/display_commander/ui/forkawesome.h). Typical attribution:
 
 Copyright (c) 2018 Fork Awesome (https://forkawesome.github.io)
 

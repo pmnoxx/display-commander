@@ -14,6 +14,17 @@ Feature protosal:
 
 ## Unreleased
 
+- [removal] [hooks] **DDraw present hook support removed** - Display Commander no longer installs DirectDraw `ddraw.dll` present/Flip hooks (and the associated FPS-limiter callsite) when `ddraw.dll` loads.
+  Details: stubbed `src/addons/display_commander/hooks/ddraw/ddraw_present_hooks.cpp` and removed the runtime wiring from `src/addons/display_commander/hooks/loadlibrary_hooks.cpp`.
+- [removal] [nvapi] **NVIDIA profile search/edits removed** - Display Commander no longer queries or edits NVIDIA driver profiles via the NVIDIA profile-search backend.
+  Details: disabled `src/addons/display_commander/nvapi/nvidia_profile_search.cpp` implementation and hid the Main tab “Create profile” action in `src/addons/display_commander/ui/new_ui/main_new_tab.cpp`.
+- [removal] [nvapi] **NVPI Reference XML parsing removed** - Display Commander no longer parses `Reference.xml` to resolve “Smooth Motion - Allowed APIs”; it now uses the built-in fallback values only.
+  Details: simplified `src/addons/display_commander/nvapi/nvpi_reference.cpp` (fallback-only implementation).
+- [removal] [hooks] **DirectInput (dinput8/dinput) hooks removed** - Display Commander no longer installs DirectInput hooks for `dinput8.dll` / `dinput.dll`.
+  Details: replaced `src/addons/display_commander/hooks/input/dinput_hooks.cpp` with link-safe stubs and removed the runtime wiring from `src/addons/display_commander/hooks/loadlibrary_hooks.cpp`.
+- [removal] [hooks] **GameInput hooks removed** - Display Commander no longer installs GameInput hooks (`GameInputCreate`) from `GameInput.dll`.
+  Details: replaced `src/addons/display_commander/hooks/input/game_input_hooks.cpp` with stubs and removed runtime wiring from `src/addons/display_commander/hooks/loadlibrary_hooks.cpp`.
+
 - [ui] **Addons tab ReShade headers removed** - Removed the “ReShade Config” and “Global ReShade” collapsible header labels from the Addons tab so the controls are always visible.
   Details: updated `src/addons/display_commander/ui/new_ui/addons_tab.cpp`.
 - [removal] [ui] **Suppress ReShade clock option removed** - Removed the “Suppress ReShade Clock” option and its override, so Display Commander no longer forces ReShade `OVERLAY.ShowClock=0`.
@@ -47,6 +58,8 @@ Feature protosal:
   Details: removed `ReshadeLocationType` + multi-location selection from `src/addons/display_commander/utils/reshade_load_path.hpp/.cpp`.
 - [cleanup] [compatibility] **Removed hardcoded ReShade version defaults from loader** - The ReShade load-path code no longer keeps `DEFAULT_VERSION` or `RESHADE_VERSIONS_FALLBACK` constants. If legacy config migration does not provide a version, loading falls back to the normal local→global DLL search.
   Details: cleaned `src/addons/display_commander/utils/reshade_load_path.cpp/.hpp` by removing the old version-list API and constants.
+- [bugfix] **Fix Streamline settings build stability** - Prevents relying on transitive includes, making Streamline tab settings compile more reliably across build setups.
+  Details: updated `src/addons/display_commander/settings/streamline_tab_settings.hpp` (added missing `<vector>` include) and adjusted include grouping in `streamline_tab_settings.cpp`.
 
 ## v0.13.54 (2026-03-29)
 

@@ -53,8 +53,8 @@ struct NvidiaProfileSearchResult {
 
 // Finds profile for current process exe by full path (single NvAPI_DRS_FindApplicationByName call).
 // Caller owns hSession (must be created and loaded). Returns true if profile and app found.
-bool FindApplicationByPathForCurrentExe(NvDRSSessionHandle hSession, NvDRSProfileHandle* phProfile,
-                                        NVDRS_APPLICATION* pApp);
+bool FindApplicationByPathForCurrentExe(NvDRSSessionHandle h_session, NvDRSProfileHandle* ph_profile,
+                                        NVDRS_APPLICATION* p_app);
 
 // Returns cached result for the current exe. Fills cache on first call or after InvalidateProfileSearchCache().
 // Use this in UI to avoid searching every frame. Call InvalidateProfileSearchCache() on user "Refresh".
@@ -84,11 +84,11 @@ std::pair<bool, std::string> SetProfileFpsLimit(std::uint32_t value);
 std::vector<std::pair<std::uint32_t, std::string>> GetProfileFpsLimitOptions();
 
 // Returns available (value, label) pairs for a DWORD setting. Cached per settingId. Empty on error.
-std::vector<std::pair<std::uint32_t, std::string>> GetSettingAvailableValues(std::uint32_t settingId);
+std::vector<std::pair<std::uint32_t, std::string>> GetSettingAvailableValues(std::uint32_t setting_id);
 
 // Sets a DWORD setting on the first profile matching the current exe. Saves settings and invalidates cache.
 // Returns (true, "") on success; (false, error_message) on failure. Error message includes step and NVAPI status.
-std::pair<bool, std::string> SetProfileSetting(std::uint32_t settingId, std::uint32_t value);
+std::pair<bool, std::string> SetProfileSetting(std::uint32_t setting_id, std::uint32_t value);
 
 // Creates an NVIDIA driver profile for the current process executable and adds the exe to it.
 // Profile name will be "Display Commander - <exe base name>". If a profile already exists
@@ -131,8 +131,8 @@ std::pair<bool, std::string> ClearDriverDlssPresetOverride();
 // If deleteSetting is true, the setting is removed (reset to driver default); valueIfSet is ignored.
 // If deleteSetting is false, the setting is set to valueIfSet. Requires NVAPI initialized.
 // Returns (true, "") on success, (false, error_message) on failure.
-std::pair<bool, std::string> SetOrDeleteProfileSettingForExe(const std::wstring& exePath, std::uint32_t settingId,
-                                                             bool deleteSetting, std::uint32_t valueIfSet);
+std::pair<bool, std::string> SetOrDeleteProfileSettingForExe(const std::wstring& exe_path, std::uint32_t setting_id,
+                                                             bool delete_setting, std::uint32_t value_if_set);
 
 // One setting recognized by the current driver (from NvAPI_DRS_EnumAvailableSettingIds + GetSettingNameFromId).
 // Use to show only settings valid for this driver version, or to dump the full list.
@@ -148,7 +148,7 @@ std::vector<DriverAvailableSetting> GetDriverAvailableSettings();
 // Dumps all driver-recognized settings to a text file: one line per setting with ID (hex), name, type, and allowed
 // values. filePath: full path for the output file (e.g. addon dir + "nvidia_driver_settings_dump.txt"). Returns (true,
 // "") on success; (false, error_message) on failure.
-std::pair<bool, std::string> DumpDriverSettingsToFile(const std::string& filePath);
+std::pair<bool, std::string> DumpDriverSettingsToFile(const std::string& file_path);
 
 // Returns all driver-recognized settings with current profile value (or "Not set") and driver default.
 // Uses the same list as GetDriverAvailableSettings(); for each setting, reads value from the first
@@ -158,12 +158,12 @@ std::vector<ImportantProfileSetting> GetDriverSettingsWithProfileValues();
 
 // Removes a setting from the profile for the current exe (reset to driver default).
 // Returns (true, "") on success; (false, error_message) on failure. Invalidates profile cache on success.
-std::pair<bool, std::string> DeleteProfileSettingForCurrentExe(std::uint32_t settingId);
+std::pair<bool, std::string> DeleteProfileSettingForCurrentExe(std::uint32_t setting_id);
 
 // Debug tooltip: returns a multi-line string with Key (hex), GetSettingNameFromId result, and
 // GetSettingIdFromName(displayNameUtf8) result. Use when hovering over a setting name in the UI.
 // displayNameUtf8 is the label shown in the UI (e.g. s.label). Empty string on NVAPI/init failure.
-std::string GetSettingDriverDebugTooltip(std::uint32_t settingId, const std::string& displayNameUtf8);
+std::string GetSettingDriverDebugTooltip(std::uint32_t setting_id, const std::string& display_name_utf8);
 
 // Returns the list of profile setting IDs shown in the Main tab "NVIDIA Control" section: Smooth Motion
 // (Allowed APIs, Enable), RTX HDR (excluding admin-only Debanding/Allow), then Latency - Max Pre-Rendered Frames.

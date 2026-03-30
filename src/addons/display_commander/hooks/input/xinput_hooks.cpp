@@ -326,27 +326,7 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE* pState, Hook
         shared_state->last_xinput_call_time_ns.store(current_time_ns);
     }
 
-    // Check if override state is set - if so, spoof controller connection for controller 0
-    bool should_spoof_connection = g_auto_click_enabled.load() && dwUserIndex == 0;
-
-    DWORD result = ERROR_DEVICE_NOT_CONNECTED;
-
-    // Track whether we spoofed the connection
-    bool did_spoof_connection = false;
-
-    // If controller is not connected but we need to spoof for override, create fake state
-    if (should_spoof_connection && pState != nullptr) {
-        // Initialize fake gamepad state (all zeros)
-        ZeroMemory(&pState->Gamepad, sizeof(XINPUT_GAMEPAD));
-        // Packet number will be set just before return
-        result = ERROR_SUCCESS;  // Spoof as connected
-        did_spoof_connection = true;
-    }
-
-    // Fall back to original XInput
-    if (result != ERROR_SUCCESS) {
-        result = call_original_func(dwUserIndex, pState);
-    }
+    DWORD result = call_original_func(dwUserIndex, pState);
     // Note pState may be null if caller wants to check if device is connected
     if (pState == nullptr) {
         return result;
@@ -670,40 +650,6 @@ static DWORD WINAPI XInputGetCapabilities_Detour_Impl(size_t module_index, DWORD
         return ERROR_DEVICE_NOT_CONNECTED;
     }
 
-    // Get shared state to check settings
-    auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
-
-    // Check if override state is set - if so, spoof controller connection for controller 0
-    bool should_spoof_connection = g_auto_click_enabled.load() && dwUserIndex == 0;
-
-    // If spoofing is enabled, fake connected state
-    bool should_fake_connection = false;
-    if (should_spoof_connection) {
-        should_fake_connection = true;
-    }
-
-    // If we should fake connection, return fake capabilities
-    if (should_fake_connection) {
-        // Initialize fake capabilities structure
-        ZeroMemory(pCapabilities, sizeof(XINPUT_CAPABILITIES));
-
-        // Set standard gamepad type and subtype
-        pCapabilities->Type = XINPUT_DEVTYPE_GAMEPAD;
-        pCapabilities->SubType = XINPUT_DEVSUBTYPE_GAMEPAD;
-        pCapabilities->Flags = 0;  // No special flags
-
-        // Initialize gamepad structure (all buttons available)
-        ZeroMemory(&pCapabilities->Gamepad, sizeof(XINPUT_GAMEPAD));
-
-        // Initialize vibration structure (vibration supported)
-        pCapabilities->Vibration.wLeftMotorSpeed = 0;
-        pCapabilities->Vibration.wRightMotorSpeed = 0;
-
-        g_hook_stats[HOOK_XInputGetCapabilities].increment_unsuppressed();
-        return ERROR_SUCCESS;
-    }
-
-    // Otherwise, call the original function
     DWORD result = get_capabilities(dwUserIndex, dwFlags, pCapabilities);
 
     if (result == ERROR_SUCCESS) {

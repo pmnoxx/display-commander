@@ -16,7 +16,6 @@
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/mpo_registry.hpp"
-#include "../../utils/texture_tracker.hpp"
 #include "../../utils/timing.hpp"
 #include "settings_wrapper.hpp"
 
@@ -1075,22 +1074,6 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::GraphicsApi api,
 
     imgui.Spacing();
 
-    // Auto-hide Discord Overlay setting
-    if (CheckboxSetting(settings::g_advancedTabSettings.auto_hide_discord_overlay, "Auto-hide Discord Overlay",
-                        imgui)) {
-        LogInfo("Auto-hide Discord Overlay setting changed to: %s",
-                settings::g_advancedTabSettings.auto_hide_discord_overlay.GetValue() ? "enabled" : "disabled");
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Automatically hide Discord Overlay window when it overlaps with the game window.\n"
-            "This prevents the overlay from interfering with MPO iFlip and can improve performance.\n"
-            "Similar to Special-K's behavior when AllowWindowedMode=false.\n\n"
-            "The check runs every second in the continuous monitoring thread.");
-    }
-
-    imgui.Spacing();
-
     // Suppress Window Changes setting
     if (CheckboxSetting(settings::g_advancedTabSettings.suppress_window_changes, "Suppress Window Changes", imgui)) {
         LogInfo("Suppress Window Changes setting changed to: %s",
@@ -1835,7 +1818,7 @@ void DrawNvapiSettings(display_commander::ui::GraphicsApi api, display_commander
         imgui.Unindent();
     }
 
-    // Unsupported features (D3D11 vtable hooks, texture tracking, cache, dump, stats)
+    // Unsupported/unfinished features
     imgui.Spacing();
     if (imgui.CollapsingHeader("Unsupported/unfinished features", wrapper_flags::TreeNodeFlags_None)) {
         imgui.Indent();
@@ -1845,176 +1828,6 @@ void DrawNvapiSettings(display_commander::ui::GraphicsApi api, display_commander
             DrawHdrDisplaySettings(api, imgui);
         }
 
-        // Textures subsection: D3D11 vtable hooks, texture tracking, cache, dump, stats
-        if (imgui.CollapsingHeader("Textures", wrapper_flags::TreeNodeFlags_None)) {
-            imgui.Indent();
-
-            // Enable D3D11 device vtable hooks (HookD3D11DeviceVTable). Required for track loaded texture size.
-            if (CheckboxSetting(settings::g_advancedTabSettings.enable_dx11_vtable_hooks,
-                                "Enable D3D11 vtable hooks (HookD3D11DeviceVTable)", imgui)) {
-                LogInfo("Enable D3D11 vtable hooks setting changed to: %s",
-                        settings::g_advancedTabSettings.enable_dx11_vtable_hooks.GetValue() ? "enabled" : "disabled");
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx(
-                    "When enabled, hooks the D3D11 device vtable (CreateTexture2D, etc.).\n"
-                    "Required for \"Track loaded texture size\". Off by default.\n"
-                    "Takes effect for devices created after enabling; restart the game to hook existing devices.");
-            }
-
-            // Texture memory tracking (optional; tracks loaded D3D11 texture size and hooks IUnknown::Release)
-            if (CheckboxSetting(settings::g_advancedTabSettings.texture_tracking_enabled, "Track loaded texture size",
-                                imgui)) {
-                LogInfo("Texture tracking setting changed to: %s",
-                        settings::g_advancedTabSettings.texture_tracking_enabled.GetValue() ? "enabled" : "disabled");
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx(
-                    "When enabled, tracks the size of D3D11 textures created by the game and hooks their Release.\n"
-                    "Shows current and peak texture memory in the stats below. Off by default.\n"
-                    "Requires \"Enable D3D11 vtable hooks\" to be enabled. Only affects D3D11 games.");
-            }
-            if (CheckboxSetting(settings::g_advancedTabSettings.d3d11_texture_caching_enabled,
-                                "D3D11 Texture Caching with no-op texture eviction", imgui)) {
-                LogInfo(
-                    "D3D11 texture caching setting changed to: %s",
-                    settings::g_advancedTabSettings.d3d11_texture_caching_enabled.GetValue() ? "enabled" : "disabled");
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx(
-                    "When enabled, caches CreateTexture2D results (textures with initial data, no size limit) by "
-                    "content "
-                    "hash.\n"
-                    "Matching subsequent creates return the cached texture instead of creating a new one. No "
-                    "eviction.\n"
-                    "Requires \"Track loaded texture size\" (and D3D11 vtable hooks). Only affects D3D11 games.");
-            }
-            if (CheckboxSetting(settings::g_advancedTabSettings.d3d11_texture_caching_1d_enabled,
-                                "D3D11 Texture Caching (1D)", imgui)) {
-                LogInfo("D3D11 texture caching 1D setting changed to: %s",
-                        settings::g_advancedTabSettings.d3d11_texture_caching_1d_enabled.GetValue() ? "enabled"
-                                                                                                    : "disabled");
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx(
-                    "When enabled, caches CreateTexture1D results by content hash (same rules as 2D cache). Off by "
-                    "default.");
-            }
-            if (CheckboxSetting(settings::g_advancedTabSettings.d3d11_texture_caching_3d_enabled,
-                                "D3D11 Texture Caching (3D)", imgui)) {
-                LogInfo("D3D11 texture caching 3D setting changed to: %s",
-                        settings::g_advancedTabSettings.d3d11_texture_caching_3d_enabled.GetValue() ? "enabled"
-                                                                                                    : "disabled");
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx(
-                    "When enabled, caches CreateTexture3D results by content hash (same rules as 2D cache). Off by "
-                    "default.");
-            }
-            {
-                const int min_kb = 1;
-                const int max_kb_ui = 65536;  // 64 MB; config allows up to 1048576 (1 GB)
-                int display_kb =
-                    (std::max)(min_kb, (std::min)(max_kb_ui, settings::g_advancedTabSettings
-                                                                 .texture_cache_content_hash_cap_kb.GetValue()));
-                if (imgui.SliderInt("Content hash sample max (KB)", &display_kb, min_kb, max_kb_ui, "%d KB")) {
-                    display_kb = (std::max)(min_kb, (std::min)(max_kb_ui, display_kb));
-                    settings::g_advancedTabSettings.texture_cache_content_hash_cap_kb.SetValue(display_kb);
-                }
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltipEx(
-                        "Max bytes of texture initial data to include in the cache key hash (in KB).\n"
-                        "Larger values reduce collision risk for big textures but increase hashing cost.\n"
-                        "Default 64 KB. Config allows up to 1048576 KB (1 GB).");
-                }
-            }
-            if (CheckboxSetting(settings::g_advancedTabSettings.dump_textures_enabled, "Dump textures", imgui)) {
-                LogInfo("Dump textures setting changed to: %s",
-                        settings::g_advancedTabSettings.dump_textures_enabled.GetValue() ? "enabled" : "disabled");
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx(
-                    "When enabled, passively dump to dumped_textures in the current game folder as .dds only when a "
-                    "new 2D "
-                    "texture is added to the cache (CreateTexture2D with initial data and D3D11 Texture Caching "
-                    "enabled). "
-                    "Does not dump on cache hit or when caching is off. Off by default.");
-            }
-            if (settings::g_advancedTabSettings.texture_tracking_enabled.GetValue()
-                && !settings::g_advancedTabSettings.enable_dx11_vtable_hooks.GetValue()) {
-                imgui.TextColored(
-                    ::ui::colors::TEXT_WARNING,
-                    "Warning: Track loaded texture size requires \"Enable D3D11 vtable hooks\" to be enabled.");
-            }
-            {
-                static bool dx11_restart_warning_shown = false;
-                if ((settings::g_advancedTabSettings.enable_dx11_vtable_hooks.GetValue()
-                     || settings::g_advancedTabSettings.texture_tracking_enabled.GetValue())
-                    && !dx11_restart_warning_shown) {
-                    imgui.TextColored(::ui::colors::TEXT_WARNING,
-                                      "D3D11 vtable hooks / texture stats require a game restart to take effect.");
-                    dx11_restart_warning_shown = true;
-                }
-            }
-            if (settings::g_advancedTabSettings.texture_tracking_enabled.GetValue()) {
-                const utils::TextureTrackerStats stats = utils::TextureTrackerGetStats();
-                const double current_mb = static_cast<double>(stats.current_bytes) / (1024.0 * 1024.0);
-                const double peak_mb = static_cast<double>(stats.peak_bytes) / (1024.0 * 1024.0);
-                imgui.Indent();
-                imgui.Text("Textures: %llu  |  Total memory: %.2f MB  |  Peak: %.2f MB",
-                           static_cast<unsigned long long>(stats.current_count), current_mb, peak_mb);
-                imgui.Text("Min keys: %llu", static_cast<unsigned long long>(stats.min_cache_misses_possible));
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltipEx("Unique (desc + initial data) keys seen; lower bound for cache misses.");
-                }
-                imgui.Text("  1D: lookups %llu  hit %llu  miss %llu  entries %llu  stored %.2f MiB",
-                           static_cast<unsigned long long>(stats.texture_cache_1d.lookups),
-                           static_cast<unsigned long long>(stats.texture_cache_1d.hits),
-                           static_cast<unsigned long long>(stats.texture_cache_1d.lookup_misses),
-                           static_cast<unsigned long long>(stats.texture_cache_1d.inserts),
-                           static_cast<double>(stats.texture_cache_1d.total_bytes) / (1024.0 * 1024.0));
-                imgui.Text("  2D: lookups %llu  hit %llu  miss %llu  entries %llu  stored %.2f MiB",
-                           static_cast<unsigned long long>(stats.texture_cache_2d.lookups),
-                           static_cast<unsigned long long>(stats.texture_cache_2d.hits),
-                           static_cast<unsigned long long>(stats.texture_cache_2d.lookup_misses),
-                           static_cast<unsigned long long>(stats.texture_cache_2d.inserts),
-                           static_cast<double>(stats.texture_cache_2d.total_bytes) / (1024.0 * 1024.0));
-                imgui.Text("  3D: lookups %llu  hit %llu  miss %llu  entries %llu  stored %.2f MiB",
-                           static_cast<unsigned long long>(stats.texture_cache_3d.lookups),
-                           static_cast<unsigned long long>(stats.texture_cache_3d.hits),
-                           static_cast<unsigned long long>(stats.texture_cache_3d.lookup_misses),
-                           static_cast<unsigned long long>(stats.texture_cache_3d.inserts),
-                           static_cast<double>(stats.texture_cache_3d.total_bytes) / (1024.0 * 1024.0));
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltipEx(
-                        "Per-dimension cache: lookups, cache hit/miss, entries, stored MiB (no eviction).");
-                }
-                imgui.Text(
-                    "Skip (2D, did not attempt lookup): no init %llu  track off %llu  cache off %llu  ppNull %llu  "
-                    "key0 "
-                    "%llu  size0 %llu",
-                    static_cast<unsigned long long>(stats.texture_cache_skip_no_initial_data),
-                    static_cast<unsigned long long>(stats.texture_cache_skip_tracking_off),
-                    static_cast<unsigned long long>(stats.texture_cache_skip_caching_off),
-                    static_cast<unsigned long long>(stats.texture_cache_skip_ppTexture2D_null),
-                    static_cast<unsigned long long>(stats.texture_cache_skip_key_zero),
-                    static_cast<unsigned long long>(stats.texture_cache_skip_size_zero));
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltipEx(
-                        "CreateTexture2D calls that did NOT attempt a cache lookup (each count is independent). "
-                        "no init = no pInitialData/pSysMem (e.g. render targets). "
-                        "Cache miss = we attempted lookup but key was not in cache (cacheable creates only).");
-                }
-                if (imgui.Button("Reset peak")) {
-                    utils::TextureTrackerResetPeak();
-                }
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltipEx("Set peak to current value.");
-                }
-                imgui.Unindent();
-            }
-            imgui.Unindent();
-        }
         imgui.Unindent();
     }
 }

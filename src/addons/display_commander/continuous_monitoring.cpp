@@ -1,7 +1,6 @@
 #include "addon.hpp"
 #include "adhd_multi_monitor/adhd_simple_api.hpp"
 #include "audio/audio_management.hpp"
-#include "autoclick/autoclick_manager.hpp"
 #include "display/display_cache.hpp"
 #include "exit_handler.hpp"
 #include "globals.hpp"
@@ -21,11 +20,10 @@
 #include "settings/main_tab_settings.hpp"
 #include "swapchain_events.hpp"
 #include "ui/new_ui/hotkeys_tab.hpp"
-#include "ui/new_ui/swapchain_tab.hpp"
+#include "ui/new_ui/swapchain_hdr_metadata.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/display_commander_logger.hpp"
 #include "utils/logging.hpp"
-#include "utils/overlay_window_detector.hpp"
 #include "utils/srwlock_registry.hpp"
 #include "utils/srwlock_wrapper.hpp"
 #include "utils/taskbar_helper.hpp"
@@ -56,7 +54,6 @@ constexpr bool kMonitorVolume = true;
 constexpr bool kMonitorRefreshRate = true;
 constexpr bool kMonitorVrrStatus = true;
 constexpr bool kMonitorExclusiveKeyGroups = true;
-constexpr bool kMonitorDiscordOverlay = true;
 constexpr bool kMonitorReflexAutoConfigure = true;
 constexpr bool kMonitorAutoApplyTrigger = true;
 constexpr bool kMonitorDisplayCache = true;
@@ -202,47 +199,6 @@ void check_is_background() {
         if (!settings::g_advancedTabSettings.suppress_window_changes.GetValue()
             && (mode == WindowMode::kFullscreen || mode == WindowMode::kAspectRatio)) {
             ApplyWindowChange(hwnd, "continuous_monitoring_auto_fix");
-        }
-    }
-}
-
-void HandleDiscordOverlayAutoHide() {
-    CALL_GUARD(utils::get_now_ns());
-    // Only run if auto-hide is enabled
-    if (!settings::g_advancedTabSettings.auto_hide_discord_overlay.GetValue()) {
-        return;
-    }
-
-    // Get the game window
-    HWND game_window = g_last_swapchain_hwnd.load();
-    if (game_window == nullptr || IsWindow(game_window) == FALSE) {
-        return;
-    }
-
-    // Check if game window is active
-    if (g_app_in_background.load()) {
-        return;  // Don't hide overlay when game is in background
-    }
-
-    // Get all overlapping windows
-    auto overlays = display_commander::utils::DetectOverlayWindows(game_window);
-
-    // Find Discord Overlay window
-    for (const auto& overlay : overlays) {
-        if (overlay.is_above_game && overlay.is_visible) {
-            // Check if window title contains "Discord Overlay" (case-insensitive)
-            std::wstring title_lower = overlay.window_title;
-            std::transform(title_lower.begin(), title_lower.end(), title_lower.begin(), ::towlower);
-
-            if (title_lower.find(L"discord overlay") != std::wstring::npos) {
-                // Hide the Discord Overlay window
-                ShowWindow(overlay.hwnd, SW_HIDE);
-                LogInfo(
-                    "[continuous_monitoring] Auto-hid Discord Overlay window (HWND: 0x%p) to prevent MPO iFlip "
-                    "interference",
-                    overlay.hwnd);
-                break;  // Only hide the first matching window
-            }
         }
     }
 }
@@ -864,12 +820,6 @@ void ContinuousMonitoringThread() {
                 CALL_GUARD(utils::get_now_ns());
                 g_continuous_monitoring_section.store("exclusive_key_groups", std::memory_order_release);
                 display_commanderhooks::exclusive_key_groups::UpdateCachedActiveKeys();
-            }
-
-            if (kMonitorDiscordOverlay) {
-                CALL_GUARD(utils::get_now_ns());
-                g_continuous_monitoring_section.store("discord_overlay", std::memory_order_release);
-                HandleDiscordOverlayAutoHide();
             }
 
             // Re-enumerate loaded modules 6 times, every 10s (at 10s, 20s, 30s, 40s, 50s, 60s). Catches modules

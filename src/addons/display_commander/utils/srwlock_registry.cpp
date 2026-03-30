@@ -6,12 +6,11 @@
 
 namespace utils {
 
-// --- Definitions (all 16 global/static SRWLOCKs) ---
+// --- Definitions (all 15 global/static SRWLOCKs in this registry) ---
 SRWLOCK g_reshade_runtimes_lock = SRWLOCK_INIT;
 SRWLOCK g_dlss_override_handles_srwlock = SRWLOCK_INIT;
 SRWLOCK g_dlss_tracked_srwlock = SRWLOCK_INIT;
 SRWLOCK g_module_srwlock = SRWLOCK_INIT;
-SRWLOCK g_blocked_dlls_srwlock = SRWLOCK_INIT;
 SRWLOCK g_host_loaded_apis_srwlock = SRWLOCK_INIT;
 SRWLOCK g_context_lock = SRWLOCK_INIT;
 SRWLOCK g_seen_exception_addresses_lock = SRWLOCK_INIT;
@@ -25,7 +24,6 @@ SRWLOCK g_dinput_devices_mutex = SRWLOCK_INIT;
 SRWLOCK g_dinput_device_hooks_mutex = SRWLOCK_INIT;
 SRWLOCK g_wndproc_map_lock = SRWLOCK_INIT;
 SRWLOCK g_continuous_monitoring_loop_lock = SRWLOCK_INIT;
-SRWLOCK g_hdr_upgrade_back_buffers_lock = SRWLOCK_INIT;
 SRWLOCK g_proxy_getproc_logged_srwlock = SRWLOCK_INIT;
 SRWLOCK g_getproc_all_logged_srwlock = SRWLOCK_INIT;
 
@@ -40,7 +38,6 @@ void LogAllSrwlockStatus() {
     LogOne("reshade_runtimes", TryIsSRWLockHeld(g_reshade_runtimes_lock));
     LogOne("swapchain_tracking", IsSwapchainTrackingLockHeld());
     LogOne("loadlibrary module", TryIsSRWLockHeld(g_module_srwlock));
-    LogOne("loadlibrary blocked_dlls", TryIsSRWLockHeld(g_blocked_dlls_srwlock));
     LogOne("host_loaded_apis", TryIsSRWLockHeld(g_host_loaded_apis_srwlock));
     LogOne("dlss_override_handles", TryIsSRWLockHeld(g_dlss_override_handles_srwlock));
     LogOne("dlss_tracked", TryIsSRWLockHeld(g_dlss_tracked_srwlock));
@@ -56,7 +53,6 @@ void LogAllSrwlockStatus() {
     LogOne("dinput_device_hooks", TryIsSRWLockHeld(g_dinput_device_hooks_mutex));
     LogOne("wndproc_map", TryIsSRWLockHeld(g_wndproc_map_lock));
     LogOne("continuous_monitoring_loop", TryIsSRWLockHeld(g_continuous_monitoring_loop_lock));
-    LogOne("hdr_upgrade_back_buffers", TryIsSRWLockHeld(g_hdr_upgrade_back_buffers_lock));
     LogOne("proxy_getproc_logged", TryIsSRWLockHeld(g_proxy_getproc_logged_srwlock));
     LogOne("getproc_all_logged", TryIsSRWLockHeld(g_getproc_all_logged_srwlock));
 }

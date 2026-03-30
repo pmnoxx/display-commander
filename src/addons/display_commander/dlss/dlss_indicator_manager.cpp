@@ -1,7 +1,5 @@
 #include "dlss_indicator_manager.hpp"
 #include "../utils/logging.hpp"
-#include <fstream>
-#include <sstream>
 
 namespace dlss {
 
@@ -57,42 +55,6 @@ bool DlssIndicatorManager::SetDlssIndicatorEnabled(bool enable) {
     LogInfo("DLSS Indicator: Registry set to %s", enable ? "enabled" : "disabled");
     return true;
 }
-
-std::string DlssIndicatorManager::GenerateEnableRegFile() {
-    std::stringstream reg_content;
-    reg_content << "Windows Registry Editor Version 5.00\n\n";
-    reg_content << "[HKEY_LOCAL_MACHINE\\" << REGISTRY_KEY_PATH << "]\n";
-    reg_content << "\"" << REGISTRY_VALUE_NAME << "\"=dword:" << std::hex << ENABLED_VALUE << "\n";
-    return reg_content.str();
-}
-
-std::string DlssIndicatorManager::GenerateDisableRegFile() {
-    std::stringstream reg_content;
-    reg_content << "Windows Registry Editor Version 5.00\n\n";
-    reg_content << "[HKEY_LOCAL_MACHINE\\" << REGISTRY_KEY_PATH << "]\n";
-    reg_content << "\"" << REGISTRY_VALUE_NAME << "\"=dword:" << std::hex << DISABLED_VALUE << "\n";
-    return reg_content.str();
-}
-
-bool DlssIndicatorManager::WriteRegFile(const std::string& content, const std::string& filename) {
-    try {
-        std::ofstream file(filename);
-        if (!file.is_open()) {
-            LogError("DLSS Indicator: Failed to create .reg file: %s", filename.c_str());
-            return false;
-        }
-
-        file << content;
-        file.close();
-
-        LogInfo("DLSS Indicator: .reg file created successfully: %s", filename.c_str());
-        return true;
-    } catch (const std::exception& e) {
-        LogError("DLSS Indicator: Exception while writing .reg file: %s", e.what());
-        return false;
-    }
-}
-
 
 std::string DlssIndicatorManager::GetRegistryKeyPath() {
     return REGISTRY_KEY_PATH;

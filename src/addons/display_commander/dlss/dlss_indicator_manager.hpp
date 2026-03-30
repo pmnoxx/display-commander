@@ -18,15 +18,6 @@ public:
     // Returns true if write succeeded, false on access denied or error.
     static bool SetDlssIndicatorEnabled(bool enable);
 
-    // Generate .reg file content for enabling DLSS indicator
-    static std::string GenerateEnableRegFile();
-
-    // Generate .reg file content for disabling DLSS indicator
-    static std::string GenerateDisableRegFile();
-
-    // Write .reg file to disk
-    static bool WriteRegFile(const std::string& content, const std::string& filename);
-
     // Get the registry key path for DLSS indicator
     static std::string GetRegistryKeyPath();
 

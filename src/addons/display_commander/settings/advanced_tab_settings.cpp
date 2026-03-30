@@ -44,7 +44,6 @@ AdvancedTabSettings::AdvancedTabSettings()
       enable_background_toggle_shortcut("EnableBackgroundToggleShortcut", false, "DisplayCommander"),
       enable_timeslowdown_shortcut("EnableTimeslowdownShortcut", false, "DisplayCommander"),
       enable_adhd_toggle_shortcut("EnableAdhdToggleShortcut", true, "DisplayCommander"),
-      enable_autoclick_shortcut("EnableAutoclickShortcut", false, "DisplayCommander"),
       enable_input_blocking_shortcut("EnableInputBlockingShortcut", false, "DisplayCommander"),
       enable_display_commander_ui_shortcut("EnableDisplayCommanderUiShortcut", true, "DisplayCommander"),
       enable_performance_overlay_shortcut("EnablePerformanceOverlayShortcut", true, "DisplayCommander"),
@@ -61,7 +60,6 @@ AdvancedTabSettings::AdvancedTabSettings()
       suppress_wgi_for_non_unity_games("SuppressWgiForNonUnityGames", false, "DisplayCommander"),
       debug_layer_enabled("DebugLayerEnabled", false, "DisplayCommander"),
       debug_break_on_severity("DebugBreakOnSeverity", false, "DisplayCommander"),
-      auto_hide_discord_overlay("AutoHideDiscordOverlay_default_off", false, "DisplayCommander"),
       suppress_window_changes("SuppressWindowChanges", false, "DisplayCommander.Safemode"),
       enable_dxgi_refresh_rate_vrr_detection("EnableDxgiRefreshRateVrrDetection", false, "DisplayCommander"),
       win_up_grace_seconds("WinUpGraceSeconds", 1, 0, 61, "DisplayCommander"),
@@ -70,14 +68,7 @@ AdvancedTabSettings::AdvancedTabSettings()
       presentmon_provider_dxgi("PresentMonProviderDXGI", false, "DisplayCommander"),
       presentmon_provider_dwm("PresentMonProviderDwm", true, "DisplayCommander"),
       presentmon_provider_d3d9("PresentMonProviderD3D9", false, "DisplayCommander"),
-      disable_dpi_scaling("DisableDpiScaling", true, "DisplayCommander"),
-      enable_dx11_vtable_hooks("EnableDx11VtableHooks", false, "DisplayCommander"),
-      texture_tracking_enabled("TextureTrackingEnabled", false, "DisplayCommander"),
-      d3d11_texture_caching_enabled("D3D11TextureCachingEnabled", false, "DisplayCommander"),
-      d3d11_texture_caching_1d_enabled("D3D11TextureCaching1DEnabled", false, "DisplayCommander"),
-      d3d11_texture_caching_3d_enabled("D3D11TextureCaching3DEnabled", false, "DisplayCommander"),
-      texture_cache_content_hash_cap_kb("TextureCacheContentHashCapKb", 64, 1, 1048576, "DisplayCommander"),
-      dump_textures_enabled("DumpTexturesEnabled", false, "DisplayCommander") {}
+      disable_dpi_scaling("DisableDpiScaling", true, "DisplayCommander") {}
 
 void AdvancedTabSettings::LoadAll() {
     // Get all settings for smart logging
@@ -103,17 +94,15 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
             //&reflex_supress_native,
 
             &enable_hotkeys, &enable_mute_unmute_shortcut, &enable_background_toggle_shortcut,
-            &enable_timeslowdown_shortcut, &enable_adhd_toggle_shortcut, &enable_autoclick_shortcut,
+            &enable_timeslowdown_shortcut, &enable_adhd_toggle_shortcut,
             &enable_input_blocking_shortcut, &enable_display_commander_ui_shortcut,
             &enable_performance_overlay_shortcut, &safemode, &block_gameoverlayrenderer, &dll_loading_delay_ms,
             &dlls_to_load_before, &fake_nvapi_enabled, &suppress_minhook, &auto_enable_reshade_config_backup,
             &suppress_wgi_globally, &suppress_wgi_enabled, &suppress_wgi_for_unity, &suppress_wgi_for_non_unity_games,
-            &debug_layer_enabled, &debug_break_on_severity, &auto_hide_discord_overlay, &suppress_window_changes,
+            &debug_layer_enabled, &debug_break_on_severity, &suppress_window_changes,
             &enable_dxgi_refresh_rate_vrr_detection, &win_up_grace_seconds, &enable_presentmon_tracing,
             &presentmon_provider_dxgkrnl, &presentmon_provider_dxgi, &presentmon_provider_dwm,
-            &presentmon_provider_d3d9, &disable_dpi_scaling, &enable_dx11_vtable_hooks, &texture_tracking_enabled,
-            &d3d11_texture_caching_enabled, &d3d11_texture_caching_1d_enabled, &d3d11_texture_caching_3d_enabled,
-            &texture_cache_content_hash_cap_kb, &dump_textures_enabled};
+            &presentmon_provider_d3d9, &disable_dpi_scaling};
 }
 
 std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetSettingsToSave() {
@@ -135,7 +124,6 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetSettingsToSave() {
             &suppress_wgi_for_non_unity_games,
             &debug_layer_enabled,
             &debug_break_on_severity,
-            &auto_hide_discord_overlay,
             &suppress_window_changes,
             &enable_dxgi_refresh_rate_vrr_detection,
             &enable_presentmon_tracing,
@@ -143,14 +131,7 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetSettingsToSave() {
             &presentmon_provider_dxgi,
             &presentmon_provider_dwm,
             &presentmon_provider_d3d9,
-            &disable_dpi_scaling,
-            &enable_dx11_vtable_hooks,
-            &texture_tracking_enabled,
-            &d3d11_texture_caching_enabled,
-            &d3d11_texture_caching_1d_enabled,
-            &d3d11_texture_caching_3d_enabled,
-            &texture_cache_content_hash_cap_kb,
-            &dump_textures_enabled};
+            &disable_dpi_scaling};
 }
 
 }  // namespace settings

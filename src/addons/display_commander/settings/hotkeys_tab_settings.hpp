@@ -32,7 +32,6 @@ class HotkeysTabSettings {
     StringSetting hotkey_background_toggle;
     StringSetting hotkey_timeslowdown;
     StringSetting hotkey_adhd_toggle;
-    StringSetting hotkey_autoclick;
     StringSetting hotkey_input_blocking;
     StringSetting hotkey_display_commander_ui;
     StringSetting hotkey_performance_overlay;
@@ -41,9 +40,6 @@ class HotkeysTabSettings {
     StringSetting hotkey_volume_down;
     StringSetting hotkey_system_volume_up;
     StringSetting hotkey_system_volume_down;
-    StringSetting hotkey_auto_hdr;
-    StringSetting hotkey_brightness_up;
-    StringSetting hotkey_brightness_down;
 
     // Window management (borderless minimize/restore, target display)
     StringSetting hotkey_win_down;
@@ -61,9 +57,6 @@ class HotkeysTabSettings {
     // Custom exclusive key groups (stored as JSON array of groups, each group is comma-separated keys)
     // Format: "A,S|W,S|Q,E" where | separates groups and , separates keys within a group
     StringSetting exclusive_keys_custom_groups;
-
-    // Brightness hotkey step (percent per key press; brightness range 0-500%, 100% = neutral)
-    IntSetting brightness_hotkey_step_percent;
 
     // Get all settings for bulk operations
     std::vector<SettingBase*> GetAllSettings();

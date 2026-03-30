@@ -96,15 +96,7 @@ std::atomic<WindowAlignment> s_window_alignment{WindowAlignment::kCenter};  // d
 
 // NVAPI Fullscreen Prevention
 
-// Mouse position spoofing for auto-click sequences
-std::atomic<bool> s_spoof_mouse_position{false};  // disabled by default
-std::atomic<int> s_spoofed_mouse_x{0};
-std::atomic<int> s_spoofed_mouse_y{0};
-
 // Keyboard Shortcuts
-
-// Auto-click enabled state (atomic, not loaded from config)
-std::atomic<bool> g_auto_click_enabled{false};
 
 // NVAPI Settings
 std::atomic<bool> s_restart_needed_nvapi{false};

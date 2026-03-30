@@ -51,7 +51,6 @@ class AdvancedTabSettings {
     BoolSetting enable_background_toggle_shortcut;
     BoolSetting enable_timeslowdown_shortcut;
     BoolSetting enable_adhd_toggle_shortcut;
-    BoolSetting enable_autoclick_shortcut;
     BoolSetting enable_input_blocking_shortcut;
     BoolSetting enable_display_commander_ui_shortcut;
     BoolSetting enable_performance_overlay_shortcut;
@@ -102,9 +101,6 @@ class AdvancedTabSettings {
     BoolSetting debug_layer_enabled;
     BoolSetting debug_break_on_severity;
 
-    // Discord Overlay auto-hide setting
-    BoolSetting auto_hide_discord_overlay;
-
     // Window management compatibility setting
     BoolSetting suppress_window_changes;
 
@@ -126,21 +122,6 @@ class AdvancedTabSettings {
 
     // DPI scaling disable setting
     BoolSetting disable_dpi_scaling;
-
-    // Enable D3D11 device vtable hooks (HookD3D11DeviceVTable). Required for track loaded texture size. Off by default.
-    BoolSetting enable_dx11_vtable_hooks;
-    // Optional texture memory tracking (tracks loaded texture size and hooks IUnknown::Release). Off by default.
-    BoolSetting texture_tracking_enabled;
-    // D3D11 texture caching: cache CreateTexture2D results by content hash; no eviction, no size limit. Off by default.
-    BoolSetting d3d11_texture_caching_enabled;
-    // Same for CreateTexture1D / CreateTexture3D. Off by default.
-    BoolSetting d3d11_texture_caching_1d_enabled;
-    BoolSetting d3d11_texture_caching_3d_enabled;
-    // Max bytes of initial data to include in content hash (in KB). Default 64 = 64 KB. Range 1..1048576 (1 GB).
-    IntSetting texture_cache_content_hash_cap_kb;
-    // When enabled, dump D3D11 CreateTexture* initial data to dumped_textures folder as .dds (only when pInitialData
-    // is provided). Off by default.
-    BoolSetting dump_textures_enabled;
 
     // All settings (for load, UI, etc.)
     std::vector<SettingBase*> GetAllSettings();

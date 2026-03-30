@@ -48,17 +48,10 @@ void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swap
 void OnPresentUpdateAfter2(bool frame_generation_aware = false);
 void OnPresentFlags2(bool from_present_detour = true, bool frame_generation_aware = false);
 
-// Buffer resolution upgrade event handlers
-bool OnCreateResource(reshade::api::device* device, reshade::api::resource_desc& desc,
-                      reshade::api::subresource_data* initial_data, reshade::api::resource_usage usage);
+// Resource view / sampler creation (anisotropy on samplers)
 bool OnCreateResourceView(reshade::api::device* device, reshade::api::resource resource,
                           reshade::api::resource_usage usage_type, reshade::api::resource_view_desc& desc);
 bool OnCreateSampler(reshade::api::device* device, reshade::api::sampler_desc& desc);
-void OnDestroyResource(reshade::api::device* device, reshade::api::resource resource);
-void OnSetViewport(reshade::api::command_list* cmd_list, uint32_t first, uint32_t count,
-                   const reshade::api::viewport* viewports);
-void OnSetScissorRects(reshade::api::command_list* cmd_list, uint32_t first, uint32_t count,
-                       const reshade::api::rect* rects);
 
 // ============================================================================
 // POWER SAVING EVENT HANDLERS

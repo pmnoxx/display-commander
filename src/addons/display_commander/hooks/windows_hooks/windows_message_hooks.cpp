@@ -9,7 +9,6 @@
 #include "../../settings/experimental_tab_settings.hpp"  // For g_experimentalTabSettings
 #include "../../settings/hotkeys_tab_settings.hpp"       // For exclusive key groups
 #include "../../settings/main_tab_settings.hpp"
-#include "../../ui/new_ui/window_info_tab.hpp"  // For message history tracking
 #include "../../utils.hpp"
 #include "../../utils/detour_call_tracker.hpp"
 #include "../../utils/logging.hpp"
@@ -467,21 +466,17 @@ BOOL WINAPI GetMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
 
         if (IsWindowFromCurrentProcess(lpMsg->hwnd)
             && ProcessWindowMessage(lpMsg->hwnd, lpMsg->message, lpMsg->wParam, lpMsg->lParam)) {
-            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
             continue;
         }
         if ((lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN)
             && exclusive_key_groups::ShouldSuppressKey(static_cast<int>(lpMsg->wParam))) {
-            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
             exclusive_key_groups::MarkKeyDown(static_cast<int>(lpMsg->wParam));
             continue;
         }
         if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
-            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
             continue;
         }
         if (GetDebugSuppressAllGetMessage()) {
-            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
             continue;
         }
 
@@ -492,7 +487,6 @@ BOOL WINAPI GetMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
             exclusive_key_groups::MarkKeyUp(static_cast<int>(lpMsg->wParam));
         }
         g_hook_stats[HOOK_GetMessageA].increment_unsuppressed();
-        ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, false);
         if (IsMouseMessageWithClientCoords(lpMsg->message)) {
             HWND game_hwnd = g_last_swapchain_hwnd.load();
             if (lpMsg->hwnd == game_hwnd) {
@@ -522,21 +516,17 @@ BOOL WINAPI GetMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
 
         if (IsWindowFromCurrentProcess(lpMsg->hwnd)
             && ProcessWindowMessage(lpMsg->hwnd, lpMsg->message, lpMsg->wParam, lpMsg->lParam)) {
-            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
             continue;
         }
         if ((lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN)
             && exclusive_key_groups::ShouldSuppressKey(static_cast<int>(lpMsg->wParam))) {
-            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
             exclusive_key_groups::MarkKeyDown(static_cast<int>(lpMsg->wParam));
             continue;
         }
         if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
-            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
             continue;
         }
         if (GetDebugSuppressAllGetMessage()) {
-            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
             continue;
         }
 
@@ -547,7 +537,6 @@ BOOL WINAPI GetMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
             exclusive_key_groups::MarkKeyUp(static_cast<int>(lpMsg->wParam));
         }
         g_hook_stats[HOOK_GetMessageW].increment_unsuppressed();
-        ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, false);
         if (IsMouseMessageWithClientCoords(lpMsg->message)) {
             HWND game_hwnd = g_last_swapchain_hwnd.load();
             if (lpMsg->hwnd == game_hwnd) {
@@ -578,21 +567,17 @@ BOOL WINAPI PeekMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
 
         if (IsWindowFromCurrentProcess(lpMsg->hwnd)
             && ProcessWindowMessage(lpMsg->hwnd, lpMsg->message, lpMsg->wParam, lpMsg->lParam)) {
-            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
             continue;
         }
         if ((lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN)
             && exclusive_key_groups::ShouldSuppressKey(static_cast<int>(lpMsg->wParam))) {
-            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
             exclusive_key_groups::MarkKeyDown(static_cast<int>(lpMsg->wParam));
             continue;
         }
         if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
-            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
             continue;
         }
         if (GetDebugSuppressAllGetMessage()) {
-            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
             continue;
         }
 
@@ -603,7 +588,6 @@ BOOL WINAPI PeekMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
             exclusive_key_groups::MarkKeyUp(static_cast<int>(lpMsg->wParam));
         }
         g_hook_stats[HOOK_PeekMessageA].increment_unsuppressed();
-        ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, false);
         if (IsMouseMessageWithClientCoords(lpMsg->message)) {
             HWND game_hwnd = g_last_swapchain_hwnd.load();
             if (lpMsg->hwnd == game_hwnd) {
@@ -634,21 +618,17 @@ BOOL WINAPI PeekMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
 
         if (IsWindowFromCurrentProcess(lpMsg->hwnd)
             && ProcessWindowMessage(lpMsg->hwnd, lpMsg->message, lpMsg->wParam, lpMsg->lParam)) {
-            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
             continue;
         }
         if ((lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN)
             && exclusive_key_groups::ShouldSuppressKey(static_cast<int>(lpMsg->wParam))) {
-            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
             exclusive_key_groups::MarkKeyDown(static_cast<int>(lpMsg->wParam));
             continue;
         }
         if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
-            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
             continue;
         }
         if (GetDebugSuppressAllGetMessage()) {
-            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
             continue;
         }
 
@@ -659,7 +639,6 @@ BOOL WINAPI PeekMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
             exclusive_key_groups::MarkKeyUp(static_cast<int>(lpMsg->wParam));
         }
         g_hook_stats[HOOK_PeekMessageW].increment_unsuppressed();
-        ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, false);
         if (IsMouseMessageWithClientCoords(lpMsg->message)) {
             HWND game_hwnd = g_last_swapchain_hwnd.load();
             if (lpMsg->hwnd == game_hwnd) {
@@ -693,7 +672,6 @@ BOOL WINAPI PostMessageA_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
         }
 
         // Track suppressed message in history
-        ui::new_ui::AddMessageToHistoryIfKnown(Msg, wParam, lParam, true);
 
         // Return TRUE to indicate the message was "processed" (blocked)
         return TRUE;
@@ -703,7 +681,6 @@ BOOL WINAPI PostMessageA_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
     g_hook_stats[HOOK_PostMessageA].increment_unsuppressed();
 
     // Track unsuppressed message in history
-    ui::new_ui::AddMessageToHistoryIfKnown(Msg, wParam, lParam, false);
 
     // Translate mouse position from window resolution to render resolution when posting to game window
     LPARAM effective_lParam = lParam;
@@ -741,7 +718,6 @@ BOOL WINAPI PostMessageW_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
         }
 
         // Track suppressed message in history
-        ui::new_ui::AddMessageToHistoryIfKnown(Msg, wParam, lParam, true);
 
         // Return TRUE to indicate the message was "processed" (blocked)
         return TRUE;
@@ -751,7 +727,6 @@ BOOL WINAPI PostMessageW_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
     g_hook_stats[HOOK_PostMessageW].increment_unsuppressed();
 
     // Track unsuppressed message in history
-    ui::new_ui::AddMessageToHistoryIfKnown(Msg, wParam, lParam, false);
 
     // Translate mouse position from window resolution to render resolution when posting to game window
     LPARAM effective_lParam = lParam;
@@ -909,16 +884,6 @@ BOOL WINAPI GetCursorPos_Detour(LPPOINT lpPoint) {
         return TRUE;
     }
 
-    // If mouse position spoofing is enabled AND auto-click is enabled, return spoofed position
-    if (settings::g_experimentalTabSettings.mouse_spoofing_enabled.GetValue() && lpPoint != nullptr) {
-        // Check if auto-click is enabled
-        if (g_auto_click_enabled.load()) {
-            lpPoint->x = s_spoofed_mouse_x.load();
-            lpPoint->y = s_spoofed_mouse_y.load();
-            return TRUE;
-        }
-    }
-
     // If mouse input blocking is enabled, return last known cursor position
     if (ShouldBlockMouseInput() && lpPoint != nullptr) {
         *lpPoint = s_last_cursor_position;
@@ -955,16 +920,6 @@ BOOL WINAPI SetCursorPos_Detour(int X, int Y) {
     // Test setting: Block SetCursorPos
     if (settings::g_experimentalTabSettings.test_block_mouse_setcursorpos.GetValue()) {
         return TRUE;  // Block the cursor position change
-    }
-
-    // If mouse position spoofing is enabled AND auto-click is enabled, update spoofed position instead of moving cursor
-    if (settings::g_experimentalTabSettings.mouse_spoofing_enabled.GetValue()) {
-        // Check if auto-click is enabled
-        if (g_auto_click_enabled.load()) {
-            s_spoofed_mouse_x.store(X);
-            s_spoofed_mouse_y.store(Y);
-            return TRUE;  // Return success without actually moving the cursor
-        }
     }
 
     // If mouse input blocking is enabled, block cursor position changes
@@ -1291,7 +1246,6 @@ LRESULT WINAPI DispatchMessageA_Detour(const MSG* lpMsg) {
     if (lpMsg != nullptr && (lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN)
         && exclusive_key_groups::ShouldSuppressKey(static_cast<int>(lpMsg->wParam))) {
         // Track suppressed message in history
-        ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
         // Return 0 to indicate the message was "processed" (suppressed)
         return 0;
     }
@@ -1301,12 +1255,10 @@ LRESULT WINAPI DispatchMessageA_Detour(const MSG* lpMsg) {
         // Check if this message should be suppressed
         if (ShouldSuppressMessage(lpMsg->hwnd, lpMsg->message)) {
             // Track suppressed message in history
-            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
             // Return 0 to indicate the message was "processed" (blocked)
             return 0;
         } else {
             // Track unsuppressed message in history
-            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, false);
         }
     }
 
@@ -1327,7 +1279,6 @@ LRESULT WINAPI DispatchMessageW_Detour(const MSG* lpMsg) {
     if (lpMsg != nullptr && (lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN)
         && exclusive_key_groups::ShouldSuppressKey(static_cast<int>(lpMsg->wParam))) {
         // Track suppressed message in history
-        ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
         // Return 0 to indicate the message was "processed" (suppressed)
         return 0;
     }
@@ -1337,12 +1288,10 @@ LRESULT WINAPI DispatchMessageW_Detour(const MSG* lpMsg) {
         // Check if this message should be suppressed
         if (ShouldSuppressMessage(lpMsg->hwnd, lpMsg->message)) {
             // Track suppressed message in history
-            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
             // Return 0 to indicate the message was "processed" (blocked)
             return 0;
         } else {
             // Track unsuppressed message in history
-            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, false);
         }
     }
 

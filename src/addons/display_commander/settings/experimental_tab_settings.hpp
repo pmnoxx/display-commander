@@ -10,7 +10,6 @@ namespace settings {
 using ui::new_ui::BoolSetting;
 using ui::new_ui::BoolSettingRef;
 using ui::new_ui::ComboSetting;
-using ui::new_ui::FixedIntArraySetting;
 using ui::new_ui::FloatSetting;
 using ui::new_ui::FloatSettingRef;
 using ui::new_ui::IntSetting;
@@ -28,39 +27,6 @@ class ExperimentalTabSettings {
 
     // Get all settings for loading
     std::vector<SettingBase*> GetAllSettings();
-
-    // Master auto-click enable
-    BoolSetting auto_click_enabled;
-
-    // Mouse position spoofing for auto-click sequences
-    BoolSetting mouse_spoofing_enabled;
-
-    // Click sequences (up to 5) - using arrays for cleaner code
-    FixedIntArraySetting sequence_enabled;   // 0 = disabled, 1 = enabled
-    FixedIntArraySetting sequence_x;         // X coordinates
-    FixedIntArraySetting sequence_y;         // Y coordinates
-    FixedIntArraySetting sequence_interval;  // Click intervals in ms
-
-    // Backbuffer format override settings
-    BoolSetting backbuffer_format_override_enabled;
-    ComboSetting backbuffer_format_override;
-
-    // Buffer resolution upgrade settings
-    BoolSetting buffer_resolution_upgrade_enabled;
-    IntSetting buffer_resolution_upgrade_width;
-    IntSetting buffer_resolution_upgrade_height;
-    IntSetting buffer_resolution_upgrade_scale_factor;
-    ComboSetting buffer_resolution_upgrade_mode;
-
-    // Texture format upgrade settings
-    BoolSetting texture_format_upgrade_enabled;
-
-    // Sleep hook settings
-    BoolSetting sleep_hook_enabled;
-    // Render-thread-only option removed
-    FloatSetting sleep_multiplier;
-    IntSetting min_sleep_duration_ms;
-    IntSetting max_sleep_duration_ms;
 
     // Time slowdown settings
     BoolSetting timeslowdown_enabled;
@@ -81,9 +47,6 @@ class ExperimentalTabSettings {
 
     // QPC enabled modules (comma-separated list of module names)
     StringSetting qpc_enabled_modules;
-
-    // DLSS indicator settings
-    BoolSetting dlss_indicator_enabled;
 
     // D3D9 FLIPEX upgrade: with ReShade (OnCreateDevice / OnCreateSwapchain path)
     BoolSetting d3d9_flipex_enabled;
@@ -106,30 +69,12 @@ class ExperimentalTabSettings {
     // DirectInput device state blocking
     BoolSetting dinput_device_state_blocking;
 
-    // Up/Down key press automation (9s up, 1s down, repeat)
-    BoolSetting up_down_key_press_enabled;
-
-    // Button-only press automation (Y/A buttons only, no stick movement)
-    BoolSetting button_only_press_enabled;
-
     // Anisotropic filtering upgrade settings
     BoolSetting force_anisotropic_filtering;
     BoolSetting upgrade_min_mag_mip_linear;
     BoolSetting upgrade_compare_min_mag_mip_linear;
     BoolSetting upgrade_min_mag_linear_mip_point;
     BoolSetting upgrade_compare_min_mag_linear_mip_point;
-
-    // DLL blocking feature
-    BoolSetting dll_blocking_enabled;
-    StringSetting blocked_dlls;
-
-    // Rand hook settings
-    BoolSetting rand_hook_enabled;
-    IntSetting rand_hook_value;
-
-    // Rand_s hook settings
-    BoolSetting rand_s_hook_enabled;
-    IntSetting rand_s_hook_value;
 
     // Thread tracking for frame pacing debug (NvAPI latency markers + ChooseFpsLimiter call sites)
     BoolSetting thread_tracking_enabled;
@@ -185,8 +130,8 @@ class ExperimentalTabSettings {
     IntSetting spoof_game_resolution_override_width;
     IntSetting spoof_game_resolution_override_height;
 
-    // When true, OnCreateSwapchainCapture2 applies all modifications (prevent fullscreen, FLIPEX, format override,
-    // resolution upgrade, etc.). When false, only capture of game resolution is done.
+    // When true, OnCreateSwapchainCapture2 applies all modifications (prevent fullscreen, FLIPEX, etc.). When false,
+    // only capture of game resolution is done.
     BoolSetting apply_changes_on_create_swapchain;
 
     // Input testing settings - Mouse

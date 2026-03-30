@@ -107,10 +107,9 @@ private_docs
 
 
 # res
-!src/addons/display_commander/res/effects/*.fx
 !src/addons/display_commander/res/forkawesome.h
+!src/addons/display_commander/res/game_default_overrides.rc.in
 !src/addons/display_commander/res/game_default_overrides.toml
-!src/addons/display_commander/res/shader_effect.rc.in
 # .files
 !.clang-format
 !.clang-tidy

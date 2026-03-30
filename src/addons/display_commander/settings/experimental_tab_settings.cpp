@@ -8,41 +8,7 @@
 namespace settings {
 
 ExperimentalTabSettings::ExperimentalTabSettings()
-    : auto_click_enabled("AutoClickEnabled", false, "DisplayCommander.Experimental"),
-      mouse_spoofing_enabled("MouseSpoofingEnabled", true, "DisplayCommander.Experimental"),
-      sequence_enabled("SequenceEnabled", 5, 0, 0, 1,
-                       "DisplayCommander.Experimental")  // 5 elements, default 0 (disabled), range 0-1
-      ,
-      sequence_x("SequenceX", 5, 0, -10000, 10000,
-                 "DisplayCommander.Experimental")  // 5 elements, default 0, range -10000 to 10000
-      ,
-      sequence_y("SequenceY", 5, 0, -10000, 10000,
-                 "DisplayCommander.Experimental")  // 5 elements, default 0, range -10000 to 10000
-      ,
-      sequence_interval("SequenceInterval", 5, 3000, 100, 60000,
-                        "DisplayCommander.Experimental")  // 5 elements, default 3000ms, range 100-60000ms
-      ,
-      backbuffer_format_override_enabled("BackbufferFormatOverrideEnabled", false, "DisplayCommander.Experimental"),
-      backbuffer_format_override(
-          "BackbufferFormatOverride", 0,
-          {"R8G8B8A8_UNORM (8-bit)", "R10G10B10A2_UNORM (10-bit)", "R16G16B16A16_FLOAT (16-bit HDR)"},
-          "DisplayCommander.Experimental"),
-      buffer_resolution_upgrade_enabled("BufferResolutionUpgradeEnabled", false, "DisplayCommander.Experimental"),
-      buffer_resolution_upgrade_width("BufferResolutionUpgradeWidth", 1280, 320, 7680, "DisplayCommander.Experimental"),
-      buffer_resolution_upgrade_height("BufferResolutionUpgradeHeight", 720, 240, 4320,
-                                       "DisplayCommander.Experimental"),
-      buffer_resolution_upgrade_scale_factor("BufferResolutionUpgradeScaleFactor", 2, 1, 4,
-                                             "DisplayCommander.Experimental"),
-      buffer_resolution_upgrade_mode(
-          "BufferResolutionUpgradeMode", 0,
-          {"Upgrade 1280x720 by Scale Factor", "Upgrade by Scale Factor", "Upgrade Custom Resolution"},
-          "DisplayCommander.Experimental"),
-      texture_format_upgrade_enabled("TextureFormatUpgradeEnabled", false, "DisplayCommander.Experimental"),
-      sleep_hook_enabled("SleepHookEnabled", false, "DisplayCommander.Experimental"),
-      sleep_multiplier("SleepMultiplier", 1.0f, 0.1f, 10.0f, "DisplayCommander.Experimental"),
-      min_sleep_duration_ms("MinSleepDurationMs", 0, 0, 10000, "DisplayCommander.Experimental"),
-      max_sleep_duration_ms("MaxSleepDurationMs", 0, 0, 10000, "DisplayCommander.Experimental"),
-      timeslowdown_enabled("TimeslowdownEnabled", false, "DisplayCommander.Experimental"),
+    : timeslowdown_enabled("TimeslowdownEnabled", false, "DisplayCommander.Experimental"),
       timeslowdown_compatibility_mode("TimeslowdownCompatibilityMode", false, "DisplayCommander.Experimental"),
       timeslowdown_multiplier("TimeslowdownMultiplier", 1.0f, 0.1f, 10.0f, "DisplayCommander.Experimental"),
       timeslowdown_max_multiplier("TimeslowdownMaxMultiplier", 10.0f, 1.0f, 1000.0f, "DisplayCommander.Experimental"),
@@ -60,7 +26,6 @@ ExperimentalTabSettings::ExperimentalTabSettings()
       get_local_time_hook("GetLocalTimeHook", 0, {"None", "Enabled"}, "DisplayCommander.Experimental"),
       nt_query_system_time_hook("NtQuerySystemTimeHook", 0, {"None", "Enabled"}, "DisplayCommander.Experimental"),
       qpc_enabled_modules("QPCEnabledModules", "", "DisplayCommander.Experimental"),
-      dlss_indicator_enabled("DlssIndicatorEnabled", false, "DisplayCommander.Experimental"),
       d3d9_flipex_enabled("D3D9FlipExEnabled", false, "DisplayCommander.Experimental"),
       d3d9_flipex_enabled_no_reshade("D3D9FlipExEnabledNoReShade", false, "DisplayCommander.Experimental"),
       d3d9_fix_create_texture_dimensions("D3D9FixCreateTextureDimensions", true, "DisplayCommander.Experimental"),
@@ -69,20 +34,12 @@ ExperimentalTabSettings::ExperimentalTabSettings()
       debug_output_log_to_reshade("DebugOutputLogToReShade", true, "DisplayCommander.Experimental"),
       debug_output_show_stats("DebugOutputShowStats", true, "DisplayCommander.Experimental"),
       dinput_device_state_blocking("DInputDeviceStateBlocking", true, "DisplayCommander.Experimental"),
-      up_down_key_press_enabled("UpDownKeyPressEnabled", false, "DisplayCommander.Experimental"),
-      button_only_press_enabled("ButtonOnlyPressEnabled", false, "DisplayCommander.Experimental"),
       force_anisotropic_filtering("ForceAnisotropicFiltering", false, "DisplayCommander.Experimental"),
       upgrade_min_mag_mip_linear("UpgradeMinMagMipLinear", false, "DisplayCommander.Experimental"),
       upgrade_compare_min_mag_mip_linear("UpgradeCompareMinMagMipLinear", false, "DisplayCommander.Experimental"),
       upgrade_min_mag_linear_mip_point("UpgradeMinMagLinearMipPoint", false, "DisplayCommander.Experimental"),
       upgrade_compare_min_mag_linear_mip_point("UpgradeCompareMinMagLinearMipPoint", false,
                                                "DisplayCommander.Experimental"),
-      dll_blocking_enabled("DLLBlockingEnabled", false, "DisplayCommander.Experimental"),
-      blocked_dlls("BlockedDLLs", "", "DisplayCommander.Experimental"),
-      rand_hook_enabled("RandHookEnabled", false, "DisplayCommander.Experimental"),
-      rand_hook_value("RandHookValue", 0, INT_MIN, INT_MAX, "DisplayCommander.Experimental"),
-      rand_s_hook_enabled("Rand_sHookEnabled", false, "DisplayCommander.Experimental"),
-      rand_s_hook_value("Rand_sHookValue", 0, 0, UINT_MAX, "DisplayCommander.Experimental"),
       thread_tracking_enabled("ThreadTrackingEnabled", false, "DisplayCommander.Experimental"),
       performance_measurement_enabled("PerformanceMeasurementEnabled", false, "DisplayCommander.Experimental"),
       perf_measure_overlay_enabled("PerfMeasureOverlayEnabled", true, "DisplayCommander.Experimental"),
@@ -159,24 +116,6 @@ ExperimentalTabSettings::ExperimentalTabSettings()
       show_advanced_profile_settings("ShowAdvancedProfileSettings", false, "DisplayCommander.Experimental") {
     // Initialize the all_settings_ vector
     all_settings_ = {
-        &auto_click_enabled,
-        &mouse_spoofing_enabled,
-        &sequence_enabled,
-        &sequence_x,
-        &sequence_y,
-        &sequence_interval,
-        &backbuffer_format_override_enabled,
-        &backbuffer_format_override,
-        &buffer_resolution_upgrade_enabled,
-        &buffer_resolution_upgrade_width,
-        &buffer_resolution_upgrade_height,
-        &buffer_resolution_upgrade_scale_factor,
-        &buffer_resolution_upgrade_mode,
-        &texture_format_upgrade_enabled,
-        &sleep_hook_enabled,
-        &sleep_multiplier,
-        &min_sleep_duration_ms,
-        &max_sleep_duration_ms,
         &timeslowdown_enabled,
         &timeslowdown_compatibility_mode,
         &timeslowdown_multiplier,
@@ -191,7 +130,6 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &get_local_time_hook,
         &nt_query_system_time_hook,
         &qpc_enabled_modules,
-        &dlss_indicator_enabled,
         &d3d9_flipex_enabled,
         &d3d9_flipex_enabled_no_reshade,
         &d3d9_fix_create_texture_dimensions,
@@ -200,19 +138,11 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &debug_output_log_to_reshade,
         &debug_output_show_stats,
         &dinput_device_state_blocking,
-        &up_down_key_press_enabled,
-        &button_only_press_enabled,
         &force_anisotropic_filtering,
         &upgrade_min_mag_mip_linear,
         &upgrade_compare_min_mag_mip_linear,
         &upgrade_min_mag_linear_mip_point,
         &upgrade_compare_min_mag_linear_mip_point,
-        &dll_blocking_enabled,
-        &blocked_dlls,
-        &rand_hook_enabled,
-        &rand_hook_value,
-        &rand_s_hook_enabled,
-        &rand_s_hook_value,
         &thread_tracking_enabled,
         &performance_measurement_enabled,
         &perf_measure_overlay_enabled,
@@ -289,14 +219,6 @@ void ExperimentalTabSettings::LoadAll() {
     qpc_enabled_modules.Load();
     if (!qpc_enabled_modules.GetValue().empty()) {
         display_commanderhooks::LoadQPCEnabledModulesFromSettings(qpc_enabled_modules.GetValue());
-    }
-
-    // Load blocked DLLs after settings are loaded (if DLL blocking is enabled)
-    if (dll_blocking_enabled.GetValue()) {
-        blocked_dlls.Load();
-        if (!blocked_dlls.GetValue().empty()) {
-            display_commanderhooks::LoadBlockedDLLsFromSettings(blocked_dlls.GetValue());
-        }
     }
 }
 

@@ -8,12 +8,11 @@ namespace utils {
 // Stuck-detection can call LogAllSrwlockStatus() to report every lock (HELD/free)
 // to make it easier to see which lock is hanging when diagnosing deadlocks.
 
-// --- Registry locks (16 file-level globals) ---
+// --- Registry locks (15 file-level globals) ---
 extern SRWLOCK g_reshade_runtimes_lock;
 extern SRWLOCK g_dlss_override_handles_srwlock;
 extern SRWLOCK g_dlss_tracked_srwlock;  // protects g_dlss_*_tracked_module/path (OnModuleLoaded + readers)
 extern SRWLOCK g_module_srwlock;
-extern SRWLOCK g_blocked_dlls_srwlock;
 extern SRWLOCK g_host_loaded_apis_srwlock;  // host-loaded graphics API names (LoadLibrary caller tracking)
 extern SRWLOCK g_context_lock;
 extern SRWLOCK g_seen_exception_addresses_lock;
@@ -27,11 +26,10 @@ extern SRWLOCK g_dinput_devices_mutex;
 extern SRWLOCK g_dinput_device_hooks_mutex;
 extern SRWLOCK g_wndproc_map_lock;
 extern SRWLOCK g_continuous_monitoring_loop_lock;  // held shared while CM loop body runs; FreeLibrary waits exclusive
-extern SRWLOCK g_hdr_upgrade_back_buffers_lock;
 extern SRWLOCK g_proxy_getproc_logged_srwlock;  // GetProcAddress detour: set of logged proc names (our proxy, found)
 extern SRWLOCK g_getproc_all_logged_srwlock;    // GetProcAddress detour: set of logged (module,symbol) when .GET_PROC_ADDRESS exists
 
-// Logs status of all 20 locks (18 registry + logger queue_lock + swapchain_tracking)
+// Logs status of registry locks above plus logger queue_lock and swapchain_tracking
 // to the addon log. HELD = lock is in use; free = not held. Call from stuck-detection.
 void LogAllSrwlockStatus();
 

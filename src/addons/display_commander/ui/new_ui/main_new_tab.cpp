@@ -56,10 +56,8 @@
 #include "../../utils/reshade_load_path.hpp"
 #include "../../utils/reshade_replace_after_exit.hpp"
 #include "../../utils/reshade_version_download.hpp"
-#include "../../utils/texture_tracker.hpp"
 #include "../../utils/version_check.hpp"
 #include "../../widgets/resolution_widget/resolution_widget.hpp"
-#include "help_tab.hpp"
 #include "new_ui_tabs.hpp"
 #include "settings_wrapper.hpp"
 #include "../../utils/detour_call_tracker.hpp"
@@ -863,7 +861,7 @@ static void DrawDLSSInfo_IndicatorSection(display_commander::ui::IImGuiWrapper& 
         if (imgui.Checkbox("Enable DLSS indicator through Registry##MainTab", &reg_enabled)) {
             LogInfo("DLSS Indicator: %s", reg_enabled ? "enabled" : "disabled");
             if (!dlss::DlssIndicatorManager::SetDlssIndicatorEnabled(reg_enabled)) {
-                LogInfo("DLSS Indicator: Apply to registry failed (run as admin or use .reg in Experimental tab).");
+                LogInfo("DLSS Indicator: Apply to registry failed (run as admin if needed).");
             }
         }
         if (imgui.IsItemHovered()) {
@@ -1634,7 +1632,6 @@ void InitMainNewTab() {
 
 // Main tab optional panels: stable order tokens (used by Advanced Settings UI and DrawMainTabOptionalPanelsInOrder).
 enum class MainTabOptionalSectionKind {
-    BrightnessAutoHdr,
     TextureFiltering,
     AudioControl,
     CpuControl,
@@ -1648,12 +1645,11 @@ enum class MainTabOptionalSectionKind {
 };
 
 static constexpr const char kMainTabOptionalSectionOrderDefault[] =
-    "brightness_autohdr,texture_filtering,audio_control,cpu_control,window_buttons,overlay_windows,input_control,"
+    "texture_filtering,audio_control,cpu_control,window_buttons,overlay_windows,input_control,"
     "nvidia_control,dlss_control,dxgi_control,dc_folders";
 
 static const char* MainTabOptionalSectionId(MainTabOptionalSectionKind k) {
     switch (k) {
-        case MainTabOptionalSectionKind::BrightnessAutoHdr: return "brightness_autohdr";
         case MainTabOptionalSectionKind::TextureFiltering: return "texture_filtering";
         case MainTabOptionalSectionKind::AudioControl: return "audio_control";
         case MainTabOptionalSectionKind::CpuControl: return "cpu_control";
@@ -1669,7 +1665,6 @@ static const char* MainTabOptionalSectionId(MainTabOptionalSectionKind k) {
 }
 
 static MainTabOptionalSectionKind MainTabOptionalSectionKindFromId(const std::string& tok) {
-    if (tok == "brightness_autohdr") return MainTabOptionalSectionKind::BrightnessAutoHdr;
     if (tok == "texture_filtering") return MainTabOptionalSectionKind::TextureFiltering;
     if (tok == "audio_control") return MainTabOptionalSectionKind::AudioControl;
     if (tok == "cpu_control") return MainTabOptionalSectionKind::CpuControl;
@@ -1680,11 +1675,11 @@ static MainTabOptionalSectionKind MainTabOptionalSectionKindFromId(const std::st
     if (tok == "nvidia_control") return MainTabOptionalSectionKind::NvidiaControl;
     if (tok == "dlss_control") return MainTabOptionalSectionKind::DlssControl;
     if (tok == "dxgi_control") return MainTabOptionalSectionKind::DxgiControl;
-    return MainTabOptionalSectionKind::BrightnessAutoHdr;
+    return MainTabOptionalSectionKind::TextureFiltering;
 }
 
 static bool MainTabOptionalSectionIdValid(const std::string& tok) {
-    return tok == "brightness_autohdr" || tok == "texture_filtering" || tok == "audio_control"
+    return tok == "texture_filtering" || tok == "audio_control"
            || tok == "cpu_control" || tok == "window_buttons" || tok == "overlay_windows" || tok == "dc_folders"
            || tok == "input_control" || tok == "nvidia_control" || tok == "dlss_control"
            || tok == "dxgi_control";
@@ -1703,16 +1698,15 @@ static void MainTabOptionalTrimInPlace(std::string& s) {
 
 static std::vector<MainTabOptionalSectionKind> MainTabParseOptionalSectionOrder(const std::string& raw) {
     static constexpr MainTabOptionalSectionKind kDefaultSeq[] = {
-        MainTabOptionalSectionKind::BrightnessAutoHdr, MainTabOptionalSectionKind::TextureFiltering,
-        MainTabOptionalSectionKind::AudioControl,      MainTabOptionalSectionKind::CpuControl,
-        MainTabOptionalSectionKind::WindowButtons,     MainTabOptionalSectionKind::OverlayWindows,
-        MainTabOptionalSectionKind::InputControl,      MainTabOptionalSectionKind::NvidiaControl,
-        MainTabOptionalSectionKind::DlssControl,       MainTabOptionalSectionKind::DxgiControl,
-        MainTabOptionalSectionKind::DcFolders,
+        MainTabOptionalSectionKind::TextureFiltering, MainTabOptionalSectionKind::AudioControl,
+        MainTabOptionalSectionKind::CpuControl,       MainTabOptionalSectionKind::WindowButtons,
+        MainTabOptionalSectionKind::OverlayWindows,   MainTabOptionalSectionKind::InputControl,
+        MainTabOptionalSectionKind::NvidiaControl,    MainTabOptionalSectionKind::DlssControl,
+        MainTabOptionalSectionKind::DxgiControl,      MainTabOptionalSectionKind::DcFolders,
     };
-    bool seen[11] = {};
+    bool seen[10] = {};
     std::vector<MainTabOptionalSectionKind> out;
-    out.reserve(11);
+    out.reserve(10);
     std::string cur;
     for (size_t i = 0; i <= raw.size(); ++i) {
         if (i < raw.size() && raw[i] != ',') {
@@ -1723,7 +1717,7 @@ static std::vector<MainTabOptionalSectionKind> MainTabParseOptionalSectionOrder(
         if (!cur.empty() && MainTabOptionalSectionIdValid(cur)) {
             MainTabOptionalSectionKind kind = MainTabOptionalSectionKindFromId(cur);
             int idx = static_cast<int>(kind);
-            if (idx >= 0 && idx < 11 && !seen[idx]) {
+            if (idx >= 0 && idx < 10 && !seen[idx]) {
                 seen[idx] = true;
                 out.push_back(kind);
             }
@@ -1748,7 +1742,6 @@ static std::string MainTabSerializeOptionalSectionOrder(const std::vector<MainTa
 
 static const char* MainTabOptionalSectionDisplayName(MainTabOptionalSectionKind k) {
     switch (k) {
-        case MainTabOptionalSectionKind::BrightnessAutoHdr: return "Brightness and AutoHDR";
         case MainTabOptionalSectionKind::TextureFiltering: return "Texture Filtering";
         case MainTabOptionalSectionKind::AudioControl: return "Audio Control";
         case MainTabOptionalSectionKind::CpuControl: return "CPU Control";
@@ -1768,8 +1761,7 @@ static void DrawMainTabOptionalPanelsAdvancedSettingsUi(display_commander::ui::I
     imgui.TextUnformatted("Main tab optional panels");
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
-            "Show or hide collapsible sections on the Main tab (drawn after Advanced Settings, above the legal "
-            "footer). "
+            "Show or hide collapsible sections on the Main tab (drawn after Advanced Settings). "
             "All default off. Enable \"Show All Tabs\" or this section's panels as needed.");
     }
     imgui.Indent();
@@ -1780,15 +1772,6 @@ static void DrawMainTabOptionalPanelsAdvancedSettingsUi(display_commander::ui::I
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx("Paths, version info, and folder buttons for Display Commander / ReShade / addons.");
-    }
-
-    if (CheckboxSetting(settings::g_mainTabSettings.show_main_tab_brightness_autohdr, "Show Brightness and AutoHDR",
-                        imgui)) {
-        LogInfo("Show main tab Brightness/AutoHDR %s",
-                settings::g_mainTabSettings.show_main_tab_brightness_autohdr.GetValue() ? "on" : "off");
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx("ReShade-only: brightness, color space, AutoHDR, and related controls.");
     }
 
     if (CheckboxSetting(settings::g_mainTabSettings.show_main_tab_texture_filtering, "Show Texture Filtering", imgui)) {
@@ -1848,8 +1831,8 @@ static void DrawMainTabOptionalPanelsAdvancedSettingsUi(display_commander::ui::I
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
-            "DXGI-only: flip-discard upgrade (when applicable), max frame latency, and swapchain buffer count "
-            "(moved out of VSync & Tearing).");
+            "DXGI-only: HDR10/scRGB color fix toggle, flip-discard upgrade (when applicable), max frame latency, and "
+            "swapchain buffer count (moved out of VSync & Tearing).");
     }
 
     imgui.Spacing();
@@ -1949,7 +1932,7 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
                     settings::g_mainTabSettings.show_hotkeys_tab.GetValue() ? "enabled" : "disabled");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Show the Hotkeys tab (keyboard shortcuts for brightness, volume, etc.).");
+            imgui.SetTooltipEx("Show the Hotkeys tab (keyboard shortcuts for volume, overlay, window actions, etc.).");
         }
     }
 
@@ -1960,26 +1943,6 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx("Shows the Advanced tab even when 'Show All Tabs' is disabled.");
-        }
-    }
-
-    if (ui::new_ui::g_tab_manager.HasTab("window_info")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_window_info_tab, "Show Window Info Tab", imgui)) {
-            LogInfo("Show Window Info tab %s",
-                    settings::g_mainTabSettings.show_window_info_tab.GetValue() ? "enabled" : "disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Shows the Window Info tab even when 'Show All Tabs' is disabled.");
-        }
-    }
-
-    if (ui::new_ui::g_tab_manager.HasTab("swapchain")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_swapchain_tab, "Show Swapchain Tab", imgui)) {
-            LogInfo("Show Swapchain tab %s",
-                    settings::g_mainTabSettings.show_swapchain_tab.GetValue() ? "enabled" : "disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Shows the Swapchain tab even when 'Show All Tabs' is disabled.");
         }
     }
 
@@ -2002,16 +1965,6 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
                 "Shows the Performance tab (experimental measurements) even when 'Show All Tabs' is disabled.");
-        }
-    }
-
-    if (ui::new_ui::g_tab_manager.HasTab("streamline")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_streamline_tab, "Show Streamline Tab", imgui)) {
-            LogInfo("Show Streamline tab %s",
-                    settings::g_mainTabSettings.show_streamline_tab.GetValue() ? "enabled" : "disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Shows the Streamline tab even when 'Show All Tabs' is disabled.");
         }
     }
 
@@ -2905,218 +2858,6 @@ static void DrawMainTabOptionalPanelDcFolders(display_commander::ui::IImGuiWrapp
     if (dc_folders_open) {
         imgui.Indent();
         DrawUpdatesSectionContent(imgui, runtime);
-        imgui.Unindent();
-    }
-}
-
-static void DrawMainTabOptionalPanelBrightnessAutoHdr(display_commander::ui::IImGuiWrapper& imgui,
-                                                      reshade::api::effect_runtime* runtime) {
-    if (g_reshade_module == nullptr) return;
-    imgui.Spacing();
-    g_rendering_ui_section.store("ui:tab:main_new:brightness_autohdr", std::memory_order_release);
-    ui::colors::PushHeaderColors(&imgui);
-    const bool brightness_section_open = imgui.CollapsingHeader("Brightness and AutoHDR", ImGuiTreeNodeFlags_None);
-    ui::colors::PopCollapsingHeaderColors(&imgui);
-    if (brightness_section_open) {
-        imgui.Indent();
-        if (CheckboxSetting(settings::g_mainTabSettings.brightness_autohdr_section_enabled,
-                            "Load DC's shaders (Brightness, AutoHDR)", imgui)) {
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "When on: Brightness, AutoHDR and related controls are active (DC's ReShade effects are applied). "
-                "When off: the whole Brightness and AutoHDR section is disabled.");
-        }
-        if (!settings::g_mainTabSettings.brightness_autohdr_section_enabled.GetValue()) {
-            imgui.BeginDisabled();
-        }
-        imgui.SetNextItemWidth(400.0f);
-        if (SliderFloatSetting(settings::g_mainTabSettings.brightness_percent, "Brightness (%)", "%.0f", imgui)) {
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Adjust brightness via Display Commander's ReShade effect (0-500%%, 100%% = neutral).\n"
-                "Requires DisplayCommander_Control.fx to be in ReShade's Shaders folder and effect reload (e.g. "
-                "Ctrl+Shift+F5) or game restart.");
-        }
-        {
-            HMONITOR mon = display_commander::display::sdr_white_level::GetGameMonitorForSdrBrightness();
-            bool hdr_enabled = true;
-            if (hdr_enabled && mon != nullptr) {
-                imgui.SetNextItemWidth(400.0f);
-                if (SliderFloatSetting(settings::g_mainTabSettings.sdr_content_brightness_nits,
-                                       "SDR content brightness (Windows WIP)", "%.0f nits", imgui)) {
-                    display_commander::display::sdr_white_level::SetSdrWhiteLevelNits(
-                        mon, settings::g_mainTabSettings.sdr_content_brightness_nits.GetValue());
-                }
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltipEx(
-                        "Windows SDR content brightness when HDR is on (Settings > Display > HDR). "
-                        "80–480 nits. Affects the display where the game runs.");
-                }
-                imgui.TextColored(ui::colors::TEXT_WARNING,
-                                  "Warning: SDR content brightness (Windows) does not restore itself back when "
-                                  "game shuts down. Shown even when HDR is off.");
-            }
-        }
-        imgui.SetNextItemWidth(400.0f);
-        if (ComboSettingWrapper(settings::g_mainTabSettings.swapchain_colorspace, "Swapchain colorspace", imgui)) {
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("How to interpret the backbuffer (decode). Auto = detect from pipeline. Default Auto.");
-        }
-        imgui.SetNextItemWidth(400.0f);
-        if (ComboSettingWrapper(settings::g_mainTabSettings.brightness_colorspace, "Color Space", imgui)) {
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Output/encode color space. Auto = match pipeline. sRGB = linearize, multiply, encode.");
-        }
-        {
-            const reshade::api::device_api api = g_last_reshade_device_api.load();
-            const bool is_dxgi = (api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11
-                                  || api == reshade::api::device_api::d3d12);
-            const bool renodx_loaded = g_is_renodx_loaded.load(std::memory_order_relaxed);
-            if (is_dxgi && !renodx_loaded) {
-                if (CheckboxSetting(settings::g_mainTabSettings.swapchain_hdr_upgrade, "Swapchain HDR Upgrade", imgui)) {
-                }
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltipEx(
-                        "Upgrades the swap chain to HDR (scRGB or HDR10) on creation. Requires DXGI (D3D10/11/12) "
-                        "and Windows HDR or an HDR display. Game restart may be needed.");
-                }
-                if (settings::g_mainTabSettings.swapchain_hdr_upgrade.GetValue()) {
-                    if (ComboSettingWrapper(settings::g_mainTabSettings.swapchain_hdr_upgrade_mode, "HDR mode", imgui)) {
-                    }
-                    if (imgui.IsItemHovered()) {
-                        imgui.SetTooltipEx(
-                            "scRGB = 16-bit float linear. HDR10 = 10-bit PQ (ST.2084). Change may require game "
-                            "restart.");
-                    }
-                    imgui.TextColored(
-                        ui::colors::TEXT_WARNING,
-                        "May cause black screen issue. For best compatibility use \"RenoDX Unity mod\" to do "
-                        "generic SDR->HDR upgrade (for non unity games).");
-                }
-            } else if (!is_dxgi) {
-                const char* api_label = "this API";
-                switch (api) {
-                    case reshade::api::device_api::d3d9:   api_label = "D3D9"; break;
-                    case reshade::api::device_api::opengl: api_label = "OpenGL"; break;
-                    case reshade::api::device_api::vulkan: api_label = "Vulkan"; break;
-                    default:                               break;
-                }
-                imgui.Text("Use RenoDX to upgrade swapchain to HDR (%s).", api_label);
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltipEx(
-                        "Swapchain HDR Upgrade is only available for DXGI (D3D10/11/12). For %s use RenoDX: "
-                        "https://github.com/clshortfuse/renodx",
-                        api_label);
-                }
-            }
-        }
-        if (CheckboxSetting(settings::g_mainTabSettings.auto_hdr, "AutoHDR Perceptual Boost", imgui)) {
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Runs DisplayCommander_PerceptualBoost.fx. Use 'Swapchain HDR Upgrade' for SDR->HDR upgrade.");
-        }
-        if (!settings::g_mainTabSettings.brightness_autohdr_section_enabled.GetValue()) {
-            imgui.EndDisabled();
-        }
-        {
-            const reshade::api::device_api api = g_last_reshade_device_api.load();
-            const bool is_dxgi = (api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11
-                                  || api == reshade::api::device_api::d3d12);
-
-            auto show_checkbox = (g_show_auto_colorspace_fix_in_main_tab.load(std::memory_order_relaxed));
-            bool auto_colorspace = settings::g_advancedTabSettings.auto_colorspace.GetValue();
-            bool swap_chain_upgrade = settings::g_mainTabSettings.swapchain_hdr_upgrade.GetValue();
-            if (is_dxgi && (show_checkbox || !auto_colorspace || swap_chain_upgrade)) {
-                if (imgui.Checkbox("HDR10 / scRGB color fix", &auto_colorspace)) {
-                    settings::g_advancedTabSettings.auto_colorspace.SetValue(auto_colorspace);
-                }
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltipEx(
-                        "Sets DXGI swap chain and ReShade color space to match the back buffer: "
-                        "10-bit HDR10 (R10G10B10A2) -> HDR10 (ST2084), 16-bit FP (R16G16B16A16) -> scRGB (Linear). "
-                        "No change for 8-bit (SDR). Improves compatibility with RenoDX HDR10 mode. DirectX 11/12.");
-                }
-            }
-        }
-        if (!settings::g_mainTabSettings.brightness_autohdr_section_enabled.GetValue()) {
-            imgui.BeginDisabled();
-        }
-        if (settings::g_mainTabSettings.auto_hdr.GetValue()) {
-            bool backbuffer_8bit = false;
-            if (runtime != nullptr) {
-                reshade::api::device* device = runtime->get_device();
-                if (device != nullptr) {
-                    reshade::api::resource bb = runtime->get_back_buffer(0);
-                    if (bb != 0) {
-                        const auto fmt = device->get_resource_desc(bb).texture.format;
-                        backbuffer_8bit = (fmt == reshade::api::format::r8g8b8a8_unorm
-                                           || fmt == reshade::api::format::b8g8r8a8_unorm);
-                    }
-                }
-            }
-            if (!backbuffer_8bit) {
-                auto desc_ptr = g_last_swapchain_desc_post.load();
-                if (desc_ptr != nullptr) {
-                    const auto fmt = desc_ptr->back_buffer.texture.format;
-                    backbuffer_8bit = (fmt == reshade::api::format::r8g8b8a8_unorm
-                                       || fmt == reshade::api::format::b8g8r8a8_unorm);
-                }
-            }
-            if (backbuffer_8bit) {
-                imgui.TextColored(::ui::colors::ICON_WARNING, ICON_FK_WARNING
-                                                      " 8-bit buffer. "
-                                                      "Recommend RenoDX for SDR->HDR swapchain upgrade.");
-            }
-            imgui.SetNextItemWidth(400.0f);
-            if (SliderFloatSetting(settings::g_mainTabSettings.auto_hdr_strength, "Auto HDR strength", "%.2f", imgui)) {
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx("Profile 3 effect strength (0.0 = no effect, 1.0 = full effect, up to 2.0).");
-            }
-        }
-        ui::colors::PushHeader2Colors(&imgui);
-        const bool brightness_misc_open = imgui.CollapsingHeader("Misc", ImGuiTreeNodeFlags_None);
-        ui::colors::PopCollapsingHeaderColors(&imgui);
-        if (brightness_misc_open) {
-            imgui.Indent();
-            if (SliderFloatSetting(settings::g_mainTabSettings.gamma_value, "Gamma", "%.2f", imgui)) {
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx(
-                    "Gamma correction (0.5–2.0, 1.0 = neutral). Applied in DisplayCommander_Control.fx with "
-                    "Brightness.");
-            }
-            if (SliderFloatSetting(settings::g_mainTabSettings.contrast_value, "Contrast", "%.2f", imgui)) {
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx(
-                    "Contrast (0.0–2.0, 1.0 = neutral). Applied in DisplayCommander_Control.fx with Brightness.");
-            }
-            if (SliderFloatSetting(settings::g_mainTabSettings.saturation_value, "Saturation", "%.2f", imgui)) {
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx(
-                    "Saturation (0.0 = grayscale, 1.0 = neutral, up to 2.0). Applied in "
-                    "DisplayCommander_Control.fx with Brightness.");
-            }
-            if (SliderFloatSetting(settings::g_mainTabSettings.hue_degrees, "Hue (degrees)", "%.1f", imgui)) {
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx(
-                    "Hue shift (-15 to +15 degrees, 0 = neutral). Applied in DisplayCommander_Control.fx with "
-                    "Brightness.");
-            }
-            imgui.Unindent();
-        }
-        if (!settings::g_mainTabSettings.brightness_autohdr_section_enabled.GetValue()) {
-            imgui.EndDisabled();
-        }
         imgui.Unindent();
     }
 }
@@ -4534,11 +4275,6 @@ static void DrawMainTabOptionalPanelsInOrder(display_commander::ui::GraphicsApi 
                     DrawMainTabOptionalPanelDcFolders(imgui, runtime);
                 }
                 break;
-            case MainTabOptionalSectionKind::BrightnessAutoHdr:
-                if (settings::g_mainTabSettings.show_main_tab_brightness_autohdr.GetValue()) {
-                    DrawMainTabOptionalPanelBrightnessAutoHdr(imgui, runtime);
-                }
-                break;
             case MainTabOptionalSectionKind::TextureFiltering:
                 if (settings::g_mainTabSettings.show_main_tab_texture_filtering.GetValue()) {
                     DrawMainTabOptionalPanelTextureFiltering(imgui);
@@ -5053,8 +4789,6 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
     }
 
     DrawMainTabOptionalPanelsInOrder(api, imgui, runtime);
-
-    DrawMainTabLegalSection(imgui);
 }
 
 void DrawQuickFpsLimitChanger(display_commander::ui::IImGuiWrapper& imgui) {
@@ -7248,13 +6982,6 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(display_commande
         imgui.TextColored(present_mode_color, "%s", present_mode_name.c_str());
         bool status_hovered = imgui.IsItemHovered();
         CALL_GUARD(utils::get_now_ns());
-        static DWORD last_discord_check = 0;
-        DWORD current_time = GetTickCount();
-        if (current_time - last_discord_check > 1000) {
-            CALL_GUARD(utils::get_now_ns());
-            last_discord_check = current_time;
-        }
-        CALL_GUARD(utils::get_now_ns());
 
         DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine(imgui);
         CALL_GUARD(utils::get_now_ns());
@@ -7360,12 +7087,21 @@ static void DrawDxgiControl_SwapchainTweaks(display_commander::ui::IImGuiWrapper
     const bool has_dxgi_traffic = traffic_apis.find("DXGI") != std::string::npos;
 
     if (g_reshade_module != nullptr) {
-        if (!desc_ptr) {
-            imgui.TextColored(ui::colors::TEXT_DIMMED,
-                              "Max frame latency and buffer count appear when swapchain information is available.");
-            return;
-        }
         if (is_dxgi_reshade) {
+            const bool show_checkbox = (g_show_auto_colorspace_fix_in_main_tab.load(std::memory_order_relaxed));
+            bool auto_colorspace = settings::g_advancedTabSettings.auto_colorspace.GetValue();
+            if (show_checkbox || !auto_colorspace) {
+                if (imgui.Checkbox("HDR10 / scRGB color fix", &auto_colorspace)) {
+                    settings::g_advancedTabSettings.auto_colorspace.SetValue(auto_colorspace);
+                }
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltipEx(
+                        "Sets DXGI swap chain and ReShade color space to match the back buffer: "
+                        "10-bit HDR10 (R10G10B10A2) -> HDR10 (ST2084), 16-bit FP (R16G16B16A16) -> scRGB (Linear). "
+                        "No change for 8-bit (SDR). Improves compatibility with RenoDX HDR10 mode. DirectX 11/12.");
+                }
+                imgui.Spacing();
+            }
             if (ComboSettingWrapper(settings::g_mainTabSettings.max_frame_latency_override, "Max frame latency", imgui,
                                     300.f)) {
                 LogInfo("Max frame latency override changed to %d",
@@ -7377,6 +7113,11 @@ static void DrawDxgiControl_SwapchainTweaks(display_commander::ui::IImGuiWrapper
                     "game default. 1 = lowest input latency (single frame queue); 2-16 = more CPU-GPU parallelism. "
                     "Applied per swapchain at runtime.");
             }
+        }
+        if (!desc_ptr) {
+            imgui.TextColored(ui::colors::TEXT_DIMMED,
+                              "Max frame latency and buffer count appear when swapchain information is available.");
+            return;
         }
 
         bool is_flip_model = false;
@@ -7681,10 +7422,9 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     bool show_dlss_render_preset = settings::g_mainTabSettings.show_dlss_render_preset.GetValue();
     bool show_fps_limiter_src = settings::g_mainTabSettings.show_fps_limiter_src.GetValue();
     bool show_overlay_vram = settings::g_mainTabSettings.show_overlay_vram.GetValue();
-    bool show_overlay_texture_stats = settings::g_mainTabSettings.show_overlay_texture_stats.GetValue();
     bool show_dxgi_vrr_status = settings::g_mainTabSettings.show_dxgi_vrr_status.GetValue();
     bool show_dxgi_refresh_rate = settings::g_mainTabSettings.show_dxgi_refresh_rate.GetValue();
-    bool show_enabledfeatures = display_commanderhooks::IsTimeslowdownEnabled() || ::g_auto_click_enabled.load();
+    bool show_enabledfeatures = display_commanderhooks::IsTimeslowdownEnabled();
 
     if (settings::g_mainTabSettings.show_clock.GetValue()) {
         // Display current time
@@ -8002,48 +7742,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
             if (imgui.IsItemHovered() && show_tooltips) {
                 imgui.SetTooltipEx("System memory info unavailable.");
             }
-        }
-    }
-
-    if (show_overlay_texture_stats && settings::g_advancedTabSettings.texture_tracking_enabled.GetValue()) {
-        const utils::TextureTrackerStats tstats = utils::TextureTrackerGetStats();
-        const double current_mib = static_cast<double>(tstats.current_bytes) / (1024.0 * 1024.0);
-        const double peak_mib = static_cast<double>(tstats.peak_bytes) / (1024.0 * 1024.0);
-        if (settings::g_mainTabSettings.show_labels.GetValue()) {
-            imgui.Text("Total: %.2f  Peak: %.2f MiB  min: %llu", current_mib, peak_mib,
-                       static_cast<unsigned long long>(tstats.min_cache_misses_possible));
-        } else {
-            imgui.Text("%.2f/%.2f MiB  min:%llu", current_mib, peak_mib,
-                       static_cast<unsigned long long>(tstats.min_cache_misses_possible));
-        }
-        imgui.Text("  1D: lu %llu  hit %llu  miss %llu  ent %llu  %.2f MiB",
-                   static_cast<unsigned long long>(tstats.texture_cache_1d.lookups),
-                   static_cast<unsigned long long>(tstats.texture_cache_1d.hits),
-                   static_cast<unsigned long long>(tstats.texture_cache_1d.lookup_misses),
-                   static_cast<unsigned long long>(tstats.texture_cache_1d.inserts),
-                   static_cast<double>(tstats.texture_cache_1d.total_bytes) / (1024.0 * 1024.0));
-        imgui.Text("  2D: lu %llu  hit %llu  miss %llu  ent %llu  %.2f MiB",
-                   static_cast<unsigned long long>(tstats.texture_cache_2d.lookups),
-                   static_cast<unsigned long long>(tstats.texture_cache_2d.hits),
-                   static_cast<unsigned long long>(tstats.texture_cache_2d.lookup_misses),
-                   static_cast<unsigned long long>(tstats.texture_cache_2d.inserts),
-                   static_cast<double>(tstats.texture_cache_2d.total_bytes) / (1024.0 * 1024.0));
-        imgui.Text("  3D: lu %llu  hit %llu  miss %llu  ent %llu  %.2f MiB",
-                   static_cast<unsigned long long>(tstats.texture_cache_3d.lookups),
-                   static_cast<unsigned long long>(tstats.texture_cache_3d.hits),
-                   static_cast<unsigned long long>(tstats.texture_cache_3d.lookup_misses),
-                   static_cast<unsigned long long>(tstats.texture_cache_3d.inserts),
-                   static_cast<double>(tstats.texture_cache_3d.total_bytes) / (1024.0 * 1024.0));
-        if (imgui.IsItemHovered() && show_tooltips) {
-            imgui.SetTooltipEx(
-                "Per-dimension: lookups, hit, miss, entries, stored MiB. Skip (2D): no_init %llu  track_off %llu  "
-                "cache_off %llu  ppNull %llu  key0 %llu  size0 %llu",
-                static_cast<unsigned long long>(tstats.texture_cache_skip_no_initial_data),
-                static_cast<unsigned long long>(tstats.texture_cache_skip_tracking_off),
-                static_cast<unsigned long long>(tstats.texture_cache_skip_caching_off),
-                static_cast<unsigned long long>(tstats.texture_cache_skip_ppTexture2D_null),
-                static_cast<unsigned long long>(tstats.texture_cache_skip_key_zero),
-                static_cast<unsigned long long>(tstats.texture_cache_skip_size_zero));
         }
     }
 
@@ -8619,20 +8317,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                 len = strlen(tooltip_text);
                 snprintf(tooltip_text + len, sizeof(tooltip_text) - len,
                          " | Time Slowdown: %.2fx multiplier, QPC diff: %+.1f s", multiplier, qpc_difference_seconds);
-            }
-        }
-
-        // Auto-Click
-        if (::g_auto_click_enabled.load()) {
-            if (first_feature) {
-                snprintf(feature_text, sizeof(feature_text), "AC");
-                snprintf(tooltip_text, sizeof(tooltip_text), "Auto-Click: Enabled");
-                first_feature = false;
-            } else {
-                size_t len = strlen(feature_text);
-                snprintf(feature_text + len, sizeof(feature_text) - len, ", AC");
-                len = strlen(tooltip_text);
-                snprintf(tooltip_text + len, sizeof(tooltip_text) - len, " | Auto-Click: Enabled");
             }
         }
 
@@ -9672,18 +9356,6 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             imgui.SetTooltipEx("Shows GPU video memory used / budget (MiB) in the performance overlay (DXGI adapter).");
         }
         imgui.NextColumn();
-
-        if (settings::g_advancedTabSettings.texture_tracking_enabled.GetValue()) {
-            bool show_overlay_texture_stats = settings::g_mainTabSettings.show_overlay_texture_stats.GetValue();
-            if (imgui.Checkbox("Tex stats", &show_overlay_texture_stats)) {
-                settings::g_mainTabSettings.show_overlay_texture_stats.SetValue(show_overlay_texture_stats);
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx(
-                    "Shows texture tracker in overlay: total memory, peak memory, cache misses. "
-                    "Requires Advanced -> Track loaded texture size.");
-            }
-        }
 
         const bool smooth_motion_latency = g_smooth_motion_dll_loaded.load(std::memory_order_relaxed);
         if (smooth_motion_latency) {

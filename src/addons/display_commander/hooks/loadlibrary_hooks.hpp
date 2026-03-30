@@ -84,15 +84,6 @@ std::vector<std::string> ReportMissedModulesOnExit();
 // Module loading callback
 void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule);
 
-// DLL blocking functions
-bool ShouldBlockDLL(const std::wstring& dll_path);
-void LoadBlockedDLLsFromSettings(const std::string& blocked_dlls_str);
-std::string SaveBlockedDLLsToSettings();
-bool IsDLLBlocked(const std::wstring& module_name);
-void SetDLLBlocked(const std::wstring& module_name, bool blocked);
-bool CanBlockDLL(const ModuleInfo& module_info);
-std::vector<std::wstring> GetBlockedDLLs();
-
 // Host-loaded graphics/API libraries (loaded by game/host, not by Display Commander or ReShade).
 // Returns space-separated list e.g. "dxgi d3d11" or "opengl32" or "dxgi vulkan-1".
 std::string GetHostLoadedGraphicsApisString();

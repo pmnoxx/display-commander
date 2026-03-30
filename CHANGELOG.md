@@ -12,6 +12,9 @@ Feature protosal:
 - Add fix for games with broken native reflex.
 
 
+## v0.13.44 (2026-03-29)
+
+- [removal] [experimental] [settings] [ui] [hooks] **Removed unused code**.
 
 ## v0.13.43 (2026-03-29)
 

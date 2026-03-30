@@ -1,7 +1,6 @@
 #include "hotkeys_tab.hpp"
 #include "../../adhd_multi_monitor/adhd_simple_api.hpp"
 #include "../../audio/audio_management.hpp"
-#include "../../autoclick/autoclick_manager.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/system/display_settings_hooks.hpp"
 #include "../../hooks/windows_hooks/api_hooks.hpp"
@@ -351,12 +350,6 @@ void InitializeHotkeyDefinitions() {
              oss << "Black curtain (other displays) " << (new_state ? "enabled" : "disabled") << " via hotkey";
              LogInfo(oss.str().c_str());
          }},
-        {"autoclick", "Auto-Click Toggle", "", "Toggle Auto-Click sequences (requires experimental features)",
-         []() {
-             if (!enabled_experimental_features) return;
-             LogInfo("Auto-Click hotkey detected - toggling auto-click");
-             autoclick::ToggleAutoClickEnabled();
-         }},
         {"input_blocking", "Input Blocking Toggle", "", "Toggle input blocking",
          []() {
              bool current_state = s_input_blocking_toggle.load();
@@ -485,39 +478,6 @@ void InitializeHotkeyDefinitions() {
              } else {
                  LogWarn("Failed to decrease system volume via hotkey");
              }
-         }},
-        {"auto_hdr", "AutoHDR Toggle", "", "Toggle AutoHDR (DisplayCommander_PerceptualBoost SDR-to-HDR effect)",
-         []() {
-             bool current_state = settings::g_mainTabSettings.auto_hdr.GetValue();
-             bool new_state = !current_state;
-             settings::g_mainTabSettings.auto_hdr.SetValue(new_state);
-             std::ostringstream oss;
-             oss << "AutoHDR " << (new_state ? "enabled" : "disabled") << " via hotkey";
-             LogInfo(oss.str().c_str());
-         }},
-        {"brightness_down", "Brightness Down", "",
-         "Decrease Display Commander brightness (0-500%%, step configurable below, 100%% = neutral)",
-         []() {
-             float step = static_cast<float>(settings::g_hotkeysTabSettings.brightness_hotkey_step_percent.GetValue());
-             constexpr float min_percent = 0.0f;
-             float current = settings::g_mainTabSettings.brightness_percent.GetValue();
-             float next = (std::max)(min_percent, current - step);
-             settings::g_mainTabSettings.brightness_percent.SetValue(next);
-             std::ostringstream oss;
-             oss << "Brightness decreased to " << std::fixed << std::setprecision(0) << next << "%% via hotkey";
-             LogInfo(oss.str().c_str());
-         }},
-        {"brightness_up", "Brightness Up", "",
-         "Increase Display Commander brightness (0-500%%, step configurable below, 100%% = neutral)",
-         []() {
-             float step = static_cast<float>(settings::g_hotkeysTabSettings.brightness_hotkey_step_percent.GetValue());
-             constexpr float max_percent = 200.0f;
-             float current = settings::g_mainTabSettings.brightness_percent.GetValue();
-             float next = (std::min)(max_percent, current + step);
-             settings::g_mainTabSettings.brightness_percent.SetValue(next);
-             std::ostringstream oss;
-             oss << "Brightness increased to " << std::fixed << std::setprecision(0) << next << "%% via hotkey";
-             LogInfo(oss.str().c_str());
          }},
         {"win_down", "Win+Down (Minimize)", "win down",
          "Minimize borderless game window (Special-K style). Only when game is in foreground.",
@@ -666,8 +626,6 @@ void InitializeHotkeyDefinitions() {
         if (enabled_experimental_features) {
             g_hotkey_definitions[static_cast<size_t>(HotkeyId::TimeSlowdown)].parsed =
                 DeserializeHotkeyFromConfigString(settings.hotkey_timeslowdown.GetValue());
-            g_hotkey_definitions[static_cast<size_t>(HotkeyId::Autoclick)].parsed =
-                DeserializeHotkeyFromConfigString(settings.hotkey_autoclick.GetValue());
         }
         g_hotkey_definitions[static_cast<size_t>(HotkeyId::AdhdToggle)].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_adhd_toggle.GetValue());
@@ -687,12 +645,6 @@ void InitializeHotkeyDefinitions() {
             DeserializeHotkeyFromConfigString(settings.hotkey_system_volume_up.GetValue());
         g_hotkey_definitions[static_cast<size_t>(HotkeyId::SystemVolumeDown)].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_system_volume_down.GetValue());
-        g_hotkey_definitions[static_cast<size_t>(HotkeyId::AutoHdr)].parsed =
-            DeserializeHotkeyFromConfigString(settings.hotkey_auto_hdr.GetValue());
-        g_hotkey_definitions[static_cast<size_t>(HotkeyId::BrightnessDown)].parsed =
-            DeserializeHotkeyFromConfigString(settings.hotkey_brightness_down.GetValue());
-        g_hotkey_definitions[static_cast<size_t>(HotkeyId::BrightnessUp)].parsed =
-            DeserializeHotkeyFromConfigString(settings.hotkey_brightness_up.GetValue());
         g_hotkey_definitions[static_cast<size_t>(HotkeyId::WinDown)].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_win_down.GetValue());
         g_hotkey_definitions[static_cast<size_t>(HotkeyId::WinUp)].parsed =
@@ -846,8 +798,6 @@ void SyncHotkeySettingsFromParsed() {
     if (enabled_experimental_features) {
         s.hotkey_timeslowdown.SetValue(
             SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::TimeSlowdown)].parsed));
-        s.hotkey_autoclick.SetValue(
-            SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::Autoclick)].parsed));
     }
     s.hotkey_adhd_toggle.SetValue(
         SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::AdhdToggle)].parsed));
@@ -867,12 +817,6 @@ void SyncHotkeySettingsFromParsed() {
         SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::SystemVolumeUp)].parsed));
     s.hotkey_system_volume_down.SetValue(
         SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::SystemVolumeDown)].parsed));
-    s.hotkey_auto_hdr.SetValue(
-        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::AutoHdr)].parsed));
-    s.hotkey_brightness_down.SetValue(
-        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::BrightnessDown)].parsed));
-    s.hotkey_brightness_up.SetValue(
-        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::BrightnessUp)].parsed));
     s.hotkey_win_down.SetValue(
         SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::WinDown)].parsed));
     s.hotkey_win_up.SetValue(
@@ -928,9 +872,6 @@ void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
                         if (enabled_experimental_features) setting_ptr = &settings.hotkey_timeslowdown;
                         break;
                     case HotkeyId::AdhdToggle: setting_ptr = &settings.hotkey_adhd_toggle; break;
-                    case HotkeyId::Autoclick:
-                        if (enabled_experimental_features) setting_ptr = &settings.hotkey_autoclick;
-                        break;
                     case HotkeyId::InputBlocking: setting_ptr = &settings.hotkey_input_blocking; break;
                     case HotkeyId::DisplayCommanderUi: setting_ptr = &settings.hotkey_display_commander_ui; break;
                     case HotkeyId::PerformanceOverlay: setting_ptr = &settings.hotkey_performance_overlay; break;
@@ -939,9 +880,6 @@ void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
                     case HotkeyId::VolumeDown: setting_ptr = &settings.hotkey_volume_down; break;
                     case HotkeyId::SystemVolumeUp: setting_ptr = &settings.hotkey_system_volume_up; break;
                     case HotkeyId::SystemVolumeDown: setting_ptr = &settings.hotkey_system_volume_down; break;
-                    case HotkeyId::AutoHdr: setting_ptr = &settings.hotkey_auto_hdr; break;
-                    case HotkeyId::BrightnessDown: setting_ptr = &settings.hotkey_brightness_down; break;
-                    case HotkeyId::BrightnessUp: setting_ptr = &settings.hotkey_brightness_up; break;
                     case HotkeyId::WinDown: setting_ptr = &settings.hotkey_win_down; break;
                     case HotkeyId::WinUp: setting_ptr = &settings.hotkey_win_up; break;
                     case HotkeyId::WinLeft: setting_ptr = &settings.hotkey_win_left; break;
@@ -1174,15 +1112,6 @@ void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
         }
     }
 
-    // Brightness hotkey step (at bottom of tab)
-    imgui.Spacing();
-    imgui.Separator();
-    imgui.Spacing();
-
-    SliderIntSetting(settings.brightness_hotkey_step_percent, "Brightness hotkey step (%)", "%d%%", imgui);
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx("Step size for Brightness Up/Down hotkeys (0-500%%, 100%% = neutral). Default 5%%.");
-    }
 }
 
 // Parse a key name string to virtual key code

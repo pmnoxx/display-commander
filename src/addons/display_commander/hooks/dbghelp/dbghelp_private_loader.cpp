@@ -195,8 +195,7 @@ bool LoadDbgHelp() {
         return false;
     }
 
-    // Get function addresses. If DbgHelp hooks were already installed (game loaded dbghelp first),
-    // the hook layer set _Original to trampolines; do not overwrite those.
+    // Get function addresses from the loaded module (private copy or fallback).
     bool all_required_available = true;
     for (const DbgHelpFunctionEntry& entry : g_function_entries) {
         if (entry.target == nullptr) {

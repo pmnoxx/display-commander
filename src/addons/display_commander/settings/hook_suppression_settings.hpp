@@ -38,7 +38,6 @@ class HookSuppressionSettings {
     BoolSetting suppress_windows_gaming_input_hooks;
     BoolSetting suppress_api_hooks;
     BoolSetting suppress_window_api_hooks;
-    BoolSetting suppress_sleep_hooks;
     BoolSetting suppress_timeslowdown_hooks;
     BoolSetting suppress_debug_output_hooks;
     BoolSetting suppress_loadlibrary_hooks;
@@ -48,7 +47,6 @@ class HookSuppressionSettings {
     BoolSetting suppress_nvapi_hooks;
     BoolSetting suppress_process_exit_hooks;
     BoolSetting suppress_window_proc_hooks;
-    BoolSetting suppress_dbghelp_hooks;
     BoolSetting suppress_d3d9_hooks;
     BoolSetting suppress_vulkan_loader_hooks;
 
@@ -66,7 +64,6 @@ class HookSuppressionSettings {
     BoolSetting windows_gaming_input_hooks_installed;
     BoolSetting api_hooks_installed;
     BoolSetting window_api_hooks_installed;
-    BoolSetting sleep_hooks_installed;
     BoolSetting timeslowdown_hooks_installed;
     BoolSetting debug_output_hooks_installed;
     BoolSetting loadlibrary_hooks_installed;
@@ -76,7 +73,6 @@ class HookSuppressionSettings {
     BoolSetting nvapi_hooks_installed;
     BoolSetting process_exit_hooks_installed;
     BoolSetting window_proc_hooks_installed;
-    BoolSetting dbghelp_hooks_installed;
     BoolSetting d3d9_hooks_installed;
     BoolSetting vulkan_loader_hooks_installed;
 

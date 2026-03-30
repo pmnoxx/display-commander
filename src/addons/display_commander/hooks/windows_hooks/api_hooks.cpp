@@ -13,7 +13,6 @@
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"
-#include "../d3d11/d3d11_device_hooks.hpp"
 #include "../system/debug_output_hooks.hpp"
 #include "../input/dinput_hooks.hpp"
 #include "../system/display_settings_hooks.hpp"
@@ -25,8 +24,6 @@
 #include "../loadlibrary_hooks.hpp"
 #include "../opengl/opengl_hooks.hpp"
 #include "../nvidia/pclstats_etw_hooks.hpp"
-#include "../system/rand_hooks.hpp"
-#include "../system/sleep_hooks.hpp"
 #include "../system/timeslowdown_hooks.hpp"
 #include "../input/windows_gaming_input_hooks.hpp"
 #include "windows_message_hooks.hpp"
@@ -618,12 +615,6 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(IDXGIAdapter* pAdapter, D3D_
     if (FAILED(hr)) {
         LogError("[D3D11 error] D3D11CreateDeviceAndSwapChain returned 0x%08X", static_cast<unsigned>(hr));
     }
-    if (SUCCEEDED(hr)) {
-        if (settings::g_advancedTabSettings.enable_dx11_vtable_hooks.GetValue() && ppDevice && *ppDevice) {
-            display_commanderhooks::d3d11::HookD3D11DeviceVTable(*ppDevice);
-        }
-    }
-
     // Setup D3D11 debug info queue if debug layer is enabled and device creation was successful
     if (SUCCEEDED(hr) && ppDevice && *ppDevice && settings::g_advancedTabSettings.debug_layer_enabled.GetValue()) {
         ID3D11Device* device = static_cast<ID3D11Device*>(*ppDevice);
@@ -746,12 +737,6 @@ HRESULT WINAPI D3D11CreateDevice_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE 
     if (FAILED(hr)) {
         LogError("[D3D11 error] D3D11CreateDevice returned 0x%08X", static_cast<unsigned>(hr));
     }
-    if (SUCCEEDED(hr) && ppDevice && *ppDevice) {
-        if (settings::g_advancedTabSettings.enable_dx11_vtable_hooks.GetValue()) {
-            display_commanderhooks::d3d11::HookD3D11DeviceVTable(*ppDevice);
-        }
-    }
-
     // Setup D3D11 debug info queue if debug layer is enabled and device creation was successful
     if (SUCCEEDED(hr) && ppDevice && *ppDevice && settings::g_advancedTabSettings.debug_layer_enabled.GetValue()) {
         ID3D11Device* device = static_cast<ID3D11Device*>(*ppDevice);
@@ -862,9 +847,6 @@ HRESULT WINAPI D3D11On12CreateDevice_Detour(IUnknown* pDevice, UINT Flags, const
 
     if (SUCCEEDED(hr) && ppDevice && *ppDevice) {
         LogInfo("  Created D3D11on12 Device: 0x%p", *ppDevice);
-        if (settings::g_advancedTabSettings.enable_dx11_vtable_hooks.GetValue()) {
-            display_commanderhooks::d3d11::HookD3D11DeviceVTable(*ppDevice);
-        }
         //  Install DXGI factory hooks from the created device (same path as D3D11CreateDevice)
         IDXGIDevice* dxgi_device = nullptr;
         HRESULT qhr = (*ppDevice)->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&dxgi_device));
@@ -1120,8 +1102,6 @@ bool InstallApiHooks() {
 
     process_exit_hooks::Initialize();
 
-    InstallSleepHooks();
-
     // Install LoadLibrary hooks
     InstallLoadLibraryHooks();
 
@@ -1140,11 +1120,6 @@ bool InstallApiHooks() {
     // PCLStats ETW hooks are installed via OnModuleLoaded when advapi32.dll is loaded
 
     // D3D device creation hooks are now installed via OnModuleLoaded when d3d11.dll or d3d12.dll is loaded
-
-    // Install rand hooks (experimental feature)
-    if (enabled_experimental_features) {
-        InstallRandHooks();
-    }
 
     g_api_hooks_installed.store(true);
     LogInfo("API hooks installed successfully");
@@ -1177,9 +1152,6 @@ void UninstallApiHooks() {
     // Uninstall Windows message hooks
     UninstallWindowsMessageHooks();
 
-    // Uninstall sleep hooks
-    UninstallSleepHooks();
-
     // Uninstall timeslowdown hooks
     UninstallTimeslowdownHooks();
 
@@ -1194,9 +1166,6 @@ void UninstallApiHooks() {
 
     // Uninstall DPI hooks
     display_commanderhooks::dpi::UninstallDpiHooks();
-
-    // Uninstall rand hooks
-    UninstallRandHooks();
 
     // NVAPI hooks are uninstalled via LoadLibrary hooks cleanup
 

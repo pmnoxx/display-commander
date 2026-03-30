@@ -164,7 +164,7 @@ HWND WINAPI CreateWindowW_Direct(LPCWSTR lpClassName, LPCWSTR lpWindowName, DWOR
 bool ShouldBlockMouseInput(bool assume_foreground = false);
 bool ShouldBlockKeyboardInput(bool assume_foreground = false);
 
-// Continue Rendering API debug: snapshot of what each focus/visibility API last returned (for Window Info tab).
+// Continue Rendering API debug: snapshot of what each focus/visibility API last returned (for UI / diagnostics).
 struct ContinueRenderingApiDebugSnapshot {
     const char* api_name;
     uintptr_t last_value;        // HWND as uintptr_t, or 0/1 for BOOL (when value_is_bool)

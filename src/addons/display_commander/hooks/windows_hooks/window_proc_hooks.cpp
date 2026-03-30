@@ -14,7 +14,6 @@
 #include "../../exit_handler.hpp"
 #include "../../globals.hpp"
 #include "../../settings/advanced_tab_settings.hpp"
-#include "../../ui/new_ui/window_info_tab.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/srwlock_registry.hpp"
 #include "../../utils/srwlock_wrapper.hpp"
@@ -251,8 +250,6 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 // Suppress focus loss messages when continue rendering is enabled
                 if (LOWORD(wParam) == WA_INACTIVE) {
                     LogInfo("Suppressed window deactivation message due to continue rendering - HWND: 0x%p", hwnd);
-                    // Update the message history to show this was suppressed
-                    ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
                     return true;  // Suppress the message
                 }
             }
@@ -267,8 +264,6 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             // Handle focus loss - suppress if continue rendering is enabled
             if (continue_rendering_enabled) {
                 LogInfo("Suppressed WM_KILLFOCUS message due to continue rendering - HWND: 0x%p", hwnd);
-                // Update the message history to show this was suppressed
-                ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
                 SendFakeActivationMessages(hwnd);
                 return true;  // Suppress the message
             }
@@ -280,8 +275,6 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             if (continue_rendering_enabled) {
                 if (wParam == FALSE) {  // Application is being deactivated
                     LogInfo("WM_ACTIVATEAPP: Suppressing application deactivation - HWND: 0x%p", hwnd);
-                    // Update the message history to show this was suppressed
-                    ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
                     // Send fake activation to keep the game thinking it's active
                     SendFakeActivationMessages(hwnd);
                     return true;  // Suppress the message
@@ -307,8 +300,6 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 } else {
                     // Non-client area is being deactivated - suppress and fake activation
                     LogInfo("WM_NCACTIVATE: Suppressing deactivation - HWND: 0x%p", hwnd);
-                    // Update the message history to show this was suppressed
-                    ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
                     return true;  // Suppress the message
                 }
             }
@@ -326,7 +317,6 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                     if (IsIconic_direct(hwnd)) {
                         // Suppress the message to prevent minimization
                         LogInfo("WM_WINDOWPOSCHANGING: Suppressing minimize - HWND: 0x%p", hwnd);
-                        ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
                         return true;  // Suppress the message
                     }
                 }
@@ -341,8 +331,6 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 // Check if window is being minimized or hidden (guard pWp to avoid crash on null lParam)
                 if (pWp != nullptr && (pWp->flags & SWP_HIDEWINDOW)) {
                     LogInfo("WM_WINDOWPOSCHANGED: Suppressing window hide - HWND: 0x%p", hwnd);
-                    // Update the message history to show this was suppressed
-                    ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
                     return true;  // Suppress the message
                 }
             }
@@ -352,8 +340,6 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             // Handle window visibility changes
             if (continue_rendering_enabled && wParam == FALSE) {
                 // Suppress window hide messages when continue rendering is enabled
-                // Update the message history to show this was suppressed
-                ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
                 return true;  // Suppress the message
             }
             break;
@@ -375,8 +361,6 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 // Prevent minimization when continue rendering or prevent minimize is enabled
                 if (wParam == SC_MINIMIZE) {
                     LogInfo("WM_SYSCOMMAND: Suppressing minimize command - HWND: 0x%p", hwnd);
-                    // Update the message history to show this was suppressed
-                    ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
                     return true;  // Suppress the message
                 }
             }
@@ -388,7 +372,6 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             // it's minimized. Allow SIZE_RESTORED through so the game can react when the user restores the window.
             if (continue_rendering_enabled && game_window == hwnd && wParam == SIZE_MINIMIZED) {
                 LogInfo("WM_SIZE: Suppressing SIZE_MINIMIZED message due to continue rendering - HWND: 0x%p", hwnd);
-                ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
                 return true;  // Suppress the message
             }
             if (wParam == SIZE_MINIMIZED) {
@@ -403,7 +386,6 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             if (CountOtherProcessWindows(hwnd) == 0) {
                 if (g_no_exit_mode.load(std::memory_order_acquire)) {
                     LogInfo("WM_QUIT: .NO_EXIT active - blocking quit HWND: 0x%p.", hwnd);
-                    ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
                     return true;  // Suppress message so window does not close
                 }
                 LogInfo("WM_QUIT: Window quit message received - HWND: 0x%p (last window)", hwnd);
@@ -418,7 +400,6 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             if (CountOtherProcessWindows(hwnd) == 0) {
                 if (g_no_exit_mode.load(std::memory_order_acquire)) {
                     LogInfo("WM_CLOSE: .NO_EXIT active - blocking close HWND: 0x%p.", hwnd);
-                    ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
                     return true;  // Suppress message so window does not close
                 }
                 LogInfo("WM_CLOSE: Window close message received - HWND: 0x%p (last window)", hwnd);
@@ -432,7 +413,6 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             if (CountOtherProcessWindows(hwnd) == 0) {
                 if (g_no_exit_mode.load(std::memory_order_acquire)) {
                     LogInfo("WM_DESTROY: .NO_EXIT active - blocking destroy HWND: 0x%p.", hwnd);
-                    ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
                     return true;  // Suppress message so window does not close
                 }
                 LogInfo("WM_DESTROY: Window destroy message received - HWND: 0x%p (last window)", hwnd);
@@ -444,9 +424,6 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
         default: break;
     }
-
-    // Track message as not suppressed
-    ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, false);
 
     return false;  // Don't suppress the message
 }

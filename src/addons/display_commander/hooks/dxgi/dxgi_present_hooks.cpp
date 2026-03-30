@@ -1,5 +1,4 @@
 #include "dxgi_present_hooks.hpp"
-#include "../../autoclick/autoclick_manager.hpp"
 #include "../../globals.hpp"
 #include "../../latent_sync/refresh_rate_monitor_integration.hpp"
 #include "../../performance_types.hpp"
@@ -1027,7 +1026,7 @@ static HRESULT STDMETHODCALLTYPE IDXGIFactory1_CreateSwapChainForHwnd_Streamline
                                                     ppSwapChain);
         return E_NOINTERFACE;
     }
-    // Upgrade to HDR10: match hdr_upgrade (format + FLIP_DISCARD + ALLOW_TEARING + BufferCount >= 2) when needed
+    // Streamline factory detour: forward to original after optional logging.
     HRESULT hr = IDXGIFactory1_CreateSwapChainForHwnd_Streamline_Original(This, pDevice, hWnd, pDesc, pFullscreenDesc,
                                                                           pRestrictToOutput, ppSwapChain);
     static int s_err_count = 0;

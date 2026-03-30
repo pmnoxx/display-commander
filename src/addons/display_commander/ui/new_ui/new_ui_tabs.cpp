@@ -15,8 +15,7 @@
 #include "main_new_tab.hpp"
 #include "notes_tab.hpp"
 #include "performance_tab.hpp"
-#include "swapchain_tab.hpp"
-#include "vulkan_tab.hpp"
+#include "swapchain_hdr_metadata.hpp"
 
 // Libraries <ReShade> / <imgui>
 #include <imgui.h>
@@ -355,24 +354,6 @@ void InitializeNewUI() {
         },
         true);  // Performance tab is advanced
 
-    // Vulkan (experimental) tab — only when built with EXPERIMENTAL_FEATURES; visibility still via show_vulkan_tab
-    if (enabled_experimental_features) {
-        ui::new_ui::InitVulkanTab();
-        g_tab_manager.AddTab(
-            "Vulkan (Experimental)", "vulkan",
-            [](reshade::api::effect_runtime* runtime) {
-                (void)runtime;
-                try {
-                    display_commander::ui::ImGuiWrapperReshade wrapper;
-                    ui::new_ui::DrawVulkanTab(wrapper);
-                } catch (const std::exception& e) {
-                    LogError("Error drawing Vulkan tab: %s", e.what());
-                } catch (...) {
-                    LogError("Unknown error drawing Vulkan tab");
-                }
-            },
-            true);  // Vulkan tab is advanced
-    }
 
     // Notes tab (per-game notes; hidden by default)
     g_tab_manager.AddTab(

@@ -1,12 +1,8 @@
 #include "experimental_tab.hpp"
-#include "../../autoclick/autoclick_manager.hpp"
-#include "../../dlss/dlss_indicator_manager.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/hook_suppression_manager.hpp"
 #include "../../hooks/loadlibrary_hooks.hpp"
 #include "../../hooks/system/debug_output_hooks.hpp"
-#include "../../hooks/system/rand_hooks.hpp"
-#include "../../hooks/system/sleep_hooks.hpp"
 #include "../../hooks/system/timeslowdown_hooks.hpp"
 #include "../../hooks/windows_hooks/api_hooks.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
@@ -28,10 +24,6 @@
 #include "hook_stats_tab.hpp"
 #include "main_new_tab.hpp"
 #include "settings_wrapper.hpp"
-#include "streamline_tab.hpp"
-#include "swapchain_tab.hpp"
-#include "updates_tab.hpp"
-#include "window_info_tab.hpp"
 
 #include <reshade.hpp>
 
@@ -137,32 +129,12 @@ void DrawExperimentalTab(display_commander::ui::IImGuiWrapper& imgui, reshade::a
         imgui.Spacing();
 
         if (enabled_experimental_features) {
-            if (imgui.CollapsingHeader("Backbuffer Format Override",
-                                       display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
-                DrawBackbufferFormatOverride(imgui);
-                imgui.Spacing();
-                DrawBufferResolutionUpgrade(imgui);
-                imgui.Spacing();
-                DrawTextureFormatUpgrade(imgui);
-            }
-            imgui.Spacing();
-
-            if (imgui.CollapsingHeader("Auto-Click Sequences",
+            if (imgui.CollapsingHeader("Mouse coordinates (debug)",
                                        display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
                 POINT mouse_pos;
                 GetCursorPos(&mouse_pos);
 
-                imgui.Spacing();
-                imgui.TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "=== LIVE CURSOR POSITION ===");
-                imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "X: %ld  |  Y: %ld", mouse_pos.x, mouse_pos.y);
-
                 HWND hwnd = g_last_swapchain_hwnd.load();
-                if (hwnd && IsWindow(hwnd)) {
-                    POINT client_pos = mouse_pos;
-                    ScreenToClient(hwnd, &client_pos);
-                    imgui.TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Game Window: X: %ld  |  Y: %ld", client_pos.x,
-                                      client_pos.y);
-                }
 
                 imgui.Spacing();
                 if (imgui.Button("Copy Screen Coords")) {
@@ -212,25 +184,8 @@ void DrawExperimentalTab(display_commander::ui::IImGuiWrapper& imgui, reshade::a
                     }
                 }
 
-                autoclick::DrawAutoClickFeature(imgui);
                 imgui.Separator();
                 DrawMouseCoordinatesDisplay(imgui);
-            }
-            imgui.Spacing();
-        }
-
-        if (enabled_experimental_features) {
-            if (imgui.CollapsingHeader("Sleep Hook Controls",
-                                       display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
-                DrawSleepHookControls(imgui);
-            }
-            imgui.Spacing();
-        }
-
-        if (enabled_experimental_features) {
-            if (imgui.CollapsingHeader("Rand Hook Controls",
-                                       display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
-                DrawRandHookControls(imgui);
             }
             imgui.Spacing();
         }
@@ -243,9 +198,6 @@ void DrawExperimentalTab(display_commander::ui::IImGuiWrapper& imgui, reshade::a
             imgui.Spacing();
         }
 
-        if (enabled_experimental_features) {
-        }
-
         if (imgui.CollapsingHeader("Developer Tools", display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
             DrawDeveloperTools(imgui);
         }
@@ -256,52 +208,20 @@ void DrawExperimentalTab(display_commander::ui::IImGuiWrapper& imgui, reshade::a
         }
         imgui.Spacing();
 
-        if (imgui.CollapsingHeader("DLSS Indicator Controls",
-                                   display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
-            DrawDlssIndicatorControls(imgui);
-        }
-        imgui.Spacing();
-
         if (imgui.CollapsingHeader("Anisotropic Filtering Upgrade",
                                    display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
             DrawAnisotropicFilteringUpgrade(imgui);
         }
         imgui.Spacing();
-
-        if (imgui.CollapsingHeader("DLL Blocking", display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
-            DrawDLLBlockingControls(imgui);
-        }
-
         imgui.EndTabItem();
     }
 
     if (!is_standalone) {
-        if (imgui.BeginTabItem("Window Info", nullptr, 0)) {
-            DrawWindowInfoTab(imgui);
-            imgui.EndTabItem();
-        }
-
-        if (imgui.BeginTabItem("Swapchain", nullptr, 0)) {
-            DrawSwapchainTab(imgui, runtime);
-            imgui.EndTabItem();
-        }
-
-        if (GetModuleHandleW(L"sl.interposer.dll") != nullptr) {
-            if (imgui.BeginTabItem("Streamline", nullptr, 0)) {
-                DrawStreamlineTab(imgui);
-                imgui.EndTabItem();
-            }
-        }
-
         if (imgui.BeginTabItem("Hook Statistics", nullptr, 0)) {
             DrawHookStatsTab(imgui);
             imgui.EndTabItem();
         }
 
-        if (imgui.BeginTabItem("Updates", nullptr, 0)) {
-            DrawUpdatesTab(imgui);
-            imgui.EndTabItem();
-        }
     }
 
     if (imgui.BeginTabItem("Hooks", nullptr, 0)) {
@@ -535,14 +455,7 @@ void DrawMouseCoordinatesDisplay(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Text("Game Window is Foreground: %s", (hwnd == foreground_hwnd) ? "Yes" : "No");
 }
 
-// Cleanup function to stop background threads
-void CleanupExperimentalTab() {
-    // Disable auto-click (thread will sleep when disabled)
-    if (g_auto_click_enabled.load()) {
-        g_auto_click_enabled.store(false);
-        LogInfo("Experimental tab cleanup: Auto-click disabled (thread will sleep)");
-    }
-}
+void CleanupExperimentalTab() {}
 
 namespace {
 const char* LatencyMarkerTypeName(int index) {
@@ -603,418 +516,6 @@ static void DrawThreadTrackingSubTab(display_commander::ui::IImGuiWrapper& imgui
             imgui.Text("%s: %lu (0x%lX)", name, static_cast<unsigned long>(tid), static_cast<unsigned long>(tid));
         }
         imgui.Unindent();
-    }
-}
-
-void DrawBackbufferFormatOverride(display_commander::ui::IImGuiWrapper& imgui) {
-    imgui.TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Backbuffer Format Override ===");
-
-    imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                      ICON_FK_WARNING " EXPERIMENTAL FEATURE - May cause compatibility issues!");
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "This feature overrides the backbuffer format during swapchain creation.\nUse with caution "
-            "as it may cause rendering issues or crashes in some games.");
-    }
-
-    imgui.Spacing();
-
-    if (CheckboxSetting(settings::g_experimentalTabSettings.backbuffer_format_override_enabled,
-                        "Enable Backbuffer Format Override", imgui)) {
-        LogInfo(
-            "Backbuffer format override %s",
-            settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue() ? "enabled" : "disabled");
-    }
-
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Override the backbuffer format during swapchain creation.\nRequires restart to take effect.");
-    }
-
-    if (settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {
-        imgui.Spacing();
-        imgui.Text("Target Format:");
-
-        if (ComboSettingWrapper(settings::g_experimentalTabSettings.backbuffer_format_override, "Format", imgui)) {
-            LogInfo("Backbuffer format override changed to: %s",
-                    settings::g_experimentalTabSettings.backbuffer_format_override
-                        .GetLabels()[settings::g_experimentalTabSettings.backbuffer_format_override.GetValue()]);
-        }
-
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Select the target backbuffer format:\n"
-                "• R8G8B8A8_UNORM: Standard 8-bit per channel (32-bit total)\n"
-                "• R10G10B10A2_UNORM: 10-bit RGB + 2-bit alpha (32-bit total)\n"
-                "• R16G16B16A16_FLOAT: 16-bit HDR floating point (64-bit total)");
-        }
-
-        imgui.Spacing();
-        imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Note: Changes require restart to take effect");
-    }
-}
-
-void DrawBufferResolutionUpgrade(display_commander::ui::IImGuiWrapper& imgui) {
-    imgui.TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Buffer Resolution Upgrade ===");
-
-    imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                      ICON_FK_WARNING " EXPERIMENTAL FEATURE - May cause performance issues!");
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "This feature upgrades internal buffer resolutions during resource creation.\nUse with "
-            "caution as it may cause performance issues or rendering artifacts.");
-    }
-
-    imgui.Spacing();
-
-    if (CheckboxSetting(settings::g_experimentalTabSettings.buffer_resolution_upgrade_enabled,
-                        "Enable Buffer Resolution Upgrade", imgui)) {
-        LogInfo(
-            "Buffer resolution upgrade %s",
-            settings::g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue() ? "enabled" : "disabled");
-    }
-
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Upgrade internal buffer resolutions during resource creation.\nRequires restart to take effect.");
-    }
-
-    if (settings::g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue()) {
-        imgui.Spacing();
-
-        if (ComboSettingWrapper(settings::g_experimentalTabSettings.buffer_resolution_upgrade_mode, "Upgrade Mode",
-                                imgui)) {
-            LogInfo("Buffer resolution upgrade mode changed to: %s",
-                    settings::g_experimentalTabSettings.buffer_resolution_upgrade_mode
-                        .GetLabels()[settings::g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue()]);
-        }
-
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Select the buffer resolution upgrade mode:\n"
-                "• Upgrade 1280x720 by Scale Factor: Specifically upgrade 1280x720 buffers by the scale factor\n"
-                "• Upgrade by Scale Factor: Scale all buffers by the specified factor\n"
-                "• Upgrade Custom Resolution: Upgrade specific resolution to custom target");
-        }
-
-        if (settings::g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue() == 0
-            || settings::g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue() == 1) {
-            imgui.Spacing();
-            imgui.Text("Scale Factor:");
-
-            if (SliderIntSetting(settings::g_experimentalTabSettings.buffer_resolution_upgrade_scale_factor,
-                                 "Scale Factor", "%d", imgui)) {
-                LogInfo("Buffer resolution upgrade scale factor changed to: %d",
-                        settings::g_experimentalTabSettings.buffer_resolution_upgrade_scale_factor.GetValue());
-            }
-
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx("Scale factor to apply to all buffer resolutions (1-4x)");
-            }
-        }
-
-        if (settings::g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue() == 2) {
-            imgui.Spacing();
-            imgui.Text("Target Resolution:");
-
-            imgui.SetNextItemWidth(120);
-            if (SliderIntSetting(settings::g_experimentalTabSettings.buffer_resolution_upgrade_width, "Width", "%d",
-                                 imgui)) {
-                LogInfo("Buffer resolution upgrade width changed to: %d",
-                        settings::g_experimentalTabSettings.buffer_resolution_upgrade_width.GetValue());
-            }
-
-            imgui.SameLine();
-            imgui.SetNextItemWidth(120);
-            if (SliderIntSetting(settings::g_experimentalTabSettings.buffer_resolution_upgrade_height, "Height", "%d",
-                                 imgui)) {
-                LogInfo("Buffer resolution upgrade height changed to: %d",
-                        settings::g_experimentalTabSettings.buffer_resolution_upgrade_height.GetValue());
-            }
-
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx("Target resolution for buffer upgrades.\nWidth: 320-7680, Height: 240-4320");
-            }
-        }
-
-        imgui.Spacing();
-        imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Note: Changes require restart to take effect");
-
-        int mode = settings::g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue();
-        int scale = settings::g_experimentalTabSettings.buffer_resolution_upgrade_scale_factor.GetValue();
-        if (mode == 0) {
-            imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Will upgrade 1280x720 buffers to %dx%d (%dx scale)",
-                              1280 * scale, 720 * scale, scale);
-        } else if (mode == 1) {
-            imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Will scale all buffers by %dx", scale);
-        } else if (mode == 2) {
-            imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Will upgrade buffers to: %dx%d",
-                              settings::g_experimentalTabSettings.buffer_resolution_upgrade_width.GetValue(),
-                              settings::g_experimentalTabSettings.buffer_resolution_upgrade_height.GetValue());
-        }
-    }
-}
-
-void DrawTextureFormatUpgrade(display_commander::ui::IImGuiWrapper& imgui) {
-    imgui.TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Texture Format Upgrade ===");
-
-    imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                      ICON_FK_WARNING " EXPERIMENTAL FEATURE - May cause performance issues!");
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "This feature upgrades texture formats to RGB16A16 during resource creation.\nUse with "
-            "caution as it may cause performance issues or rendering artifacts.");
-    }
-
-    imgui.Spacing();
-
-    if (CheckboxSetting(settings::g_experimentalTabSettings.texture_format_upgrade_enabled,
-                        "Upgrade Textures to RGB16A16", imgui)) {
-        LogInfo("Texture format upgrade %s",
-                settings::g_experimentalTabSettings.texture_format_upgrade_enabled.GetValue() ? "enabled" : "disabled");
-    }
-
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Upgrade texture formats to RGB16A16 (16-bit per channel) for textures at 720p, 1440p, and "
-            "4K resolutions.\nRequires restart to take effect.");
-    }
-
-    imgui.Spacing();
-    imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Note: Changes require restart to take effect");
-
-    if (settings::g_experimentalTabSettings.texture_format_upgrade_enabled.GetValue()) {
-        imgui.TextColored(
-            ImVec4(0.8f, 1.0f, 0.8f, 1.0f),
-            "Will upgrade texture formats to RGB16A16 (16-bit per channel) for 720p, 1440p, and 4K textures");
-    }
-}
-
-void DrawSleepHookControls(display_commander::ui::IImGuiWrapper& imgui) {
-    imgui.TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Sleep Hook Controls ===");
-    imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                      ICON_FK_WARNING " EXPERIMENTAL FEATURE - Hooks game sleep calls for FPS control!");
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "This feature hooks Windows Sleep APIs (Sleep, SleepEx, WaitForSingleObject, WaitForMultipleObjects) to "
-            "modify sleep durations.\nUseful for games that use sleep-based FPS limiting like Unity games.");
-    }
-
-    imgui.Spacing();
-
-    // Enable/disable checkbox
-    if (CheckboxSetting(settings::g_experimentalTabSettings.sleep_hook_enabled, "Enable Sleep Hooks", imgui)) {
-        LogInfo("Sleep hooks %s",
-                settings::g_experimentalTabSettings.sleep_hook_enabled.GetValue() ? "enabled" : "disabled");
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx("Enable hooks for Windows Sleep APIs to modify sleep durations for FPS control.");
-    }
-
-    // Render thread only option removed
-
-    if (settings::g_experimentalTabSettings.sleep_hook_enabled.GetValue()) {
-        imgui.Spacing();
-
-        // Sleep multiplier slider
-        if (SliderFloatSetting(settings::g_experimentalTabSettings.sleep_multiplier, "Sleep Multiplier", "%.2fx",
-                               imgui)) {
-            LogInfo("Sleep multiplier set to %.2fx", settings::g_experimentalTabSettings.sleep_multiplier.GetValue());
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Multiplier applied to sleep durations. 1.0 = no change, 0.5 = half duration, 2.0 = double duration.");
-        }
-
-        // Min sleep duration slider
-        if (SliderIntSetting(settings::g_experimentalTabSettings.min_sleep_duration_ms, "Min Sleep Duration (ms)",
-                             "%d ms", imgui)) {
-            LogInfo("Min sleep duration set to %d ms",
-                    settings::g_experimentalTabSettings.min_sleep_duration_ms.GetValue());
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Minimum sleep duration in milliseconds. 0 = no minimum limit.");
-        }
-
-        // Max sleep duration slider
-        if (SliderIntSetting(settings::g_experimentalTabSettings.max_sleep_duration_ms, "Max Sleep Duration (ms)",
-                             "%d ms", imgui)) {
-            LogInfo("Max sleep duration set to %d ms",
-                    settings::g_experimentalTabSettings.max_sleep_duration_ms.GetValue());
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Maximum sleep duration in milliseconds. 0 = no maximum limit.");
-        }
-
-        imgui.Spacing();
-
-        // Show current settings summary
-        imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Settings:");
-        imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Multiplier: %.2fx",
-                          settings::g_experimentalTabSettings.sleep_multiplier.GetValue());
-        imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Min Duration: %d ms",
-                          settings::g_experimentalTabSettings.min_sleep_duration_ms.GetValue());
-        imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Max Duration: %d ms",
-                          settings::g_experimentalTabSettings.max_sleep_duration_ms.GetValue());
-
-        // Show hook statistics if available
-        if (display_commanderhooks::g_sleep_hook_stats.total_calls.load() > 0) {
-            imgui.Spacing();
-            imgui.TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Hook Statistics:");
-            imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Total Calls: %llu",
-                              display_commanderhooks::g_sleep_hook_stats.total_calls.load());
-            imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Modified Calls: %llu",
-                              display_commanderhooks::g_sleep_hook_stats.modified_calls.load());
-
-            uint64_t total_original = display_commanderhooks::g_sleep_hook_stats.total_original_duration_ms.load();
-            uint64_t total_modified = display_commanderhooks::g_sleep_hook_stats.total_modified_duration_ms.load();
-            if (total_original > 0) {
-                imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Total Original Duration: %llu ms", total_original);
-                imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Total Modified Duration: %llu ms", total_modified);
-                imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Time Saved: %lld ms",
-                                  static_cast<int64_t>(total_original) - static_cast<int64_t>(total_modified));
-            }
-        }
-    }
-}
-
-void DrawRandHookControls(display_commander::ui::IImGuiWrapper& imgui) {
-    imgui.TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Rand Hook Controls ===");
-    imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING
-                      " EXPERIMENTAL FEATURE - Hooks C runtime rand() function to return constant value!");
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "This feature hooks the C runtime rand() function from msvcrt.dll or ucrtbase.dll.\n"
-            "When enabled, rand() will always return the configured constant value instead of random numbers.\n"
-            "Useful for games that use rand() for randomization that you want to control.");
-    }
-
-    imgui.Spacing();
-
-    // Enable/disable checkbox
-    if (CheckboxSetting(settings::g_experimentalTabSettings.rand_hook_enabled, "Enable Rand Hook", imgui)) {
-        LogInfo("Rand hook %s",
-                settings::g_experimentalTabSettings.rand_hook_enabled.GetValue() ? "enabled" : "disabled");
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx("Enable hook for C runtime rand() function to return a constant value.");
-    }
-
-    if (settings::g_experimentalTabSettings.rand_hook_enabled.GetValue()) {
-        imgui.Spacing();
-
-        // Rand value slider
-        if (SliderIntSetting(settings::g_experimentalTabSettings.rand_hook_value, "Rand Value", "%d", imgui)) {
-            LogInfo("Rand hook value set to %d", settings::g_experimentalTabSettings.rand_hook_value.GetValue());
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Constant value that rand() will return when the hook is enabled.\n"
-                "Range: %d (INT_MIN) to %d (INT_MAX)\n"
-                "Note: Standard rand() returns 0 to %d (RAND_MAX), but the hook allows any int value including "
-                "negatives.",
-                INT_MIN, INT_MAX, RAND_MAX);
-        }
-
-        imgui.Spacing();
-        imgui.Separator();
-        imgui.Spacing();
-
-        // Statistics
-        uint64_t rand_calls = display_commanderhooks::GetRandCallCount();
-        bool hooks_installed = display_commanderhooks::AreRandHooksInstalled();
-
-        imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Statistics:");
-        imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Total rand() calls: %llu", rand_calls);
-        imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Hooks Status: %s",
-                          hooks_installed ? "Installed" : "Not Installed");
-
-        // Show current settings
-        imgui.Spacing();
-        imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Settings:");
-        imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Rand Value: %d",
-                          settings::g_experimentalTabSettings.rand_hook_value.GetValue());
-
-        imgui.Spacing();
-        imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                          ICON_FK_WARNING " WARNING: This affects all code that uses rand()!");
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "The rand() hook affects all code in the game process that calls rand(),\n"
-                "including game logic, AI, procedural generation, etc.");
-        }
-    }
-
-    imgui.Spacing();
-    imgui.Separator();
-    imgui.Spacing();
-
-    // Rand_s hook controls
-    imgui.TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Rand_s Hook Controls ===");
-    imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING
-                      " EXPERIMENTAL FEATURE - Hooks C runtime rand_s() function to return constant value!");
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "This feature hooks the C runtime rand_s() function from msvcrt.dll or ucrtbase.dll.\n"
-            "rand_s() is the secure version of rand() that uses cryptographically secure random number generation.\n"
-            "When enabled, rand_s() will always return the configured constant value instead of random numbers.\n"
-            "Useful for games that use rand_s() for randomization that you want to control.");
-    }
-
-    imgui.Spacing();
-
-    // Enable/disable checkbox
-    if (CheckboxSetting(settings::g_experimentalTabSettings.rand_s_hook_enabled, "Enable Rand_s Hook", imgui)) {
-        LogInfo("Rand_s hook %s",
-                settings::g_experimentalTabSettings.rand_s_hook_enabled.GetValue() ? "enabled" : "disabled");
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx("Enable hook for C runtime rand_s() function to return a constant value.");
-    }
-
-    if (settings::g_experimentalTabSettings.rand_s_hook_enabled.GetValue()) {
-        imgui.Spacing();
-
-        // Rand_s value slider
-        if (SliderIntSetting(settings::g_experimentalTabSettings.rand_s_hook_value, "Rand_s Value", "%u", imgui)) {
-            LogInfo("Rand_s hook value set to %u", settings::g_experimentalTabSettings.rand_s_hook_value.GetValue());
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Constant value that rand_s() will return when the hook is enabled.\n"
-                "Range: 0 to %u (UINT_MAX)",
-                UINT_MAX);
-        }
-
-        imgui.Spacing();
-        imgui.Separator();
-        imgui.Spacing();
-
-        // Statistics
-        uint64_t rand_s_calls = display_commanderhooks::GetRand_sCallCount();
-        bool hooks_installed = display_commanderhooks::AreRandHooksInstalled();
-
-        imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Statistics:");
-        imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Total rand_s() calls: %llu", rand_s_calls);
-        imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Hooks Status: %s",
-                          hooks_installed ? "Installed" : "Not Installed");
-
-        // Show current settings
-        imgui.Spacing();
-        imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Settings:");
-        imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Rand_s Value: %u",
-                          settings::g_experimentalTabSettings.rand_s_hook_value.GetValue());
-
-        imgui.Spacing();
-        imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                          ICON_FK_WARNING " WARNING: This affects all code that uses rand_s()!");
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "The rand_s() hook affects all code in the game process that calls rand_s(),\n"
-                "including game logic, AI, procedural generation, etc.\n"
-                "Note: rand_s() is designed for cryptographically secure random numbers,\n"
-                "so hooking it may affect security-sensitive operations.");
-        }
     }
 }
 
@@ -1473,9 +974,6 @@ void DrawTimeSlowdownControls(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.SetTooltipEx("Time slowdown affects all game systems that use the selected timer APIs for timing.");
         }
     }
-    if (imgui.CollapsingHeader("DLSS Indicator Controls", display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
-        DrawDlssIndicatorControls(imgui);
-    }
 }
 
 void DrawD3D9FlipExControls(display_commander::ui::IImGuiWrapper& imgui) {
@@ -1597,133 +1095,6 @@ void DrawD3D9FlipExControls(display_commander::ui::IImGuiWrapper& imgui) {
     }
 }
 
-void DrawDlssIndicatorControls(display_commander::ui::IImGuiWrapper& imgui) {
-    imgui.Spacing();
-    imgui.Separator();
-    imgui.Spacing();
-
-    imgui.TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== DLSS Indicator Controls ===");
-    imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                      ICON_FK_WARNING " EXPERIMENTAL FEATURE - Modifies NVIDIA registry settings!");
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "This feature modifies the NVIDIA registry to enable/disable the DLSS indicator.\n"
-            "The indicator appears in the bottom left corner when enabled.\n"
-            "Requires administrator privileges to modify registry.");
-    }
-
-    imgui.Spacing();
-
-    // Current status display
-    bool current_status = dlss::DlssIndicatorManager::IsDlssIndicatorEnabled();
-    DWORD current_value = dlss::DlssIndicatorManager::GetDlssIndicatorValue();
-
-    imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Status:");
-    imgui.TextColored(current_status ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.5f, 0.5f, 1.0f),
-                      "  DLSS Indicator: %s", current_status ? "ENABLED" : "DISABLED");
-    imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Registry Value: %lu (0x%lX)", current_value, current_value);
-    imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Registry Path: HKEY_LOCAL_MACHINE\\%s",
-                      dlss::DlssIndicatorManager::GetRegistryKeyPath().c_str());
-    imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Value Name: %s",
-                      dlss::DlssIndicatorManager::GetRegistryValueName().c_str());
-
-    imgui.Spacing();
-
-    // Enable/disable checkbox
-    if (CheckboxSetting(settings::g_experimentalTabSettings.dlss_indicator_enabled, "Enable DLSS Indicator", imgui)) {
-        LogInfo("DLSS Indicator setting %s",
-                settings::g_experimentalTabSettings.dlss_indicator_enabled.GetValue() ? "enabled" : "disabled");
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx("Enable DLSS indicator in games. This modifies the NVIDIA registry.");
-    }
-
-    imgui.Spacing();
-
-    // Action buttons
-    imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Registry Actions:");
-
-    // Generate Enable .reg file button
-    if (imgui.Button("Generate Enable .reg File")) {
-        std::string reg_content = dlss::DlssIndicatorManager::GenerateEnableRegFile();
-        std::string filename = "dlss_indicator_enable.reg";
-
-        if (dlss::DlssIndicatorManager::WriteRegFile(reg_content, filename)) {
-            LogInfo("DLSS Indicator: Enable .reg file generated: %s", filename.c_str());
-        } else {
-            LogError("DLSS Indicator: Failed to generate enable .reg file");
-        }
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Generate a .reg file to enable DLSS indicator.\n"
-            "The file will be created in the current directory.");
-    }
-
-    imgui.SameLine();
-
-    // Generate Disable .reg file button
-    if (imgui.Button("Generate Disable .reg File")) {
-        std::string reg_content = dlss::DlssIndicatorManager::GenerateDisableRegFile();
-        std::string filename = "dlss_indicator_disable.reg";
-
-        if (dlss::DlssIndicatorManager::WriteRegFile(reg_content, filename)) {
-            LogInfo("DLSS Indicator: Disable .reg file generated: %s", filename.c_str());
-        } else {
-            LogError("DLSS Indicator: Failed to generate disable .reg file");
-        }
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Generate a .reg file to disable DLSS indicator.\n"
-            "The file will be created in the current directory.");
-    }
-
-    imgui.SameLine();
-
-    // Open folder button
-    if (imgui.Button("Open .reg Files Folder")) {
-        // Get current working directory
-        char current_dir[MAX_PATH];
-        if (GetCurrentDirectoryA(MAX_PATH, current_dir) != 0) {
-            // Use ShellExecute to open the folder in Windows Explorer
-            HINSTANCE result = ShellExecuteA(nullptr, "open", current_dir, nullptr, nullptr, SW_SHOWNORMAL);
-            if (reinterpret_cast<INT_PTR>(result) <= 32) {
-                LogError("DLSS Indicator: Failed to open folder, error: %ld", reinterpret_cast<INT_PTR>(result));
-            } else {
-                LogInfo("DLSS Indicator: Opened folder: %s", current_dir);
-            }
-        } else {
-            LogError("DLSS Indicator: Failed to get current directory");
-        }
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx("Open the folder containing the generated .reg files in Windows Explorer.");
-    }
-
-    imgui.Spacing();
-
-    // Instructions
-    imgui.TextColored(ImVec4(0.6f, 0.8f, 1.0f, 1.0f), "Instructions:");
-    imgui.TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "1. Generate the appropriate .reg file using the buttons above");
-    imgui.TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
-                      "2. Open the folder and double-click the .reg file to apply changes");
-    imgui.TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
-                      "3. Windows will prompt for administrator privileges when executing");
-    imgui.TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "4. Restart your game to see the DLSS indicator");
-    imgui.TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
-                      "5. The indicator appears in the bottom left corner when enabled");
-
-    imgui.Spacing();
-    imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                      ICON_FK_WARNING " WARNING: Registry modifications require administrator privileges!");
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "The registry modification requires administrator privileges.\n"
-            "Windows will prompt for elevation when executing .reg files.");
-    }
-}
-
 void DrawDeveloperTools(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Developer Tools ===");
     imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
@@ -1760,7 +1131,7 @@ void DrawDeveloperTools(display_commander::ui::IImGuiWrapper& imgui) {
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
             "When enabled, OnCreateSwapchainCapture2 applies all modifications (prevent fullscreen, backbuffer "
-            "count, FLIPEX, format override, resolution upgrade, etc.). When disabled, only capture of game "
+            "count, FLIPEX, etc.). When disabled, only capture of game "
             "resolution is done.");
     }
 
@@ -2219,248 +1590,6 @@ void DrawAnisotropicFilteringUpgrade(display_commander::ui::IImGuiWrapper& imgui
                 "Set it to 0 in the Main tab to disable anisotropy override (defaults to 16x when upgrading).");
         }
     }
-}
-
-void DrawDLLBlockingControls(display_commander::ui::IImGuiWrapper& imgui) {
-    imgui.Indent();
-
-    // Enable/disable DLL blocking feature
-    if (CheckboxSetting(settings::g_experimentalTabSettings.dll_blocking_enabled, "Enable DLL Blocking", imgui)) {
-        LogInfo("DLL Blocking %s",
-                settings::g_experimentalTabSettings.dll_blocking_enabled.GetValue() ? "enabled" : "disabled");
-
-        // Load blocked DLLs if enabling
-        if (settings::g_experimentalTabSettings.dll_blocking_enabled.GetValue()) {
-            settings::g_experimentalTabSettings.blocked_dlls.Load();
-            if (!settings::g_experimentalTabSettings.blocked_dlls.GetValue().empty()) {
-                display_commanderhooks::LoadBlockedDLLsFromSettings(
-                    settings::g_experimentalTabSettings.blocked_dlls.GetValue());
-            }
-        }
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Enable DLL blocking feature to prevent specific DLLs from loading.\n"
-            "Blocked DLLs will be prevented from loading on next game restart.\n" ICON_FK_WARNING
-            " EXPERIMENTAL FEATURE - Use with caution!");
-    }
-
-    if (!settings::g_experimentalTabSettings.dll_blocking_enabled.GetValue()) {
-        imgui.Unindent();
-        return;
-    }
-
-    imgui.Spacing();
-    imgui.Separator();
-    imgui.Spacing();
-
-    imgui.TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Block DLLs from Loading");
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Check the boxes below to prevent specific DLLs from loading.\n"
-            "Blocked DLLs will be prevented from loading on next game restart.\n"
-            "Settings are automatically saved.");
-    }
-
-    imgui.Spacing();
-
-    // Legend
-    imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Legend:");
-    imgui.SameLine();
-    imgui.TextColored(ImVec4(0.7f, 1.0f, 0.7f, 1.0f), "Green");
-    imgui.SameLine();
-    imgui.Text("= Can be blocked (loaded after Display Commander)");
-    imgui.SameLine();
-    imgui.TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "Gray");
-    imgui.SameLine();
-    imgui.Text("= Cannot block (loaded before Display Commander)");
-    imgui.SameLine();
-    imgui.TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "Red");
-    imgui.SameLine();
-    imgui.Text("= Blocked");
-
-    imgui.Spacing();
-
-    // Get loaded modules
-    static std::vector<display_commanderhooks::ModuleInfo> cached_modules;
-    static uint64_t last_update_frame = 0;
-    uint64_t current_frame = imgui.GetFrameCount();
-
-    // Update module list every 60 frames (~1 second at 60 FPS)
-    if (current_frame - last_update_frame > 60 || cached_modules.empty()) {
-        cached_modules = display_commanderhooks::GetLoadedModules();
-        last_update_frame = current_frame;
-    }
-
-    if (cached_modules.empty()) {
-        imgui.TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "No modules loaded yet");
-    } else {
-        imgui.TextColored(ImVec4(0.7f, 0.9f, 1.0f, 1.0f), "Loaded Modules (%zu):", cached_modules.size());
-
-        // Show modules in a scrollable child window
-        if (imgui.BeginChild("LoadedModules", ImVec2(0, 300), true)) {
-            for (const auto& module : cached_modules) {
-                std::wstring module_name = module.moduleName;
-                if (module_name.empty()) {
-                    module_name = L"<unknown>";
-                }
-
-                bool is_blocked = display_commanderhooks::IsDLLBlocked(module_name);
-                bool can_block = display_commanderhooks::CanBlockDLL(module);
-
-                // Convert to narrow string for display
-                std::string narrow_name(module_name.begin(), module_name.end());
-                std::string checkbox_id = "##BlockDLL_" + narrow_name;
-
-                // Disable checkbox if module can't be blocked
-                if (!can_block) {
-                    imgui.BeginDisabled();
-                }
-
-                if (imgui.Checkbox(checkbox_id.c_str(), &is_blocked)) {
-                    display_commanderhooks::SetDLLBlocked(module_name, is_blocked);
-
-                    // Save to settings
-                    std::string blocked_dlls_str = display_commanderhooks::SaveBlockedDLLsToSettings();
-                    settings::g_experimentalTabSettings.blocked_dlls.SetValue(blocked_dlls_str);
-                    settings::g_experimentalTabSettings.blocked_dlls.Save();
-
-                    LogInfo("DLL %s %s", narrow_name.c_str(), is_blocked ? "blocked" : "unblocked");
-                }
-
-                if (!can_block) {
-                    imgui.EndDisabled();
-                }
-
-                imgui.SameLine();
-
-                // Display module name with color based on status
-                if (!can_block) {
-                    // Gray out modules that can't be blocked (loaded before Display Commander)
-                    imgui.TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "%s", narrow_name.c_str());
-                    if (imgui.IsItemHovered()) {
-                        std::string full_path(module.fullPath.begin(), module.fullPath.end());
-                        imgui.SetTooltipEx("Cannot block: Loaded before Display Commander\nFull path: %s",
-                                           full_path.c_str());
-                    }
-                } else if (is_blocked) {
-                    // Red for blocked modules
-                    imgui.TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "%s", narrow_name.c_str());
-                    if (imgui.IsItemHovered()) {
-                        std::string full_path(module.fullPath.begin(), module.fullPath.end());
-                        imgui.SetTooltipEx("Blocked: Will prevent loading on next restart\nFull path: %s",
-                                           full_path.c_str());
-                    }
-                } else {
-                    // Normal color for unblocked modules that can be blocked
-                    imgui.TextColored(ImVec4(0.7f, 1.0f, 0.7f, 1.0f), "%s", narrow_name.c_str());
-                    if (imgui.IsItemHovered()) {
-                        std::string full_path(module.fullPath.begin(), module.fullPath.end());
-                        imgui.SetTooltipEx("Can be blocked: Loaded after Display Commander\nFull path: %s",
-                                           full_path.c_str());
-                    }
-                }
-            }
-        }
-        imgui.EndChild();
-
-        imgui.Spacing();
-
-        // Save button
-        if (imgui.SmallButton("Save##BlockedDLLs")) {
-            std::string blocked_dlls_str = display_commanderhooks::SaveBlockedDLLsToSettings();
-            settings::g_experimentalTabSettings.blocked_dlls.SetValue(blocked_dlls_str);
-            settings::g_experimentalTabSettings.blocked_dlls.Save();
-            LogInfo("Blocked DLLs saved: %s", blocked_dlls_str.empty() ? "(none)" : blocked_dlls_str.c_str());
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Save the current blocked DLL list to settings");
-        }
-    }
-
-    imgui.Spacing();
-    imgui.Separator();
-    imgui.Spacing();
-
-    // Show blocked DLLs that aren't in the loaded modules list
-    imgui.TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Blocked DLLs (Not Loaded)");
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "DLLs that are blocked but haven't been loaded yet.\n"
-            "Uncheck to allow them to load on next game restart.");
-    }
-
-    imgui.Spacing();
-
-    // Get list of blocked DLLs
-    std::vector<std::wstring> blocked_dlls = display_commanderhooks::GetBlockedDLLs();
-
-    // Filter out DLLs that are already in the loaded modules list
-    std::vector<std::wstring> blocked_not_loaded;
-    for (const auto& blocked_dll : blocked_dlls) {
-        bool found_in_loaded = false;
-        // Check against cached_modules if available
-        if (!cached_modules.empty()) {
-            for (const auto& module : cached_modules) {
-                std::wstring module_name = module.moduleName;
-                if (module_name.empty()) {
-                    module_name = L"<unknown>";
-                }
-                std::wstring lower_module_name = module_name;
-                std::transform(lower_module_name.begin(), lower_module_name.end(), lower_module_name.begin(),
-                               ::towlower);
-
-                if (lower_module_name == blocked_dll) {
-                    found_in_loaded = true;
-                    break;
-                }
-            }
-        }
-        if (!found_in_loaded) {
-            blocked_not_loaded.push_back(blocked_dll);
-        }
-    }
-
-    if (blocked_not_loaded.empty()) {
-        imgui.TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "No blocked DLLs (all blocked DLLs are currently loaded)");
-    } else {
-        imgui.TextColored(ImVec4(0.7f, 0.9f, 1.0f, 1.0f), "Blocked DLLs (%zu):", blocked_not_loaded.size());
-
-        // Show blocked DLLs in a scrollable child window
-        if (imgui.BeginChild("BlockedNotLoadedModules", ImVec2(0, 200), true)) {
-            for (const auto& blocked_dll : blocked_not_loaded) {
-                bool is_blocked = true;  // They're all blocked by definition
-
-                // Convert to narrow string for display
-                std::string narrow_name(blocked_dll.begin(), blocked_dll.end());
-                std::string checkbox_id = "##UnblockDLL_" + narrow_name;
-
-                if (imgui.Checkbox(checkbox_id.c_str(), &is_blocked)) {
-                    // Unblock the DLL
-                    display_commanderhooks::SetDLLBlocked(blocked_dll, false);
-
-                    // Save to settings
-                    std::string blocked_dlls_str = display_commanderhooks::SaveBlockedDLLsToSettings();
-                    settings::g_experimentalTabSettings.blocked_dlls.SetValue(blocked_dlls_str);
-                    settings::g_experimentalTabSettings.blocked_dlls.Save();
-
-                    LogInfo("DLL %s unblocked", narrow_name.c_str());
-                }
-
-                imgui.SameLine();
-
-                // Display blocked DLL name in red
-                imgui.TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "%s", narrow_name.c_str());
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltipEx(
-                        "Blocked: Will prevent loading on next restart\nUncheck to allow this DLL to load");
-                }
-            }
-        }
-        imgui.EndChild();
-    }
-
-    imgui.Unindent();
 }
 
 void DrawInputTestTab(display_commander::ui::IImGuiWrapper& imgui) {

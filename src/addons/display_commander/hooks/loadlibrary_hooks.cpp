@@ -25,7 +25,6 @@
 #include "../utils/platform_api_detector.hpp"
 #include "../utils/timing.hpp"
 #include "d3d9/d3d9_hooks.hpp"
-#include "dbghelp/dbghelp_original_hooks.hpp"
 #include "ddraw/ddraw_present_hooks.hpp"
 #include "hook_suppression_manager.hpp"
 #include "input/dinput_hooks.hpp"
@@ -70,36 +69,6 @@ static bool IsRenoDxAddonPath(const std::wstring& path_or_name) {
 
 static void OnRenoDxAddonLoaded() {
     g_is_renodx_loaded.store(true, std::memory_order_relaxed);
-    settings::g_mainTabSettings.swapchain_hdr_upgrade.SetValue(false);
-}
-
-// Helper function to check if a DLL should be blocked (Ansel libraries)
-bool ShouldBlockAnselDLL(const std::wstring& dll_path) {
-    // Check if Ansel skip is enabled
-    if (!settings::g_mainTabSettings.skip_ansel_loading.GetValue()) {
-        return false;
-    }
-
-    // Extract filename from full path
-    std::filesystem::path path(dll_path);
-    std::wstring filename = path.filename().wstring();
-
-    // Convert to lowercase for case-insensitive comparison
-    std::transform(filename.begin(), filename.end(), filename.begin(), ::towlower);
-
-    // List of Ansel-related DLLs to block
-    static const std::vector<std::wstring> ansel_dlls = {
-        L"nvanselsdk.dll",       L"anselsdk64.dll", L"nvcamerasdk64.dll", L"nvcameraapi64.dll",
-        L"gfexperiencecore.dll", L"nvcamera64.dll", L"nvcamera32.dll"};
-
-    // Check if the DLL is in the Ansel list
-    for (const auto& ansel_dll : ansel_dlls) {
-        if (filename == ansel_dll) {
-            return true;
-        }
-    }
-
-    return false;
 }
 
 // Helper function to check if a DLL should be blocked (Steam overlay - GameOverlayRenderer)
@@ -251,11 +220,8 @@ static std::vector<ModuleInfo> g_loaded_modules;
 static std::unordered_set<HMODULE> g_module_handles;
 static std::unordered_set<HMODULE> g_on_module_loaded_seen_handles;
 
-// Display Commander module handle (for determining which modules can be blocked)
+// Display Commander module handle (caller detection for LoadLibrary detours)
 static HMODULE g_display_commander_module = nullptr;
-
-// Blocked DLL tracking
-static std::set<std::wstring> g_blocked_dlls;
 
 // Host-loaded graphics/API libraries (loaded by game/host, not by us). Display names e.g. "dxgi", "d3d11".
 static std::set<std::string> g_host_loaded_graphics_apis;
@@ -410,16 +376,6 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
         }
     }
 
-    // Check for Ansel blocking
-    if (lpLibFileName) {
-        std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
-        if (ShouldBlockAnselDLL(w_dll_name)) {
-            LogInfo("[%s] Ansel Block: Blocking %s from loading (caller: %s)", timestamp.c_str(), dll_name.c_str(),
-                    caller_str.c_str());
-            return nullptr;  // Return nullptr to indicate failure to load
-        }
-    }
-
     // Check for GameOverlayRenderer (Steam overlay) blocking
     if (lpLibFileName) {
         std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
@@ -428,16 +384,6 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
                     dll_name.c_str(), caller_str.c_str());
             SetLastError(ERROR_ACCESS_DENIED);
             return nullptr;
-        }
-    }
-
-    // Check for user-defined DLL blocking
-    if (lpLibFileName) {
-        std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
-        if (ShouldBlockDLL(w_dll_name)) {
-            LogInfo("[%s] DLL Block: Blocking %s from loading (caller: %s)", timestamp.c_str(), dll_name.c_str(),
-                    caller_str.c_str());
-            return nullptr;  // Return nullptr to indicate failure to load
         }
     }
 
@@ -533,16 +479,6 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
         }
     }
 
-    // Check for Ansel blocking
-    if (lpLibFileName) {
-        std::wstring w_dll_name = lpLibFileName;
-        if (ShouldBlockAnselDLL(w_dll_name)) {
-            LogInfo("[%s] Ansel Block: Blocking %s from loading (caller: %s)", timestamp.c_str(), dll_name.c_str(),
-                    caller_str.c_str());
-            return nullptr;  // Return nullptr to indicate failure to load
-        }
-    }
-
     // Check for GameOverlayRenderer (Steam overlay) blocking
     if (lpLibFileName) {
         std::wstring w_dll_name = lpLibFileName;
@@ -551,16 +487,6 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
                     dll_name.c_str(), caller_str.c_str());
             SetLastError(ERROR_ACCESS_DENIED);
             return nullptr;
-        }
-    }
-
-    // Check for user-defined DLL blocking
-    if (lpLibFileName) {
-        std::wstring w_dll_name = lpLibFileName;
-        if (ShouldBlockDLL(w_dll_name)) {
-            LogInfo("[%s] DLL Block: Blocking %s from loading (caller: %s)", timestamp.c_str(), dll_name.c_str(),
-                    caller_str.c_str());
-            return nullptr;  // Return nullptr to indicate failure to load
         }
     }
 
@@ -644,16 +570,6 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
         }
     }
 
-    // Check for Ansel blocking
-    if (lpLibFileName) {
-        std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
-        if (ShouldBlockAnselDLL(w_dll_name)) {
-            LogInfo("[%s] Ansel Block: Blocking %s from loading (caller: %s)", timestamp.c_str(), dll_name.c_str(),
-                    caller_str.c_str());
-            return nullptr;  // Return nullptr to indicate failure to load
-        }
-    }
-
     // Check for GameOverlayRenderer (Steam overlay) blocking
     if (lpLibFileName) {
         std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
@@ -662,16 +578,6 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
                     dll_name.c_str(), caller_str.c_str());
             SetLastError(ERROR_ACCESS_DENIED);
             return nullptr;
-        }
-    }
-
-    // Check for user-defined DLL blocking
-    if (lpLibFileName) {
-        std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
-        if (ShouldBlockDLL(w_dll_name)) {
-            LogInfo("[%s] DLL Block: Blocking %s from loading (caller: %s)", timestamp.c_str(), dll_name.c_str(),
-                    caller_str.c_str());
-            return nullptr;  // Return nullptr to indicate failure to load
         }
     }
 
@@ -763,16 +669,6 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
         }
     }
 
-    // Check for Ansel blocking
-    if (lpLibFileName) {
-        std::wstring w_dll_name = lpLibFileName;
-        if (ShouldBlockAnselDLL(w_dll_name)) {
-            LogInfo("[%s] Ansel Block: Blocking %s from loading (caller: %s)", timestamp.c_str(), dll_name.c_str(),
-                    caller_str.c_str());
-            return nullptr;  // Return nullptr to indicate failure to load
-        }
-    }
-
     // Check for GameOverlayRenderer (Steam overlay) blocking
     if (lpLibFileName) {
         std::wstring w_dll_name = lpLibFileName;
@@ -781,16 +677,6 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
                     dll_name.c_str(), caller_str.c_str());
             SetLastError(ERROR_ACCESS_DENIED);
             return nullptr;
-        }
-    }
-
-    // Check for user-defined DLL blocking
-    if (lpLibFileName) {
-        std::wstring w_dll_name = lpLibFileName;
-        if (ShouldBlockDLL(w_dll_name)) {
-            LogInfo("[%s] DLL Block: Blocking %s from loading (caller: %s)", timestamp.c_str(), dll_name.c_str(),
-                    caller_str.c_str());
-            return nullptr;  // Return nullptr to indicate failure to load
         }
     }
 
@@ -870,14 +756,10 @@ HMODULE WINAPI LoadPackagedLibrary_Detour(LPCWSTR lpwszPackageFullName, DWORD Re
             SetLastError(ERROR_ACCESS_DENIED);
             return nullptr;
         }
-        if (ShouldBlockAnselDLL(w_name)) {
-            LogInfo("[%s] Ansel Block: Blocking packaged lib %s from loading (caller: %s)", timestamp.c_str(),
-                    name_str.c_str(), caller_str.c_str());
-            return nullptr;
-        }
-        if (ShouldBlockDLL(w_name)) {
-            LogInfo("[%s] DLL Block: Blocking packaged lib %s from loading (caller: %s)", timestamp.c_str(),
-                    name_str.c_str(), caller_str.c_str());
+        if (ShouldBlockGameOverlayRendererDLL(w_name)) {
+            LogInfo("[%s] GameOverlayRenderer Block: Blocking packaged lib %s from loading (caller: %s)",
+                    timestamp.c_str(), name_str.c_str(), caller_str.c_str());
+            SetLastError(ERROR_ACCESS_DENIED);
             return nullptr;
         }
     }
@@ -939,25 +821,9 @@ LONG NTAPI LdrLoadDll_Detour(PWSTR DllPath, PULONG DllCharacteristics, const voi
             }
             return STATUS_ACCESS_DENIED_NT;
         }
-        if (ShouldBlockAnselDLL(dll_name_wide)) {
-            LogInfo("[%s] Ansel Block (LdrLoadDll): Blocking %s (caller: %s)", timestamp.c_str(), dll_name.c_str(),
-                    caller_str.c_str());
-            if (DllHandle != nullptr) {
-                *DllHandle = nullptr;
-            }
-            return STATUS_ACCESS_DENIED_NT;
-        }
         if (ShouldBlockGameOverlayRendererDLL(dll_name_wide)) {
             LogInfo("[%s] GameOverlayRenderer Block (LdrLoadDll): Blocking %s (caller: %s)", timestamp.c_str(),
                     dll_name.c_str(), caller_str.c_str());
-            if (DllHandle != nullptr) {
-                *DllHandle = nullptr;
-            }
-            return STATUS_ACCESS_DENIED_NT;
-        }
-        if (ShouldBlockDLL(dll_name_wide)) {
-            LogInfo("[%s] DLL Block (LdrLoadDll): Blocking %s (caller: %s)", timestamp.c_str(), dll_name.c_str(),
-                    caller_str.c_str());
             if (DllHandle != nullptr) {
                 *DllHandle = nullptr;
             }
@@ -1344,20 +1210,6 @@ bool InstallLoadLibraryHooks() {
         LogInfo("LoadLibrary hooks installation suppressed by user setting");
         return false;
     }
-    // Load blocked DLLs list BEFORE installing hooks to ensure blocking works
-    if (settings::g_experimentalTabSettings.dll_blocking_enabled.GetValue()) {
-        settings::g_experimentalTabSettings.blocked_dlls.Load();
-        if (!settings::g_experimentalTabSettings.blocked_dlls.GetValue().empty()) {
-            LoadBlockedDLLsFromSettings(settings::g_experimentalTabSettings.blocked_dlls.GetValue());
-            LogInfo("Loaded blocked DLLs list: %s",
-                    settings::g_experimentalTabSettings.blocked_dlls.GetValue().c_str());
-        } else {
-            LogInfo("No blocked DLLs configured");
-        }
-    } else {
-        LogInfo("DLL blocking is disabled in experimental settings");
-    }
-
     // Hook LoadLibraryA
     if (!CreateAndEnableHook(LoadLibraryA, LoadLibraryA_Detour, (LPVOID*)&LoadLibraryA_Original, "LoadLibraryA")) {
         LogError("Failed to create and enable LoadLibraryA hook");
@@ -2077,12 +1929,6 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
             LogError("[OnModuleLoaded] Failed to install NGX hooks");
         }
     }
-    // dbghelp.dll – log stack trace queries from any thread (hooks on game's/original dbghelp)
-    else if (lowerModuleName.find(L"dbghelp.dll") != std::wstring::npos) {
-        if (InstallDbgHelpOriginalHooks(hModule)) {
-            LogInfo("[OnModuleLoaded] DbgHelp original hooks installed successfully");
-        }
-    }
     // advapi32.dll – PCLStats ETW (EventRegister + EventWriteTransfer) for Reflex/PCLStats event counting
     else if (lowerModuleName.find(L"advapi32.dll") != std::wstring::npos) {
         if (InstallPCLStatsEtwHooks(hModule)) {
@@ -2138,136 +1984,6 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     else {
         LogInfo("[OnModuleLoaded] Other module loaded: %ws (0x%p)", module_display_name.c_str(), hModule);
     }
-}
-
-// Helper function to check if a DLL should be blocked (user-defined blocking)
-bool ShouldBlockDLL(const std::wstring& dll_path) {
-    // Extract filename from full path
-    std::filesystem::path path(dll_path);
-    std::wstring filename = path.filename().wstring();
-
-    // Convert to lowercase for case-insensitive comparison
-    std::transform(filename.begin(), filename.end(), filename.begin(), ::towlower);
-
-    utils::SRWLockShared lock(utils::g_blocked_dlls_srwlock);
-    bool is_blocked = g_blocked_dlls.find(filename) != g_blocked_dlls.end();
-
-    if (is_blocked) {
-        std::string narrow_filename(filename.begin(), filename.end());
-        std::string narrow_path(dll_path.begin(), dll_path.end());
-        LogInfo("ShouldBlockDLL: Found '%s' (from '%s') in blocked list", narrow_filename.c_str(), narrow_path.c_str());
-    }
-
-    return is_blocked;
-}
-
-bool IsDLLBlocked(const std::wstring& module_name) {
-    std::wstring lower_name = module_name;
-    std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(), ::towlower);
-
-    utils::SRWLockShared lock(utils::g_blocked_dlls_srwlock);
-    return g_blocked_dlls.find(lower_name) != g_blocked_dlls.end();
-}
-
-void SetDLLBlocked(const std::wstring& module_name, bool blocked) {
-    std::wstring lower_name = module_name;
-    std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(), ::towlower);
-
-    utils::SRWLockExclusive lock(utils::g_blocked_dlls_srwlock);
-    if (blocked) {
-        g_blocked_dlls.insert(lower_name);
-    } else {
-        g_blocked_dlls.erase(lower_name);
-    }
-}
-
-void LoadBlockedDLLsFromSettings(const std::string& blocked_dlls_str) {
-    if (blocked_dlls_str.empty()) {
-        return;
-    }
-
-    utils::SRWLockExclusive lock(utils::g_blocked_dlls_srwlock);
-    g_blocked_dlls.clear();
-
-    // Parse comma-separated DLL names
-    std::stringstream ss(blocked_dlls_str);
-    std::string dll_name;
-
-    while (std::getline(ss, dll_name, ',')) {
-        // Trim whitespace
-        dll_name.erase(0, dll_name.find_first_not_of(" \t"));
-        dll_name.erase(dll_name.find_last_not_of(" \t") + 1);
-        if (!dll_name.empty()) {
-            // Convert to wide string
-            std::wstring wdll_name(dll_name.begin(), dll_name.end());
-
-            // Extract filename from path (in case full path is stored)
-            std::filesystem::path path(wdll_name);
-            std::wstring filename = path.filename().wstring();
-
-            // Convert to lowercase for case-insensitive comparison
-            std::transform(filename.begin(), filename.end(), filename.begin(), ::towlower);
-
-            // Store just the filename (matching ShouldBlockDLL behavior)
-            g_blocked_dlls.insert(filename);
-
-            // Log for debugging
-            std::string narrow_filename(filename.begin(), filename.end());
-            if (filename != wdll_name) {
-                std::string narrow_original(wdll_name.begin(), wdll_name.end());
-                LogInfo("Blocked DLL: Extracted filename '%s' from path '%s'", narrow_filename.c_str(),
-                        narrow_original.c_str());
-            } else {
-                LogInfo("Blocked DLL: '%s'", narrow_filename.c_str());
-            }
-        }
-    }
-}
-
-std::string SaveBlockedDLLsToSettings() {
-    utils::SRWLockShared lock(utils::g_blocked_dlls_srwlock);
-
-    std::string result;
-    for (auto it = g_blocked_dlls.begin(); it != g_blocked_dlls.end(); ++it) {
-        if (!result.empty()) {
-            result += ",";
-        }
-        // Convert wide string to narrow string
-        std::string narrow_name(it->begin(), it->end());
-        result += narrow_name;
-    }
-
-    return result;
-}
-
-std::vector<std::wstring> GetBlockedDLLs() {
-    utils::SRWLockShared lock(utils::g_blocked_dlls_srwlock);
-
-    std::vector<std::wstring> result;
-    result.reserve(g_blocked_dlls.size());
-    for (const auto& dll_name : g_blocked_dlls) {
-        result.push_back(dll_name);
-    }
-
-    return result;
-}
-
-bool CanBlockDLL(const ModuleInfo& module_info) {
-    // Modules loaded before hooks were installed cannot be blocked
-    // (they were already loaded when Display Commander started)
-    if (module_info.loadedBeforeHooks) {
-        return false;
-    }
-
-    // Also check if the module name suggests it's Display Commander itself
-    std::wstring lower_name = module_info.moduleName;
-    std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(), ::towlower);
-    if (lower_name.find(L"display_commander") != std::wstring::npos) {
-        return false;  // Can't block Display Commander itself
-    }
-
-    // Modules loaded after hooks were installed can be blocked
-    return true;
 }
 
 std::string GetHostLoadedGraphicsApisString() {

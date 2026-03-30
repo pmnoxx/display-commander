@@ -1,7 +1,7 @@
 # Version (single source of truth for addon; used by compile definitions and version.rc)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 13)
-set(DISPLAY_COMMANDER_VERSION_PATCH 43)
+set(DISPLAY_COMMANDER_VERSION_PATCH 44)
 
 # Repository root (this file: src/addons/display_commander/CMakeLists.txt → ../../..).
 set(_dc_repo_root "${CMAKE_CURRENT_LIST_DIR}/../../..")
@@ -128,72 +128,22 @@ else()
   message(STATUS "NVPI Reference.xml not found (optional). Run: git submodule update --init external/NvidiaProfileInspectorRevamped")
 endif()
 
-# Embed Display Commander shader files and game_default_overrides.toml in the DLL (RCDATA).
-set(DC_CONTROL_FX "${CMAKE_CURRENT_LIST_DIR}/res/effects/DisplayCommander_Control.fx")
-set(DC_PERCEPTUALBOOST_FX "${CMAKE_CURRENT_LIST_DIR}/res/effects/DisplayCommander_PerceptualBoost.fx")
-set(DC_COLOR_FXH "${CMAKE_CURRENT_LIST_DIR}/res/effects/color.fxh")
-set(DC_RESHADE_FXH "${CMAKE_CURRENT_LIST_DIR}/res/effects/ReShade.fxh")
+# Embed game_default_overrides.toml in the DLL (RCDATA 304).
 set(DC_GAME_DEFAULT_OVERRIDES_TOML "${CMAKE_CURRENT_LIST_DIR}/res/game_default_overrides.toml")
-set(DC_LICENSE_SRC "${_dc_repo_root}/LICENSE")
-set(DC_THIRD_PARTY_NOTICES_SRC "${_dc_repo_root}/THIRD_PARTY_NOTICES.txt")
-set(DC_SHADER_RC "${CMAKE_CURRENT_BINARY_DIR}/shader_effect.rc")
-if(EXISTS "${DC_CONTROL_FX}")
-  if(NOT EXISTS "${DC_LICENSE_SRC}")
-    message(WARNING "LICENSE not found at ${DC_LICENSE_SRC} - embedded license resource (305) will be missing")
-  endif()
-  if(NOT EXISTS "${DC_THIRD_PARTY_NOTICES_SRC}")
-    message(WARNING "THIRD_PARTY_NOTICES.txt not found at ${DC_THIRD_PARTY_NOTICES_SRC} - embedded notices resource (306) will be missing")
-  endif()
-  if(EXISTS "${DC_PERCEPTUALBOOST_FX}")
-    set(DC_SHADER_PERCEPTUAL_DEFINE "#define IDR_PERCEPTUALBOOST_FX 303")
-    set(DC_SHADER_PERCEPTUAL_RCDATA "IDR_PERCEPTUALBOOST_FX RCDATA \"DisplayCommander_PerceptualBoost.fx\"")
-  else()
-    set(DC_SHADER_PERCEPTUAL_DEFINE "")
-    set(DC_SHADER_PERCEPTUAL_RCDATA "")
-  endif()
-  configure_file(
-    ${CMAKE_CURRENT_LIST_DIR}/res/shader_effect.rc.in
-    ${DC_SHADER_RC}
-    @ONLY
-  )
-  set(DC_SHADER_RC_COPIED_BYPRODUCTS
-    "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_Control.fx"
-    "${CMAKE_CURRENT_BINARY_DIR}/color.fxh"
-    "${CMAKE_CURRENT_BINARY_DIR}/ReShade.fxh"
-    "${CMAKE_CURRENT_BINARY_DIR}/game_default_overrides.toml"
-    "${CMAKE_CURRENT_BINARY_DIR}/DC_LICENSE.txt"
-    "${CMAKE_CURRENT_BINARY_DIR}/THIRD_PARTY_NOTICES.txt"
-  )
-  if(EXISTS "${DC_PERCEPTUALBOOST_FX}")
-    list(APPEND DC_SHADER_RC_COPIED_BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_PerceptualBoost.fx")
-  endif()
-  add_custom_target(copy_shader_files_for_rc ALL
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_CONTROL_FX}" "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_Control.fx"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_COLOR_FXH}" "${CMAKE_CURRENT_BINARY_DIR}/color.fxh"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_RESHADE_FXH}" "${CMAKE_CURRENT_BINARY_DIR}/ReShade.fxh"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_GAME_DEFAULT_OVERRIDES_TOML}" "${CMAKE_CURRENT_BINARY_DIR}/game_default_overrides.toml"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_LICENSE_SRC}" "${CMAKE_CURRENT_BINARY_DIR}/DC_LICENSE.txt"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_THIRD_PARTY_NOTICES_SRC}" "${CMAKE_CURRENT_BINARY_DIR}/THIRD_PARTY_NOTICES.txt"
-    COMMENT "Copy DisplayCommander shader files, game_default_overrides.toml, LICENSE, and THIRD_PARTY_NOTICES to build dir for resource embedding"
-    BYPRODUCTS ${DC_SHADER_RC_COPIED_BYPRODUCTS}
-  )
-  if(EXISTS "${DC_PERCEPTUALBOOST_FX}")
-    add_custom_command(TARGET copy_shader_files_for_rc POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_PERCEPTUALBOOST_FX}" "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_PerceptualBoost.fx"
-    )
-  endif()
-  if(NOT EXISTS "${DC_GAME_DEFAULT_OVERRIDES_TOML}")
-    message(WARNING "game_default_overrides.toml not found at ${DC_GAME_DEFAULT_OVERRIDES_TOML} - resource 304 will be missing")
-  endif()
-  target_sources(zzz_display_commander PRIVATE ${DC_SHADER_RC})
-  add_dependencies(zzz_display_commander copy_shader_files_for_rc)
-  if(NOT EXISTS "${DC_COLOR_FXH}")
-    message(WARNING "color.fxh not found at ${DC_COLOR_FXH} - resource 301 will be missing")
-  endif()
-  if(NOT EXISTS "${DC_RESHADE_FXH}")
-    message(WARNING "ReShade.fxh not found at ${DC_RESHADE_FXH} - resource 302 will be missing")
-  endif()
-  if(NOT EXISTS "${DC_PERCEPTUALBOOST_FX}")
-    message(WARNING "DisplayCommander_PerceptualBoost.fx not found at ${DC_PERCEPTUALBOOST_FX} - resource 303 will be missing")
-  endif()
+set(DC_GAME_OVERRIDES_RC "${CMAKE_CURRENT_BINARY_DIR}/game_default_overrides.rc")
+configure_file(
+  ${CMAKE_CURRENT_LIST_DIR}/res/game_default_overrides.rc.in
+  ${DC_GAME_OVERRIDES_RC}
+  @ONLY
+)
+set(DC_GAME_OVERRIDES_RC_BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/game_default_overrides.toml")
+add_custom_target(copy_game_default_overrides_for_rc ALL
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_GAME_DEFAULT_OVERRIDES_TOML}" "${CMAKE_CURRENT_BINARY_DIR}/game_default_overrides.toml"
+  COMMENT "Copy game_default_overrides.toml to build dir for resource embedding"
+  BYPRODUCTS ${DC_GAME_OVERRIDES_RC_BYPRODUCTS}
+)
+if(NOT EXISTS "${DC_GAME_DEFAULT_OVERRIDES_TOML}")
+  message(WARNING "game_default_overrides.toml not found at ${DC_GAME_DEFAULT_OVERRIDES_TOML} - resource 304 will be missing")
 endif()
+target_sources(zzz_display_commander PRIVATE ${DC_GAME_OVERRIDES_RC})
+add_dependencies(zzz_display_commander copy_game_default_overrides_for_rc)

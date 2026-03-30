@@ -528,10 +528,6 @@ extern std::atomic<bool> g_dx9_swapchain_detected;
 
 // Window Management Settings
 extern std::atomic<WindowAlignment> s_window_alignment;  // Window alignment when repositioning is needed
-// Mouse position spoofing for auto-click sequences
-extern std::atomic<bool> s_spoof_mouse_position;
-extern std::atomic<int> s_spoofed_mouse_x;
-extern std::atomic<int> s_spoofed_mouse_y;
 
 // Render blocking in background
 
@@ -546,9 +542,6 @@ extern std::atomic<bool> s_restart_needed_nvapi;
 extern std::atomic<bool> s_enable_input_blocking_shortcut;
 extern std::atomic<bool> s_input_blocking_toggle;
 
-// Auto-click enabled state (atomic, not loaded from config)
-extern std::atomic<bool> g_auto_click_enabled;
-
 // FPS Limiter Settings
 
 // VSync and Tearing Controls
@@ -562,7 +555,7 @@ bool IsSwapchainTrackingLockHeld();
 extern std::atomic<HMODULE> g_reshade_module;
 
 /** True when a ReShade addon whose name contains "renodx" (e.g. rennodx-silenthill2remake.addon64) has been loaded.
- *  When set, Swapchain HDR Upgrade is disabled and hidden in UI to avoid conflict with RenoDX. */
+ *  Used to avoid conflicting DXGI color-space behavior (e.g. auto color space) and for multi-runtime UI hints. */
 extern std::atomic<bool> g_is_renodx_loaded;
 
 // If g_reshade_module is null, scan the process for ReShade (ReShadeRegisterAddon export) and set it.
@@ -888,7 +881,6 @@ extern std::atomic<bool> s_enable_mute_unmute_shortcut;
 extern std::atomic<bool> s_enable_background_toggle_shortcut;
 extern std::atomic<bool> s_enable_timeslowdown_shortcut;
 extern std::atomic<bool> s_enable_adhd_toggle_shortcut;
-extern std::atomic<bool> s_enable_autoclick_shortcut;
 extern std::atomic<bool> s_enable_display_commander_ui_shortcut;
 extern std::atomic<bool> s_enable_performance_overlay_shortcut;
 

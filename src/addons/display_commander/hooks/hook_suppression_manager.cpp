@@ -29,7 +29,6 @@ ui::new_ui::SettingBase* GetSuppressionSetting(HookType hookType) {
             return &settings::g_hook_suppression_settings.suppress_windows_gaming_input_hooks;
         case HookType::API:              return &settings::g_hook_suppression_settings.suppress_api_hooks;
         case HookType::WINDOW_API:       return &settings::g_hook_suppression_settings.suppress_window_api_hooks;
-        case HookType::SLEEP:            return &settings::g_hook_suppression_settings.suppress_sleep_hooks;
         case HookType::TIMESLOWDOWN:     return &settings::g_hook_suppression_settings.suppress_timeslowdown_hooks;
         case HookType::DEBUG_OUTPUT:     return &settings::g_hook_suppression_settings.suppress_debug_output_hooks;
         case HookType::LOADLIBRARY:      return &settings::g_hook_suppression_settings.suppress_loadlibrary_hooks;
@@ -39,7 +38,6 @@ ui::new_ui::SettingBase* GetSuppressionSetting(HookType hookType) {
         case HookType::NVAPI:            return &settings::g_hook_suppression_settings.suppress_nvapi_hooks;
         case HookType::PROCESS_EXIT:     return &settings::g_hook_suppression_settings.suppress_process_exit_hooks;
         case HookType::WINDOW_PROC:      return &settings::g_hook_suppression_settings.suppress_window_proc_hooks;
-        case HookType::DBGHELP:          return &settings::g_hook_suppression_settings.suppress_dbghelp_hooks;
         case HookType::D3D9:             return &settings::g_hook_suppression_settings.suppress_d3d9_hooks;
         case HookType::VULKAN_LOADER:     return &settings::g_hook_suppression_settings.suppress_vulkan_loader_hooks;
         default:                         return nullptr;
@@ -97,9 +95,6 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
                 case HookType::WINDOW_API:
                     current_value = settings::g_hook_suppression_settings.suppress_window_api_hooks.GetValue();
                     break;
-                case HookType::SLEEP:
-                    current_value = settings::g_hook_suppression_settings.suppress_sleep_hooks.GetValue();
-                    break;
                 case HookType::TIMESLOWDOWN:
                     current_value = settings::g_hook_suppression_settings.suppress_timeslowdown_hooks.GetValue();
                     break;
@@ -126,9 +121,6 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
                     break;
                 case HookType::WINDOW_PROC:
                     current_value = settings::g_hook_suppression_settings.suppress_window_proc_hooks.GetValue();
-                    break;
-                case HookType::DBGHELP:
-                    current_value = settings::g_hook_suppression_settings.suppress_dbghelp_hooks.GetValue();
                     break;
                 case HookType::D3D9:
                     current_value = settings::g_hook_suppression_settings.suppress_d3d9_hooks.GetValue();
@@ -167,7 +159,6 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
             return settings::g_hook_suppression_settings.suppress_windows_gaming_input_hooks.GetValue();
         case HookType::API:         return settings::g_hook_suppression_settings.suppress_api_hooks.GetValue();
         case HookType::WINDOW_API:  return settings::g_hook_suppression_settings.suppress_window_api_hooks.GetValue();
-        case HookType::SLEEP:       return settings::g_hook_suppression_settings.suppress_sleep_hooks.GetValue();
         case HookType::TIMESLOWDOWN:
             return settings::g_hook_suppression_settings.suppress_timeslowdown_hooks.GetValue();
         case HookType::DEBUG_OUTPUT:
@@ -182,7 +173,6 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
         case HookType::PROCESS_EXIT:
             return settings::g_hook_suppression_settings.suppress_process_exit_hooks.GetValue();
         case HookType::WINDOW_PROC: return settings::g_hook_suppression_settings.suppress_window_proc_hooks.GetValue();
-        case HookType::DBGHELP:     return settings::g_hook_suppression_settings.suppress_dbghelp_hooks.GetValue();
         case HookType::D3D9:        return settings::g_hook_suppression_settings.suppress_d3d9_hooks.GetValue();
         case HookType::VULKAN_LOADER:
             return settings::g_hook_suppression_settings.suppress_vulkan_loader_hooks.GetValue();
@@ -246,10 +236,6 @@ void HookSuppressionManager::SetSuppressHook(HookType hookType, bool suppress) {
             settings::g_hook_suppression_settings.suppress_window_api_hooks.SetValue(suppress);
             settings::g_hook_suppression_settings.suppress_window_api_hooks.Save();
             break;
-        case HookType::SLEEP:
-            settings::g_hook_suppression_settings.suppress_sleep_hooks.SetValue(suppress);
-            settings::g_hook_suppression_settings.suppress_sleep_hooks.Save();
-            break;
         case HookType::TIMESLOWDOWN:
             settings::g_hook_suppression_settings.suppress_timeslowdown_hooks.SetValue(suppress);
             settings::g_hook_suppression_settings.suppress_timeslowdown_hooks.Save();
@@ -285,10 +271,6 @@ void HookSuppressionManager::SetSuppressHook(HookType hookType, bool suppress) {
         case HookType::WINDOW_PROC:
             settings::g_hook_suppression_settings.suppress_window_proc_hooks.SetValue(suppress);
             settings::g_hook_suppression_settings.suppress_window_proc_hooks.Save();
-            break;
-        case HookType::DBGHELP:
-            settings::g_hook_suppression_settings.suppress_dbghelp_hooks.SetValue(suppress);
-            settings::g_hook_suppression_settings.suppress_dbghelp_hooks.Save();
             break;
         case HookType::D3D9:
             settings::g_hook_suppression_settings.suppress_d3d9_hooks.SetValue(suppress);
@@ -410,14 +392,6 @@ void HookSuppressionManager::MarkHookInstalled(HookType hookType) {
                 settings::g_hook_suppression_settings.suppress_window_api_hooks.Save();
             }
             break;
-        case HookType::SLEEP:
-            if (!settings::g_hook_suppression_settings.sleep_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.sleep_hooks_installed.SetValue(true);
-
-                // force setting to be written
-                settings::g_hook_suppression_settings.suppress_sleep_hooks.Save();
-            }
-            break;
         case HookType::TIMESLOWDOWN:
             if (!settings::g_hook_suppression_settings.timeslowdown_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.timeslowdown_hooks_installed.SetValue(true);
@@ -490,14 +464,6 @@ void HookSuppressionManager::MarkHookInstalled(HookType hookType) {
                 settings::g_hook_suppression_settings.suppress_window_proc_hooks.Save();
             }
             break;
-        case HookType::DBGHELP:
-            if (!settings::g_hook_suppression_settings.dbghelp_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.dbghelp_hooks_installed.SetValue(true);
-
-                // force setting to be written
-                settings::g_hook_suppression_settings.suppress_dbghelp_hooks.Save();
-            }
-            break;
         case HookType::D3D9:
             if (!settings::g_hook_suppression_settings.d3d9_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.d3d9_hooks_installed.SetValue(true);
@@ -540,7 +506,6 @@ std::string HookSuppressionManager::GetHookTypeName(HookType hookType) {
         case HookType::WINDOWS_GAMING_INPUT:    return "Windows Gaming Input";
         case HookType::API:                     return "API";
         case HookType::WINDOW_API:              return "Window API";
-        case HookType::SLEEP:                   return "Sleep";
         case HookType::TIMESLOWDOWN:            return "Time Slowdown";
         case HookType::DEBUG_OUTPUT:            return "Debug Output";
         case HookType::LOADLIBRARY:             return "LoadLibrary";
@@ -550,7 +515,6 @@ std::string HookSuppressionManager::GetHookTypeName(HookType hookType) {
         case HookType::NVAPI:                   return "NVAPI";
         case HookType::PROCESS_EXIT:            return "Process Exit";
         case HookType::WINDOW_PROC:             return "Window Procedure";
-        case HookType::DBGHELP:                 return "DbgHelp";
         case HookType::D3D9:                    return "D3D9";
         case HookType::VULKAN_LOADER:           return "Vulkan Loader";
         default:
@@ -580,7 +544,6 @@ bool HookSuppressionManager::IsHookInstalled(HookType hookType) {
             return settings::g_hook_suppression_settings.windows_gaming_input_hooks_installed.GetValue();
         case HookType::API:         return settings::g_hook_suppression_settings.api_hooks_installed.GetValue();
         case HookType::WINDOW_API:  return settings::g_hook_suppression_settings.window_api_hooks_installed.GetValue();
-        case HookType::SLEEP:       return settings::g_hook_suppression_settings.sleep_hooks_installed.GetValue();
         case HookType::TIMESLOWDOWN:
             return settings::g_hook_suppression_settings.timeslowdown_hooks_installed.GetValue();
         case HookType::DEBUG_OUTPUT:
@@ -595,7 +558,6 @@ bool HookSuppressionManager::IsHookInstalled(HookType hookType) {
         case HookType::PROCESS_EXIT:
             return settings::g_hook_suppression_settings.process_exit_hooks_installed.GetValue();
         case HookType::WINDOW_PROC: return settings::g_hook_suppression_settings.window_proc_hooks_installed.GetValue();
-        case HookType::DBGHELP:     return settings::g_hook_suppression_settings.dbghelp_hooks_installed.GetValue();
         case HookType::D3D9:        return settings::g_hook_suppression_settings.d3d9_hooks_installed.GetValue();
         case HookType::VULKAN_LOADER:
             return settings::g_hook_suppression_settings.vulkan_loader_hooks_installed.GetValue();

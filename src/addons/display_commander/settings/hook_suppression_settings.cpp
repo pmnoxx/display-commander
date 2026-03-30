@@ -8,7 +8,6 @@ HookSuppressionSettings::HookSuppressionSettings()
     // Most hooks are enabled by default (false) for normal operation
     // Only hooks that are typically not needed or can cause issues are blacklisted by default
     // DInput/DInput8: blacklisted by default to avoid input or compatibility issues
-    // DbgHelp: blacklisted by default to avoid MinHook on the game's dbghelp.dll
     : suppress_dxgi_factory_hooks("DxgiFactoryHooks", false, "DisplayCommander.HookSuppression"),
       suppress_dxgi_swapchain_hooks("DxgiSwapchainHooks", false, "DisplayCommander.HookSuppression"),
       suppress_sl_proxy_dxgi_swapchain_hooks("SlProxyDxgiSwapchainHooks", false, "DisplayCommander.HookSuppression"),
@@ -22,7 +21,6 @@ HookSuppressionSettings::HookSuppressionSettings()
       suppress_windows_gaming_input_hooks("WindowsGamingInputHooks", false, "DisplayCommander.HookSuppression"),
       suppress_api_hooks("ApiHooks", false, "DisplayCommander.HookSuppression"),
       suppress_window_api_hooks("WindowApiHooks", false, "DisplayCommander.HookSuppression"),
-      suppress_sleep_hooks("SleepHooks", false, "DisplayCommander.HookSuppression"),
       suppress_timeslowdown_hooks("TimeslowdownHooks", false, "DisplayCommander.HookSuppression"),
       suppress_debug_output_hooks("DebugOutputHooks", true,
                                   "DisplayCommander.HookSuppression")  // BLACKLISTED: Debug output can be noisy
@@ -34,8 +32,6 @@ HookSuppressionSettings::HookSuppressionSettings()
       suppress_nvapi_hooks("NvapiHooks", false, "DisplayCommander.HookSuppression"),
       suppress_process_exit_hooks("ProcessExitHooks", false, "DisplayCommander.HookSuppression"),
       suppress_window_proc_hooks("WindowProcHooks", false, "DisplayCommander.HookSuppression"),
-      suppress_dbghelp_hooks("DbghelpHooks", true,
-                             "DisplayCommander.HookSuppression"),  // BLACKLISTED: avoid MinHook on game's dbghelp
       suppress_d3d9_hooks("D3D9Hooks", false, "DisplayCommander.HookSuppression"),
       suppress_vulkan_loader_hooks("VulkanLoaderHooks", false, "DisplayCommander.HookSuppression"),
       dxgi_factory_hooks_installed("DxgiFactoryHooks", false, "DisplayCommander.HooksInstalled"),
@@ -51,7 +47,6 @@ HookSuppressionSettings::HookSuppressionSettings()
       windows_gaming_input_hooks_installed("WindowsGamingInputHooks", false, "DisplayCommander.HooksInstalled"),
       api_hooks_installed("ApiHooks", false, "DisplayCommander.HooksInstalled"),
       window_api_hooks_installed("WindowApiHooks", false, "DisplayCommander.HooksInstalled"),
-      sleep_hooks_installed("SleepHooks", false, "DisplayCommander.HooksInstalled"),
       timeslowdown_hooks_installed("TimeslowdownHooks", false, "DisplayCommander.HooksInstalled"),
       debug_output_hooks_installed("DebugOutputHooks", false, "DisplayCommander.HooksInstalled"),
       loadlibrary_hooks_installed("LoadLibraryHooks", false, "DisplayCommander.HooksInstalled"),
@@ -61,7 +56,6 @@ HookSuppressionSettings::HookSuppressionSettings()
       nvapi_hooks_installed("NvapiHooks", false, "DisplayCommander.HooksInstalled"),
       process_exit_hooks_installed("ProcessExitHooks", false, "DisplayCommander.HooksInstalled"),
       window_proc_hooks_installed("WindowProcHooks", false, "DisplayCommander.HooksInstalled"),
-      dbghelp_hooks_installed("DbghelpHooks", false, "DisplayCommander.HooksInstalled"),
       d3d9_hooks_installed("D3D9Hooks", false, "DisplayCommander.HooksInstalled"),
       vulkan_loader_hooks_installed("VulkanLoaderHooks", false, "DisplayCommander.HooksInstalled") {
     // Initialize the all_settings_ vector
@@ -79,7 +73,6 @@ HookSuppressionSettings::HookSuppressionSettings()
         &suppress_windows_gaming_input_hooks,
         &suppress_api_hooks,
         &suppress_window_api_hooks,
-        &suppress_sleep_hooks,
         &suppress_timeslowdown_hooks,
         &suppress_debug_output_hooks,
         &suppress_loadlibrary_hooks,
@@ -89,7 +82,6 @@ HookSuppressionSettings::HookSuppressionSettings()
         &suppress_nvapi_hooks,
         &suppress_process_exit_hooks,
         &suppress_window_proc_hooks,
-        &suppress_dbghelp_hooks,
         &suppress_d3d9_hooks,
         &suppress_vulkan_loader_hooks,
         &dxgi_factory_hooks_installed,
@@ -105,7 +97,6 @@ HookSuppressionSettings::HookSuppressionSettings()
         &windows_gaming_input_hooks_installed,
         &api_hooks_installed,
         &window_api_hooks_installed,
-        &sleep_hooks_installed,
         &timeslowdown_hooks_installed,
         &debug_output_hooks_installed,
         &loadlibrary_hooks_installed,
@@ -115,7 +106,6 @@ HookSuppressionSettings::HookSuppressionSettings()
         &nvapi_hooks_installed,
         &process_exit_hooks_installed,
         &window_proc_hooks_installed,
-        &dbghelp_hooks_installed,
         &d3d9_hooks_installed,
         &vulkan_loader_hooks_installed,
     };

@@ -19,7 +19,6 @@ enum class HookType {
     WINDOWS_GAMING_INPUT,
     API,
     WINDOW_API,
-    SLEEP,
     TIMESLOWDOWN,
     DEBUG_OUTPUT,
     LOADLIBRARY,
@@ -29,7 +28,6 @@ enum class HookType {
     NVAPI,
     PROCESS_EXIT,
     WINDOW_PROC,
-    DBGHELP,
     D3D9,
     VULKAN_LOADER  // vulkan-1.dll vkGetInstanceProcAddr / vkGetDeviceProcAddr (VK_NV_low_latency2, extensions)
 };
@@ -55,7 +53,7 @@ class HookSuppressionManager {
     bool IsHookInstalled(HookType hookType);
 
     // Number of hook types (for UI iteration)
-    static constexpr int kHookTypeCount = 26;
+    static constexpr int kHookTypeCount = 24;
 
     // Get hook type by index (0 .. kHookTypeCount-1). Valid only for display iteration.
     static HookType GetHookTypeByIndex(int index);

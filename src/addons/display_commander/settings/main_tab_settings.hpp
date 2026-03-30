@@ -152,7 +152,6 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_playtime;
     ui::new_ui::BoolSetting show_overlay_vu_bars;
     ui::new_ui::BoolSetting show_overlay_vram;
-    ui::new_ui::BoolSetting show_overlay_texture_stats;
     ui::new_ui::FloatSetting overlay_background_alpha;
     ui::new_ui::FloatSetting overlay_chart_alpha;
     ui::new_ui::FloatSetting overlay_graph_scale;
@@ -188,12 +187,9 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_games_tab;
     ui::new_ui::BoolSetting show_hotkeys_tab;
     ui::new_ui::BoolSetting show_advanced_tab;
-    ui::new_ui::BoolSetting show_window_info_tab;
-    ui::new_ui::BoolSetting show_swapchain_tab;
     ui::new_ui::BoolSetting show_important_info_tab;
     ui::new_ui::BoolSetting show_controller_tab;
     ui::new_ui::BoolSetting show_hook_stats_tab;
-    ui::new_ui::BoolSetting show_streamline_tab;
     ui::new_ui::BoolSetting show_experimental_tab;
     ui::new_ui::BoolSetting show_reshade_tab;
     ui::new_ui::BoolSetting show_performance_tab;
@@ -203,8 +199,6 @@ class MainTabSettings {
 
     /** Main tab: show optional "DC folders" collapsible (paths, versions, folder buttons). Default off. */
     ui::new_ui::BoolSetting show_main_tab_dc_folders;
-    /** Main tab: show Brightness and AutoHDR section (ReShade only). Default off. */
-    ui::new_ui::BoolSetting show_main_tab_brightness_autohdr;
     /** Main tab: show Texture Filtering section. Default off. */
     ui::new_ui::BoolSetting show_main_tab_texture_filtering;
     /** Main tab: show Audio Control section. Default off. */
@@ -238,9 +232,6 @@ class MainTabSettings {
      * requested by the application. Part of Vulkan injection (SpecialK-style). Default off. */
     ui::new_ui::BoolSetting vulkan_inject_extensions_enabled;
 
-    /** Highest bundled license presentation version the user accepted (persists in config; no checkbox in UI). */
-    ui::new_ui::IntSetting license_acknowledged_version;
-
     // Brightness (ReShade effect driven by DC)
     /** When true, DC adds its Shaders/Textures folder to ReShade's EffectSearchPaths and TextureSearchPaths.
      * When false, those paths are removed from ReShade config. Default on. */
@@ -248,36 +239,11 @@ class MainTabSettings {
     /** When true, backup all .ini files from the game folder to Display_Commander\\Reshade\\Configs\\<GameName>
      * when the option is enabled (only if not already present). Does not set ReShade config path. Default off. */
     ui::new_ui::BoolSetting auto_reshade_config_backup;
-    /** When true, Brightness/AutoHDR and DC shader effects are active (section enabled). When false, the whole
-     * Brightness and AutoHDR section is disabled. Default on. */
-    ui::new_ui::BoolSetting brightness_autohdr_section_enabled;
-    ui::new_ui::FloatSetting brightness_percent;
-    /** Windows SDR content brightness (nits, 80–480) when HDR is on. Slider in Brightness and AutoHDR when applicable. */
-    ui::new_ui::FloatSetting sdr_content_brightness_nits;
-    /** Decode only: how to interpret backbuffer (DECODE_METHOD). Default scRGB (1). */
-    ui::new_ui::ComboSetting swapchain_colorspace;  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None
-    /** Encode only: output color space (ENCODE_METHOD). */
-    ui::new_ui::ComboSetting brightness_colorspace;  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None
-    ui::new_ui::FloatSetting gamma_value;            // 0.5–2.0, 1.0 = neutral (DisplayCommander_Control.fx Gamma)
-    ui::new_ui::FloatSetting contrast_value;         // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Contrast)
-    ui::new_ui::FloatSetting saturation_value;       // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Saturation)
-    ui::new_ui::FloatSetting hue_degrees;            // -15 to +15, 0 = neutral (DisplayCommander_Control.fx HueDegrees)
-    /** When enabled, upgrades swap chain to HDR (scRGB 16-bit float) on create_swapchain/init_swapchain (DXGI only). */
-    ui::new_ui::BoolSetting swapchain_hdr_upgrade;
-    /** 0 = scRGB (default), 1 = HDR10. Only used when swapchain_hdr_upgrade is true. */
-    ui::new_ui::ComboSetting swapchain_hdr_upgrade_mode;
-    ui::new_ui::BoolSetting
-        auto_hdr;  // When enabled, runs DisplayCommander_PerceptualBoost.fx (requires Generic RenoDX for SDR->HDR)
-    ui::new_ui::FloatSetting auto_hdr_strength;  // Profile 3 EffectStrength_P3 (0.0–2.0), only used when AutoHDR on
-
     // HDR Control (Resolution Control / auto enable-disable Windows HDR)
     ui::new_ui::BoolSetting auto_enable_disable_hdr;
     // Override HDR static metadata (ignore source MaxCLL/MaxFALL): inject MaxMDL 1000 on swapchain init (DXGI
     // SetHDRMetaData). Sony/display fix.
     ui::new_ui::BoolSetting auto_apply_maxmdl_1000_hdr_metadata;
-
-    // Ansel Control
-    ui::new_ui::BoolSetting skip_ansel_loading;
 
     // Sampler State Override Settings
     ui::new_ui::BoolSetting force_anisotropic_filtering;

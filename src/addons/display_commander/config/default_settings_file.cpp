@@ -49,12 +49,6 @@ const char* const DEFAULT_SETTINGS_TEMPLATE = R"(# Display Commander — User de
 # fps_limiter_enabled = true
 # fps_limit = 60
 
-# Load DC shaders: enable Display Commander's ReShade effects (Brightness, AutoHDR). Requires DisplayCommander_Control.fx in ReShade Shaders folder.
-# brightness_autohdr_section_enabled = true
-
-# AutoHDR Perceptual Boost: SDR-to-HDR effect (DisplayCommander_PerceptualBoost.fx). Requires Load DC shaders on.
-# auto_hdr = true
-
 # Enable Hotkeys: master toggle for all Display Commander hotkeys (Hotkeys tab). Default true.
 # EnableHotkeys = true
 )";

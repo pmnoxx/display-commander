@@ -1,7 +1,6 @@
 // Source Code <Display Commander>
 #include "addon.hpp"
 #include "audio/audio_management.hpp"
-#include "autoclick/autoclick_manager.hpp"
 #include "config/display_commander_config.hpp"
 #include "display/display_initial_state.hpp"
 #include "display/dpi_management.hpp"
@@ -89,7 +88,7 @@
 // Forward declarations for ReShade event handlers
 void OnInitEffectRuntime(reshade::api::effect_runtime* runtime);
 bool OnReShadeOverlayOpen(reshade::api::effect_runtime* runtime, bool open, reshade::api::input_source source);
-// Note: OnInitDevice, OnDestroySwapchain, OnDestroyResource are declared in swapchain_events.hpp
+// Note: OnInitDevice, OnDestroySwapchain, etc. are declared in swapchain_events.hpp
 void OnInitCommandList(reshade::api::command_list* cmd_list);
 void OnDestroyCommandList(reshade::api::command_list* cmd_list);
 void OnInitCommandQueue(reshade::api::command_queue* queue);
@@ -192,11 +191,6 @@ void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
     if (show_display_commander_ui) {
         settings::g_mainTabSettings.show_display_commander_ui.SetValue(false);
     }
-    // Update UI draw time for auto-click optimization
-    if (enabled_experimental_features) {
-        autoclick::UpdateLastUIDrawTime();
-    }
-
     {
         display_commander::ui::ImGuiWrapperReshade gui_wrapper;
         ui::new_ui::NewUISystem::GetInstance().Draw(runtime, gui_wrapper);
@@ -269,117 +263,6 @@ void OnFinishPresent(reshade::api::command_queue* queue, reshade::api::swapchain
     // Add any tracking logic here if needed
 }
 
-namespace {
-// Apply Display Commander brightness (0-500%) via ReShade effect DisplayCommander_Control.fx.
-// No-op if the effect is not loaded (e.g. user has not added DC effect path or reloaded effects).
-void ApplyDisplayCommanderBrightness(reshade::api::effect_runtime* runtime) {
-    if (runtime == nullptr) {
-        return;
-    }
-    if (!settings::g_mainTabSettings.brightness_autohdr_section_enabled.GetValue()) {
-        return;
-    }
-    const float percent = settings::g_mainTabSettings.brightness_percent.GetValue();
-    const float multiplier = percent / 100.0f;
-    const reshade::api::effect_technique tech = runtime->find_technique("DisplayCommander_Control.fx", "Brightness");
-    if (tech == 0) {
-        return;  // Effect not loaded
-    }
-    const reshade::api::effect_uniform_variable var =
-        runtime->find_uniform_variable("DisplayCommander_Control.fx", "Brightness");
-    if (var == 0) {
-        return;
-    }
-    // Decode = swapchain colorspace (default 1 = scRGB); Encode = brightness color space
-    const int32_t decode_colorspace = static_cast<int32_t>(settings::g_mainTabSettings.swapchain_colorspace.GetValue());
-    const int32_t encode_colorspace =
-        static_cast<int32_t>(settings::g_mainTabSettings.brightness_colorspace.GetValue());
-    const reshade::api::effect_uniform_variable var_decode =
-        runtime->find_uniform_variable("DisplayCommander_Control.fx", "DECODE_METHOD");
-    if (var_decode != 0) {
-        runtime->set_uniform_value_int(var_decode, decode_colorspace);
-    }
-    const reshade::api::effect_uniform_variable var_encode =
-        runtime->find_uniform_variable("DisplayCommander_Control.fx", "ENCODE_METHOD");
-    if (var_encode != 0) {
-        runtime->set_uniform_value_int(var_encode, encode_colorspace);
-    }
-    runtime->set_uniform_value_float(var, multiplier);
-    const float gamma_val = settings::g_mainTabSettings.gamma_value.GetValue();
-    const reshade::api::effect_uniform_variable var_gamma =
-        runtime->find_uniform_variable("DisplayCommander_Control.fx", "Gamma");
-    if (var_gamma != 0) {
-        runtime->set_uniform_value_float(var_gamma, gamma_val);
-    }
-    const float contrast_val = settings::g_mainTabSettings.contrast_value.GetValue();
-    const reshade::api::effect_uniform_variable var_contrast =
-        runtime->find_uniform_variable("DisplayCommander_Control.fx", "Contrast");
-    if (var_contrast != 0) {
-        runtime->set_uniform_value_float(var_contrast, contrast_val);
-    }
-    const float saturation_val = settings::g_mainTabSettings.saturation_value.GetValue();
-    const reshade::api::effect_uniform_variable var_saturation =
-        runtime->find_uniform_variable("DisplayCommander_Control.fx", "Saturation");
-    if (var_saturation != 0) {
-        runtime->set_uniform_value_float(var_saturation, saturation_val);
-    }
-    const float hue_val = settings::g_mainTabSettings.hue_degrees.GetValue();
-    const reshade::api::effect_uniform_variable var_hue =
-        runtime->find_uniform_variable("DisplayCommander_Control.fx", "HueDegrees");
-    if (var_hue != 0) {
-        runtime->set_uniform_value_float(var_hue, hue_val);
-    }
-    const reshade::api::effect_uniform_variable var_extra_gamma22 =
-        runtime->find_uniform_variable("DisplayCommander_Control.fx", "ExtraGamma22Decode");
-    if (var_extra_gamma22 != 0) {
-        runtime->set_uniform_value_int(var_extra_gamma22, 0);
-    }
-    // Enable technique when any display tweak is non-neutral, or when decode/encode is not Auto (effect must run
-    // so that decode -> process -> encode is applied even at brightness 100%).
-    const bool need_decode_encode_pass = (decode_colorspace != 0 || encode_colorspace != 0);
-    runtime->set_technique_state(tech, multiplier != 1.0f || gamma_val != 1.0f || contrast_val != 1.0f
-                                           || saturation_val != 1.0f || hue_val != 0.0f || need_decode_encode_pass);
-}
-
-// Apply AutoHDR: when enabled, run DisplayCommander_PerceptualBoost.fx (SpecialK_PerceptualBoost). Uses
-// Color Space (brightness_colorspace) for both DECODE_METHOD and ENCODE_METHOD. Requires Generic RenoDX to
-// upgrade SDR->HDR.
-void ApplyDisplayCommanderAutoHdr(reshade::api::effect_runtime* runtime) {
-    if (runtime == nullptr) {
-        return;
-    }
-    if (!settings::g_mainTabSettings.brightness_autohdr_section_enabled.GetValue()) {
-        return;
-    }
-    const bool auto_hdr = settings::g_mainTabSettings.auto_hdr.GetValue();
-    const reshade::api::effect_technique tech =
-        runtime->find_technique("DisplayCommander_PerceptualBoost.fx", "SpecialK_PerceptualBoost");
-    if (tech == 0) {
-        return;  // Effect not loaded
-    }
-    if (auto_hdr) {
-        const int32_t colorspace = static_cast<int32_t>(settings::g_mainTabSettings.brightness_colorspace.GetValue());
-        const reshade::api::effect_uniform_variable var_decode =
-            runtime->find_uniform_variable("DisplayCommander_PerceptualBoost.fx", "DECODE_METHOD");
-        if (var_decode != 0) {
-            runtime->set_uniform_value_int(var_decode, colorspace);
-        }
-        const reshade::api::effect_uniform_variable var_encode =
-            runtime->find_uniform_variable("DisplayCommander_PerceptualBoost.fx", "ENCODE_METHOD");
-        if (var_encode != 0) {
-            runtime->set_uniform_value_int(var_encode, colorspace);
-        }
-        const reshade::api::effect_uniform_variable var_strength =
-            runtime->find_uniform_variable("DisplayCommander_PerceptualBoost.fx", "EffectStrength_P3");
-        if (var_strength != 0) {
-            const float strength = settings::g_mainTabSettings.auto_hdr_strength.GetValue();
-            runtime->set_uniform_value_float(var_strength, strength);
-        }
-    }
-    runtime->set_technique_state(tech, auto_hdr);
-}
-}  // namespace
-
 void OnReShadeBeginEffects(reshade::api::effect_runtime* runtime, reshade::api::command_list* cmd_list,
                            reshade::api::resource_view rtv, reshade::api::resource_view rtv_srgb) {
     CALL_GUARD(utils::get_now_ns());
@@ -408,71 +291,10 @@ void OnReShadeFinishEffects(reshade::api::effect_runtime* runtime, reshade::api:
 }
 
 void OnReShadePresent(reshade::api::effect_runtime* runtime) {
-    if (runtime == nullptr) {
-        return;
-    }
-    if (should_skip_addon_injection_for_window(static_cast<HWND>(runtime->get_hwnd()))) {
-        return;
-    }
-    // Apply brightness and AutoHDR for the next frame. Safe to set technique state and uniforms here
-    // (after effects have been rendered this frame, before the next frame).
-    ApplyDisplayCommanderBrightness(runtime);
-    ApplyDisplayCommanderAutoHdr(runtime);
+    (void)runtime;
 }
 
 namespace {
-void OnInitEffectRuntime_ExtractShadersOnce() {
-    CALL_GUARD(utils::get_now_ns());
-    static std::atomic<bool> shader_extract_done{false};
-    if (shader_extract_done.exchange(true)) {
-        return;
-    }
-    constexpr int IDR_CONTROL_FX = 300;
-    constexpr int IDR_COLOR_FXH = 301;
-    constexpr int IDR_RESHADE_FXH = 302;
-    constexpr int IDR_PERCEPTUALBOOST_FX = 303;
-
-    auto extract_resource = [](int res_id, const wchar_t* filename_wide) -> bool {
-        HRSRC hRes = FindResourceA(g_hmodule, MAKEINTRESOURCE(res_id), RT_RCDATA);
-        if (hRes == nullptr) return false;
-        HGLOBAL hLoaded = LoadResource(g_hmodule, hRes);
-        if (hLoaded == nullptr) return false;
-        const void* pData = LockResource(hLoaded);
-        const DWORD size = SizeofResource(g_hmodule, hRes);
-        if (pData == nullptr || size == 0) return false;
-
-        wchar_t localappdata_path[MAX_PATH] = {};
-        if (!SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT,
-                                        localappdata_path))) {
-            return false;
-        }
-        std::filesystem::path la_dest =
-            std::filesystem::path(localappdata_path) / L"Programs" / L"Display_Commander" / L"Reshade" / L"Shaders"
-            / L"DisplayCommander" / filename_wide;
-        std::error_code ec2;
-        std::filesystem::create_directories(la_dest.parent_path(), ec2);
-        if (ec2) return false;
-        std::ofstream of(la_dest, std::ios::binary);
-        if (!of) return false;
-        of.write(static_cast<const char*>(pData), static_cast<std::streamsize>(size));
-        return of.good();
-    };
-
-    if (!extract_resource(IDR_CONTROL_FX, L"DisplayCommander_Control.fx")) {
-        LogWarn(
-            "DisplayCommander: could not extract shaders to "
-            "%%LOCALAPPDATA%%\\Programs\\Display_Commander\\Reshade\\Shaders\\DisplayCommander "
-            "(check permissions). Brightness/AutoHDR effects need that path in ReShade search paths.");
-    } else {
-        LogInfo(
-            "DisplayCommander shaders extracted to "
-            "%%LOCALAPPDATA%%\\Programs\\Display_Commander\\Reshade\\Shaders\\DisplayCommander.");
-    }
-    extract_resource(IDR_COLOR_FXH, L"color.fxh");
-    extract_resource(IDR_RESHADE_FXH, L"ReShade.fxh");
-    extract_resource(IDR_PERCEPTUALBOOST_FX, L"DisplayCommander_PerceptualBoost.fx");
-}
-
 void OnInitEffectRuntime_StartRefreshRateMonitoringIfNeeded() {
     if (settings::g_mainTabSettings.show_actual_refresh_rate.GetValue()
         || settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue()) {
@@ -498,13 +320,6 @@ void OnInitEffectRuntime_InitWithHwndOnce(reshade::api::effect_runtime* runtime)
     } else {
         LogWarn("[OnInitEffectRuntime] ReShade runtime window is not valid - HWND: 0x%p", game_window);
     }
-    LogInfo("[OnInitEffectRuntime] before autoclick start (enabled_experimental_features=%d)",
-            enabled_experimental_features ? 1 : 0);
-    if (enabled_experimental_features) {
-        autoclick::StartAutoClickThread();
-        autoclick::StartUpDownKeyPressThread();
-        autoclick::StartButtonOnlyPressThread();
-    }
 }
 }  // namespace
 
@@ -518,8 +333,6 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
     AddReShadeRuntime(runtime);
     LogInfo("[OnInitEffectRuntime] after AddReShadeRuntime");
 
-    OnInitEffectRuntime_ExtractShadersOnce();
-    LogInfo("[OnInitEffectRuntime] after shader extract block");
     LogInfo("[OnInitEffectRuntime] ReShade effect runtime initialized - Input blocking now available");
 
     OnInitEffectRuntime_StartRefreshRateMonitoringIfNeeded();
@@ -548,11 +361,6 @@ bool OnReShadeOverlayOpen(reshade::api::effect_runtime* runtime, bool open, resh
         }
     } else {
         LogInfo("ReShade overlay closed - Input blocking inactive");
-    }
-
-    // Update auto-click UI state for optimization
-    if (enabled_experimental_features) {
-        autoclick::UpdateUIOverlayState(open);
     }
 
     return false;  // Don't prevent ReShade from opening/closing the overlay
@@ -632,9 +440,6 @@ void OnPerformanceOverlay_DisplayCommanderWindow(reshade::api::effect_runtime* r
     bool window_open = true;
     if (overlay_wrapper.Begin("Display Commander", &window_open,
                              ImGuiWindowFlags_AlwaysAutoResize)) {
-        if (enabled_experimental_features) {
-            autoclick::UpdateLastUIDrawTime();
-        }
         if (runtime != nullptr) {
             runtime->block_input_next_frame();
         }
@@ -1119,7 +924,6 @@ void LoadAddonsFromPluginsDirectory_IterateAndLoad(const std::filesystem::path& 
                                [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
                 if (lower.find("renodx") != std::string::npos && lower.find("renodx-devkit") == std::string::npos) {
                     g_is_renodx_loaded.store(true, std::memory_order_relaxed);
-                    settings::g_mainTabSettings.swapchain_hdr_upgrade.SetValue(false);
                 }
             }
         }
@@ -1771,12 +1575,8 @@ void RegisterReShadeEvents(HMODULE h_module) {
     reshade::register_event<reshade::addon_event::update_buffer_region>(OnUpdateBufferRegion);
     // reshade::register_event<reshade::addon_event::update_buffer_region_command>(OnUpdateBufferRegionCommand);
 
-    // Register buffer resolution upgrade event handlers
-    reshade::register_event<reshade::addon_event::create_resource>(OnCreateResource);
     reshade::register_event<reshade::addon_event::create_resource_view>(OnCreateResourceView);
     reshade::register_event<reshade::addon_event::create_sampler>(OnCreateSampler);
-    reshade::register_event<reshade::addon_event::bind_viewports>(OnSetViewport);
-    reshade::register_event<reshade::addon_event::bind_scissor_rects>(OnSetScissorRects);
     // Note: bind_resource, map_resource, unmap_resource events don't exist in ReShade API
     // These operations are handled differently in ReShade
     // Register device destroy event for restore-on-exit
@@ -1792,7 +1592,6 @@ void RegisterReShadeEvents(HMODULE h_module) {
 
     // Register swapchain/resource lifecycle events
     reshade::register_event<reshade::addon_event::destroy_swapchain>(OnDestroySwapchain);
-    reshade::register_event<reshade::addon_event::destroy_resource>(OnDestroyResource);
 
     // Register present completion event
     reshade::register_event<reshade::addon_event::finish_present>(OnFinishPresent);

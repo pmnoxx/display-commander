@@ -24,26 +24,8 @@ void DrawExperimentalTab(display_commander::ui::IImGuiWrapper& imgui,
 // Draw mouse coordinates display section (experimental tab's own display)
 void DrawMouseCoordinatesDisplay(display_commander::ui::IImGuiWrapper& imgui);
 
-// Draw backbuffer format override section
-void DrawBackbufferFormatOverride(display_commander::ui::IImGuiWrapper& imgui);
-
-// Draw buffer resolution upgrade section
-void DrawBufferResolutionUpgrade(display_commander::ui::IImGuiWrapper& imgui);
-
-// Draw texture format upgrade section
-void DrawTextureFormatUpgrade(display_commander::ui::IImGuiWrapper& imgui);
-
-// Draw sleep hook controls section
-void DrawSleepHookControls(display_commander::ui::IImGuiWrapper& imgui);
-
-// Draw rand hook controls section
-void DrawRandHookControls(display_commander::ui::IImGuiWrapper& imgui);
-
 // Draw time slowdown controls section
 void DrawTimeSlowdownControls(display_commander::ui::IImGuiWrapper& imgui);
-
-// Draw DLSS indicator controls section
-void DrawDlssIndicatorControls(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw D3D9 FLIPEX controls section
 void DrawD3D9FlipExControls(display_commander::ui::IImGuiWrapper& imgui);
@@ -59,9 +41,6 @@ void DrawDebugOutputHooks(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw anisotropic filtering upgrade section
 void DrawAnisotropicFilteringUpgrade(display_commander::ui::IImGuiWrapper& imgui);
-
-// Draw DLL blocking controls section
-void DrawDLLBlockingControls(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw input test tab
 void DrawInputTestTab(display_commander::ui::IImGuiWrapper& imgui);

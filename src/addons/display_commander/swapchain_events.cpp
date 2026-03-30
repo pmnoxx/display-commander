@@ -4,8 +4,6 @@
 #include "display/display_initial_state.hpp"
 #include "display/hdr_control.hpp"
 #include "globals.hpp"
-#include "hdr_upgrade/hdr_upgrade.hpp"
-#include "hooks/d3d11/d3d11_device_hooks.hpp"
 #include "hooks/d3d9/d3d9_device_vtable_logging.hpp"
 #include "hooks/d3d9/d3d9_present_hooks.hpp"
 #include "hooks/dxgi/dxgi_factory_wrapper.hpp"
@@ -69,13 +67,6 @@ bool IsInjectedReflexEnabled() { return settings::g_mainTabSettings.inject_refle
 #include <set>
 #include <sstream>
 
-std::atomic<int> target_width = 3840;
-std::atomic<int> target_height = 2160;
-
-bool is_target_resolution(int width, int height) {
-    return width >= 1280 && width <= target_width.load() && height >= 720 && height <= target_height.load()
-           && width * 9 == height * 16;
-}
 std::atomic<bool> g_initialized_with_hwnd{false};
 
 // ============================================================================
@@ -453,16 +444,6 @@ void RecordNativeFrameTime() {
     }
 }
 
-// Convert ComboSetting value to reshade::api::format
-static reshade::api::format GetFormatFromComboValue(int combo_value) {
-    switch (combo_value) {
-        case 0:  return reshade::api::format::r8g8b8a8_unorm;      // R8G8B8A8_UNORM
-        case 1:  return reshade::api::format::r10g10b10a2_unorm;   // R10G10B10A2_UNORM
-        case 2:  return reshade::api::format::r16g16b16a16_float;  // R16G16B16A16_FLOAT
-        default: return reshade::api::format::r8g8b8a8_unorm;      // Default fallback
-    }
-}
-
 // Capture sync interval during create_swapchain
 bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapchain_desc& desc, void* hwnd) {
     CALL_GUARD(utils::get_now_ns());
@@ -705,32 +686,6 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             LogInfo("DXGI Force Flip Discard: Upgraded FLIP_SEQUENTIAL to FLIP_DISCARD");
         }
 
-        // Apply backbuffer format override if enabled (all APIs)
-        if (settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {
-            reshade::api::format original_format = desc.back_buffer.texture.format;
-            reshade::api::format target_format =
-                GetFormatFromComboValue(settings::g_experimentalTabSettings.backbuffer_format_override.GetValue());
-
-            if (original_format != target_format) {
-                desc.back_buffer.texture.format = target_format;
-                modified = true;
-
-                // Log the format change
-                std::ostringstream format_oss;
-                format_oss << "Backbuffer format override: " << static_cast<int>(original_format) << " -> "
-                           << static_cast<int>(target_format);
-                LogInfo("%s", format_oss.str().c_str());
-            }
-        }
-
-        // Swapchain HDR Upgrade (scRGB or HDR10 on create) - Main tab "Swapchain HDR Upgrade". Disabled when RenoDX
-        // addon is loaded.
-        if (!g_is_renodx_loaded.load(std::memory_order_relaxed)
-            && settings::g_mainTabSettings.swapchain_hdr_upgrade.GetValue()) {
-            const bool use_hdr10 = (settings::g_mainTabSettings.swapchain_hdr_upgrade_mode.GetValue() == 1);
-            if (display_commander::hdr_upgrade::ModifyCreateSwapchainDesc(api, desc, use_hdr10)) modified = true;
-        }
-
         // Log sync interval and present flags with detailed explanation
         {
             std::ostringstream oss;
@@ -853,24 +808,6 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             modified = true;
         }
 
-        // Apply backbuffer format override if enabled (all APIs)
-        if (settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {
-            reshade::api::format original_format = desc.back_buffer.texture.format;
-            reshade::api::format target_format =
-                GetFormatFromComboValue(settings::g_experimentalTabSettings.backbuffer_format_override.GetValue());
-
-            if (original_format != target_format) {
-                desc.back_buffer.texture.format = target_format;
-                modified = true;
-
-                // Log the format change
-                std::ostringstream format_oss;
-                format_oss << "OpenGL Backbuffer format override: " << static_cast<int>(original_format) << " -> "
-                           << static_cast<int>(target_format);
-                LogInfo("%s", format_oss.str().c_str());
-            }
-        }
-
         // Log changes if modified
         if (modified) {
             std::ostringstream oss;
@@ -934,24 +871,6 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             modified = true;
         }
 
-        // Apply backbuffer format override if enabled (all APIs)
-        if (settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {
-            reshade::api::format original_format = desc.back_buffer.texture.format;
-            reshade::api::format target_format =
-                GetFormatFromComboValue(settings::g_experimentalTabSettings.backbuffer_format_override.GetValue());
-
-            if (original_format != target_format) {
-                desc.back_buffer.texture.format = target_format;
-                modified = true;
-
-                // Log the format change
-                std::ostringstream format_oss;
-                format_oss << "Vulkan buffer format override: " << static_cast<int>(original_format) << " -> "
-                           << static_cast<int>(target_format);
-                LogInfo("%s", format_oss.str().c_str());
-            }
-        }
-
         // Log changes if modified
         if (modified) {
             std::ostringstream oss;
@@ -1009,7 +928,6 @@ void OnDestroySwapchain(reshade::api::swapchain* swapchain, bool resize) {
     if (hwnd != nullptr && should_skip_addon_injection_for_window(hwnd)) {
         return;
     }
-    display_commander::hdr_upgrade::OnDestroySwapchain(swapchain, resize);
     if (s_we_auto_enabled_hdr.load() && s_hdr_auto_enabled_monitor != nullptr) {
         if (hwnd) {
             HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
@@ -1154,13 +1072,6 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
         ApplyHdr1000MetadataToSwapchain(swapchain);
     }
 
-    // Swapchain HDR Upgrade (init_swapchain: ResizeBuffers + SetColorSpace1 + set_color_space when enabled). Disabled
-    // when RenoDX addon is loaded.
-    if (!g_is_renodx_loaded.load(std::memory_order_relaxed)
-        && settings::g_mainTabSettings.swapchain_hdr_upgrade.GetValue()) {
-        const bool use_hdr10 = (settings::g_mainTabSettings.swapchain_hdr_upgrade_mode.GetValue() == 1);
-        display_commander::hdr_upgrade::OnInitSwapchain(swapchain, resize, use_hdr10);
-    }
 }
 
 static std::atomic<LONGLONG> g_fg2_onpresent_sync_frame_start_ns{0};
@@ -1852,17 +1763,6 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     if (is_dxgi) {
         IUnknown* swapchain_native = reinterpret_cast<IUnknown*>(swapchain->get_native());
         swapchain_native->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain));
-        if (dx_dx11) {
-            if (dxgi_swapchain.Get() != nullptr) {
-                // Hook D3D11 device vtable (same pattern as hookToSwapChain): get device from DXGI swapchain
-                Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device{};
-                if (SUCCEEDED(dxgi_swapchain->GetDevice(IID_PPV_ARGS(&d3d11_device)))
-                    && settings::g_advancedTabSettings.enable_dx11_vtable_hooks.GetValue()) {
-                    display_commanderhooks::d3d11::HookD3D11DeviceVTable(d3d11_device.Get());
-                }
-                // dxgi_swapchain set; AutoSetColorSpace called below when private_data loaded
-            }
-        }
         if (dxgi_swapchain.Get() != nullptr) {
             dxgi_swapchain_for_save = dxgi_swapchain.Get();
             display_commanderhooks::dxgi::LoadDCDxgiSwapchainData(dxgi_swapchain_for_save, &private_data);
@@ -2091,81 +1991,6 @@ void OnPresentFlags2(bool from_present_detour, bool frame_generation_aware) {
     }
 }
 
-// Resource creation event handler to upgrade buffer resolutions and texture
-// formats
-void OnDestroyResource(reshade::api::device* device, reshade::api::resource resource) {
-    CALL_GUARD(utils::get_now_ns());
-    if (device == nullptr) {
-        return;
-    }
-    // Resource destruction tracking
-    // Add any cleanup logic here if needed
-}
-
-bool OnCreateResource(reshade::api::device* device, reshade::api::resource_desc& desc,
-                      reshade::api::subresource_data* /*initial_data*/, reshade::api::resource_usage /*usage*/) {
-    CALL_GUARD(utils::get_now_ns());
-    bool modified = false;
-
-    // Only handle 2D textures
-    if (desc.type != reshade::api::resource_type::texture_2d) {
-        return false;  // No modification needed
-    }
-
-    if (!is_target_resolution(desc.texture.width, desc.texture.height)) {
-        return false;  // No modification needed
-    }
-
-    // Handle buffer resolution upgrade if enabled
-    if (settings::g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue()) {
-        uint32_t original_width = desc.texture.width;
-        uint32_t original_height = desc.texture.height;
-
-        if (original_width != target_width || original_height != target_height) {
-            desc.texture.width = target_width;
-            desc.texture.height = target_height;
-
-            LogInfo("ZZZ Buffer resolution upgrade: %d,%d %dx%d -> %d,%d %dx%d", original_width, original_height,
-                    original_width, original_height, target_width.load(), target_height.load(), target_width.load(),
-                    target_height.load());
-
-            modified = true;
-        }
-    }
-
-    if (settings::g_experimentalTabSettings.texture_format_upgrade_enabled.GetValue()) {
-        reshade::api::format original_format = desc.texture.format;
-        reshade::api::format target_format = reshade::api::format::r16g16b16a16_float;  // RGB16A16
-
-        // Only upgrade certain formats to RGB16A16
-        bool should_upgrade_format = false;
-        switch (original_format) {
-            case reshade::api::format::r8g8b8a8_typeless:
-            case reshade::api::format::r8g8b8a8_unorm_srgb:
-            case reshade::api::format::r8g8b8a8_unorm:
-            case reshade::api::format::b8g8r8a8_unorm:
-            case reshade::api::format::r8g8b8a8_snorm:
-            case reshade::api::format::b8g8r8a8_typeless:
-            case reshade::api::format::r8g8b8a8_uint:
-            case reshade::api::format::r8g8b8a8_sint:       should_upgrade_format = true; break;
-            default:
-                // Don't upgrade formats that are already high precision or special
-                // formats
-                break;
-        }
-
-        if (should_upgrade_format && original_format != target_format) {
-            desc.texture.format = target_format;
-
-            LogInfo("ZZZ Texture format upgrade: %d -> %d (RGB16A16) at %d,%d", static_cast<int>(original_format),
-                    static_cast<int>(target_format), desc.texture.width, desc.texture.height);
-            modified = true;
-        }
-    }
-
-    return modified;
-}
-
 // Sampler creation event handler to override mipmap bias and anisotropic filtering
 bool OnCreateSampler(reshade::api::device* device, reshade::api::sampler_desc& desc) {
     CALL_GUARD(utils::get_now_ns());
@@ -2334,132 +2159,12 @@ bool OnCreateSampler(reshade::api::device* device, reshade::api::sampler_desc& d
     return modified;
 }
 
-// Resource view creation event handler to upgrade render target views for
-// buffer resolution and texture format upgrades
 bool OnCreateResourceView(reshade::api::device* device, reshade::api::resource resource,
                           reshade::api::resource_usage usage_type, reshade::api::resource_view_desc& desc) {
     CALL_GUARD(utils::get_now_ns());
-    bool modified = false;
-
-    if (!device) return false;
-
-    reshade::api::resource_desc resource_desc = device->get_resource_desc(resource);
-
-    if (resource_desc.type != reshade::api::resource_type::texture_2d) {
-        return false;  // No modification needed
-    }
-
-    if (!is_target_resolution(resource_desc.texture.width, resource_desc.texture.height)) {
-        return false;  // No modification needed
-    }
-
-    if (settings::g_experimentalTabSettings.texture_format_upgrade_enabled.GetValue()) {
-        reshade::api::format resource_format = resource_desc.texture.format;
-        reshade::api::format target_format = reshade::api::format::r16g16b16a16_float;  // RGB16A16
-
-        if (resource_format == target_format) {
-            reshade::api::format original_view_format = desc.format;
-
-            switch (original_view_format) {
-                case reshade::api::format::r8g8b8a8_typeless:
-                case reshade::api::format::r8g8b8a8_unorm_srgb:
-                case reshade::api::format::r8g8b8a8_unorm:
-                case reshade::api::format::b8g8r8a8_unorm:
-                case reshade::api::format::r8g8b8a8_snorm:
-                case reshade::api::format::r8g8b8a8_uint:
-                case reshade::api::format::r8g8b8a8_sint:
-                    desc.format = target_format;
-
-                    LogInfo("ZZZ Resource view format upgrade: %d -> %d (RGB16A16)",
-                            static_cast<int>(original_view_format), static_cast<int>(target_format));
-
-                    return true;
-                default:
-                    // Don't upgrade view formats that are already high precision or special
-                    // formats
-                    break;
-            }
-        }
-    }
-
-    if (!g_is_renodx_loaded.load(std::memory_order_relaxed)
-        && display_commander::hdr_upgrade::OnCreateResourceView(device, resource, usage_type, desc)) {
-        modified = true;
-    }
-
-    return modified;
-}
-
-// Viewport event handler to scale viewports for buffer resolution upgrade
-void OnSetViewport(reshade::api::command_list* cmd_list, uint32_t first, uint32_t count,
-                   const reshade::api::viewport* viewports) {
-    CALL_GUARD(utils::get_now_ns());
-    // Only handle viewport scaling if buffer resolution upgrade is enabled
-    if (!settings::g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue()) {
-        return;  // No modification needed
-    }
-
-    // Get the current backbuffer to determine if we need to scale
-    auto* device = cmd_list->get_device();
-    if (!device) return;
-
-    // Create scaled viewports only for matching dimensions
-    std::vector<reshade::api::viewport> scaled_viewports(viewports, viewports + count);
-    for (auto& viewport : scaled_viewports) {
-        // Only scale viewports that match the source resolution
-        if (is_target_resolution(viewport.width, viewport.height)) {
-            double scale_width = target_width.load() / viewport.width;
-            double scale_height = target_height.load() / viewport.height;
-            viewport = {
-                static_cast<float>(viewport.x * scale_width),        // x
-                static_cast<float>(viewport.y * scale_height),       // y
-                static_cast<float>(viewport.width * scale_width),    // width (1280 -> 1280*scale)
-                static_cast<float>(viewport.height * scale_height),  // height (720 -> 720*scale)
-                viewport.min_depth,                                  // min_depth
-                viewport.max_depth                                   // max_depth
-            };
-            LogInfo("ZZZ Viewport scaling: %d,%d %dx%d -> %d,%d %dx%d", viewport.x, viewport.y, viewport.width,
-                    viewport.height, viewport.x, viewport.y, viewport.width, viewport.height);
-        }
-    }
-
-    // Set the scaled viewports - this will override the original viewport setting
-    cmd_list->bind_viewports(first, count, scaled_viewports.data());
-}
-
-// Scissor rectangle event handler to scale scissor rectangles for buffer
-// resolution upgrade
-void OnSetScissorRects(reshade::api::command_list* cmd_list, uint32_t first, uint32_t count,
-                       const reshade::api::rect* rects) {
-    CALL_GUARD(utils::get_now_ns());
-    // Only handle scissor scaling if buffer resolution upgrade is enabled
-    if (!settings::g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue()) {
-        return;  // No modification needed
-    }
-
-    int mode = settings::g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue();
-    int scale_factor = settings::g_experimentalTabSettings.buffer_resolution_upgrade_scale_factor.GetValue();
-
-    // Create scaled scissor rectangles only for matching dimensions
-    std::vector<reshade::api::rect> scaled_rects(rects, rects + count);
-
-    for (auto& rect : scaled_rects) {
-        // Only scale scissor rectangles that match the source resolution
-        if (is_target_resolution(rect.right - rect.left, rect.bottom - rect.top)) {
-            double scale_width = target_width.load() / (rect.right - rect.left);
-            double scale_height = target_height.load() / (rect.bottom - rect.top);
-            rect = {
-                static_cast<int32_t>(round(rect.left * scale_width)),    // left
-                static_cast<int32_t>(round(rect.top * scale_height)),    // top
-                static_cast<int32_t>(round(rect.right * scale_width)),   // right
-                static_cast<int32_t>(round(rect.bottom * scale_height))  // bottom
-            };
-
-            LogInfo("ZZZ Scissor scaling: %d,%d %dx%d -> %d,%d %dx%d", rect.left, rect.top, rect.right - rect.left,
-                    rect.bottom - rect.top, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
-        }
-    }
-
-    // Set the scaled scissor rectangles
-    cmd_list->bind_scissor_rects(first, count, scaled_rects.data());
+    (void)device;
+    (void)resource;
+    (void)usage_type;
+    (void)desc;
+    return false;
 }

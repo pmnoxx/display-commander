@@ -14,6 +14,10 @@ Feature protosal:
 
 ## Unreleased
 
+- [ui] **Addons tab ReShade headers removed** - Removed the “ReShade Config” and “Global ReShade” collapsible header labels from the Addons tab so the controls are always visible.
+  Details: updated `src/addons/display_commander/ui/new_ui/addons_tab.cpp`.
+- [removal] [ui] **Suppress ReShade clock option removed** - Removed the “Suppress ReShade Clock” option and its override, so Display Commander no longer forces ReShade `OVERLAY.ShowClock=0`.
+  Details: removed UI + `ShowClock` override from `src/addons/display_commander/ui/new_ui/addons_tab.cpp` and `src/addons/display_commander/main_entry.cpp`.
 - [removal] [cleanup] [hooks] **Swapchain power-saving GPU event handlers removed** - Removed the background power-saving ReShade event handlers module (`swapchain_events_power_saving`) so DC no longer suppresses dispatch/copy/update/draw-related GPU operations via this feature path.
   Details: removed the module integration from `src/addons/display_commander/main_entry.cpp` and `src/addons/display_commander/swapchain_events.cpp`, and deleted `src/addons/display_commander/swapchain_events_power_saving.cpp`.
 - [removal] [cleanup] **RunDLL NvAPI SetDWORD entry points removed** - Display Commander no longer exposes `RunDLL_NvAPI_SetDWORD` and the helper `RunNvApiSetDwordAsAdmin`, removing the rundll32/UAC elevation workflow for per-exe NVAPI profile setting edits.

@@ -2,13 +2,7 @@
 
 namespace settings {
 
-ReShadeTabSettings::ReShadeTabSettings()
-    : suppress_reshade_clock("SuppressReShadeClock", true, "DisplayCommander.ReShade") {
-    // Initialize all_settings_ vector
-    all_settings_ = {
-        &suppress_reshade_clock,
-    };
-}
+ReShadeTabSettings::ReShadeTabSettings() = default;
 
 void ReShadeTabSettings::LoadAll() {
     for (auto* setting : all_settings_) {

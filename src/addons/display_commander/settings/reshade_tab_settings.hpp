@@ -7,7 +7,6 @@
 namespace settings {
 
 // Bring setting types into scope
-using ui::new_ui::BoolSetting;
 using ui::new_ui::SettingBase;
 
 // Settings manager for the reshade tab
@@ -21,9 +20,6 @@ class ReShadeTabSettings {
 
     // Get all settings for loading
     std::vector<SettingBase*> GetAllSettings();
-
-    // Suppress ReShade's clock setting
-    BoolSetting suppress_reshade_clock;
 
   private:
     std::vector<SettingBase*> all_settings_;

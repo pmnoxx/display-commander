@@ -713,17 +713,6 @@ bool GetEffectiveNativePacingSimStartOnly();
 bool GetEffectiveDelayPresentStartAfterSimEnabled();
 bool GetEffectiveSafeModeFpsLimiter();
 
-// Thread tracking for frame pacing debug (Experimental tab, default off)
-constexpr size_t kLatencyMarkerTypeCountFirstSix = 6;  // SIMULATION_START..PRESENT_END
-/** When true, record calling thread ID in latency marker detour and ChooseFpsLimiter (synced from UI). */
-extern std::atomic<bool> g_thread_tracking_enabled;
-/** Last thread ID that called NvAPI_D3D_SetLatencyMarker_Detour for each of the first 6 marker types (0 = not set). */
-extern std::atomic<DWORD> g_latency_marker_thread_id[kLatencyMarkerTypeCountFirstSix];
-/** Last frame_id reported with each of the first 6 Reflex marker types (0 = not yet reported). */
-extern std::atomic<uint64_t> g_latency_marker_last_frame_id[kLatencyMarkerTypeCountFirstSix];
-/** Last thread ID that called ChooseFpsLimiter for each FpsLimiterCallSite (0 = not set). */
-extern std::atomic<DWORD> g_fps_limiter_site_thread_id[kFpsLimiterCallSiteCount];
-
 // Global Swapchain Tracking Manager instance
 extern SwapchainTrackingManager g_swapchainTrackingManager;
 
@@ -1149,6 +1138,8 @@ extern std::array<std::atomic<uint32_t>, NUM_NVAPI_EVENTS> g_nvapi_event_counter
 // NVAPI sleep timestamp tracking
 extern std::atomic<uint64_t> g_nvapi_last_sleep_timestamp_ns;  // Last NVAPI_D3D_Sleep call timestamp in nanoseconds
 extern std::atomic<bool> g_native_reflex_detected;             // Native Reflex detected via SetLatencyMarker calls
+/** First six NVAPI latency marker types (SIMULATION_START..PRESENT_END); array sizes for per-marker tracking. */
+constexpr size_t kLatencyMarkerTypeCountFirstSix = 6;
 /** For each of the first 6 marker types (0..5), last g_global_frame_id when we received that marker (0 = not yet). */
 extern std::atomic<uint64_t> g_nvapi_d3d_last_global_frame_id_by_marker_type[kLatencyMarkerTypeCountFirstSix];
 /** Last g_global_frame_id when NvAPI_D3D_Sleep was called (0 = not yet). For DXGI native Reflex status OK/FAIL. */

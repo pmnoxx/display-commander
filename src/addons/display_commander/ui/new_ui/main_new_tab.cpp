@@ -1630,7 +1630,7 @@ void InitMainNewTab() {
     }
 }
 
-// Main tab optional panels: stable order tokens (used by Advanced Settings UI and DrawMainTabOptionalPanelsInOrder).
+// Main tab optional panels: fixed draw order in DrawMainTabOptionalPanelsInOrder (not user-configurable).
 enum class MainTabOptionalSectionKind {
     TextureFiltering,
     AudioControl,
@@ -1644,117 +1644,15 @@ enum class MainTabOptionalSectionKind {
     DxgiControl,
 };
 
-static constexpr const char kMainTabOptionalSectionOrderDefault[] =
-    "texture_filtering,audio_control,cpu_control,window_buttons,overlay_windows,input_control,"
-    "nvidia_control,dlss_control,dxgi_control,dc_folders";
-
-static const char* MainTabOptionalSectionId(MainTabOptionalSectionKind k) {
-    switch (k) {
-        case MainTabOptionalSectionKind::TextureFiltering: return "texture_filtering";
-        case MainTabOptionalSectionKind::AudioControl: return "audio_control";
-        case MainTabOptionalSectionKind::CpuControl: return "cpu_control";
-        case MainTabOptionalSectionKind::WindowButtons: return "window_buttons";
-        case MainTabOptionalSectionKind::OverlayWindows: return "overlay_windows";
-        case MainTabOptionalSectionKind::DcFolders: return "dc_folders";
-        case MainTabOptionalSectionKind::InputControl: return "input_control";
-        case MainTabOptionalSectionKind::NvidiaControl: return "nvidia_control";
-        case MainTabOptionalSectionKind::DlssControl: return "dlss_control";
-        case MainTabOptionalSectionKind::DxgiControl: return "dxgi_control";
-    }
-    return "";
-}
-
-static MainTabOptionalSectionKind MainTabOptionalSectionKindFromId(const std::string& tok) {
-    if (tok == "texture_filtering") return MainTabOptionalSectionKind::TextureFiltering;
-    if (tok == "audio_control") return MainTabOptionalSectionKind::AudioControl;
-    if (tok == "cpu_control") return MainTabOptionalSectionKind::CpuControl;
-    if (tok == "window_buttons") return MainTabOptionalSectionKind::WindowButtons;
-    if (tok == "overlay_windows") return MainTabOptionalSectionKind::OverlayWindows;
-    if (tok == "dc_folders") return MainTabOptionalSectionKind::DcFolders;
-    if (tok == "input_control") return MainTabOptionalSectionKind::InputControl;
-    if (tok == "nvidia_control") return MainTabOptionalSectionKind::NvidiaControl;
-    if (tok == "dlss_control") return MainTabOptionalSectionKind::DlssControl;
-    if (tok == "dxgi_control") return MainTabOptionalSectionKind::DxgiControl;
-    return MainTabOptionalSectionKind::TextureFiltering;
-}
-
-static bool MainTabOptionalSectionIdValid(const std::string& tok) {
-    return tok == "texture_filtering" || tok == "audio_control"
-           || tok == "cpu_control" || tok == "window_buttons" || tok == "overlay_windows" || tok == "dc_folders"
-           || tok == "input_control" || tok == "nvidia_control" || tok == "dlss_control"
-           || tok == "dxgi_control";
-}
-
-static void MainTabOptionalTrimInPlace(std::string& s) {
-    const char* ws = " \t\r\n";
-    auto start = s.find_first_not_of(ws);
-    if (start == std::string::npos) {
-        s.clear();
-        return;
-    }
-    auto end = s.find_last_not_of(ws);
-    s = s.substr(start, end - start + 1);
-}
-
-static std::vector<MainTabOptionalSectionKind> MainTabParseOptionalSectionOrder(const std::string& raw) {
-    static constexpr MainTabOptionalSectionKind kDefaultSeq[] = {
-        MainTabOptionalSectionKind::TextureFiltering, MainTabOptionalSectionKind::AudioControl,
-        MainTabOptionalSectionKind::CpuControl,       MainTabOptionalSectionKind::WindowButtons,
-        MainTabOptionalSectionKind::OverlayWindows,   MainTabOptionalSectionKind::InputControl,
-        MainTabOptionalSectionKind::NvidiaControl,    MainTabOptionalSectionKind::DlssControl,
-        MainTabOptionalSectionKind::DxgiControl,      MainTabOptionalSectionKind::DcFolders,
-    };
-    bool seen[10] = {};
-    std::vector<MainTabOptionalSectionKind> out;
-    out.reserve(10);
-    std::string cur;
-    for (size_t i = 0; i <= raw.size(); ++i) {
-        if (i < raw.size() && raw[i] != ',') {
-            cur.push_back(raw[i]);
-            continue;
-        }
-        MainTabOptionalTrimInPlace(cur);
-        if (!cur.empty() && MainTabOptionalSectionIdValid(cur)) {
-            MainTabOptionalSectionKind kind = MainTabOptionalSectionKindFromId(cur);
-            int idx = static_cast<int>(kind);
-            if (idx >= 0 && idx < 10 && !seen[idx]) {
-                seen[idx] = true;
-                out.push_back(kind);
-            }
-        }
-        cur.clear();
-    }
-    for (MainTabOptionalSectionKind k : kDefaultSeq) {
-        int idx = static_cast<int>(k);
-        if (!seen[idx]) out.push_back(k);
-    }
-    return out;
-}
-
-static std::string MainTabSerializeOptionalSectionOrder(const std::vector<MainTabOptionalSectionKind>& order) {
-    std::string s;
-    for (size_t i = 0; i < order.size(); ++i) {
-        if (i) s += ',';
-        s += MainTabOptionalSectionId(order[i]);
-    }
-    return s;
-}
-
-static const char* MainTabOptionalSectionDisplayName(MainTabOptionalSectionKind k) {
-    switch (k) {
-        case MainTabOptionalSectionKind::TextureFiltering: return "Texture Filtering";
-        case MainTabOptionalSectionKind::AudioControl: return "Audio Control";
-        case MainTabOptionalSectionKind::CpuControl: return "CPU Control";
-        case MainTabOptionalSectionKind::WindowButtons: return "Window action buttons";
-        case MainTabOptionalSectionKind::OverlayWindows: return "Overlay Windows";
-        case MainTabOptionalSectionKind::DcFolders: return "DC folders";
-        case MainTabOptionalSectionKind::InputControl: return "Input Control";
-        case MainTabOptionalSectionKind::NvidiaControl: return "NVIDIA Control";
-        case MainTabOptionalSectionKind::DlssControl: return "DLSS Control";
-        case MainTabOptionalSectionKind::DxgiControl: return "DXGI Control";
-    }
-    return "";
-}
+static constexpr MainTabOptionalSectionKind kMainTabOptionalPanelsDrawOrder[] = {
+    MainTabOptionalSectionKind::TextureFiltering, MainTabOptionalSectionKind::AudioControl,
+    MainTabOptionalSectionKind::CpuControl,         MainTabOptionalSectionKind::WindowButtons,
+    MainTabOptionalSectionKind::OverlayWindows,     MainTabOptionalSectionKind::InputControl,
+    MainTabOptionalSectionKind::NvidiaControl,      MainTabOptionalSectionKind::DlssControl,
+    MainTabOptionalSectionKind::DxgiControl,        MainTabOptionalSectionKind::DcFolders,
+};
+static constexpr size_t kMainTabOptionalPanelsDrawOrderCount =
+    sizeof(kMainTabOptionalPanelsDrawOrder) / sizeof(kMainTabOptionalPanelsDrawOrder[0]);
 
 static void DrawMainTabOptionalPanelsAdvancedSettingsUi(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Spacing();
@@ -1833,45 +1731,6 @@ static void DrawMainTabOptionalPanelsAdvancedSettingsUi(display_commander::ui::I
         imgui.SetTooltipEx(
             "DXGI-only: HDR10/scRGB color fix toggle, flip-discard upgrade (when applicable), max frame latency, and "
             "swapchain buffer count (moved out of VSync & Tearing).");
-    }
-
-    imgui.Spacing();
-    imgui.TextUnformatted("Panel order (when multiple are enabled)");
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Draw order for optional panels on the Main tab. Window Control stays below this block.");
-    }
-    std::vector<MainTabOptionalSectionKind> order =
-        MainTabParseOptionalSectionOrder(settings::g_mainTabSettings.main_tab_optional_section_order.GetValue());
-    for (size_t i = 0; i < order.size(); ++i) {
-        char up_id[48];
-        snprintf(up_id, sizeof(up_id), "Up##mtopt%u", static_cast<unsigned>(i));
-        char down_id[48];
-        snprintf(down_id, sizeof(down_id), "Down##mtopt%u", static_cast<unsigned>(i));
-
-        imgui.BulletText("%s", MainTabOptionalSectionDisplayName(order[i]));
-        imgui.SameLine();
-        if (i == 0) imgui.BeginDisabled();
-        if (imgui.SmallButton(up_id)) {
-            std::swap(order[i], order[i - 1]);
-            settings::g_mainTabSettings.main_tab_optional_section_order.SetValue(
-                MainTabSerializeOptionalSectionOrder(order));
-            LogInfo("Main tab optional panel order updated");
-        }
-        if (i == 0) imgui.EndDisabled();
-        imgui.SameLine();
-        if (i + 1 >= order.size()) imgui.BeginDisabled();
-        if (imgui.SmallButton(down_id)) {
-            std::swap(order[i], order[i + 1]);
-            settings::g_mainTabSettings.main_tab_optional_section_order.SetValue(
-                MainTabSerializeOptionalSectionOrder(order));
-            LogInfo("Main tab optional panel order updated");
-        }
-        if (i + 1 >= order.size()) imgui.EndDisabled();
-    }
-    if (imgui.Button("Reset panel order to default")) {
-        settings::g_mainTabSettings.main_tab_optional_section_order.SetValue(kMainTabOptionalSectionOrderDefault);
-        LogInfo("Main tab optional panel order reset to default");
     }
 
     imgui.Unindent();
@@ -1957,17 +1816,6 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
         }
     }
 
-    if (ui::new_ui::g_tab_manager.HasTab("performance")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_performance_tab, "Show Performance Tab", imgui)) {
-            LogInfo("Show Performance tab %s",
-                    settings::g_mainTabSettings.show_performance_tab.GetValue() ? "enabled" : "disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Shows the Performance tab (experimental measurements) even when 'Show All Tabs' is disabled.");
-        }
-    }
-
     if (ui::new_ui::g_tab_manager.HasTab("experimental")) {
         if (CheckboxSetting(settings::g_mainTabSettings.show_experimental_tab, "Show Debug Tab", imgui)) {
             LogInfo("Show Debug tab %s",
@@ -1985,39 +1833,6 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx("Shows the ReShade/Addons tab even when 'Show All Tabs' is disabled.");
-        }
-    }
-
-    if (ui::new_ui::g_tab_manager.HasTab("vulkan")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_vulkan_tab, "Show Vulkan (Experimental) tab", imgui)) {
-            LogInfo("Show Vulkan (Experimental) tab %s",
-                    settings::g_mainTabSettings.show_vulkan_tab.GetValue() ? "enabled" : "disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Shows the Vulkan (Experimental) tab for Reflex / frame pacing controls and debug info.\n"
-                "The tab is only present in builds compiled with CMake option EXPERIMENTAL_FEATURES=ON.");
-        }
-    }
-
-    if (ui::new_ui::g_tab_manager.HasTab("notes")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_notes_tab, "Show Notes Tab", imgui)) {
-            LogInfo("Show Notes tab %s",
-                    settings::g_mainTabSettings.show_notes_tab.GetValue() ? "enabled" : "disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Shows the Notes tab for per-game notes (stored in Display_Commander\\Games\\<game>\\notes.txt).");
-        }
-    }
-
-    if (ui::new_ui::g_tab_manager.HasTab("nvidia_profile")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_nvidia_profile_tab, "Show NVIDIA Profile Tab", imgui)) {
-            LogInfo("Show NVIDIA Profile tab %s",
-                    settings::g_mainTabSettings.show_nvidia_profile_tab.GetValue() ? "enabled" : "disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Show the NVIDIA Profile tab (driver profile, FPS limit, DLSS presets for this game).");
         }
     }
 
@@ -2608,7 +2423,6 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
     }
     std::filesystem::path dc_reshade_root = GetDisplayCommanderReshadeRootFolder();
     std::filesystem::path dc_addons = GetDisplayCommanderAddonsFolder();
-    std::filesystem::path default_files = GetDefaultFilesFolder();
     std::filesystem::path reshade_global = GetGlobalReshadeDirectory();
     std::filesystem::path dlss_override = GetDefaultDlssOverrideFolder();
     const bool show_backup_btn = backup_effective;
@@ -2622,7 +2436,7 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
     }
     std::string default_settings_path = display_commander::config::GetDefaultSettingsFilePath();
     display_commander::config::LoadDefaultSettingsFile();  // ensure file exists so Open can open it
-    imgui.Columns(show_backup_btn ? 7 : 6, "dc_folders_buttons", false);
+    imgui.Columns(show_backup_btn ? 6 : 5, "dc_folders_buttons", false);
     if (dc_reshade_root.empty()) {
         imgui.BeginDisabled();
     }
@@ -2664,23 +2478,6 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
     }
     if (dc_addons.empty()) {
         imgui.EndDisabled();
-    }
-    imgui.NextColumn();
-    if (imgui.Button(ICON_FK_FOLDER_OPEN " Default Files")) {
-        std::error_code ec;
-        std::filesystem::create_directories(default_files, ec);
-        std::string folder_str = default_files.string();
-        std::thread([folder_str]() {
-            HINSTANCE result = ShellExecuteA(nullptr, "explore", folder_str.c_str(), nullptr, nullptr, SW_SHOW);
-            if (reinterpret_cast<intptr_t>(result) <= 32) {
-                LogError("Failed to open DefaultFiles folder: %s (Error: %ld)", folder_str.c_str(),
-                         static_cast<long>(reinterpret_cast<intptr_t>(result)));
-            }
-        }).detach();
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx("Files here are copied to the game folder when missing (e.g. ReShadeProfile.ini). Path: %s",
-                           default_files.string().c_str());
     }
     imgui.NextColumn();
     if (default_settings_path.empty()) {
@@ -3915,7 +3712,8 @@ static void DrawMainTabOptionalPanelDlssControl(display_commander::ui::GraphicsA
             }
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltipEx(
-                    "NvLowLatencyVk status. Enable NvLowLatencyVk hooks in Vulkan tab for frame pacing.");
+                    "NvLowLatencyVk status. Hooks install when the NvLowLatencyVk option is enabled in your saved "
+                    "Display Commander configuration.");
             }
         } else {
             imgui.TextColored(ui::colors::TEXT_DIMMED, "NvLowLatencyVk.dll not loaded");
@@ -3931,7 +3729,8 @@ static void DrawMainTabOptionalPanelDlssControl(display_commander::ui::GraphicsA
             }
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltipEx(
-                    "Vulkan loader status. Enable vulkan-1 loader hooks in Vulkan tab for frame pacing.");
+                    "Vulkan loader status. Hooks install when the vulkan-1 loader hook option is enabled in your "
+                    "saved Display Commander configuration.");
             }
         } else {
             imgui.TextColored(ui::colors::TEXT_DIMMED, "vulkan-1.dll not loaded");
@@ -4266,9 +4065,8 @@ static void DrawMainTabOptionalPanelDxgiControl(display_commander::ui::GraphicsA
 static void DrawMainTabOptionalPanelsInOrder(display_commander::ui::GraphicsApi api,
                                              display_commander::ui::IImGuiWrapper& imgui,
                                              reshade::api::effect_runtime* runtime) {
-    const std::vector<MainTabOptionalSectionKind> order =
-        MainTabParseOptionalSectionOrder(settings::g_mainTabSettings.main_tab_optional_section_order.GetValue());
-    for (MainTabOptionalSectionKind k : order) {
+    for (size_t oi = 0; oi < kMainTabOptionalPanelsDrawOrderCount; ++oi) {
+        const MainTabOptionalSectionKind k = kMainTabOptionalPanelsDrawOrder[oi];
         switch (k) {
             case MainTabOptionalSectionKind::DcFolders:
                 if (settings::g_mainTabSettings.show_main_tab_dc_folders.GetValue()) {

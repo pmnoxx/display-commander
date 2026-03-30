@@ -1,6 +1,6 @@
 // Source Code <Display Commander>
 // Shared hook table entry for module-based detours (GetProcAddress + MinHook).
-// Used by: api_hooks (user32/kernel32), ddraw_present_hooks, display_settings_hooks, dxgi_hooks, dxgi_present_hooks,
+// Used by: api_hooks (user32/kernel32), ddraw_present_hooks, display_settings_hooks, dxgi_present_hooks,
 // opengl_hooks, timeslowdown_hooks, vulkan_loader_hooks, streamline_hooks, nvlowlatencyvk_hooks, ngx_hooks. Uses void* to avoid pulling in Windows.h here.
 
 #pragma once

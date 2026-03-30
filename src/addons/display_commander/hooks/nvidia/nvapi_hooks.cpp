@@ -123,8 +123,6 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
     LogInfoThrottled(1, "NvAPI_D3D_SetLatencyMarker_Detour: First call for frame %llu",
                      g_global_frame_id.load(std::memory_order_acquire));
 
-    // Thread tracking for first 6 marker types (SIMULATION_START..PRESENT_END)
-
     // Mark native Reflex as active when we see SetLatencyMarker from game or Streamline (sl.chi/sl.reflex).
     // Without this, g_native_reflex_detected stays false and IsNativeReflexActive() is false, so
     // SetSleepMode_Detour and Sleep_Detour return early and never forward to the driver, preventing
@@ -139,12 +137,6 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
         return send_present_end_to_driver();
     }
 
-    if (g_thread_tracking_enabled.load(std::memory_order_relaxed)) {
-        if (marker_type >= 0 && marker_type < static_cast<int>(kLatencyMarkerTypeCountFirstSix)) {
-            g_latency_marker_thread_id[marker_type].store(GetCurrentThreadId(), std::memory_order_relaxed);
-            g_latency_marker_last_frame_id[marker_type].store(frame_id, std::memory_order_relaxed);
-        }
-    }
     // Cyclic buffer: record timestamp when this marker was called, keyed by (frame_id, markerType)
     if (marker_type >= 0 && marker_type < static_cast<int>(kLatencyMarkerTypeCount)) {
         const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);

@@ -13,8 +13,6 @@
 #include "experimental_tab.hpp"
 #include "hotkeys_tab.hpp"
 #include "main_new_tab.hpp"
-#include "notes_tab.hpp"
-#include "performance_tab.hpp"
 #include "swapchain_hdr_metadata.hpp"
 
 // Libraries <ReShade> / <imgui>
@@ -152,14 +150,6 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime, display_commander::
                 tab_enabled = settings::g_mainTabSettings.show_experimental_tab.GetValue();
             } else if (tab_id == "reshade") {
                 tab_enabled = settings::g_mainTabSettings.show_reshade_tab.GetValue();
-            } else if (tab_id == "performance") {
-                tab_enabled = settings::g_mainTabSettings.show_performance_tab.GetValue();
-            } else if (tab_id == "vulkan") {
-                tab_enabled = settings::g_mainTabSettings.show_vulkan_tab.GetValue();
-            } else if (tab_id == "notes") {
-                tab_enabled = settings::g_mainTabSettings.show_notes_tab.GetValue();
-            } else if (tab_id == "nvidia_profile") {
-                tab_enabled = settings::g_mainTabSettings.show_nvidia_profile_tab.GetValue();
             }
 
             // Show tab if individual setting is enabled OR "Show All Tabs" is enabled
@@ -217,14 +207,6 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime, display_commander::
                         tab_enabled = settings::g_mainTabSettings.show_experimental_tab.GetValue();
                     } else if (tab_id == "reshade") {
                         tab_enabled = settings::g_mainTabSettings.show_reshade_tab.GetValue();
-                    } else if (tab_id == "performance") {
-                        tab_enabled = settings::g_mainTabSettings.show_performance_tab.GetValue();
-                    } else if (tab_id == "vulkan") {
-                        tab_enabled = settings::g_mainTabSettings.show_vulkan_tab.GetValue();
-                    } else if (tab_id == "notes") {
-                        tab_enabled = settings::g_mainTabSettings.show_notes_tab.GetValue();
-                    } else if (tab_id == "nvidia_profile") {
-                        tab_enabled = settings::g_mainTabSettings.show_nvidia_profile_tab.GetValue();
                     }
 
                     // Show tab if individual setting is enabled OR "Show All Tabs" is enabled
@@ -339,38 +321,6 @@ void InitializeNewUI() {
         },
         true);  // Controller tab is advanced
 
-    // Add performance tab conditionally based on advanced settings
-    g_tab_manager.AddTab(
-        "Performance", "performance",
-        [](reshade::api::effect_runtime* runtime) {
-            try {
-                display_commander::ui::ImGuiWrapperReshade wrapper;
-                ui::new_ui::DrawPerformanceTab(wrapper);
-            } catch (const std::exception& e) {
-                LogError("Error drawing performance tab: %s", e.what());
-            } catch (...) {
-                LogError("Unknown error drawing performance tab");
-            }
-        },
-        true);  // Performance tab is advanced
-
-
-    // Notes tab (per-game notes; hidden by default)
-    g_tab_manager.AddTab(
-        "Notes", "notes",
-        [](reshade::api::effect_runtime* runtime) {
-            (void)runtime;
-            try {
-                display_commander::ui::ImGuiWrapperReshade wrapper;
-                ui::new_ui::DrawNotesTab(wrapper);
-            } catch (const std::exception& e) {
-                LogError("Error drawing Notes tab: %s", e.what());
-            } catch (...) {
-                LogError("Unknown error drawing Notes tab");
-            }
-        },
-        true);  // Notes tab is advanced (not shown by default)
-
     // Add reshade tab
     g_tab_manager.AddTab(
         "ReShade", "reshade",
@@ -385,20 +335,6 @@ void InitializeNewUI() {
             }
         },
         true);  // ReShade tab is advanced
-
-    // NVIDIA Profile tab (opt-in via "Show NVIDIA Profile Tab" checkbox; default off)
-    g_tab_manager.AddTab(
-        "NVIDIA Profile", "nvidia_profile",
-        [](reshade::api::effect_runtime* runtime) {
-            try {
-                ui::new_ui::DrawNvidiaProfileTab(runtime);
-            } catch (const std::exception& e) {
-                LogError("Error drawing NVIDIA Profile tab: %s", e.what());
-            } catch (...) {
-                LogError("Unknown error drawing NVIDIA Profile tab");
-            }
-        },
-        true);  // Advanced: visible only when show_nvidia_profile_tab is enabled
 
     // Add Debug tab last (experimental/debug features; id kept as "experimental" for settings)
     if (enabled_experimental_features) {

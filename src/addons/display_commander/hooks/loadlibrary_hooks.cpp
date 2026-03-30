@@ -39,7 +39,6 @@
 #include "../utils/srwlock_wrapper.hpp"
 #include "vulkan/nvlowlatencyvk_hooks.hpp"
 #include "vulkan/vulkan_loader_hooks.hpp"
-#include "windows_hooks/api_hooks.hpp"
 
 #include <reshade.hpp>
 
@@ -1606,86 +1605,6 @@ std::vector<std::string> ReportMissedModulesOnExit() {
     return missed;
 }
 
-// Known REFramework host processes where plugin DLLs may not include "reframework\plugins" in the path.
-static bool IsReFrameworkGame() {
-    wchar_t exe_path[MAX_PATH] = {};
-    if (GetModuleFileNameW(nullptr, exe_path, MAX_PATH) == 0) {
-        return false;
-    }
-    std::wstring exe_name = std::filesystem::path(exe_path).filename().wstring();
-    std::transform(exe_name.begin(), exe_name.end(), exe_name.begin(), ::towlower);
-    return exe_name == L"re4.exe" || exe_name == L"re9.exe";
-}
-
-// Helper function to check if any loaded module has "reframework\plugins" in its path
-bool HasReframeworkPluginModule() {
-    if (IsReFrameworkGame()) {
-        return true;
-    }
-
-    HMODULE modules[1024];
-    DWORD num_modules = 0;
-
-    // Enumerate all loaded modules
-    if (K32EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), &num_modules) == 0) {
-        // If enumeration fails, fall back to checking tracked modules
-        utils::SRWLockShared lock(utils::g_module_srwlock);
-        for (const auto& module : g_loaded_modules) {
-            if (!module.fullPath.empty()) {
-                std::wstring lowerPath = module.fullPath;
-                std::transform(lowerPath.begin(), lowerPath.end(), lowerPath.begin(), ::towlower);
-                if (lowerPath.find(L"reframework\\plugins") != std::wstring::npos) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    if (num_modules > sizeof(modules)) {
-        num_modules = static_cast<DWORD>(sizeof(modules));
-    }
-
-    // Check each module's path
-    for (DWORD i = 0; i < num_modules / sizeof(HMODULE); ++i) {
-        if (modules[i] == nullptr) {
-            continue;
-        }
-
-        wchar_t module_path[MAX_PATH];
-        if (GetModuleFileNameW(modules[i], module_path, MAX_PATH) > 0) {
-            std::wstring path(module_path);
-            std::transform(path.begin(), path.end(), path.begin(), ::towlower);
-            if (path.find(L"reframework\\plugins") != std::wstring::npos) {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
-
-// Returns true if ReShade was loaded from C:\ProgramData\ReShade\ReShade64.dll or ReShade32.dll
-static bool IsReshadeFromProgramData() {
-    HMODULE reshade = g_reshade_module.load();
-    if (reshade == nullptr) {
-        return false;
-    }
-    wchar_t module_path[MAX_PATH];
-    if (GetModuleFileNameW(reshade, module_path, MAX_PATH) == 0) {
-        return false;
-    }
-    std::wstring path(module_path);
-    // Strip long path prefix if present
-    if (path.size() >= 4 && path.compare(0, 4, L"\\\\?\\") == 0) {
-        path.erase(0, 4);
-    }
-    std::transform(path.begin(), path.end(), path.begin(), ::towlower);
-    static const std::wstring programdata_reshade64(L"c:\\programdata\\reshade\\reshade64.dll");
-    static const std::wstring programdata_reshade32(L"c:\\programdata\\reshade\\reshade32.dll");
-    return (path == programdata_reshade64 || path == programdata_reshade32);
-}
-
 // Identify .bin module as DLSS / DLSS-G / DLSS-D by scanning for NGX DLL name strings (Special-K style).
 // Order: dlssg and dlssd first (more specific), then base dlss.
 static std::optional<DlssTrackedKind> IdentifyDlssBinKind(HMODULE hMod) {
@@ -1828,38 +1747,7 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
         }
     }
 
-    // dxgi.dll
-    if (lowerModuleName.find(L"dxgi.dll") != std::wstring::npos) {
-        // Check if any module has "reframework\plugins" in its path
-        if (HasReframeworkPluginModule()) {
-            LogInfo("[OnModuleLoaded] Skipping DXGI hooks installation - ReFramework plugin detected");
-        } else if (IsReshadeFromProgramData()) {
-            LogInfo("[OnModuleLoaded] Skipping DXGI hooks installation - ReShade loaded from ProgramData");
-        } else if (GetModuleHandleW(L"vulkan-1.dll") != nullptr) {
-            LogInfo("[OnModuleLoaded] Skipping DXGI hooks installation - vulkan-1.dll loaded");
-        } else {
-            LogInfo("[OnModuleLoaded] Installing DXGI hooks for module: %ws", moduleName.c_str());
-            if (InstallDxgiFactoryHooks(hModule)) {
-                LogInfo("[OnModuleLoaded] DXGI hooks installed successfully");
-            }
-        }
-    }
-    // d3d11.dll
-    else if (lowerModuleName.find(L"d3d11.dll") != std::wstring::npos) {
-        if (HasReframeworkPluginModule()) {
-            LogInfo("[OnModuleLoaded] Skipping D3D11 hooks installation - ReFramework plugin detected");
-        } else if (InstallD3D11DeviceHooks(hModule)) {
-            LogInfo("[OnModuleLoaded] D3D11 device hooks installed successfully");
-        }
-    }
-    // d3d12.dll
-    else if (lowerModuleName.find(L"d3d12.dll") != std::wstring::npos) {
-        if (HasReframeworkPluginModule()) {
-            LogInfo("[OnModuleLoaded] Skipping D3D12 hooks installation - ReFramework plugin detected");
-        } else if (InstallD3D12DeviceHooks(hModule)) {
-            LogInfo("[OnModuleLoaded] D3D12 device hooks installed successfully");
-        }
-    } else if (lowerModuleName.find(L"sl.interposer.dll") != std::wstring::npos) {
+    if (lowerModuleName.find(L"sl.interposer.dll") != std::wstring::npos) {
         if (InstallStreamlineHooks(hModule)) {
             LogInfo("[OnModuleLoaded] Streamline hooks installed successfully");
         } else {

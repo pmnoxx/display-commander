@@ -21,9 +21,6 @@ void InitExperimentalTab();
 void DrawExperimentalTab(display_commander::ui::IImGuiWrapper& imgui,
                         reshade::api::effect_runtime* runtime);
 
-// Draw mouse coordinates display section (experimental tab's own display)
-void DrawMouseCoordinatesDisplay(display_commander::ui::IImGuiWrapper& imgui);
-
 // Draw time slowdown controls section
 void DrawTimeSlowdownControls(display_commander::ui::IImGuiWrapper& imgui);
 
@@ -41,15 +38,6 @@ void DrawDebugOutputHooks(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw anisotropic filtering upgrade section
 void DrawAnisotropicFilteringUpgrade(display_commander::ui::IImGuiWrapper& imgui);
-
-// Draw input test tab
-void DrawInputTestTab(display_commander::ui::IImGuiWrapper& imgui);
-
-// Draw Runtimes debug sub-tab (all ReShade runtimes: backbuffer size, format, colorspace, etc.)
-void DrawRuntimesDebugSubTab(display_commander::ui::IImGuiWrapper& imgui);
-
-// Draw NVIDIA Profile tab (standalone top-level tab content)
-void DrawNvidiaProfileTab(reshade::api::effect_runtime* runtime);
 
 // Cleanup function to stop background threads
 void CleanupExperimentalTab();

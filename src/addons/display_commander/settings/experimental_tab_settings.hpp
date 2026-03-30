@@ -76,9 +76,6 @@ class ExperimentalTabSettings {
     BoolSetting upgrade_min_mag_linear_mip_point;
     BoolSetting upgrade_compare_min_mag_linear_mip_point;
 
-    // Thread tracking for frame pacing debug (NvAPI latency markers + ChooseFpsLimiter call sites)
-    BoolSetting thread_tracking_enabled;
-
     // Performance measurement (profiling) - default off
     BoolSetting performance_measurement_enabled;
     // Per-metric toggles (default on)
@@ -114,9 +111,6 @@ class ExperimentalTabSettings {
 
     // Show volume overlay setting
     BoolSetting show_volume;
-
-    // Show advanced NVIDIA profile settings (Ansel, FXAA, etc.) in addition to important settings
-    BoolSetting show_advanced_profile_settings;
 
     // Translate mouse position from window resolution to render resolution (e.g. 3840x2160 -> 1920x1080)
     BoolSetting translate_mouse_position;

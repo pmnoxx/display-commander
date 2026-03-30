@@ -1,11 +1,6 @@
 #include "api_hooks.hpp"
-#include <d3d11.h>
-#include <d3d11on12.h>
-#include <d3d12.h>
 #include <MinHook.h>
-#include <unknwnbase.h>
-#include <wrl/client.h>
-#include <cstdio>
+#include <cwchar>
 #include "../../process_exit_hooks.hpp"
 #include "../../settings/advanced_tab_settings.hpp"
 #include "../../settings/main_tab_settings.hpp"
@@ -17,8 +12,6 @@
 #include "../input/dinput_hooks.hpp"
 #include "../system/display_settings_hooks.hpp"
 #include "dpi_hooks.hpp"
-#include "../dxgi/dxgi_present_hooks.hpp"
-#include "../dxgi/dxgi_factory_wrapper.hpp"
 #include "../../globals.hpp"
 #include "../hook_suppression_manager.hpp"
 #include "../loadlibrary_hooks.hpp"
@@ -48,13 +41,6 @@ CreateWindowExW_pfn CreateWindowExW_Original = nullptr;
 SetCursor_pfn SetCursor_Original = nullptr;
 ShowCursor_pfn ShowCursor_Original = nullptr;
 AddVectoredExceptionHandler_pfn AddVectoredExceptionHandler_Original = nullptr;
-CreateDXGIFactory_pfn CreateDXGIFactory_Original = nullptr;
-CreateDXGIFactory1_pfn CreateDXGIFactory1_Original = nullptr;
-CreateDXGIFactory2_pfn CreateDXGIFactory2_Original = nullptr;
-D3D11CreateDeviceAndSwapChain_pfn D3D11CreateDeviceAndSwapChain_Original = nullptr;
-D3D11CreateDevice_pfn D3D11CreateDevice_Original = nullptr;
-D3D11On12CreateDevice_pfn D3D11On12CreateDevice_Original = nullptr;
-D3D12CreateDevice_pfn D3D12CreateDevice_Original = nullptr;
 
 // Hook state
 static std::atomic<bool> g_api_hooks_installed{false};
@@ -78,14 +64,6 @@ static CRDebugEntry g_cr_debug[CR_DEBUG_API_COUNT];
 static const char* const g_cr_names[CR_DEBUG_API_COUNT] = {
     "GetFocus", "GetForegroundWindow", "GetActiveWindow", "GetGUIThreadInfo", "IsIconic", "IsWindowVisible",
 };
-// Format REFIID/GUID for logging (avoids wrong/undefined output from %s with GUID).
-static std::string FormatRefIid(REFIID riid) {
-    char buf[64];
-    std::snprintf(buf, sizeof(buf), "{%08lX-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}", riid.Data1, riid.Data2,
-                  riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5],
-                  riid.Data4[6], riid.Data4[7]);
-    return std::string(buf);
-}
 static void RecordCRDebug(int idx, uintptr_t value, bool did_override) {
     g_cr_debug[idx].last_value.store(value, std::memory_order_relaxed);
     g_cr_debug[idx].last_call_time_ns.store(utils::get_now_ns(), std::memory_order_relaxed);
@@ -484,469 +462,33 @@ PVOID AddVectoredExceptionHandler_Direct(ULONG First, PVECTORED_EXCEPTION_HANDLE
                                                 : AddVectoredExceptionHandler(First, Handler);
 }
 
-// Hooked CreateDXGIFactory2 function
-HRESULT WINAPI CreateDXGIFactory2_Detour(UINT Flags, REFIID riid, void** ppFactory) {
-    CALL_GUARD(utils::get_now_ns());
-    if (ppFactory == nullptr) return E_POINTER;
-    // Increment counter
-    g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATEFACTORY2].fetch_add(1);
-
-    // Call original function
-    HRESULT hr = CreateDXGIFactory2_Original ? CreateDXGIFactory2_Original(Flags, riid, ppFactory)
-                                             : CreateDXGIFactory2(Flags, riid, ppFactory);
-
-    if (SUCCEEDED(hr) && ppFactory != nullptr && *ppFactory != nullptr) {
-        display_commanderhooks::dxgi::HookFactory(static_cast<IUnknown*>(*ppFactory));
-    }
-    return hr;
-}
-
-// Hooked CreateDXGIFactory1 function
-HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void** ppFactory) {
-    CALL_GUARD(utils::get_now_ns());
-    if (ppFactory == nullptr) return E_POINTER;
-    // Increment counter
-    g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATEFACTORY1].fetch_add(1);
-
-    // Call original function
-    HRESULT hr = CreateDXGIFactory1_Original ? CreateDXGIFactory1_Original(riid, ppFactory)
-                                             : CreateDXGIFactory1(riid, ppFactory);
-
-    if (SUCCEEDED(hr) && ppFactory != nullptr && *ppFactory != nullptr) {
-        display_commanderhooks::dxgi::HookFactory(static_cast<IUnknown*>(*ppFactory));
-    }
-    return hr;
-}
-
-// Hooked CreateDXGIFactory function
-HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void** ppFactory) {
-    CALL_GUARD(utils::get_now_ns());
-    if (ppFactory == nullptr) return E_POINTER;
-    // Increment counter
-    g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATEFACTORY].fetch_add(1);
-
-    // Call original function
-    HRESULT hr =
-        CreateDXGIFactory_Original ? CreateDXGIFactory_Original(riid, ppFactory) : CreateDXGIFactory(riid, ppFactory);
-
-    if (SUCCEEDED(hr) && ppFactory != nullptr && *ppFactory != nullptr) {
-        display_commanderhooks::dxgi::HookFactory(static_cast<IUnknown*>(*ppFactory));
-    }
-    return hr;
-}
-
 HRESULT CreateDXGIFactory1_Direct(REFIID riid, void** ppFactory) {
     CALL_GUARD_NO_TS();
     if (ppFactory == nullptr) {
         return E_POINTER;
     }
-    if (CreateDXGIFactory1_Original != nullptr) {
-        return CreateDXGIFactory1_Original(riid, ppFactory);
+    HMODULE dxgi_module = GetModuleHandleW(L"dxgi.dll");
+    if (dxgi_module == nullptr) {
+        WCHAR path[MAX_PATH];
+        if (GetSystemDirectoryW(path, MAX_PATH) == 0) {
+            return HRESULT_FROM_WIN32(GetLastError());
+        }
+        size_t len = std::wcslen(path);
+        if (len + 11 >= MAX_PATH) {
+            return E_FAIL;
+        }
+        wcscat_s(path, MAX_PATH, L"\\dxgi.dll");
+        dxgi_module = LoadLibraryW(path);
     }
-    return CreateDXGIFactory1(riid, ppFactory);
-}
-
-// Hooked D3D11CreateDeviceAndSwapChain function
-HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE DriverType,
-                                                    HMODULE Software, UINT Flags,
-                                                    const D3D_FEATURE_LEVEL* pFeatureLevels, UINT FeatureLevels,
-                                                    UINT SDKVersion, const DXGI_SWAP_CHAIN_DESC* pSwapChainDesc,
-                                                    IDXGISwapChain** ppSwapChain, ID3D11Device** ppDevice,
-                                                    D3D_FEATURE_LEVEL* pFeatureLevel,
-                                                    ID3D11DeviceContext** ppImmediateContext) {
-    CALL_GUARD(utils::get_now_ns());
-    LogInfo("=== D3D11CreateDeviceAndSwapChain Called ===");
-    LogInfo("  pAdapter: 0x%p", pAdapter);
-    LogInfo("  DriverType: %d", DriverType);
-    LogInfo("  Software: 0x%p", Software);
-    LogInfo("  Flags: 0x%08X", Flags);
-    LogInfo("  pFeatureLevels: 0x%p", pFeatureLevels);
-    LogInfo("  FeatureLevels: %u", FeatureLevels);
-    LogInfo("  SDKVersion: %u", SDKVersion);
-    LogInfo("  pSwapChainDesc: 0x%p", pSwapChainDesc);
-    LogInfo("  ppSwapChain: 0x%p", ppSwapChain);
-    LogInfo("  ppDevice: 0x%p", ppDevice);
-    LogInfo("  pFeatureLevel: 0x%p", pFeatureLevel);
-    LogInfo("  ppImmediateContext: 0x%p", ppImmediateContext);
-
-    // Apply debug layer flag if enabled
-    UINT modifiedFlags = Flags;
-    if (settings::g_advancedTabSettings.debug_layer_enabled.GetValue()) {
-        modifiedFlags |= D3D11_CREATE_DEVICE_DEBUG;
-        LogInfo("  Debug layer enabled - Modified Flags: 0x%08X", modifiedFlags);
+    if (dxgi_module == nullptr) {
+        return E_FAIL;
     }
-
-    // Log feature levels if provided
-    if (pFeatureLevels && FeatureLevels > 0) {
-        LogInfo("  Feature Levels:");
-        for (UINT i = 0; i < FeatureLevels; i++) {
-            LogInfo("    [%u]: 0x%04X", i, pFeatureLevels[i]);
-        }
+    using PFN_CreateDXGIFactory1 = HRESULT(WINAPI*)(REFIID, void**);
+    auto pfn = reinterpret_cast<PFN_CreateDXGIFactory1>(GetProcAddress(dxgi_module, "CreateDXGIFactory1"));
+    if (pfn == nullptr) {
+        return E_FAIL;
     }
-
-    // Log swap chain description if provided
-    if (pSwapChainDesc) {
-        LogInfo("  Swap Chain Description:");
-        LogInfo("    BufferDesc.Width: %u", pSwapChainDesc->BufferDesc.Width);
-        LogInfo("    BufferDesc.Height: %u", pSwapChainDesc->BufferDesc.Height);
-        LogInfo("    BufferDesc.RefreshRate: %u/%u", pSwapChainDesc->BufferDesc.RefreshRate.Numerator,
-                pSwapChainDesc->BufferDesc.RefreshRate.Denominator);
-        LogInfo("    BufferDesc.Format: %d", pSwapChainDesc->BufferDesc.Format);
-        LogInfo("    BufferDesc.ScanlineOrdering: %d", pSwapChainDesc->BufferDesc.ScanlineOrdering);
-        LogInfo("    BufferDesc.Scaling: %d", pSwapChainDesc->BufferDesc.Scaling);
-        LogInfo("    SampleDesc.Count: %u", pSwapChainDesc->SampleDesc.Count);
-        LogInfo("    SampleDesc.Quality: %u", pSwapChainDesc->SampleDesc.Quality);
-        LogInfo("    BufferUsage: 0x%08X", pSwapChainDesc->BufferUsage);
-        LogInfo("    BufferCount: %u", pSwapChainDesc->BufferCount);
-        LogInfo("    OutputWindow: 0x%p", pSwapChainDesc->OutputWindow);
-        LogInfo("    Windowed: %s", pSwapChainDesc->Windowed ? "TRUE" : "FALSE");
-        LogInfo("    SwapEffect: %d", pSwapChainDesc->SwapEffect);
-        LogInfo("    Flags: 0x%08X", pSwapChainDesc->Flags);
-    }
-
-    // Call original function with modified flags
-    HRESULT hr = D3D11CreateDeviceAndSwapChain_Original
-                     ? D3D11CreateDeviceAndSwapChain_Original(pAdapter, DriverType, Software, modifiedFlags,
-                                                              pFeatureLevels, FeatureLevels, SDKVersion, pSwapChainDesc,
-                                                              ppSwapChain, ppDevice, pFeatureLevel, ppImmediateContext)
-                     : E_FAIL;  // D3D11CreateDeviceAndSwapChain not available
-
-    LogInfo("  Result: 0x%08X (%s)", hr, SUCCEEDED(hr) ? "SUCCESS" : "FAILED");
-    if (FAILED(hr)) {
-        LogError("[D3D11 error] D3D11CreateDeviceAndSwapChain returned 0x%08X", static_cast<unsigned>(hr));
-    }
-    // Setup D3D11 debug info queue if debug layer is enabled and device creation was successful
-    if (SUCCEEDED(hr) && ppDevice && *ppDevice && settings::g_advancedTabSettings.debug_layer_enabled.GetValue()) {
-        ID3D11Device* device = static_cast<ID3D11Device*>(*ppDevice);
-        Microsoft::WRL::ComPtr<ID3D11Debug> debug_device;
-        HRESULT debug_hr = device->QueryInterface(IID_PPV_ARGS(&debug_device));
-        if (SUCCEEDED(debug_hr)) {
-            Microsoft::WRL::ComPtr<ID3D11InfoQueue> info_queue;
-            HRESULT info_hr = debug_device->QueryInterface(IID_PPV_ARGS(&info_queue));
-            if (SUCCEEDED(info_hr)) {
-                // Only set break on severity if the setting is enabled
-                if (settings::g_advancedTabSettings.debug_break_on_severity.GetValue()) {
-                    info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
-                    info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, true);
-                    info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_WARNING, true);
-                    info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_INFO, true);
-                    info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_MESSAGE, true);
-                    LogInfo("  D3D11 debug info queue configured for all severity levels");
-                } else {
-                    LogInfo("  D3D11 debug info queue configured (SetBreakOnSeverity disabled)");
-                }
-            } else {
-                LogWarn("  Failed to get D3D11 info queue: 0x%08X", info_hr);
-            }
-        } else {
-            LogWarn("  Failed to get D3D11 debug device: 0x%08X", debug_hr);
-        }
-    }
-
-    // Log output parameters if successful
-    if (SUCCEEDED(hr)) {
-        if (ppDevice && *ppDevice) {
-            LogInfo("  Created Device: 0x%p", *ppDevice);
-        }
-        if (ppImmediateContext && *ppImmediateContext) {
-            LogInfo("  Created Context: 0x%p", *ppImmediateContext);
-        }
-        if (ppSwapChain && *ppSwapChain) {
-            LogInfo("  Created SwapChain: 0x%p", *ppSwapChain);
-        }
-        if (pFeatureLevel && *pFeatureLevel) {
-            LogInfo("  Feature Level: 0x%04X", *pFeatureLevel);
-        }
-    }
-    // Log output parameters if successful
-    if (SUCCEEDED(hr)) {
-        if (ppDevice && *ppDevice) {
-            LogInfo("  Created Device: 0x%p", *ppDevice);
-            // Get DXGI factory from device (same path as ReShade d3d11.cpp: device -> IDXGIDevice -> GetAdapter ->
-            // GetParent) so that IDXGIFactory::CreateSwapChain (and ForHwnd/ForCoreWindow) vtable hooks are installed
-            // when the app never calls CreateDXGIFactory1/2 and only uses D3D11CreateDevice.
-            IDXGIDevice* dxgi_device = nullptr;
-            HRESULT qhr = (*ppDevice)->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&dxgi_device));
-            if (SUCCEEDED(qhr) && dxgi_device != nullptr) {
-                IDXGIAdapter* adapter = nullptr;
-                qhr = dxgi_device->GetAdapter(&adapter);
-                dxgi_device->Release();
-                if (SUCCEEDED(qhr) && adapter != nullptr) {
-                    IDXGIFactory* factory = nullptr;
-                    qhr = adapter->GetParent(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&factory));
-                    adapter->Release();
-                    if (SUCCEEDED(qhr) && factory != nullptr) {
-                        display_commanderhooks::dxgi::HookFactory(static_cast<IUnknown*>(factory));
-                        factory->Release();
-                    }
-                }
-            }
-        }
-        if (ppImmediateContext && *ppImmediateContext) {
-            LogInfo("  Created Context: 0x%p", *ppImmediateContext);
-        }
-        if (pFeatureLevel && *pFeatureLevel) {
-            LogInfo("  Feature Level: 0x%04X", *pFeatureLevel);
-        }
-    }
-
-    LogInfo("=== D3D11CreateDeviceAndSwapChain Complete ===");
-    return hr;
-}
-
-// Hooked D3D11CreateDevice function
-HRESULT WINAPI D3D11CreateDevice_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE DriverType, HMODULE Software,
-                                        UINT Flags, const D3D_FEATURE_LEVEL* pFeatureLevels, UINT FeatureLevels,
-                                        UINT SDKVersion, ID3D11Device** ppDevice, D3D_FEATURE_LEVEL* pFeatureLevel,
-                                        ID3D11DeviceContext** ppImmediateContext) {
-    CALL_GUARD(utils::get_now_ns());
-    LogInfo("=== D3D11CreateDevice Called ===");
-    LogInfo("  pAdapter: 0x%p", pAdapter);
-    LogInfo("  DriverType: %d", DriverType);
-    LogInfo("  Software: 0x%p", Software);
-    LogInfo("  Flags: 0x%08X", Flags);
-    LogInfo("  pFeatureLevels: 0x%p", pFeatureLevels);
-    LogInfo("  FeatureLevels: %u", FeatureLevels);
-    LogInfo("  SDKVersion: %u", SDKVersion);
-    LogInfo("  ppDevice: 0x%p", ppDevice);
-    LogInfo("  pFeatureLevel: 0x%p", pFeatureLevel);
-    LogInfo("  ppImmediateContext: 0x%p", ppImmediateContext);
-
-    // Apply debug layer flag if enabled
-    UINT modifiedFlags = Flags;
-    if (settings::g_advancedTabSettings.debug_layer_enabled.GetValue()) {
-        modifiedFlags |= D3D11_CREATE_DEVICE_DEBUG;
-        LogInfo("  Debug layer enabled - Modified Flags: 0x%08X", modifiedFlags);
-    }
-
-    // Log feature levels if provided
-    if (pFeatureLevels && FeatureLevels > 0) {
-        LogInfo("  Feature Levels:");
-        for (UINT i = 0; i < FeatureLevels; i++) {
-            LogInfo("    [%u]: 0x%04X", i, pFeatureLevels[i]);
-        }
-    }
-
-    // Call original function with modified flags
-    HRESULT hr = D3D11CreateDevice_Original ? D3D11CreateDevice_Original(pAdapter, DriverType, Software, modifiedFlags,
-                                                                         pFeatureLevels, FeatureLevels, SDKVersion,
-                                                                         ppDevice, pFeatureLevel, ppImmediateContext)
-                                            : E_FAIL;  // D3D11CreateDevice not available
-
-    LogInfo("  Result: 0x%08X (%s)", hr, SUCCEEDED(hr) ? "SUCCESS" : "FAILED");
-    if (FAILED(hr)) {
-        LogError("[D3D11 error] D3D11CreateDevice returned 0x%08X", static_cast<unsigned>(hr));
-    }
-    // Setup D3D11 debug info queue if debug layer is enabled and device creation was successful
-    if (SUCCEEDED(hr) && ppDevice && *ppDevice && settings::g_advancedTabSettings.debug_layer_enabled.GetValue()) {
-        ID3D11Device* device = static_cast<ID3D11Device*>(*ppDevice);
-        Microsoft::WRL::ComPtr<ID3D11Debug> debug_device;
-        HRESULT debug_hr = device->QueryInterface(IID_PPV_ARGS(&debug_device));
-        if (SUCCEEDED(debug_hr)) {
-            Microsoft::WRL::ComPtr<ID3D11InfoQueue> info_queue;
-            HRESULT info_hr = debug_device->QueryInterface(IID_PPV_ARGS(&info_queue));
-            if (SUCCEEDED(info_hr)) {
-                // Only set break on severity if the setting is enabled
-                if (settings::g_advancedTabSettings.debug_break_on_severity.GetValue()) {
-                    info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
-                    info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, true);
-                    info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_WARNING, true);
-                    info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_INFO, true);
-                    info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_MESSAGE, true);
-                    LogInfo("  D3D11 debug info queue configured for all severity levels");
-                } else {
-                    LogInfo("  D3D11 debug info queue configured (SetBreakOnSeverity disabled)");
-                }
-            } else {
-                LogWarn("  Failed to get D3D11 info queue: 0x%08X", info_hr);
-            }
-        } else {
-            LogWarn("  Failed to get D3D11 debug device: 0x%08X", debug_hr);
-        }
-    }
-
-    // Log output parameters if successful
-    if (SUCCEEDED(hr)) {
-        if (ppDevice && *ppDevice) {
-            LogInfo("  Created Device: 0x%p", *ppDevice);
-            // Get DXGI factory from device (same path as ReShade d3d11.cpp: device -> IDXGIDevice -> GetAdapter ->
-            // GetParent) so that IDXGIFactory::CreateSwapChain (and ForHwnd/ForCoreWindow) vtable hooks are installed
-            // when the app never calls CreateDXGIFactory1/2 and only uses D3D11CreateDevice.
-            IDXGIDevice* dxgi_device = nullptr;
-            HRESULT qhr = (*ppDevice)->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&dxgi_device));
-            if (SUCCEEDED(qhr) && dxgi_device != nullptr) {
-                IDXGIAdapter* adapter = nullptr;
-                qhr = dxgi_device->GetAdapter(&adapter);
-                dxgi_device->Release();
-                if (SUCCEEDED(qhr) && adapter != nullptr) {
-                    IDXGIFactory* factory = nullptr;
-                    qhr = adapter->GetParent(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&factory));
-                    adapter->Release();
-                    if (SUCCEEDED(qhr) && factory != nullptr) {
-                        display_commanderhooks::dxgi::HookFactory(static_cast<IUnknown*>(factory));
-                        factory->Release();
-                    }
-                }
-            }
-        }
-        if (ppImmediateContext && *ppImmediateContext) {
-            LogInfo("  Created Context: 0x%p", *ppImmediateContext);
-        }
-        if (pFeatureLevel && *pFeatureLevel) {
-            LogInfo("  Feature Level: 0x%04X", *pFeatureLevel);
-        }
-    }
-
-    LogInfo("=== D3D11CreateDevice Complete ===");
-    return hr;
-}
-
-// Hooked D3D11On12CreateDevice function
-HRESULT WINAPI D3D11On12CreateDevice_Detour(IUnknown* pDevice, UINT Flags, const D3D_FEATURE_LEVEL* pFeatureLevels,
-                                            UINT FeatureLevels, IUnknown* const* ppCommandQueues, UINT NumQueues,
-                                            UINT NodeMask, ID3D11Device** ppDevice,
-                                            ID3D11DeviceContext** ppImmediateContext,
-                                            D3D_FEATURE_LEVEL* pChosenFeatureLevel) {
-    CALL_GUARD(utils::get_now_ns());
-    LogInfo("=== D3D11On12CreateDevice Called ===");
-    LogInfo("  pDevice: 0x%p", pDevice);
-    LogInfo("  Flags: 0x%08X", Flags);
-    LogInfo("  pFeatureLevels: 0x%p", pFeatureLevels);
-    LogInfo("  FeatureLevels: %u", FeatureLevels);
-    LogInfo("  ppCommandQueues: 0x%p", ppCommandQueues);
-    LogInfo("  NumQueues: %u", NumQueues);
-    LogInfo("  NodeMask: %u", NodeMask);
-    LogInfo("  ppDevice: 0x%p", ppDevice);
-    LogInfo("  ppImmediateContext: 0x%p", ppImmediateContext);
-    LogInfo("  pChosenFeatureLevel: 0x%p", pChosenFeatureLevel);
-
-    // Apply debug layer flag if enabled (same flags as D3D11 device creation)
-    UINT modifiedFlags = Flags;
-    if (settings::g_advancedTabSettings.debug_layer_enabled.GetValue()) {
-        modifiedFlags |= D3D11_CREATE_DEVICE_DEBUG;
-        LogInfo("  Debug layer enabled - Modified Flags: 0x%08X", modifiedFlags);
-    }
-
-    if (pFeatureLevels && FeatureLevels > 0) {
-        LogInfo("  Feature Levels:");
-        for (UINT i = 0; i < FeatureLevels; i++) {
-            LogInfo("    [%u]: 0x%04X", i, pFeatureLevels[i]);
-        }
-    }
-
-    HRESULT hr =
-        D3D11On12CreateDevice_Original
-            ? D3D11On12CreateDevice_Original(pDevice, modifiedFlags, pFeatureLevels, FeatureLevels, ppCommandQueues,
-                                             NumQueues, NodeMask, ppDevice, ppImmediateContext, pChosenFeatureLevel)
-            : E_FAIL;
-
-    LogInfo("  Result: 0x%08X (%s)", hr, SUCCEEDED(hr) ? "SUCCESS" : "FAILED");
-    if (FAILED(hr)) {
-        LogError("[D3D11on12 error] D3D11On12CreateDevice returned 0x%08X", static_cast<unsigned>(hr));
-    }
-
-    if (SUCCEEDED(hr) && ppDevice && *ppDevice) {
-        LogInfo("  Created D3D11on12 Device: 0x%p", *ppDevice);
-        //  Install DXGI factory hooks from the created device (same path as D3D11CreateDevice)
-        IDXGIDevice* dxgi_device = nullptr;
-        HRESULT qhr = (*ppDevice)->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&dxgi_device));
-        if (SUCCEEDED(qhr) && dxgi_device != nullptr) {
-            IDXGIAdapter* adapter = nullptr;
-            qhr = dxgi_device->GetAdapter(&adapter);
-            dxgi_device->Release();
-            if (SUCCEEDED(qhr) && adapter != nullptr) {
-                IDXGIFactory* factory = nullptr;
-                qhr = adapter->GetParent(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&factory));
-                adapter->Release();
-                if (SUCCEEDED(qhr) && factory != nullptr) {
-                    display_commanderhooks::dxgi::HookFactory(static_cast<IUnknown*>(factory));
-                    factory->Release();
-                }
-            }
-        }
-        if (ppImmediateContext && *ppImmediateContext) {
-            LogInfo("  Created Context: 0x%p", *ppImmediateContext);
-        }
-        if (pChosenFeatureLevel && *pChosenFeatureLevel) {
-            LogInfo("  Chosen Feature Level: 0x%04X", *pChosenFeatureLevel);
-        }
-    }
-
-    LogInfo("=== D3D11On12CreateDevice Complete ===");
-    return hr;
-}
-
-// Hooked D3D12CreateDevice function
-HRESULT WINAPI D3D12CreateDevice_Detour(IUnknown* pAdapter, D3D_FEATURE_LEVEL MinimumFeatureLevel, REFIID riid,
-                                        void** ppDevice) {
-    CALL_GUARD(utils::get_now_ns());
-    LogInfo("=== D3D12CreateDevice Called ===");
-    LogInfo("  pAdapter: 0x%p", pAdapter);
-    LogInfo("  MinimumFeatureLevel: 0x%04X", MinimumFeatureLevel);
-    LogInfo("  riid: %s", FormatRefIid(riid).c_str());
-    LogInfo("  ppDevice: 0x%p", ppDevice);
-
-    // Call original function
-    HRESULT hr = D3D12CreateDevice_Original ? D3D12CreateDevice_Original(pAdapter, MinimumFeatureLevel, riid, ppDevice)
-                                            : E_FAIL;  // D3D12CreateDevice not available
-
-    LogInfo("  Result: 0x%08X (%s)", hr, SUCCEEDED(hr) ? "SUCCESS" : "FAILED");
-
-    // Enable debug layer if setting is enabled and device creation was successful
-    if (SUCCEEDED(hr) && ppDevice && *ppDevice && settings::g_advancedTabSettings.debug_layer_enabled.GetValue()) {
-        LogInfo("  Enabling D3D12 debug layer...");
-
-        // Get D3D12 debug interface
-        HMODULE d3d12_module = GetModuleHandleW(L"d3d12.dll");
-        if (d3d12_module != nullptr) {
-            auto D3D12GetDebugInterface = reinterpret_cast<decltype(&::D3D12GetDebugInterface)>(
-                GetProcAddress(d3d12_module, "D3D12GetDebugInterface"));
-            if (D3D12GetDebugInterface != nullptr) {
-                Microsoft::WRL::ComPtr<ID3D12Debug> debug_controller;
-                HRESULT debug_hr = D3D12GetDebugInterface(IID_PPV_ARGS(&debug_controller));
-                if (SUCCEEDED(debug_hr) && debug_controller != nullptr) {
-                    debug_controller->EnableDebugLayer();
-                    LogInfo("  D3D12 debug layer enabled successfully");
-                } else {
-                    LogWarn("  Failed to enable D3D12 debug layer: 0x%08X", debug_hr);
-                }
-            } else {
-                LogWarn("  D3D12GetDebugInterface not available");
-            }
-        } else {
-            LogWarn("  d3d12.dll module not found");
-        }
-
-        // Setup debug interface to break on any warnings/errors (similar to DX12_ENABLE_DEBUG_LAYER)
-        if (SUCCEEDED(hr) && ppDevice && *ppDevice) {
-            ID3D12Device* device = static_cast<ID3D12Device*>(*ppDevice);
-            Microsoft::WRL::ComPtr<ID3D12InfoQueue> info_queue;
-            HRESULT info_hr = device->QueryInterface(IID_PPV_ARGS(&info_queue));
-            if (SUCCEEDED(info_hr)) {
-                // Only set break on severity if the setting is enabled
-                if (settings::g_advancedTabSettings.debug_break_on_severity.GetValue()) {
-                    info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
-                    info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
-                    info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, true);
-                    info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_INFO, true);
-                    info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_MESSAGE, true);
-                    LogInfo("  D3D12 debug info queue configured for all severity levels");
-                } else {
-                    LogInfo("  D3D12 debug info queue configured (SetBreakOnSeverity disabled)");
-                }
-            } else {
-                LogWarn("  Failed to get D3D12 info queue: 0x%08X", info_hr);
-            }
-        }
-    }
-
-    // Log output parameters if successful
-    if (SUCCEEDED(hr) && ppDevice && *ppDevice) {
-        LogInfo("  Created Device: 0x%p", *ppDevice);
-    }
-
-    LogInfo("=== D3D12CreateDevice Complete ===");
-    return hr;
+    return pfn(riid, ppFactory);
 }
 
 bool InstallWindowsApiHooks() {
@@ -1119,8 +661,6 @@ bool InstallApiHooks() {
 
     // PCLStats ETW hooks are installed via OnModuleLoaded when advapi32.dll is loaded
 
-    // D3D device creation hooks are now installed via OnModuleLoaded when d3d11.dll or d3d12.dll is loaded
-
     g_api_hooks_installed.store(true);
     LogInfo("API hooks installed successfully");
 
@@ -1190,34 +730,6 @@ void UninstallApiHooks() {
     MH_RemoveHook(SetCursor);
     MH_RemoveHook(ShowCursor);
     MH_RemoveHook(AddVectoredExceptionHandler);
-    MH_RemoveHook(CreateDXGIFactory);
-    MH_RemoveHook(CreateDXGIFactory1);
-    MH_RemoveHook(CreateDXGIFactory2);
-
-    // Remove D3D device hooks
-    HMODULE d3d11_module = GetModuleHandleW(L"d3d11.dll");
-    if (d3d11_module != nullptr) {
-        auto D3D11CreateDeviceAndSwapChain_sys = reinterpret_cast<decltype(&D3D11CreateDeviceAndSwapChain)>(
-            GetProcAddress(d3d11_module, "D3D11CreateDeviceAndSwapChain"));
-        if (D3D11CreateDeviceAndSwapChain_sys != nullptr) {
-            MH_RemoveHook(D3D11CreateDeviceAndSwapChain_sys);
-        }
-
-        auto D3D11CreateDevice_sys =
-            reinterpret_cast<decltype(&D3D11CreateDevice)>(GetProcAddress(d3d11_module, "D3D11CreateDevice"));
-        if (D3D11CreateDevice_sys != nullptr) {
-            MH_RemoveHook(D3D11CreateDevice_sys);
-        }
-    }
-
-    HMODULE d3d12_module = GetModuleHandleW(L"d3d12.dll");
-    if (d3d12_module != nullptr) {
-        auto D3D12CreateDevice_sys =
-            reinterpret_cast<decltype(&D3D12CreateDevice)>(GetProcAddress(d3d12_module, "D3D12CreateDevice"));
-        if (D3D12CreateDevice_sys != nullptr) {
-            MH_RemoveHook(D3D12CreateDevice_sys);
-        }
-    }
 
     // Clean up
     GetFocus_Original = nullptr;
@@ -1237,12 +749,6 @@ void UninstallApiHooks() {
     SetCursor_Original = nullptr;
     ShowCursor_Original = nullptr;
     AddVectoredExceptionHandler_Original = nullptr;
-    CreateDXGIFactory_Original = nullptr;
-    CreateDXGIFactory1_Original = nullptr;
-    CreateDXGIFactory2_Original = nullptr;
-    D3D11CreateDeviceAndSwapChain_Original = nullptr;
-    D3D11CreateDevice_Original = nullptr;
-    D3D12CreateDevice_Original = nullptr;
 
     g_api_hooks_installed.store(false);
     LogInfo("API hooks uninstalled successfully");

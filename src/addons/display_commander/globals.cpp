@@ -328,10 +328,6 @@ FpsLimiterCallSite GetChosenFrameTimeLocation() {
 }
 
 void ChooseFpsLimiter(uint64_t timestamp_ns, FpsLimiterCallSite caller_enum) {
-    if (g_thread_tracking_enabled.load(std::memory_order_relaxed)) {
-        g_fps_limiter_site_thread_id[static_cast<size_t>(caller_enum)].store(GetCurrentThreadId(),
-                                                                             std::memory_order_relaxed);
-    }
     // 1. Make decision based on which sites were hit within the last 1s (before recording this call).
     FpsLimiterCallSite new_chosen = FpsLimiterCallSite::reshade_addon_event;  // default (guaranteed)
     for (FpsLimiterCallSite site : kFpsLimiterPriorityOrder) {
@@ -487,12 +483,6 @@ bool GetEffectiveSafeModeFpsLimiter() {
     }
     return settings::g_mainTabSettings.safe_mode_fps_limiter.GetValue();
 }
-
-// Thread tracking for frame pacing debug
-std::atomic<bool> g_thread_tracking_enabled{false};
-std::atomic<DWORD> g_latency_marker_thread_id[kLatencyMarkerTypeCountFirstSix] = {};
-std::atomic<uint64_t> g_latency_marker_last_frame_id[kLatencyMarkerTypeCountFirstSix] = {};
-std::atomic<DWORD> g_fps_limiter_site_thread_id[kFpsLimiterCallSiteCount] = {};
 
 // Global Swapchain Tracking Manager instance
 SwapchainTrackingManager g_swapchainTrackingManager;

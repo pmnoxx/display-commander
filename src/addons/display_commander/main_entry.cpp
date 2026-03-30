@@ -2339,14 +2339,6 @@ void ProcessAttach_RegisterAndPostInit(HMODULE h_module, const std::wstring& ent
     ProcessAttach_LoadDllsFromConfigDirectory(L"after_reshade");
     LoadAddonsFromPluginsDirectory();
     if (IsDisplayCommanderHookingInstance()) display_commanderhooks::InstallApiHooks();
-    // Copy DefaultFiles into game folder (only if missing) once per launch
-    {
-        WCHAR exe_buf[MAX_PATH];
-        if (GetModuleFileNameW(nullptr, exe_buf, MAX_PATH) > 0) {
-            std::filesystem::path game_dir = std::filesystem::path(exe_buf).parent_path();
-            CopyDefaultFilesToGameFolder(game_dir);
-        }
-    }
 }
 
 // Minimum Display Commander version allowed to load (below this we refuse).

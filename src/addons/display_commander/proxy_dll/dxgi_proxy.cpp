@@ -12,7 +12,6 @@
 
 #include "dxgi_proxy_init.hpp"
 
-#include "../hooks/windows_hooks/api_hooks.hpp"
 #include "../hooks/hook_suppression_manager.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
@@ -211,13 +210,8 @@ static bool LoadRealDXGI() {
     return true;
 }
 
-// Install MinHook on real dxgi.dll CreateDXGIFactory/CreateDXGIFactory1. No-op if real DXGI not loaded.
-void InstallRealDXGIMinHookHooks() {
-    if (g_dxgi_module == nullptr) {
-        return;
-    }
-    display_commanderhooks::InstallDxgiFactoryHooks(g_dxgi_module);
-}
+// Formerly installed CreateDXGIFactory* MinHook detours on real dxgi.dll; DXGI factory hooks were removed.
+void InstallRealDXGIMinHookHooks() {}
 
 extern "C" HRESULT WINAPI CreateDXGIFactory(REFIID riid, void** ppFactory) {
     if (!LoadRealDXGI()) return E_FAIL;

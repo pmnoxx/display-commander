@@ -189,13 +189,8 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_advanced_tab;
     ui::new_ui::BoolSetting show_important_info_tab;
     ui::new_ui::BoolSetting show_controller_tab;
-    ui::new_ui::BoolSetting show_hook_stats_tab;
     ui::new_ui::BoolSetting show_experimental_tab;
     ui::new_ui::BoolSetting show_reshade_tab;
-    ui::new_ui::BoolSetting show_performance_tab;
-    ui::new_ui::BoolSetting show_vulkan_tab;
-    ui::new_ui::BoolSetting show_notes_tab;
-    ui::new_ui::BoolSetting show_nvidia_profile_tab;
 
     /** Main tab: show optional "DC folders" collapsible (paths, versions, folder buttons). Default off. */
     ui::new_ui::BoolSetting show_main_tab_dc_folders;
@@ -217,8 +212,6 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_main_tab_dlss_control;
     /** Main tab: show DXGI Control (flip-discard upgrade, max frame latency, buffer count). Default off. */
     ui::new_ui::BoolSetting show_main_tab_dxgi_control;
-    /** Comma-separated stable IDs for optional main tab panel order (see main_new_tab.cpp). */
-    ui::new_ui::StringSetting main_tab_optional_section_order;
 
     /** When enabled, install NvLowLatencyVk hooks when NvLowLatencyVk.dll is loaded (Vulkan Reflex frame pacing). */
     ui::new_ui::BoolSetting vulkan_nvll_hooks_enabled;

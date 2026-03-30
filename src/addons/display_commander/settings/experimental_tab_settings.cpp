@@ -40,7 +40,6 @@ ExperimentalTabSettings::ExperimentalTabSettings()
       upgrade_min_mag_linear_mip_point("UpgradeMinMagLinearMipPoint", false, "DisplayCommander.Experimental"),
       upgrade_compare_min_mag_linear_mip_point("UpgradeCompareMinMagLinearMipPoint", false,
                                                "DisplayCommander.Experimental"),
-      thread_tracking_enabled("ThreadTrackingEnabled", false, "DisplayCommander.Experimental"),
       performance_measurement_enabled("PerformanceMeasurementEnabled", false, "DisplayCommander.Experimental"),
       perf_measure_overlay_enabled("PerfMeasureOverlayEnabled", true, "DisplayCommander.Experimental"),
       perf_measure_overlay_show_volume_enabled("PerfMeasureOverlayShowVolumeEnabled", true,
@@ -112,8 +111,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
       test_block_keyboard_getkeyboardstate("TestBlockKeyboardGetKeyboardState", false, "DisplayCommander.Experimental"),
       test_block_keyboard_rawinput("TestBlockKeyboardRawInput", false, "DisplayCommander.Experimental"),
       test_block_keyboard_keybdevent("TestBlockKeyboardKeybdEvent", false, "DisplayCommander.Experimental"),
-      test_block_keyboard_sendinput("TestBlockKeyboardSendInput", false, "DisplayCommander.Experimental"),
-      show_advanced_profile_settings("ShowAdvancedProfileSettings", false, "DisplayCommander.Experimental") {
+      test_block_keyboard_sendinput("TestBlockKeyboardSendInput", false, "DisplayCommander.Experimental") {
     // Initialize the all_settings_ vector
     all_settings_ = {
         &timeslowdown_enabled,
@@ -143,7 +141,6 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &upgrade_compare_min_mag_mip_linear,
         &upgrade_min_mag_linear_mip_point,
         &upgrade_compare_min_mag_linear_mip_point,
-        &thread_tracking_enabled,
         &performance_measurement_enabled,
         &perf_measure_overlay_enabled,
         &perf_measure_overlay_show_volume_enabled,
@@ -171,7 +168,6 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &perf_suppress_enqueue_gpu_completion,
         &perf_suppress_on_present_update_before,
         &show_volume,
-        &show_advanced_profile_settings,
         &translate_mouse_position,
         &translate_mouse_position_override_width,
         &translate_mouse_position_override_height,

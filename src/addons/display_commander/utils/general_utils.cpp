@@ -587,58 +587,6 @@ std::filesystem::path GetGameFolderFromProcess() {
     return std::filesystem::path(buf).parent_path();
 }
 
-std::filesystem::path GetGameNotesFilePath() {
-    std::filesystem::path base = GetDisplayCommanderAppDataFolder();
-    if (base.empty()) {
-        return base;
-    }
-    std::string game_name = GetGameNameFromProcess();
-    if (game_name.empty()) {
-        return std::filesystem::path();
-    }
-    return base / L"Games" / std::filesystem::path(game_name) / L"notes.txt";
-}
-
-// DefaultFiles folder: %LocalAppData%\Programs\Display_Commander\DefaultFiles. Does not create the directory.
-std::filesystem::path GetDefaultFilesFolder() {
-    std::filesystem::path base = GetDisplayCommanderAppDataFolder();
-    if (base.empty()) {
-        return base;
-    }
-    return base / L"DefaultFiles";
-}
-
-// Copy each file from DefaultFiles into game_dir only if missing. Flat files only; no overwrite.
-void CopyDefaultFilesToGameFolder(const std::filesystem::path& game_dir) {
-    std::filesystem::path default_files = GetDefaultFilesFolder();
-    std::error_code ec;
-    if (!std::filesystem::exists(default_files, ec) || !std::filesystem::is_directory(default_files, ec)) {
-        return;
-    }
-    if (game_dir.empty() || !std::filesystem::is_directory(game_dir, ec)) {
-        return;
-    }
-    for (const auto& entry : std::filesystem::directory_iterator(
-             default_files, std::filesystem::directory_options::skip_permission_denied, ec)) {
-        if (ec) {
-            break;
-        }
-        if (!entry.is_regular_file(ec)) {
-            continue;
-        }
-        std::filesystem::path dest = game_dir / entry.path().filename();
-        if (std::filesystem::exists(dest, ec)) {
-            continue;  // do not overwrite
-        }
-        if (std::filesystem::copy_file(entry.path(), dest, std::filesystem::copy_options::none, ec)) {
-            LogInfo("DefaultFiles: copied %s to game folder.", entry.path().filename().string().c_str());
-        } else {
-            LogError("DefaultFiles: failed to copy %s to game folder: %s", entry.path().filename().string().c_str(),
-                     ec.message().c_str());
-        }
-    }
-}
-
 void CopyGameIniFilesToReshadeConfigBackupFolder() {
     std::filesystem::path game_dir = GetGameFolderFromProcess();
     std::filesystem::path configs = GetDisplayCommanderReshadeConfigsFolder();

@@ -1,8 +1,5 @@
 #pragma once
 
-#include "../dxgi/dxgi_hooks.hpp"
-#include <d3d11.h>
-#include <d3d12.h>
 #include <dxgi.h>
 #include <windows.h>
 #include <cstdint>
@@ -11,7 +8,7 @@
 // Forward declarations for DXGI hooks
 namespace display_commanderhooks::dxgi {
 bool HookSwapchain(IDXGISwapChain* swapchain);
-bool HookFactory(IDXGIFactory* factory);
+bool HookFactory(IUnknown* factory);
 }  // namespace display_commanderhooks::dxgi
 
 namespace display_commanderhooks {
@@ -36,25 +33,6 @@ using SetCursor_pfn = HCURSOR(WINAPI*)(HCURSOR);
 using ShowCursor_pfn = int(WINAPI*)(BOOL);
 using AddVectoredExceptionHandler_pfn = PVOID(WINAPI*)(ULONG, PVECTORED_EXCEPTION_HANDLER);
 
-// DXGI Factory creation function pointer types
-using CreateDXGIFactory_pfn = HRESULT(WINAPI*)(REFIID, void**);
-using CreateDXGIFactory1_pfn = HRESULT(WINAPI*)(REFIID, void**);
-using CreateDXGIFactory2_pfn = HRESULT(WINAPI*)(UINT Flags, REFIID, void**);
-
-// D3D11 Device creation function pointer types
-using D3D11CreateDeviceAndSwapChain_pfn = HRESULT(WINAPI*)(IDXGIAdapter*, D3D_DRIVER_TYPE, HMODULE, UINT,
-                                                           const D3D_FEATURE_LEVEL*, UINT, UINT,
-                                                           const DXGI_SWAP_CHAIN_DESC*, IDXGISwapChain**,
-                                                           ID3D11Device**, D3D_FEATURE_LEVEL*, ID3D11DeviceContext**);
-using D3D11CreateDevice_pfn = HRESULT(WINAPI*)(IDXGIAdapter*, D3D_DRIVER_TYPE, HMODULE, UINT, const D3D_FEATURE_LEVEL*,
-                                               UINT, UINT, ID3D11Device**, D3D_FEATURE_LEVEL*, ID3D11DeviceContext**);
-using D3D11On12CreateDevice_pfn = HRESULT(WINAPI*)(IUnknown*, UINT, const D3D_FEATURE_LEVEL*, UINT, IUnknown* const*,
-                                                  UINT, UINT, ID3D11Device**, ID3D11DeviceContext**,
-                                                  D3D_FEATURE_LEVEL*);
-
-// D3D12 Device creation function pointer types
-using D3D12CreateDevice_pfn = HRESULT(WINAPI*)(IUnknown*, D3D_FEATURE_LEVEL, REFIID, void**);
-
 // API hook function pointers
 extern GetFocus_pfn GetFocus_Original;
 extern GetForegroundWindow_pfn GetForegroundWindow_Original;
@@ -73,13 +51,6 @@ extern CreateWindowExW_pfn CreateWindowExW_Original;
 extern SetCursor_pfn SetCursor_Original;
 extern ShowCursor_pfn ShowCursor_Original;
 extern AddVectoredExceptionHandler_pfn AddVectoredExceptionHandler_Original;
-extern CreateDXGIFactory_pfn CreateDXGIFactory_Original;
-extern CreateDXGIFactory1_pfn CreateDXGIFactory1_Original;
-extern CreateDXGIFactory2_pfn CreateDXGIFactory2_Original;
-extern D3D11CreateDeviceAndSwapChain_pfn D3D11CreateDeviceAndSwapChain_Original;
-extern D3D11CreateDevice_pfn D3D11CreateDevice_Original;
-extern D3D11On12CreateDevice_pfn D3D11On12CreateDevice_Original;
-extern D3D12CreateDevice_pfn D3D12CreateDevice_Original;
 
 // True minimized state, bypassing IsIconic detour (e.g. for ApplyWindowChange - do not move/resize minimized windows).
 bool IsIconic_direct(HWND hwnd);
@@ -87,8 +58,8 @@ bool IsIconic_direct(HWND hwnd);
 // spoof).
 bool IsWindowVisible_direct(HWND hwnd);
 
-// Create DXGI factory via original API (bypasses CreateDXGIFactory1 detour). Use for addon-internal factory (e.g.
-// shared factory, VRAM, display enumeration). Returns S_OK on success.
+// Create DXGI factory via system dxgi.dll CreateDXGIFactory1 (GetProcAddress; no MinHook detour). For addon-internal
+// factory (shared factory, VRAM, display enumeration). Returns S_OK on success.
 HRESULT CreateDXGIFactory1_Direct(REFIID riid, void** ppFactory);
 
 // Hooked API functions
@@ -113,27 +84,6 @@ int WINAPI ShowCursor_Detour(BOOL bShow);
 PVOID WINAPI AddVectoredExceptionHandler_Detour(ULONG First, PVECTORED_EXCEPTION_HANDLER Handler);
 // Bypass detour: register vectored exception handler with real API (e.g. for process_exit_hooks).
 PVOID AddVectoredExceptionHandler_Direct(ULONG First, PVECTORED_EXCEPTION_HANDLER Handler);
-HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void** ppFactory);
-HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void** ppFactory);
-HRESULT WINAPI CreateDXGIFactory2_Detour(UINT Flags, REFIID riid, void** ppFactory);
-HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE DriverType,
-                                                    HMODULE Software, UINT Flags,
-                                                    const D3D_FEATURE_LEVEL* pFeatureLevels, UINT FeatureLevels,
-                                                    UINT SDKVersion, const DXGI_SWAP_CHAIN_DESC* pSwapChainDesc,
-                                                    IDXGISwapChain** ppSwapChain, ID3D11Device** ppDevice,
-                                                    D3D_FEATURE_LEVEL* pFeatureLevel,
-                                                    ID3D11DeviceContext** ppImmediateContext);
-HRESULT WINAPI D3D11CreateDevice_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE DriverType, HMODULE Software,
-                                        UINT Flags, const D3D_FEATURE_LEVEL* pFeatureLevels, UINT FeatureLevels,
-                                        UINT SDKVersion, ID3D11Device** ppDevice, D3D_FEATURE_LEVEL* pFeatureLevel,
-                                        ID3D11DeviceContext** ppImmediateContext);
-HRESULT WINAPI D3D11On12CreateDevice_Detour(IUnknown* pDevice, UINT Flags,
-                                            const D3D_FEATURE_LEVEL* pFeatureLevels, UINT FeatureLevels,
-                                            IUnknown* const* ppCommandQueues, UINT NumQueues, UINT NodeMask,
-                                            ID3D11Device** ppDevice, ID3D11DeviceContext** ppImmediateContext,
-                                            D3D_FEATURE_LEVEL* pChosenFeatureLevel);
-HRESULT WINAPI D3D12CreateDevice_Detour(IUnknown* pAdapter, D3D_FEATURE_LEVEL MinimumFeatureLevel, REFIID riid,
-                                        void** ppDevice);
 
 // Hook management
 bool InstallApiHooks();

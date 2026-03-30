@@ -28,6 +28,22 @@ Feature protosal:
   Details: removed dead locals in `src/addons/display_commander/swapchain_events.cpp` and `src/addons/display_commander/latent_sync/vblank_monitor.cpp`; strict-unused actionable non-Vulkan warnings are now at 0 in `tmp/clang_tidy_strict_unused_after_batch4.txt`.
 - [cleanup] **Removed dead helper functions from low-risk hook/init paths** - Pruned several clearly-unused helper functions to reduce unused-function noise while keeping runtime behavior unchanged.
   Details: removed unused functions in `src/addons/display_commander/hooks/windows_hooks/windows_message_hooks.cpp`, `src/addons/display_commander/hooks/input/xinput_hooks.cpp`, `src/addons/display_commander/hooks/windows_hooks/window_proc_hooks.cpp`, `src/addons/display_commander/main_entry.cpp`, and `src/addons/display_commander/hooks/nvidia/streamline_hooks.cpp`.
+- [cleanup] **Removed final leftover dead UI helper from strict-unused pass** - Removed one unused Main tab helper so strict unused-function/declaration checks are now clean for non-Vulkan files.
+  Details: removed `DrawUpdatesSectionContent` from `src/addons/display_commander/ui/new_ui/main_new_tab.cpp`; `tmp/clang_tidy_strict_with_wunused_function_batch6.txt` reports 0 non-Vulkan actionable warnings for the strict-unused set.
+- [cleanup] **clang-tidy runner now excludes Vulkan proxy ABI by default** - Unused-cleanup scans now ignore the generated Vulkan proxy ABI header out of the box, so reports focus on actionable project code.
+  Details: `scripts/run-clang-tidy-unused.sh` default `--exclude` regex now includes both `\\.rc` and `vulkan_proxy_abi\\.hpp` substring patterns, and diagnostic output is filtered by the same regex so excluded headers do not reappear via included-file warnings.
+- [cleanup] **Added raw-output toggle for clang-tidy runner** - You can now disable output filtering when needed to inspect all diagnostics, including excluded/vendor headers.
+  Details: `scripts/run-clang-tidy-unused.sh` now supports `--no-filter-output`; default behavior remains filtered output by `--exclude`.
+- [cleanup] **Added command and summary options to clang-tidy runner** - The helper can now print the fully resolved command and a compact warning summary for faster debugging and triage.
+  Details: `scripts/run-clang-tidy-unused.sh` now supports `--show-command` and `--summary` (top checks/files + total warnings).
+- [cleanup] **Added extended summary counters to clang-tidy runner** - You can now include generated/suppressed warning counters in the summary, which helps triage proxy/vendor scans where clang-tidy suppresses non-user diagnostics.
+  Details: `scripts/run-clang-tidy-unused.sh` now supports `--summary-all-lines` (implies `--summary`) and reports `generated_total`, `suppressed_total`, and suppressed reasons.
+- [cleanup] **Added JSON output and top-N control for clang-tidy summary** - The summary can now be exported for automation and constrained to a chosen number of top entries.
+  Details: `scripts/run-clang-tidy-unused.sh` now supports `--json-summary <file>` and `--summary-top <n>`.
+- [cleanup] **Added warning-threshold gating and JSON metadata** - The clang-tidy helper can now fail CI when warning counts exceed a threshold and writes self-describing JSON summaries with run metadata.
+  Details: `scripts/run-clang-tidy-unused.sh` now supports `--fail-on-warning <n>` and JSON summary metadata (mode, target/exclude regex, filter state, checks, jobs, UTC timestamp).
+- [cleanup] **Added generated/suppressed threshold gating** - CI can now gate separately on total generated and suppressed warnings, which is useful for proxy/vendor-heavy targets.
+  Details: `scripts/run-clang-tidy-unused.sh` now supports `--fail-on-generated <n>` and `--fail-on-suppressed <n>`.
 
 - [cleanup] [settings] **Added reusable clang-tidy runner script** - Added a helper script so you can run project-wide clang-tidy checks (including unused-declaration focused checks) with one command instead of retyping long arguments.
   Details: added `scripts/run-clang-tidy-unused.sh` with presets for `unused` and `all`, plus options for build directory, jobs, target regex, and optional output log file.

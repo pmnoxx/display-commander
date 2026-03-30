@@ -6213,16 +6213,14 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
     }
     if (imgui.SliderFloat("Game Volume (%)", &volume, 0.0f, 100.0f, "%.0f%%")) {
         s_game_volume_percent.store(volume);
-        if (settings::g_mainTabSettings.audio_volume_auto_apply.GetValue()) {
-            if (::SetVolumeForCurrentProcess(volume)) {
-                std::ostringstream oss;
-                oss << "Game volume changed to " << static_cast<int>(volume) << "%";
-                LogInfo(oss.str().c_str());
-            } else {
-                std::ostringstream oss;
-                oss << "Failed to set game volume to " << static_cast<int>(volume) << "%";
-                LogWarn(oss.str().c_str());
-            }
+        if (::SetVolumeForCurrentProcess(volume)) {
+            std::ostringstream oss;
+            oss << "Game volume changed to " << static_cast<int>(volume) << "%";
+            LogInfo(oss.str().c_str());
+        } else {
+            std::ostringstream oss;
+            oss << "Failed to set game volume to " << static_cast<int>(volume) << "%";
+            LogWarn(oss.str().c_str());
         }
     }
     if (imgui.IsItemHovered()) {
@@ -6230,15 +6228,6 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
             "Game audio volume control (0-100%%). When at 100%%, volume adjustments will affect system volume "
             "instead.");
     }
-    // Auto-apply checkbox next to Audio Volume
-    imgui.SameLine();
-    if (CheckboxSetting(settings::g_mainTabSettings.audio_volume_auto_apply, "Auto-apply##audio_volume", imgui)) {
-        // No immediate action required; stored for consistency with other UI
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx("Auto-apply volume changes when adjusting the slider.");
-    }
-
     g_rendering_ui_section.store("ui:tab:main_new:audio:system_volume", std::memory_order_release);
     // System Volume slider (controls system master volume directly)
     float system_volume = 0.0f;

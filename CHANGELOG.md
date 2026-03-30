@@ -13,6 +13,9 @@ Feature protosal:
 
 ## Unreleased
 
+- [cleanup] [settings] [ui] **Audio volume auto-apply toggle removed** - Game volume slider changes are now always applied immediately, and the extra auto-apply checkbox was removed to simplify the Main tab audio controls.
+  Details: removed `audio_volume_auto_apply` from `src/addons/display_commander/settings/main_tab_settings.hpp` and `src/addons/display_commander/settings/main_tab_settings.cpp`, and made game-volume apply unconditional in `src/addons/display_commander/ui/new_ui/main_new_tab.cpp`.
+
 - [cleanup] [settings] **Reduced duplicate settings-global declarations** - Removed redundant `extern` declarations for settings globals from `globals.hpp` and kept the canonical declarations in their dedicated settings headers to reduce redundant-declaration warnings without changing runtime behavior.
   Details: `src/addons/display_commander/globals.hpp` now re-exports `advanced_tab_settings.hpp`, `hotkeys_tab_settings.hpp`, `hook_suppression_settings.hpp`, and `reshade_tab_settings.hpp` instead of redeclaring their global instances.
 

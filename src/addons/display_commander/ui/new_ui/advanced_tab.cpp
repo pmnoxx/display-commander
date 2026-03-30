@@ -1414,7 +1414,6 @@ void DrawNvapiSettings(display_commander::ui::GraphicsApi api, display_commander
     }
 
     // Fake NVAPI Settings
-    imgui.Spacing();
     if (imgui.CollapsingHeader("AntiLag 2 / XeLL support (fakenvapi / custom nvapi64.dll)",
                                wrapper_flags::TreeNodeFlags_None)) {
         imgui.Indent();
@@ -1454,7 +1453,6 @@ void DrawNvapiSettings(display_commander::ui::GraphicsApi api, display_commander
     }
 
     // Unsupported/unfinished features
-    imgui.Spacing();
     if (imgui.CollapsingHeader("Unsupported/unfinished features", wrapper_flags::TreeNodeFlags_None)) {
         imgui.Indent();
 

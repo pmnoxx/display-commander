@@ -87,7 +87,6 @@ class MainTabSettings {
     ui::new_ui::BoolSetting audio_mute;
     ui::new_ui::BoolSetting mute_in_background;
     ui::new_ui::BoolSetting mute_in_background_if_other_audio;
-    ui::new_ui::BoolSetting audio_volume_auto_apply;
 
     // Input Remapping Settings
     ui::new_ui::BoolSetting enable_default_chords;

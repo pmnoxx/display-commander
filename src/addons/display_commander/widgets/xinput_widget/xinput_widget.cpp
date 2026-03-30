@@ -1565,10 +1565,6 @@ void DrawXInputWidget(display_commander::ui::IImGuiWrapper& imgui) {
 }
 
 namespace {
-constexpr uint64_t kActiveInputApiWindowNs = 10ULL * 1000000000ULL;  // 10 seconds
-}  // namespace
-
-namespace {
 // For GetState(0) polling rate: rolling 1s window
 uint64_t g_last_getstate0_count = 0;
 uint64_t g_last_getstate0_tick_ms = 0;

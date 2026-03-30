@@ -175,21 +175,6 @@ static const std::array<decltype(&XInputGetCapabilities_Detour_Module0), 5> xinp
     XInputGetCapabilities_Detour_Module3, XInputGetCapabilities_Detour_Module4,
 };
 
-// Initialize XInput function pointers for direct calls
-static void InitializeXInputDirectFunctions() {
-    if (XInputSetState_Direct != nullptr || XInputGetBatteryInformation_Direct != nullptr) {
-        return;  // Already initialized
-    }
-    for (const char* module_name : xinput_modules) {
-        HMODULE xinput_module = GetModuleHandleA(module_name);
-        if (xinput_module != nullptr) {
-            break;
-        } else {
-            LogInfo("XInput module: %s not found", module_name);
-        }
-    }
-}
-
 // Module we may load for vibration test when game has not loaded XInput (never FreeLibrary'd)
 static HMODULE g_xinput_module_for_test = nullptr;
 

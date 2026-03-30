@@ -18,8 +18,6 @@ namespace display_commander::nvapi {
 
 namespace {
 
-// When show_refresh_rate_frame_times is false, use 1 s poll (not configurable).
-constexpr unsigned POLL_MS_WHEN_GRAPH_OFF = 1000;
 // lastFlipTimeStamp is in 100ns units (Windows FILETIME style). 1e7 units = 1 second.
 constexpr double TIMESTAMP_UNITS_PER_SEC = 1e7;
 constexpr size_t RECENT_SAMPLES_SIZE = 256;

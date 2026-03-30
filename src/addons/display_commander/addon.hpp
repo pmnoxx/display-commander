@@ -18,20 +18,10 @@
 #include <audiopolicy.h>
 #include <mmdeviceapi.h>
 
-// Audio management functions
-bool SetMuteForCurrentProcess(bool mute, bool trigger_notification);
-bool SetVolumeForCurrentProcess(float volume_0_100);
-void RunBackgroundAudioMonitor();
-
 // Command list and queue lifecycle hooks (declared in swapchain_events.hpp)
 
 // Function declarations
 void ApplyWindowChange(HWND hwnd, const char* reason = "unknown", bool force_apply = false);
-
-// Continuous monitoring functions
-void StartContinuousMonitoring();
-void StopContinuousMonitoring();
-void ContinuousMonitoringThread();
 
 // CONTINUOUS RENDERING FUNCTIONS REMOVED - Focus spoofing is now handled by Win32 hooks
 

@@ -84,7 +84,7 @@ HWND GetGameWindow() { return g_last_swapchain_hwnd.load(std::memory_order_acqui
 
 bool HWNDBelongsToCurrentProcess(HWND hwnd) {
     DWORD dwPid = 0;
-    DWORD dwTid = GetWindowThreadProcessId(hwnd, &dwPid);
+    GetWindowThreadProcessId(hwnd, &dwPid);
     return GetCurrentProcessId() == dwPid;
 }
 

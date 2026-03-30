@@ -1367,14 +1367,6 @@ static void ChooseAndSetDcConfigPath(HMODULE h_module) {
     g_dc_config_directory.store(std::make_shared<std::wstring>(config_path_w));
 }
 
-std::wstring ProcessAttach_GetConfigDirectoryW() {
-    auto dir = g_dc_config_directory.load(std::memory_order_acquire);
-    if (dir != nullptr && !dir->empty()) return *dir;
-    wchar_t exe_path[MAX_PATH];
-    if (GetModuleFileNameW(nullptr, exe_path, MAX_PATH) == 0) return L"";
-    return std::filesystem::path(exe_path).parent_path().wstring();
-}
-
 void ProcessAttach_DetectReShadeInModules() {
     HMODULE modules[1024];
     DWORD num_modules_bytes = 0;

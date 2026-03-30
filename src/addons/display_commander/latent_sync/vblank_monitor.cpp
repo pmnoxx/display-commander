@@ -9,14 +9,9 @@
 #include <sstream>
 #include <winnt.h>
 
-// Forward declaration of the global variable
-extern std::atomic<HWND> g_last_swapchain_hwnd;
-
 namespace dxgi::fps_limiter {
 std::atomic<LONGLONG> g_latent_sync_total_height{0};
 std::atomic<LONGLONG> g_latent_sync_active_height{0};
-
-extern std::atomic<LONGLONG> ns_per_refresh;
 extern std::atomic<double> correction_lines_delta;
 } // namespace dxgi::fps_limiter
 
@@ -467,10 +462,8 @@ void VBlankMonitor::MonitoringThread() {
     m_thread_phase.store(3, std::memory_order_relaxed);
     m_phase_start_time_ns.store(static_cast<uint64_t>(utils::get_now_ns()), std::memory_order_relaxed);
     LONGLONG min_scanline_duration_ns = 0;
-    LONGLONG correction_ticks_local = 0;
     LONGLONG last_display_timing_refresh_ns = 0;
 
-    int lastScanLine = 0;
     while (!m_should_stop.load()) {
         // auto switch to the correct monitor
         {
@@ -540,7 +533,6 @@ void VBlankMonitor::MonitoringThread() {
 
             std::this_thread::sleep_for(std::chrono::microseconds(100)); // 0.1ms
 
-            lastScanLine = expected_scanline_tmp;
         }
     }
 

@@ -2543,18 +2543,6 @@ static int FindKeyGroupCached(int vKey) {
     return -1;
 }
 
-// Find which group a key belongs to
-static int FindKeyGroup(int vKey, const std::vector<std::vector<int>>& groups) {
-    for (size_t i = 0; i < groups.size(); ++i) {
-        for (int key : groups[i]) {
-            if (key == vKey) {
-                return static_cast<int>(i);
-            }
-        }
-    }
-    return -1;  // Not in any group
-}
-
 bool ShouldSuppressKey(int vKey) {
     if (vKey < 0 || vKey >= 256) {
         return false;

@@ -5,12 +5,6 @@
 #include <cstdint>
 
 
-// Forward declarations for DXGI hooks
-namespace display_commanderhooks::dxgi {
-bool HookSwapchain(IDXGISwapChain* swapchain);
-bool HookFactory(IUnknown* factory);
-}  // namespace display_commanderhooks::dxgi
-
 namespace display_commanderhooks {
 
 // Function pointer types
@@ -109,10 +103,6 @@ BOOL WINAPI SetWindowPos_Direct(HWND hWnd, HWND hWndInsertAfter, int X, int Y, i
 // CreateWindowW direct access (bypasses hook; use from standalone UI or when real window creation is needed)
 HWND WINAPI CreateWindowW_Direct(LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth,
                                  int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam);
-
-// Input blocking functions (forward declarations)
-bool ShouldBlockMouseInput(bool assume_foreground = false);
-bool ShouldBlockKeyboardInput(bool assume_foreground = false);
 
 // Continue Rendering API debug: snapshot of what each focus/visibility API last returned (for UI / diagnostics).
 struct ContinueRenderingApiDebugSnapshot {

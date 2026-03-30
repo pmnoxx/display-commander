@@ -1428,8 +1428,6 @@ void HandleFpsLimiterPre(bool from_present_detour, bool frame_generation_aware =
                     float adjusted_target_fps = target_fps;
                     const auto onpresent_reflex =
                         static_cast<OnPresentReflexMode>(settings::g_mainTabSettings.onpresent_reflex_mode.GetValue());
-                    const bool onpresent_low_latency = (onpresent_reflex == OnPresentReflexMode::kLowLatency
-                                                        || onpresent_reflex == OnPresentReflexMode::kLowLatencyBoost);
                     LONGLONG frame_time_ns = static_cast<LONGLONG>(1'000'000'000.0 / adjusted_target_fps);
 
                     // Store delay_bias and frame_time for post-sleep calculation
@@ -1438,7 +1436,6 @@ void HandleFpsLimiterPre(bool from_present_detour, bool frame_generation_aware =
 
                     // Calculate pre-sleep time: (1 - delay_bias) * frame_time
                     // This is the time we sleep BEFORE starting frame processing
-                    LONGLONG pre_sleep_ns = static_cast<LONGLONG>((1.0f - delay_bias) * frame_time_ns);
                     LONGLONG post_sleep_ns = static_cast<LONGLONG>(delay_bias * frame_time_ns);
 
                     // Get current time and previous frame start time
@@ -1704,8 +1701,6 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
         }
     } else if (dx_d3d9) {
         // query don't assume
-        IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_device()->get_native());
-
         Microsoft::WRL::ComPtr<IDirect3DDevice9> d3d9_device = nullptr;
         // Save DCDxgiSwapchainData for D3D9 to global (no IDXGISwapChain) so selected runtime can be compared.
         if (private_data.d3d9_device == nullptr) {
@@ -1780,7 +1775,6 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()), FpsLimiterCallSite::reshade_addon_event);
     bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::reshade_addon_event);
     if (use_fps_limiter) {
-        uint32_t present_flags = 0;
         OnPresentFlags2(true, false);  // Called from present_detour
 
         RecordNativeFrameTime();

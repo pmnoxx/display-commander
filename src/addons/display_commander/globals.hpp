@@ -1,18 +1,19 @@
 #pragma once
 
+// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "display/display_cache.hpp"
 #include "latent_sync/latent_sync_manager.hpp"
+#include "settings/advanced_tab_settings.hpp"  // IWYU pragma: export
+#include "settings/hook_suppression_settings.hpp"  // IWYU pragma: export
+#include "settings/hotkeys_tab_settings.hpp"  // IWYU pragma: export
+#include "settings/reshade_tab_settings.hpp"  // IWYU pragma: export
 #include "utils/srwlock_wrapper.hpp"
 #include "utils/timing.hpp"
 
-#include <windows.h>
-
-#include <d3d11.h>
-#include <dxgi.h>
-#include <winnt.h>
-#include <wrl/client.h>
+// ReShade / ImGui
 #include <reshade_imgui.hpp>
 
+// Standard C++
 #include <array>
 #include <atomic>
 #include <cstdint>
@@ -25,18 +26,21 @@
 #include <unordered_set>
 #include <vector>
 
-// NVAPI types
+// Windows.h
+#include <Windows.h>
+
+// Libraries <Windows>
+#include <d3d11.h>
+#include <dxgi.h>
+#include <winnt.h>
+#include <wrl/client.h>
+
+// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "../../../external/nvapi/nvapi.h"
+#include "nvapi/vrr_status.hpp"
 
 // Forward declarations for NGX types
 struct NVSDK_NGX_Parameter;
-
-// Fake NVAPI manager
-#include "nvapi/vrr_status.hpp"
-
-// Settings
-#include "settings/advanced_tab_settings.hpp"
-#include "settings/hotkeys_tab_settings.hpp"
 
 // Experimental features flag - allows code to compile in both cases
 #ifdef EXPERIMENTAL_FEATURES
@@ -872,21 +876,13 @@ extern std::atomic<bool> s_enable_performance_overlay_shortcut;
 // Forward declaration for tab settings
 namespace settings {
 class ExperimentalTabSettings;
-class AdvancedTabSettings;
 class MainTabSettings;
-class SwapchainTabSettings;
 class StreamlineTabSettings;
-class HotkeysTabSettings;
-class HookSuppressionSettings;
-class ReShadeTabSettings;
+class SwapchainTabSettings;
 extern ExperimentalTabSettings g_experimentalTabSettings;
-extern AdvancedTabSettings g_advancedTabSettings;
 extern MainTabSettings g_mainTabSettings;
-extern HotkeysTabSettings g_hotkeysTabSettings;
 extern SwapchainTabSettings g_swapchainTabSettings;
 extern StreamlineTabSettings g_streamlineTabSettings;
-extern settings::HookSuppressionSettings g_hook_suppression_settings;
-extern ReShadeTabSettings g_reshadeTabSettings;
 
 // Function to load all settings at startup
 void LoadAllSettingsAtStartup();

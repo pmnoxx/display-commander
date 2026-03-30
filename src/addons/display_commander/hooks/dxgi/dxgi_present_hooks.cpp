@@ -25,9 +25,6 @@
 #include <memory>
 #include <string>
 
-// Forward declaration for g_sim_start_ns from swapchain_events.cpp
-extern std::atomic<LONGLONG> g_sim_start_ns;
-
 /*
  * IDXGISwapChain VTable Layout Documentation
  * ==========================================

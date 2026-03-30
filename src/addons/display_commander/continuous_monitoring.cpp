@@ -54,7 +54,6 @@ constexpr bool kMonitorRefreshRate = true;
 constexpr bool kMonitorVrrStatus = true;
 constexpr bool kMonitorExclusiveKeyGroups = true;
 constexpr bool kMonitorReflexAutoConfigure = true;
-constexpr bool kMonitorAutoApplyTrigger = true;
 constexpr bool kMonitorDisplayCache = true;
 constexpr int kMonitorDisplayCacheIntervalSec = 2;
 }  // namespace
@@ -69,7 +68,7 @@ HWND GetCurrentForeGroundWindow() {
     HWND foreground_window = display_commanderhooks::GetForegroundWindow_Direct();
 
     DWORD window_pid = 0;
-    DWORD thread_id = GetWindowThreadProcessId(foreground_window, &window_pid);
+    GetWindowThreadProcessId(foreground_window, &window_pid);
 
     return window_pid == GetCurrentProcessId() ? foreground_window : nullptr;
 }
@@ -89,14 +88,13 @@ void HandleReflexAutoConfigure() {
         static_cast<FpsLimiterMode>(settings::g_mainTabSettings.fps_limiter_mode.GetValue()) == FpsLimiterMode::kReflex;
 
     // Get current settings (Reflex enable/low-latency/boost are derived from Main tab FPS limiter mode)
-    bool reflex_use_markers = settings::g_advancedTabSettings.reflex_use_markers.GetValue();
     bool reflex_generate_markers = settings::g_advancedTabSettings.reflex_generate_markers.GetValue();
     bool reflex_enable_sleep = settings::g_advancedTabSettings.reflex_enable_sleep.GetValue();
 
     // Auto-configure Reflex: when in Reflex FPS limiter mode, ensure reflex_limiter_reflex_mode is LowLatency so Reflex
     // is enabled
     if (is_reflex_mode) {
-        auto cur = static_cast<OnPresentReflexMode>(settings::g_mainTabSettings.reflex_limiter_reflex_mode.GetValue());
+        static_cast<void>(settings::g_mainTabSettings.reflex_limiter_reflex_mode.GetValue());
     }
 
     {
@@ -239,8 +237,6 @@ static void Every1sScreensaver() {
 
 static void Every1sFpsAggregate() {
     g_continuous_monitoring_section.store("every1s_tasks:fps_aggregate", std::memory_order_release);
-
-    const double now_s = ::g_perf_time_seconds.load(std::memory_order_acquire);
 
     if (::g_perf_reset_requested.exchange(false, std::memory_order_acq_rel)) {
         ::g_perf_ring.Reset();
@@ -660,7 +656,6 @@ void ContinuousMonitoringThread() {
     LONGLONG last_cache_refresh_ns = start_time;
     LONGLONG last_60fps_update_ns = start_time;
     LONGLONG last_1s_update_ns = start_time;
-    LONGLONG last_exclusive_keys_cache_update_ns = start_time;
 
     while (g_monitoring_thread_running.load()) {
         const bool high_freq_enabled = kMonitorHighFreqEnabled;

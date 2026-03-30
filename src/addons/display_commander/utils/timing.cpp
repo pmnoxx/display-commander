@@ -132,7 +132,6 @@ void wait_until_qpc(LONGLONG target_qpc) {
             once_setup_timer = true;
         }
     }
-    static __declspec(align(64)) uint64_t monitor = 0ULL;
     LONGLONG current_time_qpc = get_now_qpc();
     CALL_GUARD(current_time_qpc * 100);
 

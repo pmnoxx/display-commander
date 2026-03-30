@@ -5,8 +5,6 @@
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
 
-static uint64_t s_last_scan_time = 0;
-
 namespace dxgi::fps_limiter {
 std::atomic<LONGLONG> ns_per_refresh{0};
 std::atomic<double> correction_lines_delta{0};
@@ -109,8 +107,6 @@ void LatentSyncLimiter::LimitFrameRate() {
     }
     StartVBlankMonitoring();
 
-    extern std::atomic<LONGLONG> g_latent_sync_total_height;
-    extern std::atomic<LONGLONG> g_latent_sync_active_height;
     LONGLONG total_height = g_latent_sync_total_height.load();
     LONGLONG active_height = g_latent_sync_active_height.load();
     double mid_vblank_scanline = (active_height + total_height) / 2.0;

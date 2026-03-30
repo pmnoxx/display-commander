@@ -339,7 +339,6 @@ std::string GetDeviceApiVersionString(reshade::api::device_api api, uint32_t api
             // D3D_FEATURE_LEVEL_12_0 = 0xc000 (12.0)
             // D3D_FEATURE_LEVEL_12_1 = 0xc100 (12.1)
             // D3D_FEATURE_LEVEL_12_2 = 0xc200 (12.2)
-            int major = (api_version >> 12) & 0xF;
             int minor = (api_version >> 8) & 0xF;
 
             if (api == reshade::api::device_api::d3d10) {

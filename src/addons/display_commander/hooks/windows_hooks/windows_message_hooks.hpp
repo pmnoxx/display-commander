@@ -270,8 +270,8 @@ bool GetDebugSuppressAllGetMessage();
 void SetDebugSuppressAllGetMessage(bool enable);
 
 // Input blocking helper functions
-bool ShouldBlockKeyboardInput(bool assume_foreground);
-bool ShouldBlockMouseInput(bool assume_foreground);
+bool ShouldBlockKeyboardInput(bool assume_foreground = false);
+bool ShouldBlockMouseInput(bool assume_foreground = false);
 bool ShouldBlockGamepadInput();
 
 // Hook call statistics

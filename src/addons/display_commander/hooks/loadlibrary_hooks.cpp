@@ -35,9 +35,6 @@
 
 #include <reshade.hpp>
 
-// Declare K32EnumProcessModules (kernel32 variant, safe from DllMain)
-extern "C" BOOL WINAPI K32EnumProcessModules(HANDLE hProcess, HMODULE* lphModule, DWORD cb, LPDWORD lpcbNeeded);
-
 namespace display_commanderhooks {
 
 // Returns true if path or filename contains "renodx" (case-insensitive) but not "renodx-devkit". Used to detect RenoDX

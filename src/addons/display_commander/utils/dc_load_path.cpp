@@ -156,7 +156,6 @@ static bool ModuleHasGetDisplayCommanderState(HMODULE mod) {
     return mod != nullptr && GetProcAddress(mod, "GetDisplayCommanderState") != nullptr;
 }
 
-extern "C" BOOL WINAPI K32EnumProcessModules(HANDLE hProcess, HMODULE* lphModule, DWORD cb, LPDWORD lpcbNeeded);
 }  // namespace
 
 std::filesystem::path GetDcDirectoryForLoading(void* current_module) {

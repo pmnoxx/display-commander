@@ -153,7 +153,6 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
         }
     }
 
-    bool use_present_end = false;
     int result = 0;
 
     const int reflex_fps_limiter_max_queued_frames = GetEffectiveReflexFpsLimiterMaxQueuedFrames();
@@ -194,8 +193,6 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
             if (reflex_fps_limiter_max_queued_frames > 0) {
                 const size_t prevSlot = static_cast<size_t>(
                     (frame_id + kFrameDataBufferSize - reflex_fps_limiter_max_queued_frames) % kFrameDataBufferSize);
-                const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);
-
                 const size_t prevSlotM1 = (prevSlot - 1 + kFrameDataBufferSize) % kFrameDataBufferSize;
                 // avoid deadlock
                 bool prev_frame_rendered =

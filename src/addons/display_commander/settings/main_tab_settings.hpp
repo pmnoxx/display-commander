@@ -236,9 +236,6 @@ class MainTabSettings {
     std::vector<ui::new_ui::SettingBase*> all_settings_;
 };
 
-// Global instance
-extern MainTabSettings g_mainTabSettings;
-
 /** Override values for FPS limiter when native Reflex is active and a non-Custom preset is selected. */
 struct NativeReflexPresetOverrides {
     bool limit_real_frames;

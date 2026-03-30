@@ -651,17 +651,6 @@ sl::Result slUpgradeInterface_Detour(void** baseInterface) {
     return result;
 }
 
-static void RollbackStreamlineLoaderHooks() {
-    for (const auto& entry : kStreamlineLoaderHooks) {
-        LPVOID* const orig = entry.original;
-        if (orig != nullptr && *orig != nullptr) {
-            MH_DisableHook(*orig);
-            MH_RemoveHook(*orig);
-            *orig = nullptr;
-        }
-    }
-}
-
 // Initialize config-driven prevent_slupgrade_interface flag
 void InitializePreventSLUpgradeInterface() {
     bool prevent_slupgrade_interface = false;

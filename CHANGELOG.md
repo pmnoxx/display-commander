@@ -13,6 +13,33 @@ Feature protosal:
 
 ## Unreleased
 
+- [cleanup] [settings] **Reduced duplicate settings-global declarations** - Removed redundant `extern` declarations for settings globals from `globals.hpp` and kept the canonical declarations in their dedicated settings headers to reduce redundant-declaration warnings without changing runtime behavior.
+  Details: `src/addons/display_commander/globals.hpp` now re-exports `advanced_tab_settings.hpp`, `hotkeys_tab_settings.hpp`, `hook_suppression_settings.hpp`, and `reshade_tab_settings.hpp` instead of redeclaring their global instances.
+
+- [cleanup] **Removed duplicate Windows API declarations** - Cleaned up redundant `K32EnumProcessModules` declarations that were already provided by Windows headers, reducing clang-tidy redundant-declaration noise without changing behavior.
+  Details: removed duplicate declarations from `src/addons/display_commander/hooks/loadlibrary_hooks.cpp` and `src/addons/display_commander/utils/dc_load_path.cpp`.
+- [cleanup] **Pruned duplicate hook declarations across headers** - Removed duplicated function declarations that were already provided by dedicated hook headers, reducing redundant-declaration noise while preserving behavior.
+  Details: removed duplicated DXGI and input-blocking forward declarations from `src/addons/display_commander/hooks/windows_hooks/api_hooks.hpp`.
+- [cleanup] **Removed duplicate latent-sync extern declarations** - Cleaned up local `extern` declarations that duplicated declarations already provided by shared headers, reducing `readability-redundant-declaration` noise with no behavior change.
+  Details: removed redundant declarations from `src/addons/display_commander/latent_sync/vblank_monitor.cpp`, `src/addons/display_commander/latent_sync/latent_sync_limiter.cpp`, and `src/addons/display_commander/hooks/dxgi/dxgi_present_hooks.cpp`.
+- [cleanup] **Removed dead local/static symbols found by strict unused scan** - Pruned a first batch of obviously unused locals/constants in timing, utility, monitoring, and hook paths to reduce warning noise without changing behavior.
+  Details: removed unused symbols in `src/addons/display_commander/utils/timing.cpp`, `src/addons/display_commander/utils/general_utils.cpp`, `src/addons/display_commander/continuous_monitoring.cpp`, `src/addons/display_commander/hooks/windows_hooks/api_hooks.cpp`, `src/addons/display_commander/hooks/nvidia/nvapi_hooks.cpp`, `src/addons/display_commander/latent_sync/latent_sync_limiter.cpp`, `src/addons/display_commander/nvapi/nvapi_actual_refresh_rate_monitor.cpp`, `src/addons/display_commander/widgets/xinput_widget/xinput_widget.cpp`, and `src/addons/display_commander/hooks/windows_hooks/window_proc_hooks.cpp`.
+- [cleanup] **Removed another small batch of unused locals in frame/vblank paths** - Pruned additional clearly-unused locals in swapchain and vblank monitoring code to keep strict-unused reports focused on real issues.
+  Details: removed dead locals in `src/addons/display_commander/swapchain_events.cpp` and `src/addons/display_commander/latent_sync/vblank_monitor.cpp`; strict-unused actionable non-Vulkan warnings are now at 0 in `tmp/clang_tidy_strict_unused_after_batch4.txt`.
+- [cleanup] **Removed dead helper functions from low-risk hook/init paths** - Pruned several clearly-unused helper functions to reduce unused-function noise while keeping runtime behavior unchanged.
+  Details: removed unused functions in `src/addons/display_commander/hooks/windows_hooks/windows_message_hooks.cpp`, `src/addons/display_commander/hooks/input/xinput_hooks.cpp`, `src/addons/display_commander/hooks/windows_hooks/window_proc_hooks.cpp`, `src/addons/display_commander/main_entry.cpp`, and `src/addons/display_commander/hooks/nvidia/streamline_hooks.cpp`.
+
+- [cleanup] [settings] **Added reusable clang-tidy runner script** - Added a helper script so you can run project-wide clang-tidy checks (including unused-declaration focused checks) with one command instead of retyping long arguments.
+  Details: added `scripts/run-clang-tidy-unused.sh` with presets for `unused` and `all`, plus options for build directory, jobs, target regex, and optional output log file.
+- [cleanup] **Added TU-list mode to clang-tidy runner script** - You can now provide a simple text file with specific translation units to scan, making iterative cleanup passes more repeatable than editing long regexes.
+  Details: `scripts/run-clang-tidy-unused.sh` now supports `--tu-list <file>`, ignores empty/comment lines, builds a safe regex automatically, and rejects using `--tu-list` together with `--target`.
+- [cleanup] **Added custom checks override for clang-tidy script** - You can now pass an explicit checks expression for one-off focused analysis without editing the script.
+  Details: `scripts/run-clang-tidy-unused.sh` now accepts `--checks "<checks>"`, which overrides mode presets while keeping existing build/target/TU-list options.
+- [cleanup] **Improved clang-tidy script reliability with exclude filter** - Added an exclude regex to avoid problematic non-C++ compile database entries (such as resource compilation units), so broad runs complete successfully.
+  Details: `scripts/run-clang-tidy-unused.sh` now supports `--exclude <regex>` (default `\\.rc$`) and applies it when building the final target regex.
+- [cleanup] **Added no-params unused cleanup mode** - Added a dedicated script mode for unused-declaration cleanup while intentionally skipping unused-parameter checks.
+  Details: `scripts/run-clang-tidy-unused.sh` now supports `--mode unused-no-params` with checks focused on alias/using and redundant-declaration cleanup only.
+
 ## v0.13.58 (2026-03-29)
 - [settings] [ui] [compatibility] **ReShade screenshots/shader-path toggles are now local and instant** - The Addons tab checkboxes for `./Screenshots` and global shader/texture search paths now use local Display Commander config keys instead of marker files, and apply to ReShade immediately when clicked.
   Details: `src/addons/display_commander/ui/new_ui/addons_tab.cpp` now stores these toggles in `[DisplayCommander] ReShadeScreenshotPathEnabled` and `ReShadeGlobalShadersTexturesPathsEnabled` and re-runs `OverrideReShadeSettings` on toggle; `src/addons/display_commander/main_entry.cpp` now reads those local keys and also removes previously injected ReShade paths/settings when toggles are turned off.

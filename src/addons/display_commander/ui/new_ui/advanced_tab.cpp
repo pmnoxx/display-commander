@@ -1040,7 +1040,7 @@ void DrawNvapiSettings(display_commander::ui::GraphicsApi api, display_commander
     if (IsReflexAvailable() && imgui.CollapsingHeader("NVIDIA Reflex (Minimal)", wrapper_flags::TreeNodeFlags_None)) {
         imgui.Indent();
         // Native Reflex Status Indicator
-        bool is_native_reflex_active = IsNativeReflexActive(now_ns);
+        bool is_native_reflex_active = IsNativeReflexActive();
         if (is_native_reflex_active) {
             imgui.TextColored(::ui::colors::ICON_SUCCESS, ICON_FK_OK " Native Reflex: ACTIVE Limit Real Frames: ON");
             if (imgui.IsItemHovered()) {

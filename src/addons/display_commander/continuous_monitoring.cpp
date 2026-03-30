@@ -82,7 +82,7 @@ void HandleReflexAutoConfigure() {
 
     // Check if native Reflex is active
     uint64_t now_ns = utils::get_now_ns();
-    bool is_native_reflex_active = IsNativeReflexActive(now_ns);
+    bool is_native_reflex_active = IsNativeReflexActive();
 
     bool is_reflex_mode =
         static_cast<FpsLimiterMode>(settings::g_mainTabSettings.fps_limiter_mode.GetValue()) == FpsLimiterMode::kReflex;

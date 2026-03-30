@@ -1475,12 +1475,10 @@ extern std::atomic<LONGLONG> g_sleep_reflex_injected_ns_smooth;
 
 // Helper function to check if native Reflex is active
 // Now detects native Reflex only via SetLatencyMarker calls (following Special-K approach)
-inline bool IsNativeReflexActive(uint64_t now_ns) {
+inline bool IsNativeReflexActive() {
     return g_native_reflex_detected.load();
     // && !settings::g_advancedTabSettings.reflex_supress_native.GetValue();
 }
-// Backward-compatible overload (calls the above with current time)
-inline bool IsNativeReflexActive() { return IsNativeReflexActive(utils::get_now_ns()); }
 
 // Reflex debug counters
 extern std::atomic<uint32_t> g_reflex_sleep_count;             // Total Sleep calls

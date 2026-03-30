@@ -3774,7 +3774,7 @@ static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWr
 
         // Show Native Reflex status only when streamline is used
         if (g_present_update_after2_called.load(std::memory_order_acquire)) {
-            if (IsNativeReflexActive(now_ns)) {
+            if (IsNativeReflexActive()) {
                 imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
                                   ICON_FK_OK " Native Reflex: ACTIVE Limit Real Frames: ON");
                 if (imgui.IsItemHovered()) {

@@ -1181,7 +1181,7 @@ void OnPresentUpdateAfter2(bool frame_generation_aware) {
         override_game_reflex_settings = false;
     }
     // TODO add or Injected Reflex Enabled
-    if (!(IsNativeReflexActive(utils::get_now_ns()) || IsInjectedReflexEnabled())) {
+    if (!(IsNativeReflexActive() || IsInjectedReflexEnabled())) {
         override_game_reflex_settings = false;
     }
 
@@ -1786,7 +1786,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
         RecordFrameTime(FrameTimeMode::kPresent);
     }
 
-    auto ok_to_initialize_reflex = IsNativeReflexActive(utils::get_now_ns()) || IsInjectedReflexEnabled();
+    auto ok_to_initialize_reflex = IsNativeReflexActive() || IsInjectedReflexEnabled();
     if (ok_to_initialize_reflex) {
         if (api == reshade::api::device_api::d3d12) {
             g_reflexProvider->InitializeNative((void*)swapchain->get_device()->get_native(), DeviceTypeDC::DX12);

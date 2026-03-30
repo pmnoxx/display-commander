@@ -1058,7 +1058,6 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
 
 }
 
-static std::atomic<LONGLONG> g_fg2_onpresent_sync_frame_start_ns{0};
 LONGLONG TimerPresentPacingDelayStart() { return utils::get_now_ns(); }
 
 LONGLONG TimerPresentPacingDelayEnd(LONGLONG start_ns) {
@@ -1375,61 +1374,6 @@ float GetDelayBiasFromRatio(int ratio_index) {
     ratio_index = (std::max)(0, (std::min)(8, ratio_index));
     // Map: 0→0.0, 1→0.125, 2→0.25, 3→0.375, 4→0.5, 5→0.625, 6→0.75, 7→0.875, 8→1.0
     return ratio_index * 0.125f;
-}
-
-static bool ShouldActivateFg2Limiter() {
-    if (!settings::g_mainTabSettings.fps_limiter_fg2_enabled.GetValue()) {
-        return false;
-    }
-    if (static_cast<FrameTimeMode>(settings::g_mainTabSettings.frame_time_mode.GetValue()) != FrameTimeMode::kPresent) {
-        return false;
-    }
-    if (!s_fps_limiter_enabled.load(std::memory_order_relaxed)
-        || s_fps_limiter_mode.load(std::memory_order_relaxed) != FpsLimiterMode::kOnPresentSync) {
-        return false;
-    }
-    // only with kLowLatencyNativePacing preset and 0-3 presets
-    if (settings::g_mainTabSettings.native_reflex_fps_preset.GetValue()
-        > static_cast<int>(FpsLimiterPreset::kDCPaceLockQ3)) {
-        return false;
-    }
-    const DLSSGSummaryLite lite = GetDLSSGSummaryLite();
-    return lite.fg_mode == DLSSGFgMode::k2x || lite.fg_mode == DLSSGFgMode::k3x || lite.fg_mode == DLSSGFgMode::k4x;
-}
-
-static void HandleFpsLimiterFg2Pre() {
-    if (!ShouldActivateFg2Limiter()) {
-        return;
-    }
-    auto start_time_ns = utils::get_now_ns();
-    CALL_GUARD(start_time_ns);
-    if (g_global_frame_id.load(std::memory_order_relaxed) < kFpsLimiterWarmupFrames) {
-        return;
-    }
-    const float base_limit = GetTargetFps();
-    if (base_limit <= 0.0f) {
-        return;
-    }
-    float pct = settings::g_mainTabSettings.fps_limiter_fg2_target_boost_percent.GetValue();
-    pct = (std::max)(0.f, (std::min)(10.f, pct));
-    const float target_fps = base_limit * (1.0f + pct / 100.0f);
-    if (target_fps < 10.0f) {
-        return;
-    }
-    const int ratio_index = settings::g_mainTabSettings.onpresent_sync_low_latency_ratio.GetValue();
-    const LONGLONG frame_time_ns = static_cast<LONGLONG>(1'000'000'000.0 / target_fps);
-    const LONGLONG previous_frame_start_ns = g_fg2_onpresent_sync_frame_start_ns.load(std::memory_order_relaxed);
-    LONGLONG ideal_frame_start_ns = (std::max)(start_time_ns, previous_frame_start_ns + frame_time_ns);
-    if (ideal_frame_start_ns > start_time_ns) {
-        LONGLONG wait_target_ns = ideal_frame_start_ns;
-        constexpr LONGLONG k_fps_limiter_max_wait_ns = 100 * utils::NS_TO_MS;
-        if (wait_target_ns - start_time_ns > k_fps_limiter_max_wait_ns) {
-            wait_target_ns = start_time_ns + k_fps_limiter_max_wait_ns;
-            LogWarn("[FPS limiter FG2] Pre-sleep capped at 100 ms.");
-        }
-        utils::wait_until_ns(wait_target_ns);
-    }
-    g_fg2_onpresent_sync_frame_start_ns.store(ideal_frame_start_ns, std::memory_order_relaxed);
 }
 
 void HandleFpsLimiterPre(bool from_present_detour, bool frame_generation_aware = false) {
@@ -1871,10 +1815,6 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
         OnPresentFlags2(true, false);  // Called from present_detour
 
         RecordNativeFrameTime();
-    } else {
-        if (ShouldActivateFg2Limiter()) {
-            HandleFpsLimiterFg2Pre();
-        }
     }
 
     const FpsLimiterCallSite frame_loc = GetChosenFrameTimeLocation();

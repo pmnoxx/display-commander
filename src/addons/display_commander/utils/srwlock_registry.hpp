@@ -27,7 +27,6 @@ extern SRWLOCK g_dinput_device_hooks_mutex;
 extern SRWLOCK g_wndproc_map_lock;
 extern SRWLOCK g_continuous_monitoring_loop_lock;  // held shared while CM loop body runs; FreeLibrary waits exclusive
 extern SRWLOCK g_proxy_getproc_logged_srwlock;  // GetProcAddress detour: set of logged proc names (our proxy, found)
-extern SRWLOCK g_getproc_all_logged_srwlock;    // GetProcAddress detour: set of logged (module,symbol) when .GET_PROC_ADDRESS exists
 
 // Logs status of registry locks above plus logger queue_lock and swapchain_tracking
 // to the addon log. HELD = lock is in use; free = not held. Call from stuck-detection.

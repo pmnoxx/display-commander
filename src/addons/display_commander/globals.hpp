@@ -271,12 +271,8 @@ class UnifiedParameterMap {
 // DLL initialization state
 extern std::atomic<bool> g_dll_initialization_complete;
 
-// No-ReShade mode: .NO_RESHADE or .NORESHADE file present in game exe dir; ReShade not loaded
+// No-ReShade mode: ReShade is not loaded; hooks/UI init run without ReShade overlay.
 extern std::atomic<bool> g_no_reshade_mode;
-// No-DC mode: .NODC file present in game exe dir; ReShade is loaded (proxy only), addon does not register or run
-extern std::atomic<bool> g_no_dc_mode;
-// .NO_EXIT file present: block process/window exit (ExitProcess, WM_CLOSE, etc.) (debug)
-extern std::atomic<bool> g_no_exit_mode;
 
 // Wine/Proton detection - cached on first call (ntdll wine_get_version present)
 bool IsUsingWine();

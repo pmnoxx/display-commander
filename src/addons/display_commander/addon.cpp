@@ -447,9 +447,6 @@ bool FinishAddonRegistration(HMODULE addon_module, HMODULE reshade_module, bool 
 
 // Export addon initialization function
 extern "C" __declspec(dllexport) bool AddonInit(HMODULE addon_module, HMODULE reshade_module) {
-    if (g_no_dc_mode.load(std::memory_order_acquire)) {
-        return true;  // .NODC: proxy-only, do not register or run Display Commander
-    }
     CALL_GUARD(utils::get_now_ns());
     if (g_display_commander_state.load(std::memory_order_acquire) != DC_STATE_HOOKED) {
         LogInfo("[AddonInit] Display Commander state is not HOOKED, refusing to load");

@@ -12,6 +12,15 @@ Feature protosal:
 - Add fix for games with broken native reflex.
 
 
+## v0.13.54 (2026-03-29)
+
+- [removal] [ui] [settings] [hooks] **2nd FPS limiter (generated frames)** - Removed the secondary FPS limiter path for generated frames. Frame pacing now uses only the primary limiter flow, which simplifies configuration and avoids stacking two separate pacing stages.
+  Details: removed `fps_limiter_fg2_enabled` and `fps_limiter_fg2_target_boost_percent` from `main_tab_settings.*`, removed the Main tab FG2 controls, and deleted FG2 pre-present pacing logic from `swapchain_events.cpp`.
+- [removal] [cleanup] **Removed expert flag-file modes** - Display Commander no longer supports the game-directory flag files `.NO_RESHADE`, `.NODC`, `.UI`, `.NO_EXIT`, or `.GET_PROC_ADDRESS`.
+  Details: removed flag scanning and related mode globals from `src/addons/display_commander/main_entry.cpp`, removed `.NO_EXIT` suppression from the window/process exit hooks, and removed the `.GET_PROC_ADDRESS` GetProcAddress logging path.
+- [removal] [cleanup] **Removed `.DLL_DETECTOR` mode** - Display Commander no longer supports the `.DLL_DETECTOR` startup flag and no longer exits early to copy itself into `dlls_loaded`.
+  Details: removed `DllDetectorCopyToLoadedIfEnabled` and its `DLL_PROCESS_ATTACH` early-return path in `src/addons/display_commander/main_entry.cpp`; removed the `.DLL_DETECTOR` bullet from `README.md`.
+
 ## v0.13.53 (2026-03-29)
 
 - [removal] [cleanup] **Taskbar helper implementation removed** - Display Commander no longer performs taskbar hide/show actions at runtime. This removes one source of shell/taskbar state changes while keeping existing call sites safe.

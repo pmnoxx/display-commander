@@ -77,7 +77,6 @@
 #include <optional>
 #include <reshade.hpp>
 #include <set>
-#include <sstream>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -755,12 +754,8 @@ void OverrideReShadeSettings(reshade::api::effect_runtime* runtime) {
 // ReShade loaded status (declared here so it's available to LoadAddonsFromPluginsDirectory)
 std::atomic<bool> g_wait_and_inject_stop(false);
 
-// No-ReShade mode (see globals.hpp)
+// No-ReShade mode: ReShade is not loaded; hooks/UI init run without ReShade overlay.
 std::atomic<bool> g_no_reshade_mode(false);
-// No-DC mode: .NODC present - load ReShade only, do not register as addon (proxy-only)
-std::atomic<bool> g_no_dc_mode(false);
-// .NO_EXIT: block process/window exit (debugging)
-std::atomic<bool> g_no_exit_mode(false);
 
 // Helper function to check if an addon is enabled (whitelist approach)
 static bool IsAddonEnabledForLoading(const std::string& addon_name, const std::string& addon_file) {
@@ -1596,53 +1591,6 @@ std::wstring ProcessAttach_GetConfigDirectoryW() {
     return std::filesystem::path(exe_path).parent_path().wstring();
 }
 
-// Returns true if any file in dir has a name that split by '.' has parts[1] equal to one of segment_names
-// (case-insensitive). E.g. ".NORESHADE", ".NORESHADE.off" match segment "NORESHADE".
-static bool DirectoryHasFileWithSegment(const std::wstring& dir, std::initializer_list<const wchar_t*> segment_names) {
-    std::error_code ec;
-    for (const auto& entry : std::filesystem::directory_iterator(dir, ec)) {
-        if (ec || !entry.is_regular_file(ec)) continue;
-        std::wstring name = entry.path().filename().wstring();
-        if (name.empty() || name[0] != L'.') continue;
-        std::vector<std::wstring> parts;
-        for (size_t pos = 0; pos <= name.size();) {
-            size_t next = name.find(L'.', pos);
-            if (next == std::wstring::npos) {
-                parts.push_back(name.substr(pos));
-                break;
-            }
-            parts.push_back(name.substr(pos, next - pos));
-            pos = next + 1;
-        }
-        if (parts.size() < 2) continue;
-        for (const wchar_t* seg : segment_names) {
-            if (_wcsicmp(parts[1].c_str(), seg) == 0) return true;
-        }
-    }
-    return false;
-}
-
-void ProcessAttach_CheckNoReShadeMode() {
-    const std::wstring dc_config_dir = ProcessAttach_GetConfigDirectoryW();
-    if (dc_config_dir.empty()) return;
-    if (DirectoryHasFileWithSegment(dc_config_dir, {L"NO_RESHADE", L"NORESHADE"})) {
-        g_no_reshade_mode.store(true);
-        OutputDebugStringA(
-            "[DisplayCommander] .NO_RESHADE/.NORESHADE (or .* variant) found - ReShade will not be loaded.\n");
-    }
-    if (DirectoryHasFileWithSegment(dc_config_dir, {L"NODC"})) {
-        g_no_dc_mode.store(true);
-        OutputDebugStringA(
-            "[DisplayCommander] .NODC (or .NODC.*) found - ReShade will be loaded; Display Commander will not "
-            "register as addon (proxy-only).\n");
-    }
-    if (DirectoryHasFileWithSegment(dc_config_dir, {L"NO_EXIT", L"NOEXIT"})) {
-        g_no_exit_mode.store(true);
-        OutputDebugStringA(
-            "[DisplayCommander] .NO_EXIT/.NOEXIT (or .* variant) found - game exit will be blocked (debugging).\n");
-    }
-}
-
 void ProcessAttach_DetectReShadeInModules() {
     HMODULE modules[1024];
     DWORD num_modules_bytes = 0;
@@ -2269,38 +2217,6 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
 }
 }  // namespace
 
-// Returns true if .DLL_DETECTOR existed and we copied self to dlls_loaded (caller should return TRUE from DllMain).
-static bool DllDetectorCopyToLoadedIfEnabled(HMODULE h_module) {
-    wchar_t module_path_buf[MAX_PATH] = {};
-    if (GetModuleFileNameW(h_module, module_path_buf, MAX_PATH) == 0) return false;
-    std::filesystem::path module_path(module_path_buf);
-    std::filesystem::path local_dir = module_path.parent_path();
-    std::error_code ec;
-    bool has_dll_detector = false;
-    for (const auto& entry : std::filesystem::directory_iterator(local_dir, ec)) {
-        if (ec || !entry.is_regular_file(ec)) continue;
-        std::wstring name = entry.path().filename().wstring();
-        if (name.size() < 2 || name[0] != L'.') continue;
-        size_t dot = name.find(L'.', 1);
-        std::wstring first_seg = (dot == std::wstring::npos) ? name.substr(1) : name.substr(1, dot - 1);
-        if (_wcsicmp(first_seg.c_str(), L"DLL_DETECTOR") == 0) {
-            has_dll_detector = true;
-            break;
-        }
-    }
-    if (!has_dll_detector) return false;
-    std::filesystem::path dlls_loaded_dir = local_dir / L"dlls_loaded";
-    std::filesystem::create_directories(dlls_loaded_dir, ec);
-    if (ec) return false;
-    std::filesystem::path dest = dlls_loaded_dir / module_path.filename();
-    if (CopyFileW(module_path.c_str(), dest.c_str(), FALSE) == 0) return false;
-
-    std::ostringstream oss;
-    oss << "[DisplayCommander] .DLL_DETECTOR: copied self to dlls_loaded " << dest.string() << "\n";
-    OutputDebugStringA(oss.str().c_str());
-    return true;
-}
-
 // Returns true if the module path is a known loader. No allocation.
 static bool IsLoaderModule(const wchar_t* path) {
     if (!path || !path[0]) return false;
@@ -2549,11 +2465,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             EnsureDisplayCommanderLogWithModulePath(h_module);
             LogBoot("[DLLMain] Stage 4");
             static const char* reason = "";
-            if (DllDetectorCopyToLoadedIfEnabled(h_module))
-            {
-                LogBoot("[DLLMain] DllDetectorCopyToLoadedIfEnabled: true");
-                return TRUE;
-            }
             LogBoot("[DLLMain] Stage 5");
             auto set_process_attached_on_exit = [h_module]() {
                 ResolveAndLogDllMainFunctionStack();
@@ -2607,7 +2518,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             }
             ProcessAttach_DetectReShadeInModules();
             ProcessAttach_LoadLocalAddonDlls(h_module);
-            ProcessAttach_CheckNoReShadeMode();
 
             std::wstring entry_point;
             ProcessAttach_DetectEntryPoint(h_module, entry_point);
@@ -2623,7 +2533,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 const bool was_no_reshade = g_no_reshade_mode.load();
                 g_no_reshade_mode.store(true);
                 if (!was_no_reshade) {
-                    OutputDebugStringA("[main_entry] ReShade not found - no-ReShade mode (same as .NORESHADE).\n");
+                    OutputDebugStringA("[main_entry] ReShade not found - entering no-ReShade mode.\n");
                 }
             }
 
@@ -2631,14 +2541,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 LogInfo("[main_entry] DLL_PROCESS_ATTACH: No ReShade mode");
                 ProcessAttach_NoReShadeModeInit(h_module);
                 g_dll_initialization_complete.store(true);
-                reason = ".NO_RESHADE/.NORESHADE";
-                break;
-            }
-
-            if (g_no_dc_mode.load()) {
-                LogInfo("[main_entry] DLL_PROCESS_ATTACH: .NODC - proxy only, not registering as addon");
-                g_dll_initialization_complete.store(true);
-                reason = ".NODC";
+                reason = "NoReShadeMode: ReShade not loaded";
                 break;
             }
 
@@ -2693,9 +2596,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
         case DLL_PROCESS_DETACH:
             if (g_reshade_module == nullptr) {
                 return TRUE;
-            }
-            if (g_no_dc_mode.load(std::memory_order_acquire)) {
-                return TRUE;  // .NODC: we never registered or inited, nothing to clean up
             }
             LogInfo("DLL_PROCESS_DETACH: DLL process detach");
             g_shutdown.store(true);

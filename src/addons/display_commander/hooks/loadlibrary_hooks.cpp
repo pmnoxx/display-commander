@@ -1018,29 +1018,6 @@ static constexpr size_t kProxyDllNamesCount = 7;
 // Proc names we have already logged for GetProcAddress(our proxy, result found). One log per name.
 static std::set<std::string> g_proxy_getproc_logged_names;
 
-// When .GET_PROC_ADDRESS exists in process exe dir: log every GetProcAddress that returns non-null, once per (module,
-// symbol).
-enum class LogAllGetProcState : int {
-    Unchecked = -1,  // not yet checked
-    Checking = -2,   // one thread is doing the file check (others wait)
-    Disabled = 0,
-    Enabled = 1,
-};
-static std::atomic<LogAllGetProcState> s_log_all_getproc{LogAllGetProcState::Unchecked};
-static std::set<std::string> g_getproc_all_logged_keys;
-
-// Returns true if .GET_PROC_ADDRESS exists in the process exe directory. Call once, cache result in s_log_all_getproc.
-// Optionally returns the exe dir (narrow) for logging; pass nullptr to skip.
-static bool CheckGetProcAddressFlagFileExists(std::string* out_exe_dir_narrow = nullptr) {
-    WCHAR exe_path[MAX_PATH] = {};
-    if (GetModuleFileNameW(nullptr, exe_path, MAX_PATH) == 0) return false;
-    std::filesystem::path exe_dir = std::filesystem::path(exe_path).parent_path();
-    if (out_exe_dir_narrow) *out_exe_dir_narrow = WideToNarrow(exe_dir.wstring());
-    std::filesystem::path flag_path = exe_dir / ".GET_PROC_ADDRESS";
-    std::error_code ec;
-    return std::filesystem::exists(flag_path, ec) && !ec;
-}
-
 static bool IsOurProxyModule(const std::wstring& module_path) {
     std::wstring path_lower = module_path;
     std::transform(path_lower.begin(), path_lower.end(), path_lower.begin(), ::towlower);
@@ -1080,55 +1057,6 @@ FARPROC WINAPI GetProcAddress_Detour(HMODULE hModule, LPCSTR lpProcName) {
                     if (g_proxy_getproc_logged_names.insert(key).second) {
                         LogInfo("GetProcAddress(our proxy): %s", key.c_str());
                     }
-                }
-            }
-        }
-        // If .GET_PROC_ADDRESS exists in exe dir (checked once), log every successful GetProcAddress for any module,
-        // once per (module, symbol).
-        LogAllGetProcState state = s_log_all_getproc.load(std::memory_order_acquire);
-        if (state == LogAllGetProcState::Unchecked) {
-            LogAllGetProcState expected = LogAllGetProcState::Unchecked;
-            if (s_log_all_getproc.compare_exchange_strong(expected, LogAllGetProcState::Checking,
-                                                          std::memory_order_acq_rel)) {
-                std::string exe_dir_narrow;
-                bool on = CheckGetProcAddressFlagFileExists(&exe_dir_narrow);
-                s_log_all_getproc.store(on ? LogAllGetProcState::Enabled : LogAllGetProcState::Disabled,
-                                        std::memory_order_release);
-                state = on ? LogAllGetProcState::Enabled : LogAllGetProcState::Disabled;
-                if (on) {
-                    LogInfo("GetProcAddress logging (.GET_PROC_ADDRESS): enabled (exe dir: %s)",
-                            exe_dir_narrow.c_str());
-                } else {
-                    LogInfo("GetProcAddress logging (.GET_PROC_ADDRESS): disabled - file not found (exe dir: %s)",
-                            exe_dir_narrow.c_str());
-                }
-            } else {
-                while ((state = s_log_all_getproc.load(std::memory_order_acquire)) == LogAllGetProcState::Checking) {
-                    // Another thread is doing the check; wait briefly.
-                }
-            }
-        }
-        if (state == LogAllGetProcState::Enabled) {
-            WCHAR mod_path[MAX_PATH] = {};
-            if (GetModuleFileNameW(hModule, mod_path, MAX_PATH) != 0) {
-                std::string path_narrow = WideToNarrow(mod_path);
-                std::string symbol_str =
-                    IS_INTRESOURCE(lpProcName)
-                        ? ("ordinal " + std::to_string(reinterpret_cast<uintptr_t>(lpProcName) & 0xFFFF))
-                        : std::string(lpProcName);
-                HMODULE caller_mod = GetCallingDLL();
-                std::string caller_narrow;
-                if (caller_mod != nullptr) {
-                    WCHAR caller_path[MAX_PATH] = {};
-                    if (GetModuleFileNameW(caller_mod, caller_path, MAX_PATH) != 0)
-                        caller_narrow = WideToNarrow(caller_path);
-                }
-                if (caller_narrow.empty()) caller_narrow = "(unknown)";
-                std::string key = path_narrow + "\t" + symbol_str + "\t" + caller_narrow;
-                utils::SRWLockExclusive lock(utils::g_getproc_all_logged_srwlock);
-                if (g_getproc_all_logged_keys.insert(key).second) {
-                    LogInfo("GetProcAddress: %s -> %s (caller: %s)", path_narrow.c_str(), symbol_str.c_str(),
-                            caller_narrow.c_str());
                 }
             }
         }

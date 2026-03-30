@@ -32,9 +32,6 @@ MainTabSettings::MainTabSettings()
       fps_limit("fps_limit", 0.0f, 0.0f, 240.0f, "DisplayCommander"),
       fps_limit_background("fps_limit_background", 60.0f, 0.0f, 240.0f, "DisplayCommander"),
       background_fps_enabled("background_fps_enabled", false, "DisplayCommander"),
-      fps_limiter_fg2_enabled("fps_limiter_fg2_enabled", false, "DisplayCommander"),
-      fps_limiter_fg2_target_boost_percent("fps_limiter_fg2_target_boost_percent", 1.0f, 0.0f, 10.0f,
-                                           "DisplayCommander"),
       suppress_reflex_sleep("suppress_reflex_sleep", false, "DisplayCommander"),
       inject_reflex("inject_reflex", false, "DisplayCommander"),
       onpresent_sync_low_latency_ratio(
@@ -205,8 +202,6 @@ MainTabSettings::MainTabSettings()
         &fps_limit,
         &fps_limit_background,
         &background_fps_enabled,
-        &fps_limiter_fg2_enabled,
-        &fps_limiter_fg2_target_boost_percent,
         &suppress_reflex_sleep,
         &inject_reflex,
         &onpresent_sync_low_latency_ratio,

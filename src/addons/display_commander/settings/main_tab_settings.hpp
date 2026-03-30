@@ -44,10 +44,6 @@ class MainTabSettings {
     /** When true, cap FPS to fps_limit_background when window is in background. When false, use same limit as
      * foreground. Default off. */
     ui::new_ui::BoolSetting background_fps_enabled;
-    /** Second On Present Sync pacer for DLSS-G generated frames (ReShade present path only). */
-    ui::new_ui::BoolSetting fps_limiter_fg2_enabled;
-    /** Extra target FPS for FG2 limiter as percent of main cap (0–10). Default 1% (slightly higher cap). */
-    ui::new_ui::FloatSetting fps_limiter_fg2_target_boost_percent;
     ui::new_ui::BoolSetting suppress_reflex_sleep;
     /** When true and native Reflex is not active, addon injects Reflex (sleep + markers). Default false. */
     ui::new_ui::BoolSetting inject_reflex;

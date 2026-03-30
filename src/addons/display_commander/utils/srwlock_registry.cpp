@@ -6,7 +6,7 @@
 
 namespace utils {
 
-// --- Definitions (all 15 global/static SRWLOCKs in this registry) ---
+// --- Definitions (all 14 global/static SRWLOCKs in this registry) ---
 SRWLOCK g_reshade_runtimes_lock = SRWLOCK_INIT;
 SRWLOCK g_dlss_override_handles_srwlock = SRWLOCK_INIT;
 SRWLOCK g_dlss_tracked_srwlock = SRWLOCK_INIT;
@@ -25,7 +25,6 @@ SRWLOCK g_dinput_device_hooks_mutex = SRWLOCK_INIT;
 SRWLOCK g_wndproc_map_lock = SRWLOCK_INIT;
 SRWLOCK g_continuous_monitoring_loop_lock = SRWLOCK_INIT;
 SRWLOCK g_proxy_getproc_logged_srwlock = SRWLOCK_INIT;
-SRWLOCK g_getproc_all_logged_srwlock = SRWLOCK_INIT;
 
 namespace {
 
@@ -54,7 +53,6 @@ void LogAllSrwlockStatus() {
     LogOne("wndproc_map", TryIsSRWLockHeld(g_wndproc_map_lock));
     LogOne("continuous_monitoring_loop", TryIsSRWLockHeld(g_continuous_monitoring_loop_lock));
     LogOne("proxy_getproc_logged", TryIsSRWLockHeld(g_proxy_getproc_logged_srwlock));
-    LogOne("getproc_all_logged", TryIsSRWLockHeld(g_getproc_all_logged_srwlock));
 }
 
 }  // namespace utils

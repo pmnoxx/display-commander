@@ -11,11 +11,15 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.56 (2026-03-29)
 
-## Unreleased
+- [ui] **Shaders paths UI** - Added a new UI control in the Addons tab for shaders/textures paths, making it easier to enable or disable global shader path usage from the interface.
+- [cleanup] **Dropped dead code** - Removed a large amount of unused/dead code paths to simplify maintenance and reduce project complexity.
 
-- [settings] [compatibility] **Optional DC ReShade search-path injection gate** - Display Commander now adds its `Reshade\Shaders` and `Reshade\Textures` search paths only when explicitly enabled via a marker file, so path injection is opt-in.
-  Details: `OverrideReShadeSettings_AddDisplayCommanderPaths` in `src/addons/display_commander/main_entry.cpp` now requires `.DC_GLOBAL_EFFECTS_PATHS` (next to the addon DLL or in `%LocalAppData%\Programs\Display_Commander`) before writing ReShade `GENERAL.EffectSearchPaths` / `GENERAL.TextureSearchPaths`.
+## v0.13.55 (2026-03-29)
+
+- [settings] [compatibility] [ui] **Global shaders/textures marker gate and checkbox** - Display Commander now adds global `Reshade\Shaders` and `Reshade\Textures` paths only when `%LocalAppData%\Programs\Display_Commander\.GLOBAL_SHADERS` exists, and the Addons tab exposes a checkbox that toggles this marker file directly.
+  Details: `OverrideReShadeSettings_AddDisplayCommanderPaths` in `src/addons/display_commander/main_entry.cpp` checks `.GLOBAL_SHADERS`; `src/addons/display_commander/ui/new_ui/addons_tab.cpp` adds the checkbox under **Shaders** and keeps it synced to marker-file existence.
 
 - [cleanup] [hooks] **DXGI color-space logs now print raw enum values** - Color-space diagnostics now log the numeric DXGI color-space value directly, reducing helper indirection in swapchain logging paths.
   Details: removed `GetDXGIColorSpaceString` and `utils/dxgi_color_space.hpp`; updated logging call sites in `src/addons/display_commander/swapchain_events.cpp` and `src/addons/display_commander/hooks/dxgi/dxgi_present_hooks.cpp`.

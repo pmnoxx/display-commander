@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <atomic>
 #include <filesystem>
+#include <fstream>
 #include <string>
 #include <vector>
 
@@ -74,6 +75,65 @@ std::filesystem::path GetDocumentsDirectory() {
         return std::filesystem::path();
     }
     return std::filesystem::path(localappdata_path);
+}
+
+std::filesystem::path GetGlobalShadersMarkerFilePathNoCreate() {
+    std::filesystem::path dc_root = GetDisplayCommanderAppDataRootPathNoCreate();
+    if (dc_root.empty()) {
+        return std::filesystem::path();
+    }
+    return dc_root / L".GLOBAL_SHADERS";
+}
+
+bool IsGlobalShadersEnabled() {
+    std::filesystem::path marker_path = GetGlobalShadersMarkerFilePathNoCreate();
+    if (marker_path.empty()) {
+        return false;
+    }
+
+    std::error_code ec;
+    return std::filesystem::is_regular_file(marker_path, ec) && !ec;
+}
+
+bool SetGlobalShadersEnabled(bool enabled) {
+    std::filesystem::path marker_path = GetGlobalShadersMarkerFilePathNoCreate();
+    if (enabled) {
+        std::filesystem::path dc_root = GetDisplayCommanderAppDataFolder();
+        if (dc_root.empty()) {
+            LogWarn("Failed to enable global shaders/textures paths: Display Commander app data folder is unavailable");
+            return false;
+        }
+        marker_path = dc_root / L".GLOBAL_SHADERS";
+
+        std::error_code ec;
+        std::filesystem::create_directories(dc_root, ec);
+        if (ec) {
+            LogWarn("Failed to enable global shaders/textures paths: cannot create directory %ls (error: %s)",
+                    dc_root.c_str(), ec.message().c_str());
+            return false;
+        }
+
+        std::ofstream marker_file(marker_path, std::ios::out | std::ios::trunc);
+        if (!marker_file.good()) {
+            LogWarn("Failed to enable global shaders/textures paths: cannot create marker file %ls", marker_path.c_str());
+            return false;
+        }
+        marker_file.close();
+        return true;
+    }
+
+    if (marker_path.empty()) {
+        return true;
+    }
+
+    std::error_code ec;
+    std::filesystem::remove(marker_path, ec);
+    if (ec) {
+        LogWarn("Failed to disable global shaders/textures paths: cannot remove marker file %ls (error: %s)",
+                marker_path.c_str(), ec.message().c_str());
+        return false;
+    }
+    return true;
 }
 
 // Get the Reshade directory path (where reshade64.dll/reshade32.dll are located).
@@ -359,11 +419,9 @@ void InitAddonsTab() {
 
 void RefreshAddonList() { g_addon_list_dirty.store(true); }
 
-void DrawAddonsTab(display_commander::ui::IImGuiWrapper& imgui) {
-    using namespace display_commander::ui::wrapper_flags;
-
+void DrawAddonsHeader(display_commander::ui::IImGuiWrapper& imgui) {
     // Addons Subsection
-    if (imgui.CollapsingHeader("Addons", TreeNodeFlags_None)) {
+    if (imgui.CollapsingHeader("Addons", display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
         imgui.Spacing();
 
         // Check if we need to refresh
@@ -468,12 +526,17 @@ void DrawAddonsTab(display_commander::ui::IImGuiWrapper& imgui) {
                               GetPathRelativeToDocuments(GetGlobalAddonsDirectory()).c_str());
         } else {
             // Create table for addon list
-            const int table_flags = TableFlags_Borders | TableFlags_RowBg | TableFlags_Resizable;
+            const int table_flags = display_commander::ui::wrapper_flags::TableFlags_Borders
+                                    | display_commander::ui::wrapper_flags::TableFlags_RowBg
+                                    | display_commander::ui::wrapper_flags::TableFlags_Resizable;
             if (imgui.BeginTable("AddonsTable", 4, table_flags)) {
-                imgui.TableSetupColumn("Enabled", TableColumnFlags_WidthFixed, 160.0f);
-                imgui.TableSetupColumn("Name", TableColumnFlags_WidthStretch);
-                imgui.TableSetupColumn("File", TableColumnFlags_WidthFixed, 500.0f);
-                imgui.TableSetupColumn("Actions", TableColumnFlags_WidthFixed, 100.0f);
+                imgui.TableSetupColumn("Enabled", display_commander::ui::wrapper_flags::TableColumnFlags_WidthFixed,
+                                       160.0f);
+                imgui.TableSetupColumn("Name", display_commander::ui::wrapper_flags::TableColumnFlags_WidthStretch);
+                imgui.TableSetupColumn("File", display_commander::ui::wrapper_flags::TableColumnFlags_WidthFixed,
+                                       500.0f);
+                imgui.TableSetupColumn("Actions",
+                                       display_commander::ui::wrapper_flags::TableColumnFlags_WidthFixed, 100.0f);
                 imgui.TableHeadersRow();
 
                 for (size_t i = 0; i < g_addon_list.size(); ++i) {
@@ -554,10 +617,30 @@ void DrawAddonsTab(display_commander::ui::IImGuiWrapper& imgui) {
         }
     }
 
-    imgui.Spacing();
+}
 
+void DrawShadersHeader(display_commander::ui::IImGuiWrapper& imgui) {
     // Shaders Subsection
-    if (imgui.CollapsingHeader("Shaders", TreeNodeFlags_None)) {
+    if (imgui.CollapsingHeader("Shaders", display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
+        bool global_shaders_enabled = IsGlobalShadersEnabled();
+        if (imgui.Checkbox("Enable global shaders/textures paths", &global_shaders_enabled)) {
+            if (!SetGlobalShadersEnabled(global_shaders_enabled)) {
+                // Keep UI strictly in sync with marker-file existence.
+                global_shaders_enabled = IsGlobalShadersEnabled();
+            }
+        }
+        if (imgui.IsItemHovered()) {
+            std::filesystem::path marker_path = GetGlobalShadersMarkerFilePathNoCreate();
+            if (marker_path.empty()) {
+                marker_path = std::filesystem::path(L"%localappdata%") / L"Programs" / L"Display_Commander"
+                              / L".GLOBAL_SHADERS";
+            }
+            imgui.SetTooltipEx(
+                "When enabled, Display Commander adds global Shaders/Textures paths to ReShade.\n"
+                "State is controlled by: %s",
+                GetPathRelativeToDocuments(marker_path).c_str());
+        }
+
         imgui.Spacing();
 
         // Open Shaders Folder button
@@ -625,105 +708,101 @@ void DrawAddonsTab(display_commander::ui::IImGuiWrapper& imgui) {
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx("Open the textures directory in Windows Explorer");
         }
-
-        imgui.Spacing();
-        imgui.Separator();
-        imgui.Spacing();
-
-        // Info text
-        imgui.TextColored(ui::colors::TEXT_DIMMED, "Shaders directory: %s",
-                          GetPathRelativeToDocuments(GetShadersDirectory()).c_str());
-        imgui.TextColored(ui::colors::TEXT_DIMMED, "Textures directory: %s",
-                          GetPathRelativeToDocuments(GetTexturesDirectory()).c_str());
     }
 
-    imgui.Spacing();
+}
 
+void DrawReshadeDllHeader(display_commander::ui::IImGuiWrapper& imgui) {
+    if (imgui.CollapsingHeader("Reshade DLL", display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
+        // Global ReShade Subsection (only show if ReShade DLL exists in LocalAppData)
+        bool reshade64_exists = Reshade64DllExists();
+        bool reshade32_exists = Reshade32DllExists();
 
-    // Global ReShade Subsection (only show if ReShade DLL exists in LocalAppData)
-    bool reshade64_exists = Reshade64DllExists();
-    bool reshade32_exists = Reshade32DllExists();
-
-    if (reshade64_exists || reshade32_exists) {
-        imgui.Spacing();
-
-        imgui.Spacing();
-
-        // Show status for each DLL with version
-        if (reshade64_exists) {
-            std::string version = GetReshade64Version();
-            if (!version.empty() && version != "Unknown") {
-                imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Reshade64.dll found (v%s)",
-                                  version.c_str());
-            } else {
-                imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Reshade64.dll found");
-            }
-        }
-        if (reshade32_exists) {
-            std::string version = GetReshade32Version();
-            if (!version.empty() && version != "Unknown") {
-                imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Reshade32.dll found (v%s)",
-                                  version.c_str());
-            } else {
-                imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Reshade32.dll found");
-            }
-        }
-
-        // Show currently loaded ReShade versions (found by checking for ReShadeRegisterAddon export)
-        std::vector<std::pair<std::string, std::string>> loaded_reshade = GetLoadedReShadeVersions();
-        if (!loaded_reshade.empty()) {
+        if (reshade64_exists || reshade32_exists) {
             imgui.Spacing();
-            imgui.TextColored(ui::colors::TEXT_DEFAULT, "Currently loaded ReShade modules:");
-            imgui.Indent();
-            for (const auto& [module_path, version] : loaded_reshade) {
-                std::filesystem::path path_obj(module_path);
-                std::string module_name = path_obj.filename().string();
-                imgui.TextColored(ui::colors::TEXT_DEFAULT, ICON_FK_OK " %s (v%s)", module_name.c_str(),
-                                  version.c_str());
-                if (imgui.IsItemHovered()) {
-                    std::filesystem::path module_path_obj(module_path);
-                    imgui.SetTooltipEx("%s", GetPathRelativeToDocuments(module_path_obj).c_str());
-                }
-            }
-            imgui.Unindent();
-        }
+            imgui.Spacing();
 
-        imgui.Spacing();
-
-        // Open Reshade Folder button
-        ui::colors::PushIconColor(&imgui, ui::colors::ICON_ACTION);
-        if (imgui.Button(ICON_FK_FOLDER_OPEN " Open Reshade Folder")) {
-            std::filesystem::path reshade_dir = GetReshadeDirectory();
-
-            // Create directory if it doesn't exist
-            if (!std::filesystem::exists(reshade_dir)) {
-                try {
-                    std::filesystem::create_directories(reshade_dir);
-                } catch (const std::exception& e) {
-                    LogError("Failed to create Reshade directory: %s", e.what());
-                }
-            }
-
-            if (!reshade_dir.empty() && std::filesystem::exists(reshade_dir)) {
-                std::string reshade_dir_str = reshade_dir.string();
-                HINSTANCE result =
-                    ShellExecuteA(nullptr, "explore", reshade_dir_str.c_str(), nullptr, nullptr, SW_SHOW);
-
-                if (reinterpret_cast<intptr_t>(result) <= 32) {
-                    LogError("Failed to open Reshade folder: %s (Error: %ld)", reshade_dir_str.c_str(),
-                             reinterpret_cast<intptr_t>(result));
+            // Show status for each DLL with version
+            if (reshade64_exists) {
+                std::string version = GetReshade64Version();
+                if (!version.empty() && version != "Unknown") {
+                    imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Reshade64.dll found (v%s)",
+                                      version.c_str());
                 } else {
-                    LogInfo("Opened Reshade folder: %s", reshade_dir_str.c_str());
+                    imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Reshade64.dll found");
                 }
             }
-        }
-        ui::colors::PopIconColor(&imgui);
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Open the Reshade folder (containing reshade64.dll/reshade32.dll) in Windows Explorer");
+            if (reshade32_exists) {
+                std::string version = GetReshade32Version();
+                if (!version.empty() && version != "Unknown") {
+                    imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Reshade32.dll found (v%s)",
+                                      version.c_str());
+                } else {
+                    imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Reshade32.dll found");
+                }
+            }
+
+            // Show currently loaded ReShade versions (found by checking for ReShadeRegisterAddon export)
+            std::vector<std::pair<std::string, std::string>> loaded_reshade = GetLoadedReShadeVersions();
+            if (!loaded_reshade.empty()) {
+                imgui.Spacing();
+                imgui.TextColored(ui::colors::TEXT_DEFAULT, "Currently loaded ReShade modules:");
+                imgui.Indent();
+                for (const auto& [module_path, version] : loaded_reshade) {
+                    std::filesystem::path path_obj(module_path);
+                    std::string module_name = path_obj.filename().string();
+                    imgui.TextColored(ui::colors::TEXT_DEFAULT, ICON_FK_OK " %s (v%s)", module_name.c_str(),
+                                      version.c_str());
+                    if (imgui.IsItemHovered()) {
+                        std::filesystem::path module_path_obj(module_path);
+                        imgui.SetTooltipEx("%s", GetPathRelativeToDocuments(module_path_obj).c_str());
+                    }
+                }
+                imgui.Unindent();
+            }
+
+            imgui.Spacing();
+
+            // Open Reshade Folder button
+            ui::colors::PushIconColor(&imgui, ui::colors::ICON_ACTION);
+            if (imgui.Button(ICON_FK_FOLDER_OPEN " Open Reshade Folder")) {
+                std::filesystem::path reshade_dir = GetReshadeDirectory();
+
+                // Create directory if it doesn't exist
+                if (!std::filesystem::exists(reshade_dir)) {
+                    try {
+                        std::filesystem::create_directories(reshade_dir);
+                    } catch (const std::exception& e) {
+                        LogError("Failed to create Reshade directory: %s", e.what());
+                    }
+                }
+
+                if (!reshade_dir.empty() && std::filesystem::exists(reshade_dir)) {
+                    std::string reshade_dir_str = reshade_dir.string();
+                    HINSTANCE result =
+                        ShellExecuteA(nullptr, "explore", reshade_dir_str.c_str(), nullptr, nullptr, SW_SHOW);
+
+                    if (reinterpret_cast<intptr_t>(result) <= 32) {
+                        LogError("Failed to open Reshade folder: %s (Error: %ld)", reshade_dir_str.c_str(),
+                                 reinterpret_cast<intptr_t>(result));
+                    } else {
+                        LogInfo("Opened Reshade folder: %s", reshade_dir_str.c_str());
+                    }
+                }
+            }
+            ui::colors::PopIconColor(&imgui);
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltipEx(
+                    "Open the Reshade folder (containing reshade64.dll/reshade32.dll) in Windows Explorer");
+            }
         }
     }
+}
 
+void DrawAddonsTab(display_commander::ui::IImGuiWrapper& imgui) {
+    DrawAddonsHeader(imgui);
+    DrawShadersHeader(imgui);
+    DrawReshadeDllHeader(imgui);
 }
 
 }  // namespace ui::new_ui

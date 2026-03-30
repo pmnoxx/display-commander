@@ -618,7 +618,30 @@ void OverrideReShadeSettings_LoadFromDllMainOnce(reshade::api::effect_runtime* r
     }
 }
 
+std::filesystem::path GetGlobalShadersMarkerPathNoCreate() {
+    std::filesystem::path dc_root = GetDisplayCommanderAppDataRootPathNoCreate();
+    if (dc_root.empty()) {
+        return std::filesystem::path();
+    }
+    return dc_root / L".GLOBAL_SHADERS";
+}
+
+bool IsGlobalShadersMarkerEnabled() {
+    std::filesystem::path marker_path = GetGlobalShadersMarkerPathNoCreate();
+    if (marker_path.empty()) {
+        return false;
+    }
+
+    std::error_code ec;
+    return std::filesystem::is_regular_file(marker_path, ec) && !ec;
+}
+
 void OverrideReShadeSettings_AddDisplayCommanderPaths(reshade::api::effect_runtime* runtime) {
+    if (!IsGlobalShadersMarkerEnabled()) {
+        LogInfo("Skipping global ReShade Shaders/Textures path injection (.GLOBAL_SHADERS marker is missing)");
+        return;
+    }
+
     std::filesystem::path dc_base_dir = GetDisplayCommanderReshadeRootFolder();
     if (dc_base_dir.empty()) {
         LogWarn("Failed to get DC Reshade root path, skipping ReShade path configuration");

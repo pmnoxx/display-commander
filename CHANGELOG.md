@@ -54,6 +54,8 @@ Feature protosal:
   Details: removed the related UI button draws from `src/addons/display_commander/ui/new_ui/main_new_tab.cpp`.
 - [cleanup] **Added root clang-tidy wrapper script** - Added a root-level convenience entrypoint so strict unused scans can be run with one short command while keeping project defaults.
   Details: added `run-clang-tidy-unused.sh` in repo root; it forwards to `scripts/run-clang-tidy-unused.sh` with default strict-unused arguments and passes through extra CLI options.
+- [cleanup] [hooks] **Removed Steam overlay block helper from loadlibrary hooks** - Removed `ShouldBlockGameOverlayRendererDLL` and its call sites from load-library detours to simplify hook flow.
+  Details: deleted helper and block checks from `src/addons/display_commander/hooks/loadlibrary_hooks.cpp` (`LoadLibrary*`, `LoadPackagedLibrary`, and `LdrLoadDll` detours).
 - [cleanup] **Added compact JSON output and git revision metadata** - JSON summaries can now be emitted in compact form for smaller CI artifacts, and include current revision for traceability.
   Details: `scripts/run-clang-tidy-unused.sh` now supports `--json-summary-compact` and writes `metadata.git_rev` when available.
 

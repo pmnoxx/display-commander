@@ -52,17 +52,6 @@ static void OnRenoDxAddonLoaded() {
     g_is_renodx_loaded.store(true, std::memory_order_relaxed);
 }
 
-// Helper function to check if a DLL should be blocked (Steam overlay - GameOverlayRenderer)
-bool ShouldBlockGameOverlayRendererDLL(const std::wstring& dll_path) {
-    if (!settings::g_advancedTabSettings.block_gameoverlayrenderer.GetValue()) {
-        return false;
-    }
-    std::filesystem::path path(dll_path);
-    std::wstring filename = path.filename().wstring();
-    std::transform(filename.begin(), filename.end(), filename.begin(), ::towlower);
-    return (filename == L"gameoverlayrenderer.dll" || filename == L"gameoverlayrenderer64.dll");
-}
-
 // Helper function to check if a DLL should be overridden and get the override path (per-DLL checkbox + subfolder)
 std::wstring GetDLSSOverridePath(const std::wstring& dll_path) {
     if (!settings::g_streamlineTabSettings.dlss_override_enabled.GetValue()) {
@@ -363,17 +352,6 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
         LogInfo("[%s] LoadLibraryA called: %s (caller: %s)", timestamp.c_str(), dll_name.c_str(), caller_str.c_str());
     }
 
-    // Check for GameOverlayRenderer (Steam overlay) blocking
-    if (lpLibFileName) {
-        std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
-        if (ShouldBlockGameOverlayRendererDLL(w_dll_name)) {
-            LogInfo("[%s] GameOverlayRenderer Block: Blocking %s from loading (caller: %s)", timestamp.c_str(),
-                    dll_name.c_str(), caller_str.c_str());
-            SetLastError(ERROR_ACCESS_DENIED);
-            return nullptr;
-        }
-    }
-
     // Check for DLSS override
     LPCSTR actual_lib_file_name = lpLibFileName;
     bool used_dlss_override = false;
@@ -451,21 +429,6 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
     std::string dll_name = lpLibFileName ? WideToNarrow(lpLibFileName) : "NULL";
 
     const bool already_loaded = (lpLibFileName && GetModuleHandleW(lpLibFileName) != nullptr);
-    if (!already_loaded) {
-        LogInfo("[%s] LoadLibraryW called: %s (caller: %s)", timestamp.c_str(), dll_name.c_str(), caller_str.c_str());
-    }
-
-    // Check for GameOverlayRenderer (Steam overlay) blocking
-    if (lpLibFileName) {
-        std::wstring w_dll_name = lpLibFileName;
-        if (ShouldBlockGameOverlayRendererDLL(w_dll_name)) {
-            LogInfo("[%s] GameOverlayRenderer Block: Blocking %s from loading (caller: %s)", timestamp.c_str(),
-                    dll_name.c_str(), caller_str.c_str());
-            SetLastError(ERROR_ACCESS_DENIED);
-            return nullptr;
-        }
-    }
-
     // Check for DLSS override
     LPCWSTR actual_lib_file_name = lpLibFileName;
     std::wstring override_path;
@@ -496,10 +459,6 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
     }
 
     if (result) {
-        if (!already_loaded) {
-            LogInfo("[%s] LoadLibraryW success: %s -> HMODULE: 0x%p (caller: %s)", timestamp.c_str(), dll_name.c_str(),
-                    result, caller_str.c_str());
-        }
 
         std::wstring module_name_wide(dll_name.begin(), dll_name.end());
         ModuleInfo moduleInfo;
@@ -532,19 +491,6 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
     std::string timestamp = GetCurrentTimestamp();
     std::string dll_name = lpLibFileName ? lpLibFileName : "NULL";
 
-    LogInfo("[%s] LoadLibraryExA called: %s, hFile: 0x%p, dwFlags: 0x%08X (caller: %s)", timestamp.c_str(),
-            dll_name.c_str(), hFile, dwFlags, caller_str.c_str());
-
-    // Check for GameOverlayRenderer (Steam overlay) blocking
-    if (lpLibFileName) {
-        std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
-        if (ShouldBlockGameOverlayRendererDLL(w_dll_name)) {
-            LogInfo("[%s] GameOverlayRenderer Block: Blocking %s from loading (caller: %s)", timestamp.c_str(),
-                    dll_name.c_str(), caller_str.c_str());
-            SetLastError(ERROR_ACCESS_DENIED);
-            return nullptr;
-        }
-    }
 
     // Check for DLSS override
     LPCSTR actual_lib_file_name = lpLibFileName;
@@ -626,17 +572,6 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
                 dll_name.c_str(), hFile, dwFlags, caller_str.c_str());
     }
 
-    // Check for GameOverlayRenderer (Steam overlay) blocking
-    if (lpLibFileName) {
-        std::wstring w_dll_name = lpLibFileName;
-        if (ShouldBlockGameOverlayRendererDLL(w_dll_name)) {
-            LogInfo("[%s] GameOverlayRenderer Block: Blocking %s from loading (caller: %s)", timestamp.c_str(),
-                    dll_name.c_str(), caller_str.c_str());
-            SetLastError(ERROR_ACCESS_DENIED);
-            return nullptr;
-        }
-    }
-
     // Check for DLSS override
     LPCWSTR actual_lib_file_name = lpLibFileName;
     std::wstring override_path;
@@ -709,16 +644,6 @@ HMODULE WINAPI LoadPackagedLibrary_Detour(LPCWSTR lpwszPackageFullName, DWORD Re
     LogInfo("[%s] LoadPackagedLibrary called: %s, Reserved: 0x%08X (caller: %s)", timestamp.c_str(), name_str.c_str(),
             Reserved, caller_str.c_str());
 
-    if (lpwszPackageFullName) {
-        std::wstring w_name = lpwszPackageFullName;
-        if (ShouldBlockGameOverlayRendererDLL(w_name)) {
-            LogInfo("[%s] GameOverlayRenderer Block: Blocking packaged lib %s from loading (caller: %s)",
-                    timestamp.c_str(), name_str.c_str(), caller_str.c_str());
-            SetLastError(ERROR_ACCESS_DENIED);
-            return nullptr;
-        }
-    }
-
     // Original is always set when this hook is installed; no fallback (API resolved at install time).
     HMODULE result =
         LoadPackagedLibrary_Original ? LoadPackagedLibrary_Original(lpwszPackageFullName, Reserved) : nullptr;
@@ -766,17 +691,6 @@ LONG NTAPI LdrLoadDll_Detour(PWSTR DllPath, PULONG DllCharacteristics, const voi
     if (should_log && !already_loaded) {
         LogInfo("[%s] LdrLoadDll called: %s (caller: %s)", timestamp.c_str(),
                 dll_name.empty() ? "(no name)" : dll_name.c_str(), caller_str.c_str());
-    }
-
-    if (!dll_name_wide.empty()) {
-        if (ShouldBlockGameOverlayRendererDLL(dll_name_wide)) {
-            LogInfo("[%s] GameOverlayRenderer Block (LdrLoadDll): Blocking %s (caller: %s)", timestamp.c_str(),
-                    dll_name.c_str(), caller_str.c_str());
-            if (DllHandle != nullptr) {
-                *DllHandle = nullptr;
-            }
-            return STATUS_ACCESS_DENIED_NT;
-        }
     }
 
     if (!LdrLoadDll_Original || DllHandle == nullptr) {

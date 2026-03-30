@@ -6,6 +6,7 @@
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/reshade_load_path.hpp"
+#include "../../utils/string_utils.hpp"
 #include "../imgui_wrapper_base.hpp"
 
 // Libraries <ReShade> / <imgui>
@@ -15,9 +16,12 @@
 // Libraries <standard C++>
 #include <algorithm>
 #include <atomic>
+#include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 // Libraries <Windows.h> — before other Windows headers
@@ -26,6 +30,7 @@
 // Libraries <Windows>
 #include <psapi.h>
 #include <ShlObj.h>
+#include <winhttp.h>
 
 namespace ui::new_ui {
 
@@ -36,6 +41,13 @@ std::atomic<bool> g_addon_list_dirty(true);  // Set to true to trigger refresh
 
 // Warning dialog state for addon enable/disable
 std::atomic<bool> g_show_addon_restart_warning(false);
+
+std::vector<std::string> g_addon_download_urls;
+std::atomic<bool> g_addon_download_urls_loaded(false);
+std::string g_addon_download_status;
+std::unordered_map<std::string, std::string> g_addon_download_etags;
+
+void SetAddonEnabled(const std::string& addon_name, const std::string& addon_file, bool enabled);
 
 // Get the global addons directory path
 std::filesystem::path GetGlobalAddonsDirectory() {
@@ -383,6 +395,394 @@ void SetEnabledAddons(const std::vector<std::string>& enabled_addons) {
     display_commander::config::save_config("Addon enabled state changed");
 }
 
+void SetAddonDownloadUrls(const std::vector<std::string>& urls) {
+    display_commander::config::set_config_value("ADDONS", "AddonDownloadUrls", urls);
+    display_commander::config::save_config("Addon download URLs changed");
+}
+
+std::vector<std::string> SerializeAddonDownloadEtags() {
+    std::vector<std::string> entries;
+    entries.reserve(g_addon_download_etags.size());
+    for (const auto& [url, etag] : g_addon_download_etags) {
+        if (url.empty() || etag.empty()) {
+            continue;
+        }
+        entries.push_back(url + "\t" + etag);
+    }
+    return entries;
+}
+
+void SaveAddonDownloadEtags() {
+    display_commander::config::set_config_value("ADDONS", "AddonDownloadEtags", SerializeAddonDownloadEtags());
+    display_commander::config::save_config("Addon download ETags changed");
+}
+
+void EnsureAddonDownloadUrlsLoaded() {
+    if (g_addon_download_urls_loaded.load()) {
+        return;
+    }
+
+    std::vector<std::string> urls;
+    if (!display_commander::config::get_config_value("ADDONS", "AddonDownloadUrls", urls)) {
+        display_commander::config::set_config_value("ADDONS", "AddonDownloadUrls", std::vector<std::string>());
+        display_commander::config::save_config("Initialize addon download URLs");
+        urls.clear();
+    }
+
+    std::vector<std::string> etag_entries;
+    if (display_commander::config::get_config_value("ADDONS", "AddonDownloadEtags", etag_entries)) {
+        g_addon_download_etags.clear();
+        for (const auto& entry : etag_entries) {
+            const size_t tab_pos = entry.find('\t');
+            if (tab_pos == std::string::npos) {
+                continue;
+            }
+            const std::string entry_url = entry.substr(0, tab_pos);
+            const std::string entry_etag = entry.substr(tab_pos + 1);
+            if (!entry_url.empty() && !entry_etag.empty()) {
+                g_addon_download_etags[entry_url] = entry_etag;
+            }
+        }
+    }
+
+    g_addon_download_urls = urls;
+    g_addon_download_urls_loaded.store(true);
+}
+
+bool ParseDownloadUrl(const std::string& url, std::wstring& host, std::wstring& path, INTERNET_PORT& port, bool& is_https,
+                      bool include_extra_info = true) {
+    if (url.empty()) {
+        return false;
+    }
+
+    const std::wstring wide_url = display_commander::utils::Utf8ToWide(url);
+    if (wide_url.empty()) {
+        return false;
+    }
+
+    URL_COMPONENTS components = {};
+    components.dwStructSize = sizeof(components);
+    components.dwHostNameLength = static_cast<DWORD>(-1);
+    components.dwUrlPathLength = static_cast<DWORD>(-1);
+    components.dwExtraInfoLength = static_cast<DWORD>(-1);
+    components.dwSchemeLength = static_cast<DWORD>(-1);
+
+    if (!WinHttpCrackUrl(wide_url.c_str(), 0, 0, &components)) {
+        return false;
+    }
+
+    if (components.nScheme != INTERNET_SCHEME_HTTP && components.nScheme != INTERNET_SCHEME_HTTPS) {
+        return false;
+    }
+
+    host.assign(components.lpszHostName, components.dwHostNameLength);
+    path.assign(components.lpszUrlPath, components.dwUrlPathLength);
+    if (include_extra_info && components.dwExtraInfoLength > 0 && components.lpszExtraInfo != nullptr) {
+        path.append(components.lpszExtraInfo, components.dwExtraInfoLength);
+    }
+    if (path.empty()) {
+        path = L"/";
+    }
+
+    port = components.nPort;
+    is_https = (components.nScheme == INTERNET_SCHEME_HTTPS);
+    return !host.empty();
+}
+
+std::string QueryHeaderString(HINTERNET request, DWORD query_flag) {
+    DWORD size_bytes = 0;
+    if (!WinHttpQueryHeaders(request, query_flag, WINHTTP_HEADER_NAME_BY_INDEX, WINHTTP_NO_OUTPUT_BUFFER, &size_bytes,
+                             WINHTTP_NO_HEADER_INDEX)) {
+        if (GetLastError() != ERROR_INSUFFICIENT_BUFFER || size_bytes == 0) {
+            return std::string();
+        }
+    }
+
+    std::wstring header_buffer(size_bytes / sizeof(wchar_t), L'\0');
+    if (!WinHttpQueryHeaders(request, query_flag, WINHTTP_HEADER_NAME_BY_INDEX, header_buffer.data(), &size_bytes,
+                             WINHTTP_NO_HEADER_INDEX)) {
+        return std::string();
+    }
+
+    if (!header_buffer.empty() && header_buffer.back() == L'\0') {
+        header_buffer.pop_back();
+    }
+    return display_commander::utils::WideToUtf8(header_buffer);
+}
+
+bool DownloadAddonFromUrl(const std::string& url, const std::filesystem::path& destination_path, std::string& error_out,
+                          std::string* downloaded_etag_out = nullptr) {
+    std::wstring host;
+    std::wstring path;
+    INTERNET_PORT port = INTERNET_DEFAULT_HTTPS_PORT;
+    bool is_https = true;
+    if (!ParseDownloadUrl(url, host, path, port, is_https)) {
+        error_out = "Invalid URL. Use full http:// or https:// URL.";
+        return false;
+    }
+
+    HINTERNET session =
+        WinHttpOpen(L"DisplayCommander/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME,
+                    WINHTTP_NO_PROXY_BYPASS, 0);
+    if (session == nullptr) {
+        error_out = "Failed to open WinHTTP session.";
+        return false;
+    }
+
+    HINTERNET connection = WinHttpConnect(session, host.c_str(), port, 0);
+    if (connection == nullptr) {
+        WinHttpCloseHandle(session);
+        error_out = "Failed to connect to host.";
+        return false;
+    }
+
+    const DWORD request_flags = is_https ? WINHTTP_FLAG_SECURE : 0;
+    HINTERNET request = WinHttpOpenRequest(connection, L"GET", path.c_str(), nullptr, WINHTTP_NO_REFERER,
+                                           WINHTTP_DEFAULT_ACCEPT_TYPES, request_flags);
+    if (request == nullptr) {
+        WinHttpCloseHandle(connection);
+        WinHttpCloseHandle(session);
+        error_out = "Failed to create HTTP request.";
+        return false;
+    }
+
+    bool ok = WinHttpSendRequest(request, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0)
+              && WinHttpReceiveResponse(request, nullptr);
+    if (!ok) {
+        WinHttpCloseHandle(request);
+        WinHttpCloseHandle(connection);
+        WinHttpCloseHandle(session);
+        error_out = "HTTP request failed.";
+        return false;
+    }
+
+    DWORD status_code = 0;
+    DWORD status_code_size = sizeof(status_code);
+    if (!WinHttpQueryHeaders(request, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX,
+                             &status_code, &status_code_size, WINHTTP_NO_HEADER_INDEX)) {
+        status_code = 0;
+    }
+    if (status_code < 200 || status_code >= 300) {
+        WinHttpCloseHandle(request);
+        WinHttpCloseHandle(connection);
+        WinHttpCloseHandle(session);
+        error_out = "HTTP server returned status " + std::to_string(status_code) + ".";
+        return false;
+    }
+
+    if (downloaded_etag_out != nullptr) {
+        *downloaded_etag_out = QueryHeaderString(request, WINHTTP_QUERY_ETAG);
+    }
+
+    std::vector<uint8_t> response_data;
+    while (true) {
+        DWORD bytes_available = 0;
+        if (!WinHttpQueryDataAvailable(request, &bytes_available)) {
+            error_out = "Failed while reading HTTP response.";
+            WinHttpCloseHandle(request);
+            WinHttpCloseHandle(connection);
+            WinHttpCloseHandle(session);
+            return false;
+        }
+        if (bytes_available == 0) {
+            break;
+        }
+
+        std::vector<uint8_t> chunk(bytes_available);
+        DWORD bytes_read = 0;
+        if (!WinHttpReadData(request, chunk.data(), bytes_available, &bytes_read)) {
+            error_out = "Failed while downloading response body.";
+            WinHttpCloseHandle(request);
+            WinHttpCloseHandle(connection);
+            WinHttpCloseHandle(session);
+            return false;
+        }
+        response_data.insert(response_data.end(), chunk.begin(), chunk.begin() + bytes_read);
+    }
+
+    WinHttpCloseHandle(request);
+    WinHttpCloseHandle(connection);
+    WinHttpCloseHandle(session);
+
+    if (response_data.empty()) {
+        error_out = "Download completed with empty file.";
+        return false;
+    }
+
+    std::error_code ec;
+    std::filesystem::create_directories(destination_path.parent_path(), ec);
+    if (ec) {
+        error_out = "Failed to create destination directory: " + ec.message();
+        return false;
+    }
+
+    std::ofstream out_file(destination_path, std::ios::binary | std::ios::trunc);
+    if (!out_file.good()) {
+        error_out = "Failed to create destination file.";
+        return false;
+    }
+    out_file.write(reinterpret_cast<const char*>(response_data.data()), static_cast<std::streamsize>(response_data.size()));
+    if (!out_file.good()) {
+        error_out = "Failed to write destination file.";
+        return false;
+    }
+
+    return true;
+}
+
+bool CheckAddonUrlForUpdate(const std::string& url, std::string& status_message) {
+    const std::string trimmed_url = display_commander::utils::TrimAsciiWhitespace(url);
+    if (trimmed_url.empty()) {
+        status_message = "URL is empty.";
+        return false;
+    }
+
+    std::wstring host;
+    std::wstring path;
+    INTERNET_PORT port = INTERNET_DEFAULT_HTTPS_PORT;
+    bool is_https = true;
+    if (!ParseDownloadUrl(trimmed_url, host, path, port, is_https)) {
+        status_message = "Invalid URL.";
+        return false;
+    }
+
+    HINTERNET session =
+        WinHttpOpen(L"DisplayCommander/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME,
+                    WINHTTP_NO_PROXY_BYPASS, 0);
+    if (session == nullptr) {
+        status_message = "Check failed: cannot open WinHTTP session.";
+        return false;
+    }
+    HINTERNET connection = WinHttpConnect(session, host.c_str(), port, 0);
+    if (connection == nullptr) {
+        WinHttpCloseHandle(session);
+        status_message = "Check failed: cannot connect to host.";
+        return false;
+    }
+    const DWORD request_flags = is_https ? WINHTTP_FLAG_SECURE : 0;
+    HINTERNET request = WinHttpOpenRequest(connection, L"HEAD", path.c_str(), nullptr, WINHTTP_NO_REFERER,
+                                           WINHTTP_DEFAULT_ACCEPT_TYPES, request_flags);
+    if (request == nullptr) {
+        WinHttpCloseHandle(connection);
+        WinHttpCloseHandle(session);
+        status_message = "Check failed: cannot create request.";
+        return false;
+    }
+
+    const bool ok = WinHttpSendRequest(request, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0)
+                    && WinHttpReceiveResponse(request, nullptr);
+    if (!ok) {
+        WinHttpCloseHandle(request);
+        WinHttpCloseHandle(connection);
+        WinHttpCloseHandle(session);
+        status_message = "Check failed: request error.";
+        return false;
+    }
+
+    DWORD status_code = 0;
+    DWORD status_code_size = sizeof(status_code);
+    WinHttpQueryHeaders(request, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX,
+                        &status_code, &status_code_size, WINHTTP_NO_HEADER_INDEX);
+    if (status_code < 200 || status_code >= 300) {
+        WinHttpCloseHandle(request);
+        WinHttpCloseHandle(connection);
+        WinHttpCloseHandle(session);
+        status_message = "Check failed: HTTP status " + std::to_string(status_code) + ".";
+        return false;
+    }
+
+    const std::string remote_etag = QueryHeaderString(request, WINHTTP_QUERY_ETAG);
+
+    WinHttpCloseHandle(request);
+    WinHttpCloseHandle(connection);
+    WinHttpCloseHandle(session);
+
+    if (remote_etag.empty()) {
+        status_message = "No ETag exposed by server. Cannot compare versions.";
+        return true;
+    }
+
+    const auto it = g_addon_download_etags.find(trimmed_url);
+    if (it == g_addon_download_etags.end() || it->second.empty()) {
+        status_message = "Remote ETag found, but no local ETag saved yet. Download once to start tracking updates.";
+        return true;
+    }
+
+    if (it->second == remote_etag) {
+        status_message = "Up to date (ETag unchanged).";
+        return true;
+    }
+
+    status_message = "Update available (ETag changed).";
+    return true;
+}
+
+bool IsExpectedAddonExtension(const std::filesystem::path& addon_path) {
+#ifdef _WIN64
+    return addon_path.extension() == L".addon64";
+#else
+    return addon_path.extension() == L".addon32";
+#endif
+}
+
+bool DownloadAndInstallAddon(const std::string& url, std::string& status_message) {
+    const std::string trimmed_url = display_commander::utils::TrimAsciiWhitespace(url);
+    if (trimmed_url.empty()) {
+        status_message = "URL is empty.";
+        return false;
+    }
+
+    std::wstring host;
+    std::wstring path;
+    INTERNET_PORT port = INTERNET_DEFAULT_HTTPS_PORT;
+    bool is_https = true;
+    if (!ParseDownloadUrl(trimmed_url, host, path, port, is_https, false)) {
+        status_message = "Invalid URL. Use full http:// or https:// URL.";
+        return false;
+    }
+
+    std::filesystem::path file_name = std::filesystem::path(path).filename();
+    if (file_name.empty()) {
+        status_message = "Could not derive file name from URL.";
+        return false;
+    }
+    if (!IsExpectedAddonExtension(file_name)) {
+#ifdef _WIN64
+        status_message = "Downloaded file must end with .addon64 on this build.";
+#else
+        status_message = "Downloaded file must end with .addon32 on this build.";
+#endif
+        return false;
+    }
+
+    std::filesystem::path addons_dir = GetDisplayCommanderAddonsFolder();
+    if (addons_dir.empty()) {
+        status_message = "Addons directory is unavailable.";
+        return false;
+    }
+    const std::filesystem::path destination_path = addons_dir / file_name;
+
+    std::string error_message;
+    std::string downloaded_etag;
+    if (!DownloadAddonFromUrl(trimmed_url, destination_path, error_message, &downloaded_etag)) {
+        status_message = "Download failed: " + error_message;
+        return false;
+    }
+
+    const std::string downloaded_file_name = destination_path.filename().string();
+    const std::string downloaded_name = destination_path.stem().string();
+    SetAddonEnabled(downloaded_name, downloaded_file_name, true);
+    g_show_addon_restart_warning.store(true);
+    g_addon_list_dirty.store(true);
+    if (!downloaded_etag.empty()) {
+        g_addon_download_etags[trimmed_url] = downloaded_etag;
+        SaveAddonDownloadEtags();
+    }
+
+    status_message = "Downloaded and enabled: " + downloaded_file_name;
+    return true;
+}
+
 // Check if an addon is enabled (whitelist approach - default is disabled)
 bool IsAddonEnabled(const std::string& addon_name, const std::string& addon_file) {
     std::vector<std::string> enabled = GetEnabledAddons();
@@ -613,6 +1013,103 @@ void DrawAddonsHeader(display_commander::ui::IImGuiWrapper& imgui) {
         ui::colors::PopIconColor(&imgui);
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx("Open the global addons directory in Windows Explorer");
+        }
+
+        imgui.Spacing();
+        imgui.Separator();
+        imgui.Spacing();
+
+        EnsureAddonDownloadUrlsLoaded();
+
+        imgui.TextColored(ui::colors::TEXT_DEFAULT, "Addon URL Downloads");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx("Add addon URLs and download them directly into the global Addons folder.");
+        }
+
+        if (imgui.Button("+ Add URL")) {
+            g_addon_download_urls.emplace_back();
+            SetAddonDownloadUrls(g_addon_download_urls);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx("Add a new URL row");
+        }
+        imgui.SameLine();
+        if (imgui.Button("Check All URLs")) {
+            size_t up_to_date_count = 0;
+            size_t update_available_count = 0;
+            size_t other_count = 0;
+            for (const auto& url : g_addon_download_urls) {
+                std::string status_message;
+                if (!CheckAddonUrlForUpdate(url, status_message)) {
+                    ++other_count;
+                    continue;
+                }
+                if (status_message.find("Update available") != std::string::npos) {
+                    ++update_available_count;
+                } else if (status_message.find("Up to date") != std::string::npos) {
+                    ++up_to_date_count;
+                } else {
+                    ++other_count;
+                }
+            }
+            g_addon_download_status = "Check all done. Updates: " + std::to_string(update_available_count)
+                                      + ", up-to-date: " + std::to_string(up_to_date_count)
+                                      + ", other: " + std::to_string(other_count) + ".";
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx("Check all URLs using remote ETag metadata.");
+        }
+
+        if (!g_addon_download_urls.empty()) {
+            for (size_t i = 0; i < g_addon_download_urls.size(); ++i) {
+                std::string label = "URL##AddonDownloadUrl" + std::to_string(i);
+                std::vector<char> url_buffer(g_addon_download_urls[i].begin(), g_addon_download_urls[i].end());
+                url_buffer.push_back('\0');
+                if (url_buffer.size() < 2048) {
+                    url_buffer.resize(2048, '\0');
+                }
+
+                if (imgui.InputText(label.c_str(), url_buffer.data(), url_buffer.size())) {
+                    g_addon_download_urls[i] = url_buffer.data();
+                    SetAddonDownloadUrls(g_addon_download_urls);
+                }
+
+                imgui.SameLine();
+                std::string download_button = "Download##AddonDownload" + std::to_string(i);
+                if (imgui.Button(download_button.c_str())) {
+                    std::string status_message;
+                    const bool success = DownloadAndInstallAddon(g_addon_download_urls[i], status_message);
+                    g_addon_download_status = status_message;
+                    if (success) {
+                        RefreshAddonList();
+                    }
+                }
+
+                imgui.SameLine();
+                std::string check_button = "Check##AddonCheck" + std::to_string(i);
+                if (imgui.Button(check_button.c_str())) {
+                    std::string status_message;
+                    CheckAddonUrlForUpdate(g_addon_download_urls[i], status_message);
+                    g_addon_download_status = status_message;
+                }
+
+                imgui.SameLine();
+                std::string remove_button = "-##AddonDownloadRemove" + std::to_string(i);
+                if (imgui.Button(remove_button.c_str())) {
+                    g_addon_download_urls.erase(g_addon_download_urls.begin() + static_cast<std::ptrdiff_t>(i));
+                    SetAddonDownloadUrls(g_addon_download_urls);
+                    break;
+                }
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltipEx("Remove this URL row");
+                }
+            }
+        } else {
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "No addon URLs added yet.");
+        }
+
+        if (!g_addon_download_status.empty()) {
+            imgui.TextWrapped("%s", g_addon_download_status.c_str());
         }
 
         imgui.Spacing();

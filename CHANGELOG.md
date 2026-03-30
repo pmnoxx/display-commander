@@ -11,6 +11,16 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## Unreleased
+
+## v0.13.57 (2026-03-29)
+- [new feature] [ui] [settings] **Addon URL download list in ReShade tab** - You can now keep a list of addon URLs, add/remove rows with `+`/`-`, and click **Download** next to each URL to fetch addons directly into Display Commander’s global ReShade Addons folder.
+  Details: implemented URL list persistence (`ADDONS.AddonDownloadUrls`) and per-row download/install flow in `src/addons/display_commander/ui/new_ui/addons_tab.cpp`; successful downloads are auto-enabled in `ADDONS.EnabledAddons`.
+- [ui] [settings] **ETag update checks for addon URLs** - The URL downloader now remembers server ETags after download and can check if newer files are available using **Check** per URL and **Check All URLs** from the same toolbar row.
+  Details: added persisted ETag map storage (`ADDONS.AddonDownloadEtags`) and WinHTTP HEAD-based comparison in `src/addons/display_commander/ui/new_ui/addons_tab.cpp`.
+- [cleanup] **Shared UTF/string helpers moved to utils** - UTF-8/Wide conversion and ASCII trim helpers used by addon URL downloads are now centralized in a reusable utility module to avoid UI-local duplication.
+  Details: added `src/addons/display_commander/utils/string_utils.hpp` and `src/addons/display_commander/utils/string_utils.cpp`; `src/addons/display_commander/ui/new_ui/addons_tab.cpp` now uses `display_commander::utils` helpers.
+
 ## v0.13.56 (2026-03-29)
 
 - [ui] [settings] [compatibility] **Screenshot path override marker and checkbox** - Added a new **Screenshots** section in the ReShade tab with an **Enable screenshots path** checkbox. The toggle state now follows a marker file, and screenshot path overrides run only when that marker exists.

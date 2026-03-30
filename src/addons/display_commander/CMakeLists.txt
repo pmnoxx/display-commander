@@ -1,7 +1,7 @@
 # Version (single source of truth for addon; used by compile definitions and version.rc)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 13)
-set(DISPLAY_COMMANDER_VERSION_PATCH 53)
+set(DISPLAY_COMMANDER_VERSION_PATCH 57)
 
 # Repository root (this file: src/addons/display_commander/CMakeLists.txt → ../../..).
 set(_dc_repo_root "${CMAKE_CURRENT_LIST_DIR}/../../..")
@@ -77,9 +77,9 @@ if(MSVC)
   )
 endif()
 
-# System libs: xinput/dinput/winmm/dbghelp are dynamic-load only. setupapi/tdh/advapi32/user32: version info,
+# System libs: xinput/dinput/winmm/dbghelp are dynamic-load only. setupapi/tdh/advapi32/user32/winhttp: version info,
 # ETW (PresentMon-style), Win32. No opengl32.lib (proxy exports; standalone UI loads GL at runtime).
-target_link_libraries(zzz_display_commander PRIVATE setupapi tdh advapi32 user32)
+target_link_libraries(zzz_display_commander PRIVATE setupapi tdh advapi32 user32 winhttp)
 
 # MinHook (static); NVAPI is loaded at runtime (nvapi_loader), headers only from external/nvapi.
 if(EXISTS "${_dc_repo_root}/external/minhook")

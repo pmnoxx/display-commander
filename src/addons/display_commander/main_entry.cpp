@@ -45,7 +45,6 @@
 #include "utils/helper_exe_filter.hpp"
 #include "utils/logging.hpp"
 #include "utils/no_inject_windows.hpp"
-#include "utils/platform_api_detector.hpp"
 #include "utils/reshade_load_path.hpp"
 #include "utils/reshade_vulkan_layer_detector.hpp"
 #include "utils/safe_remove.hpp"
@@ -2055,9 +2054,8 @@ void CleanupPostReShadeAddonTempDir() {
     }
 }
 
-void ProcessAttach_DetectEntryPoint(HMODULE h_module, std::wstring& entry_point, bool& found_proxy) {
+void ProcessAttach_DetectEntryPoint(HMODULE h_module, std::wstring& entry_point) {
     entry_point = L"addon";
-    found_proxy = false;
     WCHAR module_path[MAX_PATH];
     if (GetModuleFileNameW(h_module, module_path, MAX_PATH) <= 0) {
         OutputDebugStringA("[DisplayCommander] Entry point detection: Failed to get module filename\n");
@@ -2092,9 +2090,6 @@ void ProcessAttach_DetectEntryPoint(HMODULE h_module, std::wstring& entry_point,
          "Display Commander loaded as d3d11.dll proxy - D3D11 functions will be forwarded to system d3d11.dll"},
         {L"d3d12", L"d3d12.dll", "[DisplayCommander] Entry point detected: d3d12.dll (proxy mode)\n",
          "Display Commander loaded as d3d12.dll proxy - D3D12 functions will be forwarded to system d3d12.dll"},
-        {L"dinput8", L"dinput8.dll", "[DisplayCommander] Entry point detected: dinput8.dll (proxy mode)\n",
-         "Display Commander loaded as dinput8.dll proxy - DirectInput8 functions will be forwarded to system "
-         "dinput8.dll"},
         {L"version", L"version.dll", "[DisplayCommander] Entry point detected: version.dll (proxy mode)\n",
          "Display Commander loaded as version.dll proxy - Version functions will be forwarded to system version.dll"},
         {L"opengl32", L"opengl32.dll", "[DisplayCommander] Entry point detected: opengl32.dll (proxy mode)\n",
@@ -2108,7 +2103,6 @@ void ProcessAttach_DetectEntryPoint(HMODULE h_module, std::wstring& entry_point,
         if (_wcsicmp(module_name.c_str(), proxy.name) == 0) {
             entry_point = proxy.entry_point_val;
             OutputDebugStringA(proxy.debug_msg);
-            found_proxy = true;
             return;
         }
     }
@@ -2126,35 +2120,13 @@ void ProcessAttach_DetectEntryPoint(HMODULE h_module, std::wstring& entry_point,
     }
 }
 
-bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/, bool found_proxy) {
+bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/) {
     OutputDebugStringA("ReShade not loaded");
     // Ensure suppression flags are loaded before any early hook install attempt.
     // This path can run before normal startup loading in some attach flows.
     settings::g_hook_suppression_settings.LoadAll();
-    display_commander::utils::DetectAndLogPlatformAPIs();
-    std::vector<display_commander::utils::PlatformAPI> detected_platforms =
-        display_commander::utils::GetDetectedPlatformAPIs();
-    OutputDebugStringA("Detected platforms: ");
-    for (size_t i = 0; i < detected_platforms.size(); ++i) {
-        if (i > 0) OutputDebugStringA(", ");
-        OutputDebugStringA(display_commander::utils::GetPlatformAPIName(detected_platforms[i]));
-    }
-    OutputDebugStringA("\n");
     WCHAR executable_path[MAX_PATH] = {0};
-    bool whitelist = false;
-    if (GetModuleFileNameW(nullptr, executable_path, MAX_PATH) > 0) {
-        OutputDebugStringA("Executable path: ");
-        char executable_path_narrow[MAX_PATH];
-        WideCharToMultiByte(CP_ACP, 0, executable_path, -1, executable_path_narrow, MAX_PATH, nullptr, nullptr);
-        OutputDebugStringA(executable_path_narrow);
-        OutputDebugStringA("\n");
-        whitelist = display_commander::utils::TestWhitelist(executable_path);
-    }
-    if (detected_platforms.empty() && !found_proxy && !whitelist) {
-        LogInfo("[reshade] No platforms detected and not found in whitelist, refusing to load found_proxy: %d",
-                found_proxy);
-        return false;
-    }
+    GetModuleFileNameW(nullptr, executable_path, MAX_PATH);
     std::filesystem::path game_directory = std::filesystem::path(executable_path).parent_path();
     std::filesystem::path dc_reshade_dir = display_commander::utils::GetReshadeDirectoryForLoading(game_directory);
 #ifdef _WIN64
@@ -2776,14 +2748,13 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             ProcessAttach_CheckNoReShadeMode();
 
             std::wstring entry_point;
-            bool found_proxy = false;
-            ProcessAttach_DetectEntryPoint(h_module, entry_point, found_proxy);
+            ProcessAttach_DetectEntryPoint(h_module, entry_point);
 
             if (IsReShadeRegisteredAsVulkanLayerForCurrentExe()) {
                 LogInfo("[main_entry] ReShade registered as Vulkan layer for this exe.");
             }
             if ((g_reshade_module == nullptr) && !g_no_reshade_mode.load()) {
-                ProcessAttach_TryLoadReShadeWhenNotLoaded(h_module, found_proxy);
+                ProcessAttach_TryLoadReShadeWhenNotLoaded(h_module);
             }
             // If ReShade still not loaded, treat as no-ReShade mode (hooks without ReShade overlay)
             if (g_reshade_module == nullptr) {

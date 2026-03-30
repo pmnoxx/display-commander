@@ -57,17 +57,6 @@ bool IsUsingWine() {
 // Module handle for pinning/unpinning
 HMODULE g_hmodule = nullptr;
 
-namespace display_commander::utils {
-bool IsLoadedAsWinHttpProxy() {
-    if (g_hmodule == nullptr) return false;
-    WCHAR path[MAX_PATH];
-    if (GetModuleFileNameW(g_hmodule, path, MAX_PATH) == 0) return false;
-    const wchar_t* slash = wcsrchr(path, L'\\');
-    const wchar_t* filename = (slash != nullptr) ? (slash + 1) : path;
-    return _wcsicmp(filename, L"winhttp.dll") == 0;
-}
-}  // namespace display_commander::utils
-
 // Path of the module that caused this DLL to load (set during DLL_PROCESS_ATTACH).
 std::string g_dll_load_caller_path;
 std::string g_dll_load_call_stack_list;

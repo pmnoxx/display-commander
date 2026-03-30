@@ -50,7 +50,6 @@
 #include "../../utils/logging.hpp"
 #include "../../utils/overlay_window_detector.hpp"
 #include "../../utils/perf_measurement.hpp"
-#include "../../utils/platform_api_detector.hpp"
 #include "../../utils/reshade_load_path.hpp"
 #include "../../utils/reshade_replace_after_exit.hpp"
 #include "../../widgets/resolution_widget/resolution_widget.hpp"
@@ -4055,22 +4054,6 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         imgui.Spacing();
     }
 
-    g_rendering_ui_section.store("ui:tab:main_new:warnings:winhttp", std::memory_order_release);
-    // winhttp.dll proxy warning: unsigned DLL may cause network connection issues
-    if (display_commander::utils::IsLoadedAsWinHttpProxy()) {
-        imgui.Spacing();
-        imgui.TextColored(ui::colors::TEXT_WARNING,
-                          ICON_FK_WARNING " WARNING: Display Commander is loaded as winhttp.dll");
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "The proxy DLL is not signed by Microsoft. Some applications or security software may block or "
-                "alter network traffic when using an unsigned winhttp.dll, which can cause connection failures, "
-                "login issues, or broken online features. If you experience network problems, consider using "
-                "Display Commander as a ReShade addon (e.g. dxgi.dll proxy) instead.");
-        }
-        imgui.Spacing();
-    }
-
     g_rendering_ui_section.store("ui:tab:main_new:version_build", std::memory_order_release);
     // Version and build information at the top
     {
@@ -4107,38 +4090,6 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
 #endif
             imgui.TextColored(ui::colors::TEXT_LABEL, "| %s", bitness_label);
         }
-
-        // Display detected platform APIs (Steam, Epic, GOG, etc.)
-        /*
-        {
-            using namespace display_commander::utils;
-            static std::vector<PlatformAPI> cached_detected_apis;
-            static DWORD last_check_time = 0;
-            DWORD current_time = GetTickCount();
-
-            // Update cached list every 2 seconds to avoid performance impact
-            if (current_time - last_check_time > 2000) {
-                cached_detected_apis = GetDetectedPlatformAPIs();
-                last_check_time = current_time;
-            }
-
-            if (!cached_detected_apis.empty()) {
-                imgui.SameLine();
-                imgui.TextColored(ui::colors::TEXT_LABEL, "| Platform: ");
-                imgui.SameLine();
-
-                // Display all detected platforms, comma-separated
-                for (size_t i = 0; i < cached_detected_apis.size(); ++i) {
-                    const char* api_name = GetPlatformAPIName(cached_detected_apis[i]);
-                    imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "%s", api_name);
-                    if (i < cached_detected_apis.size() - 1) {
-                        imgui.SameLine();
-                        imgui.TextColored(ui::colors::TEXT_DIMMED, ", ");
-                        imgui.SameLine();
-                    }
-                }
-            }
-        }*/
 
         // Ko-fi support button
         //imgui.SameLine();

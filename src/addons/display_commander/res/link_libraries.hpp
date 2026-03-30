@@ -17,7 +17,6 @@ inline constexpr LinkLibraryEntry kAddonLinkLibraries[] = {
     {"setupapi", "Device enumeration, setup API"},
     {"tdh", "Event Trace (PresentMon-style tracing)"},
     {"advapi32", "Registry, ETW"},
-    {"bcrypt", "SHA256 (ReShade installer verification)"},
     {"minhook", "Static lib – hooking (in-process)"},
 };
 

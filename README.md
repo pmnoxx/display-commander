@@ -80,7 +80,7 @@ Note: Applying window operations from the main thread can crash some apps. This 
 
 - **Continue rendering in background**: Game keeps rendering when alt-tabbed (no minimize/focus spoofing)
 - **Standalone / independent UI**: Run settings in a separate window or without ReShade (.NO_RESHADE, SetupDC)
-- **Proxy loading**: Load as dxgi.dll, d3d9.dll, d3d11.dll, d3d12.dll, ddraw.dll, dinput8.dll, hid.dll, bcrypt.dll, version.dll, opengl32.dll, dbghelp.dll, vulkan-1.dll, winmm.dll, or winhttp.dll proxy when needed. When loaded as **winhttp.dll**, the Main tab shows a warning: the proxy is not signed by Microsoft and may cause network connection issues (blocked traffic, login failures); consider using another proxy (e.g. dxgi.dll) if you see network problems.
+- **Proxy loading**: Rename the built addon (`zzz_display_commander.addon64` / `.addon32`) next to the game to one of these proxy DLL names: **dxgi.dll**, **d3d9.dll**, **d3d11.dll**, **d3d12.dll**, **ddraw.dll**, **hid.dll**, **version.dll**, **opengl32.dll**, **dbghelp.dll**, **vulkan-1.dll**, or **winmm.dll**. **Not supported:** renaming the addon to **winhttp.dll** or **bcrypt.dll** (no forwarding). **dinput8.dll** is also not a supported DC proxy name—use ReFramework or another mod as **dinput8.dll** if needed; Display Commander still hooks DirectInput when the game loads the system **dinput8.dll**.
 - **Expert – flag files**: Optional flag files change behavior (e.g. `.NO_RESHADE`, `.NODC`).
   **In the game exe directory:**
   - `.NO_RESHADE` / `.NORESHADE` — standalone mode (no ReShade; settings UI only)
@@ -231,7 +231,7 @@ Notes:
 - This project requires the Ninja generator. If another generator is used, configuration will fail.
 - Initialize submodules before building: `git submodule update --init --recursive`.
 - NVAPI features are statically linked if NVIDIA's NVAPI is present under `external/nvapi` (headers at `external/nvapi`, static libs at `external/nvapi/{x86,amd64}`). Missing NVAPI libs will only disable those features. Static linking is used by default to avoid DLL dependency issues.
-- XInput, Windows Multimedia (winmm), and DbgHelp libraries are loaded dynamically to avoid error code 126 (module not found) on systems where these libraries are not available. DbgHelp is supported both as a runtime dependency (stack traces when available) and as a proxy: the addon can be loaded as dbghelp.dll, forwarding DbgHelp API calls to the system dbghelp.dll. Similarly, when loaded as hid.dll or bcrypt.dll, the addon forwards HID and CNG (BCrypt) API calls to the system DLLs.
+- XInput, Windows Multimedia (winmm), and DbgHelp libraries are loaded dynamically to avoid error code 126 (module not found) on systems where these libraries are not available. DbgHelp is supported both as a runtime dependency (stack traces when available) and as a proxy: the addon can be loaded as dbghelp.dll, forwarding DbgHelp API calls to the system dbghelp.dll. When loaded as hid.dll, the addon forwards HID API calls to the system hid.dll.
 
 ## Continuous Integration
 

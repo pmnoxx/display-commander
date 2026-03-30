@@ -22,7 +22,6 @@
 #include "../utils/general_utils.hpp"  // GetDefaultDlssOverrideFolder, GetCallingDLL
 #include "../utils/logging.hpp"
 #include "../utils/pe_static_imports.hpp"
-#include "../utils/platform_api_detector.hpp"
 #include "../utils/timing.hpp"
 #include "ddraw/ddraw_present_hooks.hpp"
 #include "hook_suppression_manager.hpp"
@@ -1010,12 +1009,11 @@ static GetProcAddress_pfn GetProcAddress_Original = nullptr;
 // Base names (lowercase) of DLLs we ship as proxies. If GetProcAddress fails for such a module, we log.
 static const std::wstring* GetProxyDllNames() {
     static const std::wstring names[] = {
-        L"bcrypt.dll", L"dxgi.dll", L"d3d11.dll", L"d3d12.dll", L"dinput8.dll",
-        L"version.dll", L"opengl32.dll", L"dbghelp.dll", L"vulkan-1.dll", L"winhttp.dll",
+        L"dxgi.dll", L"d3d11.dll", L"d3d12.dll", L"version.dll", L"opengl32.dll", L"dbghelp.dll", L"vulkan-1.dll",
     };
     return names;
 }
-static constexpr size_t kProxyDllNamesCount = 10;
+static constexpr size_t kProxyDllNamesCount = 7;
 
 // Proc names we have already logged for GetProcAddress(our proxy, result found). One log per name.
 static std::set<std::string> g_proxy_getproc_logged_names;
@@ -1046,7 +1044,7 @@ static bool CheckGetProcAddressFlagFileExists(std::string* out_exe_dir_narrow = 
 static bool IsOurProxyModule(const std::wstring& module_path) {
     std::wstring path_lower = module_path;
     std::transform(path_lower.begin(), path_lower.end(), path_lower.begin(), ::towlower);
-    // Don't treat system copies as our proxy (e.g. C:\Windows\System32\bcrypt.dll).
+    // Don't treat system copies as our proxy (e.g. C:\Windows\System32\dxgi.dll).
     if (path_lower.find(L"\\system32\\") != std::wstring::npos
         || path_lower.find(L"\\syswow64\\") != std::wstring::npos) {
         return false;

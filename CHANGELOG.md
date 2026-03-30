@@ -12,6 +12,15 @@ Feature protosal:
 - Add fix for games with broken native reflex.
 
 
+## v0.13.50 (2026-03-29)
+
+- [removal] [cleanup] **Platform API detector** - Removed `utils/platform_api_detector.*` (DLL-name heuristics for Steam/Epic/GOG/etc., game-directory scan, `TestWhitelist` store-path patterns, and debug logging). **ReShade load-from-Documents** path in `ProcessAttach_TryLoadReShadeWhenNotLoaded` no longer refuses when no platform DLL is detected and the exe path is not on the old whitelist.
+
+## v0.13.49 (2026-03-29)
+
+- [removal] [compatibility] **winhttp.dll, bcrypt.dll, and dinput8.dll proxy modes** - Display Commander no longer exports WinHTTP, BCrypt/CNG, or DirectInput8 APIs for proxy forwarding. Rename the addon to those names only if you use a different workflow; supported proxy names remain (e.g. dxgi, d3d11, dbghelp). The Main tab winhttp proxy warning and static `bcrypt.lib` linking were removed accordingly.
+  Details: deleted `proxy_dll/winhttp_proxy.*`, `bcrypt_proxy.*`, `dinput8_proxy.*`; trimmed `exports.def`; `loadlibrary_hooks` / `dc_load_path` / `main_entry` / `proxy_detection` lists updated.
+
 ## v0.13.48 (2026-03-29)
 
 - [removal] [ui] **Advanced tab Debug Tools** - Removed the **Print Detour Call Tracker Info** button and the **Debug Tools** collapsible (it had no other controls). Detour call tracking code remains for other uses.

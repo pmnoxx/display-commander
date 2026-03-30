@@ -927,12 +927,6 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetI_Detour(NVSDK_NGX_Parameter*
         if (res == NVSDK_NGX_Result_Success) {
             g_ngx_parameters.update_int(std::string(InName), *OutValue);
         }
-        // Log the call with value (first 60 only)
-        static int log_count = 0;
-        if (log_count < 60) {
-            LogInfo("NGX Parameter GetI called - Name: %s, Value: %d", InName, *OutValue);
-            log_count++;
-        }
         return res;
     }
 
@@ -1003,12 +997,6 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetUI_Detour(NVSDK_NGX_Parameter
             }
             if (res == NVSDK_NGX_Result_Success) {
                 g_ngx_parameters.update_uint(std::string(InName), *OutValue);
-            }
-            // Log the call with value (first 60 only)
-            static int log_count = 0;
-            if (log_count < 60) {
-                LogInfo("NGX Parameter GetUI called - Name: %s, Value: %u", InName, *OutValue);
-                log_count++;
             }
         }
 
@@ -1083,13 +1071,6 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetULL_Detour(NVSDK_NGX_Paramete
             }
             if (res == NVSDK_NGX_Result_Success) {
                 g_ngx_parameters.update_ull(std::string(InName), *OutValue);
-            }
-            // Log the call with value (first 60 only)
-            static int log_count = 0;
-            if (log_count < 60) {
-                LogInfo("NGX Parameter GetULL called - Name: %s, Value: %llu", InName,
-                        static_cast<unsigned long long>(*OutValue));
-                log_count++;
             }
         }
 

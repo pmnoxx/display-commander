@@ -35,7 +35,6 @@ void DrawGlobalSettingsSection(display_commander::ui::IImGuiWrapper& imgui);
 void DrawPresentMonSection(display_commander::ui::IImGuiWrapper& imgui);
 void DrawHdrDisplaySettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui);
 void DrawNvapiSettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui);
-void DrawNewExperimentalFeatures(display_commander::ui::IImGuiWrapper& imgui);
 void DrawDxgiRefreshRateSection(display_commander::ui::IImGuiWrapper& imgui);
 
 void InitAdvancedTab() {
@@ -52,43 +51,27 @@ void DrawAdvancedTab(display_commander::ui::GraphicsApi api, display_commander::
     if (imgui.CollapsingHeader("Global settings", wrapper_flags::TreeNodeFlags_None)) {
         DrawGlobalSettingsSection(imgui);
     }
-    imgui.Spacing();
 
     if (imgui.CollapsingHeader("Features Enabled By Default", wrapper_flags::TreeNodeFlags_None)) {
         DrawFeaturesEnabledByDefault(imgui);
     }
-    imgui.Spacing();
-
     // Advanced Settings Section
     if (imgui.CollapsingHeader("Advanced Settings", wrapper_flags::TreeNodeFlags_None)) {
         DrawAdvancedTabSettingsSection(api, imgui);
     }
-
-    imgui.Spacing();
 
     // DXGI refresh rate subsection (enable + debug stats)
     if (imgui.CollapsingHeader("DXGI refresh rate", wrapper_flags::TreeNodeFlags_None)) {
         DrawDxgiRefreshRateSection(imgui);
     }
 
-    imgui.Spacing();
-
     // PresentMon ETW Tracing Section (requires EXPERIMENTAL_FEATURES)
     if (presentmon::kPresentMonEnabled
         && imgui.CollapsingHeader("PresentMon ETW Tracing", wrapper_flags::TreeNodeFlags_None)) {
         DrawPresentMonSection(imgui);
     }
-
-    imgui.Spacing();
     // NVAPI Settings Section - only show if game is in NVAPI game list
     DrawNvapiSettings(api, imgui);
-
-    imgui.Spacing();
-
-    // New Experimental Features Section
-    if (imgui.CollapsingHeader("New Experimental Features", wrapper_flags::TreeNodeFlags_None)) {
-        DrawNewExperimentalFeatures(imgui);
-    }
 
 }
 
@@ -1482,22 +1465,6 @@ void DrawNvapiSettings(display_commander::ui::GraphicsApi api, display_commander
 
         imgui.Unindent();
     }
-}
-
-void DrawNewExperimentalFeatures(display_commander::ui::IImGuiWrapper& imgui) {
-    imgui.Indent();
-
-    // Warning tip
-    imgui.TextColored(::ui::colors::TEXT_WARNING, ICON_FK_WARNING " Tip: Turn off if this causes crashes");
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "These experimental features are under active development.\n"
-            "If you experience crashes or instability, disable them immediately.");
-    }
-
-    imgui.Spacing();
-
-    imgui.Unindent();
 }
 
 }  // namespace ui::new_ui

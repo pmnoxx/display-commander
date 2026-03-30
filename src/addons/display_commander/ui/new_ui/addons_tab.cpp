@@ -3,7 +3,6 @@
 #include "../../config/display_commander_config.hpp"
 #include "../forkawesome.h"
 #include "../ui_colors.hpp"
-#include "../../settings/reshade_tab_settings.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/reshade_load_path.hpp"
@@ -134,6 +133,108 @@ bool SetGlobalShadersEnabled(bool enabled) {
         return false;
     }
     return true;
+}
+
+std::filesystem::path GetDcConfigGlobalMarkerPathNoCreate() {
+    std::filesystem::path dc_root = GetDisplayCommanderAppDataRootPathNoCreate();
+    if (dc_root.empty()) return {};
+    return dc_root / L".DC_CONFIG_GLOBAL";
+}
+
+bool IsPerGameFoldersEnabled() {
+    std::filesystem::path marker_path = GetDcConfigGlobalMarkerPathNoCreate();
+    if (marker_path.empty()) return false;
+    std::error_code ec;
+    return std::filesystem::is_regular_file(marker_path, ec) && !ec;
+}
+
+bool SetPerGameFoldersEnabled(bool enabled) {
+    std::filesystem::path marker_path = GetDcConfigGlobalMarkerPathNoCreate();
+    if (enabled) {
+        std::filesystem::path dc_root = GetDisplayCommanderAppDataFolder();
+        if (dc_root.empty()) return false;
+        marker_path = dc_root / L".DC_CONFIG_GLOBAL";
+        std::error_code ec;
+        std::filesystem::create_directories(dc_root, ec);
+        if (ec) return false;
+        std::ofstream marker_file(marker_path, std::ios::out | std::ios::trunc);
+        return marker_file.good();
+    }
+    if (marker_path.empty()) return true;
+    std::error_code ec;
+    std::filesystem::remove(marker_path, ec);
+    return !ec;
+}
+
+std::filesystem::path GetScreenshotPathMarkerFilePathNoCreate() {
+    std::filesystem::path dc_root = GetDisplayCommanderAppDataRootPathNoCreate();
+    if (dc_root.empty()) {
+        return std::filesystem::path();
+    }
+    return dc_root / L".SCREENSHOT_PATH";
+}
+
+bool IsScreenshotPathEnabled() {
+    std::filesystem::path marker_path = GetScreenshotPathMarkerFilePathNoCreate();
+    if (marker_path.empty()) {
+        return false;
+    }
+
+    std::error_code ec;
+    return std::filesystem::is_regular_file(marker_path, ec) && !ec;
+}
+
+bool SetScreenshotPathEnabled(bool enabled) {
+    std::filesystem::path marker_path = GetScreenshotPathMarkerFilePathNoCreate();
+    if (enabled) {
+        std::filesystem::path dc_root = GetDisplayCommanderAppDataFolder();
+        if (dc_root.empty()) {
+            return false;
+        }
+        marker_path = dc_root / L".SCREENSHOT_PATH";
+        std::error_code ec;
+        std::filesystem::create_directories(dc_root, ec);
+        if (ec) {
+            return false;
+        }
+        std::ofstream marker_file(marker_path, std::ios::out | std::ios::trunc);
+        return marker_file.good();
+    }
+
+    if (marker_path.empty()) {
+        return true;
+    }
+
+    std::error_code ec;
+    std::filesystem::remove(marker_path, ec);
+    return !ec;
+}
+
+std::filesystem::path GetCurrentGameFolderGlobal() {
+    std::filesystem::path dc_root = GetDisplayCommanderAppDataFolder();
+    if (dc_root.empty()) return {};
+    std::string game_name = GetGameNameFromProcess();
+    if (game_name.empty()) game_name = "Game";
+    return dc_root / L"Games" / std::filesystem::path(game_name);
+}
+
+std::filesystem::path GetCurrentGameFolderLocal() {
+    std::error_code ec;
+    return std::filesystem::current_path(ec);
+}
+
+void OpenOrCreateFolder(const std::filesystem::path& folder, const char* log_name) {
+    if (folder.empty()) return;
+    std::error_code ec;
+    std::filesystem::create_directories(folder, ec);
+    std::string folder_str = folder.string();
+    HINSTANCE result = ShellExecuteA(nullptr, "explore", folder_str.c_str(), nullptr, nullptr, SW_SHOW);
+    if (reinterpret_cast<intptr_t>(result) <= 32) {
+        LogError("Failed to open %s folder: %s (Error: %ld)", log_name, folder_str.c_str(),
+                 reinterpret_cast<intptr_t>(result));
+    } else {
+        LogInfo("Opened %s folder: %s", log_name, folder_str.c_str());
+    }
 }
 
 // Get the Reshade directory path (where reshade64.dll/reshade32.dll are located).
@@ -799,9 +900,76 @@ void DrawReshadeDllHeader(display_commander::ui::IImGuiWrapper& imgui) {
     }
 }
 
+void DrawPerGameFoldersHeader(display_commander::ui::IImGuiWrapper& imgui) {
+    if (!imgui.CollapsingHeader("Per game folders", display_commander::ui::wrapper_flags::TreeNodeFlags_None)) return;
+
+    bool enabled = IsPerGameFoldersEnabled();
+    if (imgui.Checkbox("Enable per game folders", &enabled)) {
+        if (!SetPerGameFoldersEnabled(enabled)) enabled = IsPerGameFoldersEnabled();
+    }
+    if (imgui.IsItemHovered()) {
+        std::filesystem::path marker_path = GetDcConfigGlobalMarkerPathNoCreate();
+        if (marker_path.empty()) {
+            marker_path = std::filesystem::path(L"%localappdata%") / L"Programs" / L"Display_Commander"
+                          / L".DC_CONFIG_GLOBAL";
+        }
+        imgui.SetTooltipEx("Enabled only when marker exists: %s", GetPathRelativeToDocuments(marker_path).c_str());
+    }
+
+    imgui.Spacing();
+    ui::colors::PushIconColor(&imgui, ui::colors::ICON_ACTION);
+    if (imgui.Button(ICON_FK_FOLDER_OPEN " Open current game folder (global)")) {
+        OpenOrCreateFolder(GetCurrentGameFolderGlobal(), "global current game");
+    }
+    ui::colors::PopIconColor(&imgui);
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltipEx("Open %%localappdata%%\\Programs\\Display_Commander\\Games\\<game_name>.");
+    }
+
+    ui::colors::PushIconColor(&imgui, ui::colors::ICON_ACTION);
+    if (imgui.Button(ICON_FK_FOLDER_OPEN " Open current game folder (local)")) {
+        OpenOrCreateFolder(GetCurrentGameFolderLocal(), "local current game");
+    }
+    ui::colors::PopIconColor(&imgui);
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltipEx("Open current working directory for this game process.");
+    }
+}
+
+void DrawScreenshotsHeader(display_commander::ui::IImGuiWrapper& imgui) {
+    if (!imgui.CollapsingHeader("Screenshots", display_commander::ui::wrapper_flags::TreeNodeFlags_None)) return;
+
+    bool enabled = IsScreenshotPathEnabled();
+    if (imgui.Checkbox("Add ./Screenshots path to ReShade settings", &enabled)) {
+        if (!SetScreenshotPathEnabled(enabled)) {
+            enabled = IsScreenshotPathEnabled();
+        }
+    }
+    if (imgui.IsItemHovered()) {
+        std::filesystem::path marker_path = GetScreenshotPathMarkerFilePathNoCreate();
+        if (marker_path.empty()) {
+            marker_path = std::filesystem::path(L"%localappdata%") / L"Programs" / L"Display_Commander"
+                          / L".SCREENSHOT_PATH";
+        }
+        imgui.SetTooltipEx("Enabled only when marker exists: %s", GetPathRelativeToDocuments(marker_path).c_str());
+    }
+
+    imgui.Spacing();
+    ui::colors::PushIconColor(&imgui, ui::colors::ICON_ACTION);
+    if (imgui.Button(ICON_FK_FOLDER_OPEN " Open Screenshots Folder")) {
+        OpenOrCreateFolder(GetCurrentGameFolderLocal() / L"Screenshots", "screenshots");
+    }
+    ui::colors::PopIconColor(&imgui);
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltipEx("Open current game screenshots folder: .\\Screenshots");
+    }
+}
+
 void DrawAddonsTab(display_commander::ui::IImGuiWrapper& imgui) {
     DrawAddonsHeader(imgui);
     DrawShadersHeader(imgui);
+    DrawScreenshotsHeader(imgui);
+    DrawPerGameFoldersHeader(imgui);
     DrawReshadeDllHeader(imgui);
 }
 

@@ -169,6 +169,23 @@ static bool IsDlssOverrideDllName(const std::wstring& lowerName) {
     return false;
 }
 
+// Keep DLL load logs concise: emit only for allowlisted module names.
+static bool ShouldLogWhitelistedDllLoad(const std::wstring& dll_path_or_name) {
+    if (dll_path_or_name.empty()) return false;
+
+    std::wstring lower = std::filesystem::path(dll_path_or_name).filename().wstring();
+    if (lower.empty()) lower = dll_path_or_name;
+    std::transform(lower.begin(), lower.end(), lower.begin(), ::towlower);
+
+    static const std::unordered_set<std::wstring> k_whitelist = {
+        L"dxgi.dll",          L"d3d11.dll",           L"d3d12.dll",          L"d3d9.dll",
+        L"nvapi64.dll",       L"nvapi.dll",           L"nvngx_dlss.dll",     L"nvngx_dlssd.dll",
+        L"nvngx_dlssg.dll",   L"sl.interposer.dll",   L"sl.common.dll",      L"nvpresent64.dll",
+        L"nvpresent32.dll",   L"gameoverlayrenderer.dll", L"gameoverlayrenderer64.dll"};
+
+    return k_whitelist.find(lower) != k_whitelist.end();
+}
+
 static void RecordDlssOverrideHandle(const std::wstring& logicalName, HMODULE hMod) {
     std::wstring key = ToLowerModuleName(logicalName.c_str());
     if (!IsDlssOverrideDllName(key)) return;
@@ -606,8 +623,11 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
     std::string timestamp = GetCurrentTimestamp();
     std::string dll_name = lpLibFileName ? WideToNarrow(lpLibFileName) : "NULL";
 
-    LogInfo("[%s] LoadLibraryExW called: %s, hFile: 0x%p, dwFlags: 0x%08X (caller: %s)", timestamp.c_str(),
-            dll_name.c_str(), hFile, dwFlags, caller_str.c_str());
+    const bool should_log = lpLibFileName != nullptr && ShouldLogWhitelistedDllLoad(lpLibFileName);
+    if (should_log) {
+        LogInfo("[%s] LoadLibraryExW called: %s, hFile: 0x%p, dwFlags: 0x%08X (caller: %s)", timestamp.c_str(),
+                dll_name.c_str(), hFile, dwFlags, caller_str.c_str());
+    }
 
     // Check for GameOverlayRenderer (Steam overlay) blocking
     if (lpLibFileName) {
@@ -650,8 +670,10 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
     }
 
     if (result) {
-        LogInfo("[%s] LoadLibraryExW success: %s -> HMODULE: 0x%p (caller: %s)", timestamp.c_str(), dll_name.c_str(),
-                result, caller_str.c_str());
+        if (should_log) {
+            LogInfo("[%s] LoadLibraryExW success: %s -> HMODULE: 0x%p (caller: %s)", timestamp.c_str(),
+                    dll_name.c_str(), result, caller_str.c_str());
+        }
 
         std::wstring module_name_wide = lpLibFileName ? lpLibFileName : L"Unknown";
         ModuleInfo moduleInfo;
@@ -669,8 +691,10 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
         }
     } else {
         DWORD error = GetLastError();
-        LogInfo("[%s] LoadLibraryExW failed: %s -> Error: %lu (caller: %s)", timestamp.c_str(), dll_name.c_str(), error,
-                caller_str.c_str());
+        if (should_log) {
+            LogInfo("[%s] LoadLibraryExW failed: %s -> Error: %lu (caller: %s)", timestamp.c_str(), dll_name.c_str(),
+                    error, caller_str.c_str());
+        }
     }
 
     return result;
@@ -739,9 +763,10 @@ LONG NTAPI LdrLoadDll_Detour(PWSTR DllPath, PULONG DllCharacteristics, const voi
     }
     std::string dll_name = WideToNarrow(dll_name_wide);
     std::string timestamp = GetCurrentTimestamp();
+    const bool should_log = ShouldLogWhitelistedDllLoad(dll_name_wide);
     // Only log "called" when the library is not already in our tracked set (avoids spam for e.g. gdi32.dll)
     const bool already_loaded = !dll_name_wide.empty() && IsModuleLoaded(dll_name_wide);
-    if (!already_loaded) {
+    if (should_log && !already_loaded) {
         LogInfo("[%s] LdrLoadDll called: %s (caller: %s)", timestamp.c_str(),
                 dll_name.empty() ? "(no name)" : dll_name.c_str(), caller_str.c_str());
     }
@@ -777,13 +802,17 @@ LONG NTAPI LdrLoadDll_Detour(PWSTR DllPath, PULONG DllCharacteristics, const voi
                     dll_name.empty() ? "Unknown" : dll_name.c_str(), base_addr);
             RecordHostLoadedApiIfAppropriate(load_caller, callback_module_name);
             OnModuleLoaded(callback_module_name, callback_hmodule);
-            LogInfo("[%s] LdrLoadDll success: %s -> 0x%p (caller: %s)", timestamp.c_str(),
-                    dll_name.empty() ? "(no name)" : dll_name.c_str(), base, caller_str.c_str());
+            if (should_log) {
+                LogInfo("[%s] LdrLoadDll success: %s -> 0x%p (caller: %s)", timestamp.c_str(),
+                        dll_name.empty() ? "(no name)" : dll_name.c_str(), base, caller_str.c_str());
+            }
         }
     } else if (status != 0) {
-        LogInfo("[%s] LdrLoadDll failed: %s -> NTSTATUS 0x%08lX (caller: %s)", timestamp.c_str(),
-                dll_name.empty() ? "(no name)" : dll_name.c_str(), static_cast<unsigned long>(status),
-                caller_str.c_str());
+        if (should_log) {
+            LogInfo("[%s] LdrLoadDll failed: %s -> NTSTATUS 0x%08lX (caller: %s)", timestamp.c_str(),
+                    dll_name.empty() ? "(no name)" : dll_name.c_str(), static_cast<unsigned long>(status),
+                    caller_str.c_str());
+        }
     }
 
     return status;

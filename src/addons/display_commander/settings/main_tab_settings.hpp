@@ -188,22 +188,14 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_experimental_tab;
     ui::new_ui::BoolSetting show_reshade_tab;
 
-    /** Main tab: show optional "DC folders" collapsible (paths, versions, folder buttons). Default off. */
-    ui::new_ui::BoolSetting show_main_tab_dc_folders;
     /** Main tab: show Texture Filtering section. Default off. */
     ui::new_ui::BoolSetting show_main_tab_texture_filtering;
     /** Main tab: show Audio Control section. Default off. */
     ui::new_ui::BoolSetting show_main_tab_audio_control;
-    /** Main tab: show CPU Control section. Default off. */
-    ui::new_ui::BoolSetting show_main_tab_cpu_control;
     /** Main tab: show window action buttons (minimize, focus, close, folders, etc.). Default off. */
     ui::new_ui::BoolSetting show_main_tab_window_action_buttons;
-    /** Main tab: show Overlay Windows section. Default off. */
-    ui::new_ui::BoolSetting show_main_tab_overlay_windows;
     /** Main tab: show Input Control section (blocking, clip cursor, remapping toggle). Default off. */
     ui::new_ui::BoolSetting show_main_tab_input_control;
-    /** Main tab: show NVIDIA Control section (driver profile: Smooth Motion, RTX HDR, low latency, etc.). Default off. */
-    ui::new_ui::BoolSetting show_main_tab_nvidia_control;
     /** Main tab: show DLSS Control section (status, presets, overrides, NGX hooks hint). Default off. */
     ui::new_ui::BoolSetting show_main_tab_dlss_control;
     /** Main tab: show DXGI Control (flip-discard upgrade, max frame latency, buffer count). Default off. */

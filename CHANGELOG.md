@@ -13,8 +13,24 @@ Feature protosal:
 
 ## v0.13.56 (2026-03-29)
 
+- [ui] [settings] [compatibility] **Screenshot path override marker and checkbox** - Added a new **Screenshots** section in the ReShade tab with an **Enable screenshots path** checkbox. The toggle state now follows a marker file, and screenshot path overrides run only when that marker exists.
+  Details: added `.SCREENSHOT_PATH` marker handling in `src/addons/display_commander/ui/new_ui/addons_tab.cpp`; `src/addons/display_commander/main_entry.cpp` now gates `OverrideReShadeSettings_ScreenshotPaths` behind marker-file existence.
+- [ui] **Texture Filtering moved under DXGI Control** - The Texture Filtering section is now shown inside the Main tab’s DXGI Control panel, so related DXGI/swapchain and sampler tuning options are grouped in one place.
+  Details: updated `src/addons/display_commander/ui/new_ui/main_new_tab.cpp` to render Texture Filtering from `DrawMainTabOptionalPanelDxgiControl` and removed it as a separate optional panel draw path.
 - [ui] **Shaders paths UI** - Added a new UI control in the Addons tab for shaders/textures paths, making it easier to enable or disable global shader path usage from the interface.
 - [cleanup] **Dropped dead code** - Removed a large amount of unused/dead code paths to simplify maintenance and reduce project complexity.
+- [cleanup] [hooks] **DLL load logs now use a whitelist** - `LoadLibraryExW` and `LdrLoadDll` logging now prints only for a small allowlist of relevant graphics/NGX/overlay DLLs, reducing noisy API-set spam (for example `api-ms-win-core-*`) in startup logs.
+  Details: added a concise whitelist gate in `src/addons/display_commander/hooks/loadlibrary_hooks.cpp` around those hook log lines.
+- [cleanup] [settings] **Removed stale Main tab DC folders toggle setting** - Deleted the obsolete `show_main_tab_dc_folders` setting and its Advanced Settings checkbox entry to avoid stale references.
+  Details: removed usage from `src/addons/display_commander/ui/new_ui/main_new_tab.cpp` and deleted the setting from `src/addons/display_commander/settings/main_tab_settings.hpp` and `src/addons/display_commander/settings/main_tab_settings.cpp`.
+- [cleanup] [settings] **Removed stale Main tab CPU Control toggle setting** - Deleted the obsolete `show_main_tab_cpu_control` setting and its Advanced Settings checkbox entry to avoid stale references.
+  Details: removed usage from `src/addons/display_commander/ui/new_ui/main_new_tab.cpp` and deleted the setting from `src/addons/display_commander/settings/main_tab_settings.hpp` and `src/addons/display_commander/settings/main_tab_settings.cpp`.
+- [cleanup] [settings] **Removed stale Main tab NVIDIA Control toggle setting** - Deleted the obsolete `show_main_tab_nvidia_control` setting and its Advanced Settings checkbox entry to avoid stale references.
+  Details: removed usage from `src/addons/display_commander/ui/new_ui/main_new_tab.cpp` and deleted the setting from `src/addons/display_commander/settings/main_tab_settings.hpp` and `src/addons/display_commander/settings/main_tab_settings.cpp`.
+- [cleanup] [settings] **Removed stale Main tab Overlay Windows toggle setting** - Deleted the obsolete `show_main_tab_overlay_windows` setting and its Advanced Settings checkbox entry to avoid stale references.
+  Details: removed usage from `src/addons/display_commander/ui/new_ui/main_new_tab.cpp` and deleted the setting from `src/addons/display_commander/settings/main_tab_settings.hpp` and `src/addons/display_commander/settings/main_tab_settings.cpp`.
+- [ui] [settings] **Per game folders controls in ReShade tab** - Added a new **Per game folders** section with an enable checkbox linked to `.DC_CONFIG_GLOBAL`, plus quick buttons to open the current game's global and local folders.
+  Details: implemented in `src/addons/display_commander/ui/new_ui/addons_tab.cpp`; checkbox state reads marker-file presence and creates/removes the marker on toggle.
 
 ## v0.13.55 (2026-03-29)
 

@@ -636,6 +636,24 @@ bool IsGlobalShadersMarkerEnabled() {
     return std::filesystem::is_regular_file(marker_path, ec) && !ec;
 }
 
+std::filesystem::path GetScreenshotPathMarkerPathNoCreate() {
+    std::filesystem::path dc_root = GetDisplayCommanderAppDataRootPathNoCreate();
+    if (dc_root.empty()) {
+        return std::filesystem::path();
+    }
+    return dc_root / L".SCREENSHOT_PATH";
+}
+
+bool IsScreenshotPathMarkerEnabled() {
+    std::filesystem::path marker_path = GetScreenshotPathMarkerPathNoCreate();
+    if (marker_path.empty()) {
+        return false;
+    }
+
+    std::error_code ec;
+    return std::filesystem::is_regular_file(marker_path, ec) && !ec;
+}
+
 void OverrideReShadeSettings_AddDisplayCommanderPaths(reshade::api::effect_runtime* runtime) {
     if (!IsGlobalShadersMarkerEnabled()) {
         LogInfo("Skipping global ReShade Shaders/Textures path injection (.GLOBAL_SHADERS marker is missing)");
@@ -730,7 +748,9 @@ void OverrideReShadeSettings(reshade::api::effect_runtime* runtime) {
 
     OverrideReShadeSettings_WindowConfig(runtime);
     OverrideReShadeSettings_TutorialAndUpdates(runtime);
-    OverrideReShadeSettings_ScreenshotPaths(runtime);
+    if (IsScreenshotPathMarkerEnabled()) {
+        OverrideReShadeSettings_ScreenshotPaths(runtime);
+    }
     OverrideReShadeSettings_LoadFromDllMainOnce(runtime);
     OverrideReShadeSettings_AddDisplayCommanderPaths(runtime);
 

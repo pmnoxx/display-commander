@@ -1620,7 +1620,6 @@ void InitMainNewTab() {
 
 // Main tab optional panels: fixed draw order in DrawMainTabOptionalPanelsInOrder (not user-configurable).
 enum class MainTabOptionalSectionKind {
-    TextureFiltering,
     AudioControl,
     WindowButtons,
     InputControl,
@@ -1629,8 +1628,7 @@ enum class MainTabOptionalSectionKind {
 };
 
 static constexpr MainTabOptionalSectionKind kMainTabOptionalPanelsDrawOrder[] = {
-    MainTabOptionalSectionKind::TextureFiltering, MainTabOptionalSectionKind::AudioControl,
-     MainTabOptionalSectionKind::WindowButtons,
+    MainTabOptionalSectionKind::AudioControl, MainTabOptionalSectionKind::WindowButtons,
     MainTabOptionalSectionKind::InputControl,
     MainTabOptionalSectionKind::DlssControl,
     MainTabOptionalSectionKind::DxgiControl,
@@ -1648,25 +1646,9 @@ static void DrawMainTabOptionalPanelsAdvancedSettingsUi(display_commander::ui::I
     }
     imgui.Indent();
 
-    if (CheckboxSetting(settings::g_mainTabSettings.show_main_tab_dc_folders, "Show DC folders", imgui)) {
-        LogInfo("Show main tab DC folders %s",
-                settings::g_mainTabSettings.show_main_tab_dc_folders.GetValue() ? "on" : "off");
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx("Paths, version info, and folder buttons for Display Commander / ReShade / addons.");
-    }
-
-    if (CheckboxSetting(settings::g_mainTabSettings.show_main_tab_texture_filtering, "Show Texture Filtering", imgui)) {
-        LogInfo("Show main tab Texture Filtering %s",
-                settings::g_mainTabSettings.show_main_tab_texture_filtering.GetValue() ? "on" : "off");
-    }
     if (CheckboxSetting(settings::g_mainTabSettings.show_main_tab_audio_control, "Show Audio Control", imgui)) {
         LogInfo("Show main tab Audio Control %s",
                 settings::g_mainTabSettings.show_main_tab_audio_control.GetValue() ? "on" : "off");
-    }
-    if (CheckboxSetting(settings::g_mainTabSettings.show_main_tab_cpu_control, "Show CPU Control", imgui)) {
-        LogInfo("Show main tab CPU Control %s",
-                settings::g_mainTabSettings.show_main_tab_cpu_control.GetValue() ? "on" : "off");
     }
     if (CheckboxSetting(settings::g_mainTabSettings.show_main_tab_window_action_buttons,
                         "Show window action buttons", imgui)) {
@@ -1676,10 +1658,6 @@ static void DrawMainTabOptionalPanelsAdvancedSettingsUi(display_commander::ui::I
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx("Minimize, focus, close, open game folder, config, log, etc.");
     }
-    if (CheckboxSetting(settings::g_mainTabSettings.show_main_tab_overlay_windows, "Show Overlay Windows", imgui)) {
-        LogInfo("Show main tab Overlay Windows %s",
-                settings::g_mainTabSettings.show_main_tab_overlay_windows.GetValue() ? "on" : "off");
-    }
     if (CheckboxSetting(settings::g_mainTabSettings.show_main_tab_input_control, "Show Input Control", imgui)) {
         LogInfo("Show main tab Input Control %s",
                 settings::g_mainTabSettings.show_main_tab_input_control.GetValue() ? "on" : "off");
@@ -1687,16 +1665,6 @@ static void DrawMainTabOptionalPanelsAdvancedSettingsUi(display_commander::ui::I
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
             "Keyboard/mouse/gamepad blocking, clip cursor, and gamepad remapping toggle (same as Controller tab).");
-    }
-    if (CheckboxSetting(settings::g_mainTabSettings.show_main_tab_nvidia_control, "Show NVIDIA Control", imgui)) {
-        LogInfo("Show main tab NVIDIA Control %s",
-                settings::g_mainTabSettings.show_main_tab_nvidia_control.GetValue() ? "on" : "off");
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Driver profile quick controls on the Main tab: Smooth Motion, RTX HDR, FPS limit, low latency, etc. "
-            "(NVAPI; only shown when an NVIDIA GPU is available.) Full profile editor remains on the NVIDIA Profile "
-            "tab.");
     }
     if (CheckboxSetting(settings::g_mainTabSettings.show_main_tab_dlss_control, "Show DLSS Control", imgui)) {
         LogInfo("Show main tab DLSS Control %s",
@@ -2768,11 +2736,6 @@ static void DrawMainTabOptionalPanelsInOrder(display_commander::ui::GraphicsApi 
     for (size_t oi = 0; oi < kMainTabOptionalPanelsDrawOrderCount; ++oi) {
         const MainTabOptionalSectionKind k = kMainTabOptionalPanelsDrawOrder[oi];
         switch (k) {
-            case MainTabOptionalSectionKind::TextureFiltering:
-                if (settings::g_mainTabSettings.show_main_tab_texture_filtering.GetValue()) {
-                    DrawMainTabOptionalPanelTextureFiltering(imgui);
-                }
-                break;
             case MainTabOptionalSectionKind::AudioControl:
                 if (settings::g_mainTabSettings.show_main_tab_audio_control.GetValue()) {
                     DrawMainTabOptionalPanelAudioControl(imgui);
@@ -5233,7 +5196,6 @@ static void DrawDxgiControl_SwapchainTweaks(display_commander::ui::IImGuiWrapper
                         "10-bit HDR10 (R10G10B10A2) -> HDR10 (ST2084), 16-bit FP (R16G16B16A16) -> scRGB (Linear). "
                         "No change for 8-bit (SDR). Improves compatibility with RenoDX HDR10 mode. DirectX 11/12.");
                 }
-                imgui.Spacing();
             }
             if (ComboSettingWrapper(settings::g_mainTabSettings.max_frame_latency_override, "Max frame latency", imgui,
                                     300.f)) {
@@ -5293,7 +5255,6 @@ static void DrawDxgiControl_SwapchainTweaks(display_commander::ui::IImGuiWrapper
                 "Override SetMaximumFrameLatency. No override = game default. 1 = "
                 "lowest latency; 2-16 = more parallelism. Applied per swapchain at runtime.");
         }
-        imgui.Spacing();
     }
 
     if (ComboSettingWrapper(settings::g_mainTabSettings.buffer_count_override, "Buffer count", imgui, 100.f)) {
@@ -5380,6 +5341,7 @@ static void DrawMainTabOptionalPanelDxgiControl(display_commander::ui::GraphicsA
     imgui.Indent();
     DrawDisplaySettings_DXGI(imgui);
     DrawDxgiControl_SwapchainTweaks(imgui);
+    DrawMainTabOptionalPanelTextureFiltering(imgui);
     imgui.Unindent();
 }
 

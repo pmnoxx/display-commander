@@ -13,7 +13,6 @@
 #include "../../hooks/loadlibrary_hooks.hpp"
 #include "../../hooks/nvidia/ngx_hooks.hpp"
 #include "../../hooks/nvidia/nvapi_hooks.hpp"
-#include "../../hooks/nvidia/pclstats_etw_hooks.hpp"
 #include "../../hooks/present_traffic_tracking.hpp"
 #include "../../hooks/system/timeslowdown_hooks.hpp"
 #include "../../hooks/vulkan/nvlowlatencyvk_hooks.hpp"
@@ -3453,12 +3452,6 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
             }
         }
     }
-
-    if (PCLStatsReportingAllowed()) {
-        imgui.Spacing();
-        drawPclStatsCheckbox();
-    }
-
     // FPS limiter presets (only visible if OnPresentSync mode is selected and in sync)
     if (::IsNativeFramePacingInSync()) {
         const int raw = settings::g_mainTabSettings.native_reflex_fps_preset.GetValue();
@@ -3697,12 +3690,6 @@ static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWr
                 }
             }
         }
-
-        // Reflex combo is always shown in Advanced FPS limiter settings (unified for all modes)
-        if (PCLStatsReportingAllowed()) {
-            imgui.Spacing();
-            drawPclStatsCheckbox();
-        }
     }
     // Suppress Reflex Sleep checkbox
     imgui.Spacing();
@@ -3919,14 +3906,6 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
                 if (game_window != nullptr && pcl_stats) {
                     display_commanderhooks::InstallWindowProcHooks(game_window);
                 }
-            }
-            if (imgui.IsItemHovered()) {
-                const uint64_t count = GetPCLStatsMarkerCallCount();
-                const bool pcl_init = ReflexProvider::IsPCLStatsInitialized();
-                imgui.SetTooltipEx(
-                    "Enables PCL stats reporting for injected reflex.\nPCLSTATS_MARKER called %llu times.\nPCLStats "
-                    "initialized: %s",
-                    static_cast<unsigned long long>(count), pcl_init ? "yes" : "no");
             }
         }
     };

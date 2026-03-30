@@ -7,11 +7,9 @@
 #include "../../utils/detour_call_tracker.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
-#include "../../utils/srwlock_wrapper.hpp"
 #include "../../utils/timing.hpp"
 #include "../dxgi/dxgi_present_hooks.hpp"
 #include "../hook_suppression_manager.hpp"
-#include "pclstats_etw_hooks.hpp"
 
 #include <MinHook.h>
 #include <algorithm>
@@ -118,7 +116,6 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
                                   const std::function<int()>& send_present_end_to_driver) {
     CALL_GUARD_NO_TS();;
     bool reflex_marker_sent = false;
-    NotifyGameSetLatencyMarkerCall();
     g_native_reflex_detected.store(true, std::memory_order_relaxed);
     LogInfoThrottled(1, "NvAPI_D3D_SetLatencyMarker_Detour: First call for frame %llu",
                      g_global_frame_id.load(std::memory_order_acquire));

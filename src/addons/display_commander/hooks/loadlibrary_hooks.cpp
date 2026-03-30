@@ -14,8 +14,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include "../globals.hpp"
-#include "../settings/advanced_tab_settings.hpp"
-#include "../settings/experimental_tab_settings.hpp"
 #include "../settings/streamline_tab_settings.hpp"
 #include "../utils/detour_call_tracker.hpp"
 #include "../utils/general_utils.hpp"  // GetDefaultDlssOverrideFolder, GetCallingDLL
@@ -26,7 +24,6 @@
 #include "input/xinput_hooks.hpp"
 #include "nvidia/ngx_hooks.hpp"
 #include "nvidia/nvapi_hooks.hpp"
-#include "nvidia/pclstats_etw_hooks.hpp"
 #include "nvidia/streamline_hooks.hpp"
 #include "opengl/opengl_hooks.hpp"
 #include "../utils/srwlock_wrapper.hpp"
@@ -1596,14 +1593,6 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
             LogInfo("[OnModuleLoaded] NGX hooks installed successfully");
         } else {
             LogError("[OnModuleLoaded] Failed to install NGX hooks");
-        }
-    }
-    // advapi32.dll – PCLStats ETW (EventRegister + EventWriteTransfer) for Reflex/PCLStats event counting
-    else if (lowerModuleName.find(L"advapi32.dll") != std::wstring::npos) {
-        if (InstallPCLStatsEtwHooks(hModule)) {
-            LogInfo("[OnModuleLoaded] PCLStats ETW hooks installed (advapi32.dll)");
-        } else {
-            LogInfo("[OnModuleLoaded] PCLStats ETW hooks not installed (e.g. already installed or advapi32 not ready)");
         }
     }
     // opengl32.dll – WGL / OpenGL present and context hooks

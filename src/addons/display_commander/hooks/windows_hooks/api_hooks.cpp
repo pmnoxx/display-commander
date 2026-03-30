@@ -14,7 +14,6 @@
 #include "../hook_suppression_manager.hpp"
 #include "../loadlibrary_hooks.hpp"
 #include "../opengl/opengl_hooks.hpp"
-#include "../nvidia/pclstats_etw_hooks.hpp"
 #include "../system/timeslowdown_hooks.hpp"
 #include "../input/windows_gaming_input_hooks.hpp"
 #include "windows_message_hooks.hpp"
@@ -673,9 +672,6 @@ void UninstallApiHooks() {
 
     // Uninstall process exit hooks
     process_exit_hooks::Shutdown();
-
-    // Uninstall PCLStats ETW hooks (installed via OnModuleLoaded when advapi32.dll loaded)
-    UninstallPCLStatsEtwHooks();
 
     // Uninstall DPI hooks
     display_commanderhooks::dpi::UninstallDpiHooks();

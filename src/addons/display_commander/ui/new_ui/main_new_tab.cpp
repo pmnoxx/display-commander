@@ -402,7 +402,7 @@ void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui
     imgui.NextColumn();
 
     bool show_nvapi_latency_stats = settings::g_mainTabSettings.show_nvapi_latency_stats.GetValue();
-    if (imgui.Checkbox("Latency (NVAPI Reflex)", &show_nvapi_latency_stats)) {
+    if (imgui.Checkbox("Latency PCL(AV)", &show_nvapi_latency_stats)) {
         settings::g_mainTabSettings.show_nvapi_latency_stats.SetValue(show_nvapi_latency_stats);
     }
     if (imgui.IsItemHovered()) {

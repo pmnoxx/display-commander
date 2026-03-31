@@ -82,6 +82,9 @@ class MainTabSettings {
     ui::new_ui::ComboSetting buffer_count_override;
     /** DXGI only: when game uses FLIP_SEQUENTIAL, upgrade to FLIP_DISCARD in OnCreateSwapchainCapture2. */
     ui::new_ui::BoolSetting force_flip_discard_upgrade;
+    /** When true, NvAPI_QueryInterface passes through SetFlipConfig (0xF3148C42). When false, returns nullptr and
+     * counts suppressions. Default true. */
+    ui::new_ui::BoolSetting allow_nvapi_d3d12_setflipconfig;
 
     // Audio Settings
     ui::new_ui::BoolSetting audio_mute;

@@ -13,6 +13,11 @@ Feature protosal:
 
 ## Unreleased
 
+- [settings] [hooks] [ui] **Flip Metering: optional NVAPI suppression and net-ON status** - DXGI Control now has an **Allow** checkbox (default on). When off, `NvAPI_QueryInterface` for D3D12 SetFlipConfig returns nullptr and counts successful suppressions. The ON/OFF line is ON only when QueryInterface calls exceed suppressions (net times the game received the pointer).
+
+## v0.13.61 (2026-03-30)
+- [ui] [bugfix] **Limit Real frames** - Fixed incorrect display of the **Limit Real frames: on** line in the performance overlay so it only shows when appropriate.
+
 ## v0.13.60 (2026-03-29)
 - [cleanup] **Version bumps now rebuild less code** - Changing the Display Commander version in CMake now updates a generated version header instead of changing compile definitions for every source file, so version-only bumps avoid unnecessary full recompiles.
   Details: `src/addons/display_commander/CMakeLists.txt` now generates `version_config.hpp` via `configure_file`, and `src/addons/display_commander/version.hpp` reads version macros from that generated header.

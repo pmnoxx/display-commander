@@ -3637,7 +3637,8 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
     }
 
     // Limit Real Frames indicator (only visible if OnPresentSync mode is selected; shows effective value)
-    if (g_present_update_after2_called.load(std::memory_order_acquire)) {
+    //if (g_present_update_after2_called.load(std::memory_order_acquire))
+    {
         bool limit_real = GetEffectiveLimitRealFrames();
         imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Limit Real Frames: %s", limit_real ? "ON" : "OFF");
     }
@@ -3653,7 +3654,8 @@ static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWr
         uint64_t now_ns = utils::get_now_ns();
 
         // Show Native Reflex status only when streamline is used
-        if (g_present_update_after2_called.load(std::memory_order_acquire)) {
+        //if (g_present_update_after2_called.load(std::memory_order_acquire))
+        {
             if (IsNativeReflexActive()) {
                 imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
                                   ICON_FK_OK " Native Reflex: ACTIVE Limit Real Frames: ON");
@@ -4930,11 +4932,32 @@ static void DrawMainTabOptionalPanelDxgiControl(display_commander::ui::GraphicsA
     }
     imgui.Indent();
     DrawDisplaySettings_DXGI(imgui);
-    const bool flip_metering_seen = g_nvapi_d3d12_setflipconfig_seen.load(std::memory_order_acquire);
+    const uint32_t flip_metering_calls = g_nvapi_d3d12_setflipconfig_seen.load(std::memory_order_acquire);
+    const uint32_t flip_metering_suppressions =
+        g_nvapi_d3d12_setflipconfig_suppressions.load(std::memory_order_acquire);
+    const bool flip_metering_seen = (flip_metering_calls > flip_metering_suppressions);
     imgui.Text("Flip Metering [rtx 5000+]:"); // TODO: add detection for 5000 series
     imgui.SameLine();
     imgui.TextColored(flip_metering_seen ? ::ui::colors::TEXT_SUCCESS : ::ui::colors::TEXT_DIMMED,
                       flip_metering_seen ? "ON" : "OFF");
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltipEx(
+            "NVAPI_D3D12_SetFlipConfig (0xF3148C42) QueryInterface:\n"
+            "  Calls this session: %u\n"
+            "  Successful suppressions: %u\n"
+            "ON when calls exceed suppressions (game received the function pointer at least once net).",
+            flip_metering_calls, flip_metering_suppressions);
+    }
+    imgui.SameLine();
+    bool allow_flip = settings::g_mainTabSettings.allow_nvapi_d3d12_setflipconfig.GetValue();
+    if (imgui.Checkbox("Allow##flip_metering_nvapi", &allow_flip)) {
+        settings::g_mainTabSettings.allow_nvapi_d3d12_setflipconfig.SetValue(allow_flip);
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltipEx(
+            "When enabled, NvAPI_QueryInterface returns the real SetFlipConfig entry (default).\n"
+            "When disabled, returns nullptr for that ID and increments the suppression counter.");
+    }
     DrawDxgiControl_SwapchainTweaks(imgui);
     DrawMainTabOptionalPanelTextureFiltering(imgui);
     imgui.Unindent();

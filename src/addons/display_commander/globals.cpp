@@ -581,7 +581,8 @@ std::atomic<uint64_t> g_nvapi_last_sleep_timestamp_ns{0};  // Last NVAPI_D3D_Sle
 std::atomic<bool> g_native_reflex_detected{false};         // Native Reflex detected via SetLatencyMarker calls
 std::atomic<uint64_t> g_nvapi_d3d_last_global_frame_id_by_marker_type[kLatencyMarkerTypeCountFirstSix] = {};
 std::atomic<uint64_t> g_nvapi_d3d_last_sleep_global_frame_id{0};
-std::atomic<bool> g_nvapi_d3d12_setflipconfig_seen{false};
+std::atomic<uint32_t> g_nvapi_d3d12_setflipconfig_seen{0};
+std::atomic<uint32_t> g_nvapi_d3d12_setflipconfig_suppressions{0};
 
 // Present pacing delay as percentage of frame time - 0% to 100%
 // This adds a delay after present to improve frame pacing and reduce CPU usage

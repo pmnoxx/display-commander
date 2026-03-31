@@ -55,7 +55,11 @@ NvU32 GetNvAPIFunctionId(const char* functionName) {
 
 void* __cdecl NvAPI_QueryInterface_Detour(NvU32 offset) {
     if (offset == kNvApiIdD3D12SetFlipConfig) {
-        ::g_nvapi_d3d12_setflipconfig_seen.store(true, std::memory_order_release);
+        ::g_nvapi_d3d12_setflipconfig_seen.fetch_add(1, std::memory_order_relaxed);
+        if (!settings::g_mainTabSettings.allow_nvapi_d3d12_setflipconfig.GetValue()) {
+            ::g_nvapi_d3d12_setflipconfig_suppressions.fetch_add(1, std::memory_order_relaxed);
+            return nullptr;
+        }
     }
 
     if (NvAPI_QueryInterface_Original != nullptr) {

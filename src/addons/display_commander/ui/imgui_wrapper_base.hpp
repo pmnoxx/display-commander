@@ -38,6 +38,7 @@ constexpr int TreeNodeFlags_DefaultOpen = 1 << 5;
 constexpr int TableFlags_BordersOuter = (1 << 8) | (1 << 10);
 constexpr int TableFlags_BordersH = (1 << 7) | (1 << 8);
 constexpr int TableFlags_SizingStretchProp = 3 << 13;
+constexpr int TableFlags_ScrollX = 1 << 24;
 constexpr int TableFlags_ScrollY = 1 << 25;
 constexpr int TableFlags_RowBg = 1 << 4;
 constexpr int TableFlags_Borders = (1 << 7) | (1 << 8) | (1 << 9) | (1 << 10);

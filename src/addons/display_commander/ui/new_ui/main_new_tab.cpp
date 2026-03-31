@@ -5824,8 +5824,8 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
             ReflexProvider::NvapiLatencyMetrics metrics{};
             if (g_reflexProvider->GetLatencyMetrics(metrics)) {
                 if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                    imgui.Text("PCL (NVAPI): %.1f ms (GPU %.1f ms)", metrics.pc_latency_ms,
-                               metrics.gpu_frame_time_ms);
+                    imgui.Text("PCL (NVAPI): %.1f ms", metrics.pc_latency_ms +
+                               metrics.gpu_frame_time_ms / 2.0);
                 } else {
                     imgui.Text("%.1f ms / %.1f ms", metrics.pc_latency_ms, metrics.gpu_frame_time_ms);
                 }

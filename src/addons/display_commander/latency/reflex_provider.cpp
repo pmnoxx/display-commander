@@ -9,6 +9,9 @@ PCLSTATS_DEFINE()
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
 
+// Libraries <standard C++>
+#include <algorithm>
+
 // Static member initialization
 bool ReflexProvider::_is_pcl_initialized = false;
 
@@ -158,8 +161,8 @@ bool ReflexProvider::GetLatencyMetrics(NvapiLatencyMetrics& out_metrics) {
 
         // NVAPI latency timestamps are in microseconds (same domain as gpuFrameTimeUs).
         // Convert input->GPU-end delta from µs to ms to match gpuFrameTimeUs/1000.
-        const double pc_latency_us =
-            static_cast<double>(fr.gpuRenderEndTime - fr.inputSampleTime);
+        const double pc_latency_us = fr.inputSampleTime != 0 ?
+            static_cast<double>(fr.gpuRenderEndTime - fr.inputSampleTime) : static_cast<double>(fr.gpuRenderEndTime - fr.simStartTime);
         const double pc_latency_ms = pc_latency_us / 1000.0;
         const double gpu_ms = static_cast<double>(fr.gpuFrameTimeUs) / 1000.0;
 
@@ -183,6 +186,60 @@ bool ReflexProvider::GetLatencyMetrics(NvapiLatencyMetrics& out_metrics) {
     return true;
 #else
     (void)out_metrics;
+    return false;
+#endif
+}
+
+bool ReflexProvider::GetRecentLatencyFrames(std::vector<NvapiLatencyFrame>& out_frames, std::size_t max_frames) {
+    out_frames.clear();
+    if (!IsInitialized() || max_frames == 0) {
+        return false;
+    }
+
+#if defined(_M_AMD64) || defined(__x86_64__)
+    NV_LATENCY_RESULT_PARAMS_V1 params = {};
+    params.version = NV_LATENCY_RESULT_PARAMS_VER1;
+    if (!reflex_manager_.GetLatency(reinterpret_cast<NV_LATENCY_RESULT_PARAMS*>(&params))) {
+        return false;
+    }
+
+    constexpr int kMaxReports = 64;
+    for (int i = 0; i < kMaxReports; ++i) {
+        const auto& fr = params.frameReport[i];
+        if (fr.frameID == 0) {
+            continue;
+        }
+
+        NvapiLatencyFrame frame{};
+        frame.frame_id = static_cast<uint64_t>(fr.frameID);
+        frame.input_sample_time_ns = static_cast<uint64_t>(fr.inputSampleTime);
+        frame.sim_start_time_ns = static_cast<uint64_t>(fr.simStartTime);
+        frame.sim_end_time_ns = static_cast<uint64_t>(fr.simEndTime);
+        frame.render_submit_start_time_ns = static_cast<uint64_t>(fr.renderSubmitStartTime);
+        frame.render_submit_end_time_ns = static_cast<uint64_t>(fr.renderSubmitEndTime);
+        frame.present_start_time_ns = static_cast<uint64_t>(fr.presentStartTime);
+        frame.present_end_time_ns = static_cast<uint64_t>(fr.presentEndTime);
+        frame.driver_start_time_ns = static_cast<uint64_t>(fr.driverStartTime);
+        frame.driver_end_time_ns = static_cast<uint64_t>(fr.driverEndTime);
+        frame.os_render_queue_start_time_ns = static_cast<uint64_t>(fr.osRenderQueueStartTime);
+        frame.os_render_queue_end_time_ns = static_cast<uint64_t>(fr.osRenderQueueEndTime);
+        frame.gpu_render_start_time_ns = static_cast<uint64_t>(fr.gpuRenderStartTime);
+        frame.gpu_render_end_time_ns = static_cast<uint64_t>(fr.gpuRenderEndTime);
+        frame.gpu_frame_time_us = static_cast<uint32_t>(fr.gpuFrameTimeUs);
+        out_frames.push_back(frame);
+    }
+
+    if (out_frames.empty()) {
+        return false;
+    }
+
+    std::sort(out_frames.begin(), out_frames.end(),
+              [](const NvapiLatencyFrame& a, const NvapiLatencyFrame& b) { return a.frame_id > b.frame_id; });
+    if (out_frames.size() > max_frames) {
+        out_frames.resize(max_frames);
+    }
+    return true;
+#else
     return false;
 #endif
 }

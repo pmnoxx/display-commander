@@ -14,6 +14,7 @@ Feature protosal:
 ## Unreleased
 
 - [settings] [hooks] [ui] **Flip Metering: optional NVAPI suppression and net-ON status** - DXGI Control now has an **Allow** checkbox (default on). When off, `NvAPI_QueryInterface` for D3D12 SetFlipConfig returns nullptr and counts successful suppressions. The ON/OFF line is ON only when QueryInterface calls exceed suppressions (net times the game received the pointer).
+- [ui] [experimental] **Reflex last-10-frames debug table** - Added a Debug-subtab view that shows up to 10 recent NVAPI Reflex latency frame reports with a manual **Refresh** button. Timestamp columns are displayed relative to the smallest non-zero timestamp, and zero values show as `N/A` for easier comparison.
 
 ## v0.13.62 (2026-03-31)
 - [bugfix] **FG frame limiter input latency** - Fixed input latency issues in FG frame limiter.
@@ -3176,6 +3177,11 @@ Remove unused code.
 - **V-Sync 2x-4x compatibility** - Only allow 2-4 v-blanks on bitblt swap effects (SEQUENTIAL/DISCARD)
 - **Stability improvements** - Removed present_mode override that could cause compatibility issues
 - **Crash prevention** - Fixes games crashing with sync_value == 3 (V-Sync 2x)
+
+## v0.13.63 (Unreleased)
+
+- **NVAPI Reflex latency stats in overlay** - Added an optional NVAPI-backed PC latency and GPU frame time line to the performance overlay, powered by `NvAPI_D3D_GetLatency` and Reflex markers.  
+  Details: Enabled via the Main tab → Test Overlay → NVAPI stats subsection; values are smoothed over the NVAPI frame report window and only queried when the checkbox is on (to avoid extra driver calls when unused).
 
 ## v0.2.1 (2025-08-23)
 

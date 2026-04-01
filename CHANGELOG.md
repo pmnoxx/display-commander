@@ -12,6 +12,9 @@ Feature protosal:
 - Add fix for games with broken native reflex.
 
 ## v0.13.68 (2026-03-31)
+- [new feature] [ui] [settings] **Added modules** - External modules now can be loaded if needed.
+
+## v0.13.68 (2026-03-31)
 - [settings] [hooks] [ui] [experimental] **Remove UI for unneeded feature** - Cleanup.
 
 ## v0.13.67 (2026-03-31)

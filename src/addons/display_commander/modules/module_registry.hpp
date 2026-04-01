@@ -34,6 +34,22 @@ struct ModuleDescriptor {
 };
 
 using ModuleLifecycleCallback = void (*)();
+using ModuleInitializeCallback = void (*)(ModuleConfigApi* config_api);
+using ModuleTickCallback = void (*)();
+using ModuleDrawTabCallback = void (*)(display_commander::ui::IImGuiWrapper&, reshade::api::effect_runtime*);
+using ModuleDrawOverlayCallback = void (*)(display_commander::ui::IImGuiWrapper&);
+
+struct ModuleRegistrationSpec {
+    ModuleDescriptor descriptor;
+    bool default_enabled = false;
+    bool default_show_in_overlay = false;
+    ModuleInitializeCallback initialize_fn = nullptr;
+    ModuleTickCallback tick_fn = nullptr;
+    ModuleDrawTabCallback draw_tab_fn = nullptr;
+    ModuleDrawOverlayCallback draw_overlay_fn = nullptr;
+    ModuleLifecycleCallback on_enabled_fn = nullptr;
+    ModuleLifecycleCallback on_disabled_fn = nullptr;
+};
 
 void InitializeModuleRegistry();
 std::vector<ModuleDescriptor> GetModules();

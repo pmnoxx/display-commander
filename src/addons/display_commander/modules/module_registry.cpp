@@ -5,8 +5,7 @@
 #include "../config/display_commander_config.hpp"
 #include "../utils/srwlock_wrapper.hpp"
 #if defined(DC_EXTERNAL_MODULES)
-#include "nvapi_latency/nvapi_latency_module.hpp"
-#include "timeslowdown/timeslowdown_module.hpp"
+#include "private_modules_registration.hpp"
 #endif
 
 // Libraries <standard C++>
@@ -88,41 +87,24 @@ void RegisterPublicModules() {
 
 void RegisterPrivateModules() {
 #if defined(DC_EXTERNAL_MODULES)
-    {
+    std::vector<ModuleRegistrationSpec> specs;
+    GetExternalModuleRegistrations(specs);
+    for (const ModuleRegistrationSpec& spec : specs) {
         ModuleEntry entry{};
-        entry.descriptor.id = "nvapi_latency";
-        entry.descriptor.display_name = "NVAPI Latency";
-        entry.descriptor.description = "Collects Reflex marker timings and draws frame marker graphs.";
+        entry.descriptor = spec.descriptor;
+        if (entry.descriptor.id.empty()) {
+            continue;
+        }
         entry.config_api = std::make_unique<ModuleConfigApiImpl>(entry.descriptor.id);
-        entry.descriptor.enabled = entry.config_api->GetBool("enabled", false);
-        entry.descriptor.show_in_overlay = entry.config_api->GetBool("show_in_overlay", false);
-        entry.descriptor.has_tab = true;
-        entry.descriptor.tab_name = "NVAPI Latency";
-        entry.descriptor.tab_id = "nvapi_latency";
-        entry.descriptor.is_advanced_tab = true;
-        entry.initialize_fn = &nvapi_latency::Initialize;
-        entry.tick_fn = &nvapi_latency::TickFromReflexProvider;
-        entry.draw_tab_fn = &nvapi_latency::DrawTab;
-        entry.draw_overlay_fn = &nvapi_latency::DrawOverlay;
-        AddModuleEntry(std::move(entry));
-    }
-
-    {
-        ModuleEntry entry{};
-        entry.descriptor.id = "timeslowdown";
-        entry.descriptor.display_name = "Time Slowdown";
-        entry.descriptor.description = "Private module for timer-hook based game time manipulation.";
-        entry.config_api = std::make_unique<ModuleConfigApiImpl>(entry.descriptor.id);
-        entry.descriptor.enabled = entry.config_api->GetBool("enabled", false);
-        entry.descriptor.show_in_overlay = false;
-        entry.descriptor.has_tab = true;
-        entry.descriptor.tab_name = "Time Slowdown";
-        entry.descriptor.tab_id = "timeslowdown";
-        entry.descriptor.is_advanced_tab = true;
-        entry.initialize_fn = &timeslowdown::Initialize;
-        entry.draw_tab_fn = &timeslowdown::DrawTab;
-        entry.on_enabled_fn = &timeslowdown::OnModuleEnabled;
-        entry.on_disabled_fn = &timeslowdown::OnModuleDisabled;
+        entry.descriptor.enabled = entry.config_api->GetBool("enabled", spec.default_enabled);
+        entry.descriptor.show_in_overlay =
+            entry.config_api->GetBool("show_in_overlay", spec.default_show_in_overlay);
+        entry.initialize_fn = spec.initialize_fn;
+        entry.tick_fn = spec.tick_fn;
+        entry.draw_tab_fn = spec.draw_tab_fn;
+        entry.draw_overlay_fn = spec.draw_overlay_fn;
+        entry.on_enabled_fn = spec.on_enabled_fn;
+        entry.on_disabled_fn = spec.on_disabled_fn;
         AddModuleEntry(std::move(entry));
     }
 #endif

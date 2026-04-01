@@ -27,6 +27,7 @@ struct ModuleEntry {
     void (*tick_fn)() = nullptr;
     void (*draw_tab_fn)(display_commander::ui::IImGuiWrapper&, reshade::api::effect_runtime*) = nullptr;
     void (*draw_overlay_fn)(display_commander::ui::IImGuiWrapper&) = nullptr;
+    ModuleDrawMainTabInlineCallback draw_main_tab_inline_fn = nullptr;
     ModuleLifecycleCallback on_enabled_fn = nullptr;
     ModuleLifecycleCallback on_disabled_fn = nullptr;
     std::vector<ModuleHotkeySpec> hotkeys;
@@ -99,6 +100,7 @@ void RegisterPublicModules() {
         spec.initialize_fn = &audio::Initialize;
         spec.draw_tab_fn = &audio::DrawTab;
         spec.draw_overlay_fn = &audio::DrawOverlay;
+        spec.draw_main_tab_inline_fn = &audio::DrawMainTabInline;
         audio::FillHotkeys(&spec.hotkeys);
 
         ModuleEntry entry{};
@@ -110,6 +112,7 @@ void RegisterPublicModules() {
         entry.tick_fn = spec.tick_fn;
         entry.draw_tab_fn = spec.draw_tab_fn;
         entry.draw_overlay_fn = spec.draw_overlay_fn;
+        entry.draw_main_tab_inline_fn = spec.draw_main_tab_inline_fn;
         entry.on_enabled_fn = spec.on_enabled_fn;
         entry.on_disabled_fn = spec.on_disabled_fn;
         entry.hotkeys = spec.hotkeys;
@@ -141,6 +144,7 @@ void RegisterPublicModules() {
     entry.tick_fn = spec.tick_fn;
     entry.draw_tab_fn = spec.draw_tab_fn;
     entry.draw_overlay_fn = spec.draw_overlay_fn;
+    entry.draw_main_tab_inline_fn = spec.draw_main_tab_inline_fn;
     entry.on_enabled_fn = spec.on_enabled_fn;
     entry.on_disabled_fn = spec.on_disabled_fn;
     entry.hotkeys = spec.hotkeys;
@@ -165,6 +169,7 @@ void RegisterPrivateModules() {
         entry.tick_fn = spec.tick_fn;
         entry.draw_tab_fn = spec.draw_tab_fn;
         entry.draw_overlay_fn = spec.draw_overlay_fn;
+        entry.draw_main_tab_inline_fn = spec.draw_main_tab_inline_fn;
         entry.on_enabled_fn = spec.on_enabled_fn;
         entry.on_disabled_fn = spec.on_disabled_fn;
         entry.hotkeys = spec.hotkeys;
@@ -313,6 +318,29 @@ void DrawEnabledModulesInOverlay(display_commander::ui::IImGuiWrapper& imgui) {
             continue;
         }
         entry.draw_overlay_fn(imgui);
+    }
+}
+
+void DrawModuleMainTabInlineById(std::string_view module_id, display_commander::ui::IImGuiWrapper& imgui,
+                                 reshade::api::effect_runtime* runtime) {
+    InitializeModuleRegistry();
+    utils::SRWLockShared lock(g_modules_lock);
+    const ModuleEntry* entry = FindModuleEntryConst(module_id);
+    if (entry == nullptr || !entry->descriptor.enabled || entry->draw_main_tab_inline_fn == nullptr) {
+        return;
+    }
+    entry->draw_main_tab_inline_fn(imgui, runtime);
+}
+
+void DrawEnabledModulesMainTabInline(display_commander::ui::IImGuiWrapper& imgui,
+                                     reshade::api::effect_runtime* runtime) {
+    InitializeModuleRegistry();
+    utils::SRWLockShared lock(g_modules_lock);
+    for (const ModuleEntry& entry : g_modules) {
+        if (!entry.descriptor.enabled || entry.draw_main_tab_inline_fn == nullptr) {
+            continue;
+        }
+        entry.draw_main_tab_inline_fn(imgui, runtime);
     }
 }
 

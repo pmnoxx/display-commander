@@ -31,9 +31,6 @@ void DrawDisplaySettings_WindowModeAndApply(display_commander::ui::IImGuiWrapper
 void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui);
 void DrawDisplaySettings_VSyncAndTearing(display_commander::ui::IImGuiWrapper& imgui);
 
-// Draw audio settings section
-void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui);
-
 // Draw window controls section
 void DrawWindowControlButtons(display_commander::ui::IImGuiWrapper& imgui);
 

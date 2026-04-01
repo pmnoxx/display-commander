@@ -12,6 +12,10 @@ Feature protosal:
 - Add fix for games with broken native reflex.
 
 ## v0.13.70 (2026-04-01)
+- [ui] [settings] **Main tab module controls now render as full control headers** - Enabled modules can now render full collapsing control sections in Main tab near core controls (like Resolution), so module-owned controls are placed in a consistent location.
+  Details: added `DrawEnabledModulesMainTabInline(...)` in `module_registry` and moved invocation from the Features list row to the main control area; Audio now renders its own `Audio control` collapsing header from `modules/audio/audio_module.cpp`.
+- [cleanup] [ui] [settings] **Audio UI ownership fully moved into the Audio module** - Audio settings rendering is now owned by `modules/audio` instead of `main_new_tab`, and modules can optionally draw inline content in Main tab Features.
+  Details: added optional module callback for Main tab inline rendering in `module_registry`; moved audio settings UI implementation into `modules/audio/audio_module.cpp`; Main tab now invokes inline module UI by module id.
 - [new feature] [settings] [ui] **Module hotkeys can self-register via module registry** - External modules can now provide their own hotkeys (name, default binding, callback) without adding per-hotkey wiring in the main repo, so module hotkey integration is easier to maintain.
   Details: `module_registry` now supports hotkey specs; Hotkeys tab/runtime consumes enabled-module hotkeys dynamically; dynamic `ModuleHotkey_*` keys are persisted in shared `hotkeys.toml`.
 - [bugfix] [settings] [ui] **Fixed DLSS quality preset override with Frame Generation** - Fixed a case where changing DLSS quality preset in-game could fail when Frame Generation was active, so preset changes now apply correctly during gameplay.

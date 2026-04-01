@@ -71,12 +71,12 @@ Note: Applying window operations from the main thread can crash some apps. This 
 
 - **Configurable hotkeys**: Full Hotkeys tab — window/display, volume, brightness, black curtain (other displays), independent window toggle, etc.
 - **XInput**: Controller support and hooks for remapping / compatibility
-- **Windows.Gaming.Input**: Option to suppress WGI so games use XInput (helps with continue-rendering-in-background)
+- **Windows.Gaming.Input**: Option to suppress WGI so games use XInput (helps with continue rendering / fake fullscreen)
 - **Input remapping**: Controller remapping and related presets
 
 ### Advanced & power user
 
-- **Continue rendering in background**: Game keeps rendering when alt-tabbed (no minimize/focus spoofing)
+- **Continue rendering in background (fake fullscreen)**: Game keeps rendering when alt-tabbed (no minimize/focus spoofing)
 - **Standalone / independent UI**: Run settings in a separate window or without ReShade (.NO_RESHADE, SetupDC)
 - **Proxy loading**: Rename the built addon (`zzz_display_commander.addon64` / `.addon32`) next to the game to one of these proxy DLL names: **dxgi.dll**, **d3d9.dll**, **d3d11.dll**, **d3d12.dll**, **ddraw.dll**, **hid.dll**, **version.dll**, **opengl32.dll**, **dbghelp.dll**, **vulkan-1.dll**, or **winmm.dll**.
   **In the addon (DLL) folder or `%LocalAppData%\Programs\Display_Commander\`:**

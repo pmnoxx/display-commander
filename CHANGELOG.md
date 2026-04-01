@@ -6,15 +6,25 @@ Known issues:
 - Sometimes config .toml file gets deleted during save.
 - Dishonored renodx d3d9 -> d3d11 requires to set fps to 2x.
 - Injustice 2/Mortal Kombat 11, alt-tab with prevent fullscreen + continue rendering: prevent minimize doesn't work.
+- Injected reflex is broken after cleanup.
 
 Feature protosal:
 - Add injected reflex support for Vulkan.
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
-## v0.13.71 (2026-04-01)
+Planned:
+- Hotkeys default off / add UI to enabled/disable them globally.
+
+## v0.13.72 (2026-04-01)
 - [cleanup] **GitHub Actions submodule checkout** - Removed a stale Git submodule pointer to `external-private/display-commander2-modules` from the repository index. That path is optional local-only content (see `DC_EXTERNAL_MODULES`); it was not listed in `.gitmodules`, so `actions/checkout` with recursive submodules failed with “No url found for submodule path”. CI and clones no longer hit that error.
   Details: `git rm --cached external-private/display-commander2-modules`; directory remains gitignored for developers who have the private tree.
+- [ui] **Main tab Input Control layout** - **Clip Cursor** and **Unclip Cursor** are shown on one row so Input Control stays more compact.
+  Details: `SameLine()` between the two checkboxes in `DrawMainTabOptionalPanelInputControl` in `main_new_tab.cpp`.
+- [ui] **Continue rendering / Fake Fullscreen** - The Window Control checkbox label is now **Continue Rendering in Background (Fake Fullscreen)** so the same option is recognizable under both names.
+  Details: checkbox label and tooltip in `main_new_tab.cpp`; `GetKeyDisplayNames` in `default_overrides.cpp`; README feature list.
+
+## v0.13.71 (2026-04-01)
 - [ui] [settings] **Main tab Audio optional panel** - When the Audio module is off under Main tab Features, the **Show Audio Control** toggle and the optional Audio section are hidden so you do not see a disabled placeholder. If **Show Audio Control** is on, the duplicate second **Audio control** block at the bottom of the Main tab is no longer drawn (one collapsing section only).
   Details: `modules::IsModuleEnabled("audio")` gates Advanced optional-panel UI and optional draw order in `main_new_tab.cpp`; `modules::audio::DrawMainTabInline` returns early when `show_main_tab_audio_control` is enabled.
 - [new feature] [ui] [settings] [hooks] **Unclip Cursor** - You can turn on **Unclip Cursor** in Main tab Input Control so the game cannot lock the mouse to its window (every `ClipCursor` from the game is turned into a full release). It is mutually exclusive with **Clip Cursor**; if both were saved in config, **Unclip** is turned off on load.

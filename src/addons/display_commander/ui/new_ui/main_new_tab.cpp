@@ -2661,10 +2661,10 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         }
 
 
-        // Continue Rendering in Background
+        // Continue rendering in background (also labeled "Fake Fullscreen" for discoverability)
         static bool continue_rendering_changed = false;
-        if (CheckboxSetting(settings::g_advancedTabSettings.continue_rendering, "Continue Rendering in Background",
-                            imgui)) {
+        if (CheckboxSetting(settings::g_advancedTabSettings.continue_rendering,
+                            "Continue Rendering in Background (Fake Fullscreen)", imgui)) {
             continue_rendering_changed = true;
             bool new_value = settings::g_advancedTabSettings.continue_rendering.GetValue();
             LogInfo("Continue rendering in background %s", new_value ? "enabled" : "disabled");
@@ -2691,7 +2691,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
                 "Prevent games from pausing or reducing performance when alt-tabbed. Blocks window focus "
-                "messages to keep games running in background.");
+                "messages so the game keeps running in the background. Also called fake fullscreen.");
         }
 
         if (display_commanderhooks::g_wgi_state.wgi_called.load() && continue_rendering_changed) {

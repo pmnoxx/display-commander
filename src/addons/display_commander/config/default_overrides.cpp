@@ -72,7 +72,7 @@ SRWLOCK g_srwlock = SRWLOCK_INIT;
 // Key -> human-readable name for UI tooltip
 const std::map<std::string, std::string>& GetKeyDisplayNames() {
     static const std::map<std::string, std::string> names = {
-        {"ContinueRendering", "Continue Rendering in Background"},
+        {"ContinueRendering", "Continue Rendering in Background (Fake Fullscreen)"},
         {"PreventMinimize", "Prevent Minimize"},
         {"PreventAlwaysOnTop", "Prevent Always on Top"},
         {"HideHDRCapabilities", "Hide HDR Capabilities"},

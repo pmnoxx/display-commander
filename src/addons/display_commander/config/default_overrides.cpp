@@ -9,8 +9,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cctype>
-#include <map>
-#include <set>
+#include <cstring>
 #include <string>
 #include <utility>
 #include <vector>
@@ -26,63 +25,109 @@ namespace display_commander::config {
 
 namespace {
 
-// exe_name_lower -> (section -> (key -> value))
-using OverrideMap = std::map<std::string, std::map<std::string, std::map<std::string, std::string>>>;
+struct OverrideRow {
+    const char* exe_lower;
+    const char* section;
+    const char* key;
+    const char* value;
+};
 
-const OverrideMap& GetOverrideMap() {
-    static const OverrideMap overrides = {
-        {"re2.exe",
-         {{"DisplayCommander",
-           {{"AutoColorspace", "1"}, {"ContinueRendering", "1"}, {"WindowMode", "1"}}}}},
-        {"re3.exe",
-         {{"DisplayCommander",
-           {{"AutoColorspace", "1"}, {"ContinueRendering", "1"}, {"WindowMode", "1"}}}}},
-        {"re7.exe",
-         {{"DisplayCommander",
-           {{"AutoColorspace", "1"}, {"ContinueRendering", "1"}, {"WindowMode", "1"}}}}},
-        {"re8.exe",
-         {{"DisplayCommander",
-           {{"AutoColorspace", "1"}, {"ContinueRendering", "1"}, {"WindowMode", "1"}}}}},
-        {"sekiro.exe",
-         {{"DisplayCommander",
-           {{"AutoColorspace", "1"}, {"ContinueRendering", "1"}, {"WindowMode", "1"}}}}},
-        {"eldenring.exe",
-         {{"DisplayCommander",
-           {{"AutoColorspace", "1"}, {"ContinueRendering", "1"}, {"WindowMode", "1"}}}}},
-        {"armoredcore6.exe",
-         {{"DisplayCommander",
-           {{"AutoColorspace", "1"}, {"ContinueRendering", "1"}, {"WindowMode", "1"}}}}},
-        {"hitman3.exe",
-         {{"DisplayCommander",
-           {{"AutoColorspace", "1"}, {"ContinueRendering", "1"}, {"WindowMode", "1"}}}}},
-        {"devilmaycry5.exe",
-         {{"DisplayCommander",
-           {{"AutoColorspace", "1"}, {"ContinueRendering", "1"}, {"WindowMode", "1"}}}}},
-    };
-    return overrides;
+// Flat table: linear scan (tiny row count — avoids nested std::map codegen in this TU).
+static const OverrideRow k_override_rows[] = {
+    {"re2.exe", "DisplayCommander", "AutoColorspace", "1"},
+    {"re2.exe", "DisplayCommander", "ContinueRendering", "1"},
+    {"re2.exe", "DisplayCommander", "WindowMode", "1"},
+    {"re3.exe", "DisplayCommander", "AutoColorspace", "1"},
+    {"re3.exe", "DisplayCommander", "ContinueRendering", "1"},
+    {"re3.exe", "DisplayCommander", "WindowMode", "1"},
+    {"re7.exe", "DisplayCommander", "AutoColorspace", "1"},
+    {"re7.exe", "DisplayCommander", "ContinueRendering", "1"},
+    {"re7.exe", "DisplayCommander", "WindowMode", "1"},
+    {"re8.exe", "DisplayCommander", "AutoColorspace", "1"},
+    {"re8.exe", "DisplayCommander", "ContinueRendering", "1"},
+    {"re8.exe", "DisplayCommander", "WindowMode", "1"},
+    {"sekiro.exe", "DisplayCommander", "AutoColorspace", "1"},
+    {"sekiro.exe", "DisplayCommander", "ContinueRendering", "1"},
+    {"sekiro.exe", "DisplayCommander", "WindowMode", "1"},
+    {"eldenring.exe", "DisplayCommander", "AutoColorspace", "1"},
+    {"eldenring.exe", "DisplayCommander", "ContinueRendering", "1"},
+    {"eldenring.exe", "DisplayCommander", "WindowMode", "1"},
+    {"armoredcore6.exe", "DisplayCommander", "AutoColorspace", "1"},
+    {"armoredcore6.exe", "DisplayCommander", "ContinueRendering", "1"},
+    {"armoredcore6.exe", "DisplayCommander", "WindowMode", "1"},
+    {"hitman3.exe", "DisplayCommander", "AutoColorspace", "1"},
+    {"hitman3.exe", "DisplayCommander", "ContinueRendering", "1"},
+    {"hitman3.exe", "DisplayCommander", "WindowMode", "1"},
+    {"devilmaycry5.exe", "DisplayCommander", "AutoColorspace", "1"},
+    {"devilmaycry5.exe", "DisplayCommander", "ContinueRendering", "1"},
+    {"devilmaycry5.exe", "DisplayCommander", "WindowMode", "1"},
+};
+
+struct KeyDisplayName {
+    const char* key;
+    const char* display;
+};
+
+static const KeyDisplayName k_key_display_names[] = {
+    {"ContinueRendering", "Continue Rendering in Background (Fake Fullscreen)"},
+    {"PreventMinimize", "Prevent Minimize"},
+    {"PreventAlwaysOnTop", "Prevent Always on Top"},
+    {"HideHDRCapabilities", "Hide HDR Capabilities"},
+    {"EnableFlipChain", "Enable Flip Chain"},
+    {"ForceFlipDiscardUpgrade", "Force Flip Discard upgrade"},
+    {"AutoColorspace", "Auto color space"},
+    {"WindowMode", "Window Mode"},
+};
+
+const char* LookupDisplayNameForKey(const char* key) {
+    if (key == nullptr) {
+        return nullptr;
+    }
+    for (const KeyDisplayName& e : k_key_display_names) {
+        if (std::strcmp(e.key, key) == 0) {
+            return e.display;
+        }
+    }
+    return nullptr;
+}
+
+bool ExeHasAnyOverrideRow(const char* exe_lower) {
+    if (exe_lower == nullptr || exe_lower[0] == '\0') {
+        return false;
+    }
+    for (const OverrideRow& r : k_override_rows) {
+        if (std::strcmp(r.exe_lower, exe_lower) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+const char* FindOverrideValue(const char* exe_lower, const char* section, const char* key) {
+    if (exe_lower == nullptr || section == nullptr || key == nullptr) {
+        return nullptr;
+    }
+    for (const OverrideRow& r : k_override_rows) {
+        if (std::strcmp(r.exe_lower, exe_lower) != 0) {
+            continue;
+        }
+        if (std::strcmp(r.section, section) != 0) {
+            continue;
+        }
+        if (std::strcmp(r.key, key) != 0) {
+            continue;
+        }
+        return r.value;
+    }
+    return nullptr;
 }
 
 std::atomic<bool> g_exe_name_initialized{false};
 std::string g_current_exe_lower;
 SRWLOCK g_exe_name_srwlock = SRWLOCK_INIT;
 // (section, key) pairs for which we returned an override during Load
-std::set<std::pair<std::string, std::string>> g_active_overrides;
+std::vector<std::pair<std::string, std::string>> g_active_overrides;
 SRWLOCK g_srwlock = SRWLOCK_INIT;
-
-// Key -> human-readable name for UI tooltip
-const std::map<std::string, std::string>& GetKeyDisplayNames() {
-    static const std::map<std::string, std::string> names = {
-        {"ContinueRendering", "Continue Rendering in Background (Fake Fullscreen)"},
-        {"PreventMinimize", "Prevent Minimize"},
-        {"PreventAlwaysOnTop", "Prevent Always on Top"},
-        {"HideHDRCapabilities", "Hide HDR Capabilities"},
-        {"EnableFlipChain", "Enable Flip Chain"},
-        {"ForceFlipDiscardUpgrade", "Force Flip Discard upgrade"},
-        {"AutoColorspace", "Auto color space"},
-        {"WindowMode", "Window Mode"},
-    };
-    return names;
-}
 
 std::string ToLower(std::string s) {
     std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
@@ -101,8 +146,7 @@ void EnsureLoaded() {
     const std::string& exe = g_current_exe_lower;
     LogInfo("Game default overrides: checking against exe %.260s", exe.empty() ? "(unknown)" : exe.c_str());
 
-    const auto& override_map = GetOverrideMap();
-    if (!exe.empty() && override_map.count(exe)) {
+    if (!exe.empty() && ExeHasAnyOverrideRow(exe.c_str())) {
         LogInfo("Game default override found for %.260s", exe.c_str());
     } else {
         LogInfo("No game default override for %.260s", exe.empty() ? "(unknown)" : exe.c_str());
@@ -130,21 +174,21 @@ bool GetDefaultOverride(const char* section, const char* key, std::string& out_v
     if (section == nullptr || key == nullptr) return false;
     if (g_current_exe_lower.empty()) return false;
 
-    const auto& override_map = GetOverrideMap();
-    auto it_exe = override_map.find(g_current_exe_lower);
-    if (it_exe == override_map.end()) return false;
-    auto it_sec = it_exe->second.find(section);
-    if (it_sec == it_exe->second.end()) return false;
-    auto it_key = it_sec->second.find(key);
-    if (it_key == it_sec->second.end()) return false;
-    out_value = it_key->second;
+    const char* v = FindOverrideValue(g_current_exe_lower.c_str(), section, key);
+    if (v == nullptr) return false;
+    out_value = v;
     return true;
 }
 
 void MarkUsedOverride(const char* section, const char* key) {
     if (section == nullptr || key == nullptr) return;
     utils::SRWLockExclusive lock(g_srwlock);
-    g_active_overrides.insert({section, key});
+    for (const auto& p : g_active_overrides) {
+        if (p.first == section && p.second == key) {
+            return;
+        }
+    }
+    g_active_overrides.emplace_back(section, key);
 }
 
 bool HasActiveOverrides() {
@@ -155,24 +199,23 @@ bool HasActiveOverrides() {
 std::vector<DefaultOverrideEntry> GetActiveOverrideEntries() {
     EnsureLoaded();
     std::vector<DefaultOverrideEntry> result;
-    const std::string exe = g_current_exe_lower;
-    const auto& override_map = GetOverrideMap();
-    auto it_exe = override_map.find(exe);
-    if (it_exe == override_map.end()) return result;
+    const std::string& exe = g_current_exe_lower;
+    if (exe.empty()) {
+        return result;
+    }
 
     utils::SRWLockShared lock(g_srwlock);
-    const auto& display_names = GetKeyDisplayNames();
-    for (const auto& [section, key] : g_active_overrides) {
-        auto it_sec = it_exe->second.find(section);
-        if (it_sec == it_exe->second.end()) continue;
-        auto it_key = it_sec->second.find(key);
-        if (it_key == it_sec->second.end()) continue;
+    for (const auto& active : g_active_overrides) {
+        const char* v = FindOverrideValue(exe.c_str(), active.first.c_str(), active.second.c_str());
+        if (v == nullptr) {
+            continue;
+        }
         DefaultOverrideEntry e;
-        e.section = section;
-        e.key = key;
-        e.value = it_key->second;
-        auto dn = display_names.find(key);
-        e.display_name = (dn != display_names.end()) ? dn->second : key;
+        e.section = active.first;
+        e.key = active.second;
+        e.value = v;
+        const char* dn = LookupDisplayNameForKey(active.second.c_str());
+        e.display_name = (dn != nullptr) ? dn : active.second;
         result.push_back(std::move(e));
     }
     return result;

@@ -13,14 +13,14 @@
 
 If you need help with the Display Commander addon, there are several ways to get support:
 
-## HDR Den Discord Community
+## Display Commander Discord Community
 
-The primary support channel for Display Commander is the **HDR Den Discord server**:
+The primary support channel for Display Commander is the **Display Commander Discord server**:
 
-- **Discord Server**: [Join HDR Den Discord](https://discord.com/invite/WJ9YZctPND)
-- **Support Thread**: [Display Commander Support Thread](https://discord.com/channels/1161035767917850784/1403983735031857162)
+- **Discord Server**: [Join Display Commander Discord](https://discord.gg/huyYjqcu)
+- **Support Channel**: [Display Commander Support Channel](https://discord.com/channels/1487722129284665544/1488835719995723897)
 
-The HDR Den Discord community is the best place to:
+The Display Commander Discord community is the best place to:
 - Get help with installation and configuration
 - Report bugs and issues
 - Request new features
@@ -89,8 +89,8 @@ If you'd like to contribute to the project:
 
 - **Repository**: [GitHub](https://github.com/pmnoxx/reshade-display-commander)
 - **Releases**: [Latest Builds](https://github.com/pmnoxx/reshade-display-commander/releases)
-- **Discord**: [HDR Den Community](https://discord.com/invite/WJ9YZctPND)
-- **Support Thread**: [Direct Link](https://discord.com/channels/1161035767917850784/1403983735031857162)
+- **Discord**: [Display Commander Community](https://discord.gg/huyYjqcu)
+- **Support Channel**: [Direct Link](https://discord.com/channels/1487722129284665544/1488835719995723897)
 
 ## Support the Project
 
@@ -106,4 +106,4 @@ If you'd like to support ongoing development, consider donating: [Ko‑fi](https
 
 ---
 
-*For the best support experience, we recommend using the HDR Den Discord server where you can get real-time help from the community.*
+*For the best support experience, we recommend using the Display Commander Discord server where you can get real-time help from the community.*

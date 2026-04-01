@@ -101,11 +101,11 @@ GitHub Actions builds x64 and x86 on pushes and PRs and uploads the resulting `.
 Need help? Check out our [Support Guide](SUPPORT.md) for detailed information on getting assistance.
 
 **Quick Support Links:**
-- **RenoDX Discord**: [Join our community](https://discord.com/invite/jz6ujVpgFB)
-- **Support Thread**: [Display Commander Support](https://discord.com/channels/1408098019194310818/1486668882776293558)
+- **Display Commander Discord**: [Join our community](https://discord.gg/huyYjqcu)
+- **Support Channel**: [Display Commander Support](https://discord.com/channels/1487722129284665544/1488835719995723897)
 - **GitHub Issues**: [Report bugs or request features](https://github.com/pmnoxx/display-commander/issues)
 
-The RenoDX Discord community is the best place to get real-time help, discuss features, and connect with other users.
+The Display Commander Discord community is the best place to get real-time help, discuss features, and connect with other users.
 
 ## License
 

@@ -17,6 +17,9 @@ Feature protosal:
 Planned:
 - Hotkeys default off / add UI to enabled/disable them globally.
 
+## v0.13.85 (2026-04-01)
+- [cleanup] [settings] **`-NoModules` build** - **`bd.ps1` / `bd_core.ps1` / `build_display_commander.ps1`** accept **`-NoModules`**, which configures **`-DDC_NO_MODULES=ON`**. CMake forces **built-in module registry off** and **external modules off** (overrides **`-MODULES`**). **`DC_INTERNAL_MODULES`** is wired from CMake (default on); **`module_registry.cpp`** registers audio/controller/example_dummy only when **`DC_INTERNAL_MODULES`** is on. Module object files still link; **`Initialize` / `OnEnabled`** are not run when nothing is registered.
+
 ## v0.13.84 (2026-04-01)
 - [cleanup] **Persisted audio mute restore** - Applying the saved **Mute** checkbox to the OS session now runs in **Audio module `Initialize`** (right after **`InitMainNewTab`** loads main tab settings via **`InitializeNewUI`**), instead of **`InitMainNewTab`** itself.
 - [cleanup] [ui] **Overlay VU bars in Audio module** - **`DrawOverlayVUBars`** (and the duplicate **`GetAudioChannelLabel`**) removed from **`main_new_tab.cpp`**; the performance overlay calls **`modules::audio::DrawOverlayVUBars`** (single implementation used by **`DrawOverlay`** and **Main** overlay). Dropped unused **`audio_backend`** / **`exponential_smooth`** includes from **`main_new_tab.cpp`**.

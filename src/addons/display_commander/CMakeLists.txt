@@ -1,7 +1,7 @@
 # Version (single source of truth for addon; used by compile definitions and version.rc)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 13)
-set(DISPLAY_COMMANDER_VERSION_PATCH 85)
+set(DISPLAY_COMMANDER_VERSION_PATCH 86)
 
 # Repository root (this file: src/addons/display_commander/CMakeLists.txt → ../../..).
 set(_dc_repo_root "${CMAKE_CURRENT_LIST_DIR}/../../..")
@@ -55,7 +55,13 @@ add_library(zzz_display_commander MODULE
   ${DISPLAY_COMMANDER_SOURCES}
   ${CMAKE_CURRENT_BINARY_DIR}/version.rc
 )
-target_sources(zzz_display_commander PRIVATE ${CMAKE_CURRENT_LIST_DIR}/proxy_dll/exports.def)
+if(DC_NO_MODULES)
+  set(_dc_link_exports_def "${CMAKE_CURRENT_LIST_DIR}/proxy_dll/exports_addon_only.def")
+  message(STATUS "Display Commander: DC_NO_MODULES=ON — linking ${_dc_link_exports_def} (no API proxy export table)")
+else()
+  set(_dc_link_exports_def "${CMAKE_CURRENT_LIST_DIR}/proxy_dll/exports.def")
+endif()
+target_sources(zzz_display_commander PRIVATE ${_dc_link_exports_def})
 
 if(EXPERIMENTAL_TAB)
   target_compile_definitions(zzz_display_commander PRIVATE EXPERIMENTAL_TAB=1)

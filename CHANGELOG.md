@@ -17,6 +17,9 @@ Feature protosal:
 Planned:
 - Hotkeys default off / add UI to enabled/disable them globally.
 
+## v0.13.86 (2026-04-01)
+- [cleanup] [settings] **`DC_NO_MODULES` linker exports** - When **`DC_NO_MODULES`** is on, the addon links **`proxy_dll/exports_addon_only.def`** ( **`AddonInit`** + **`GetDisplayCommanderState`** only) instead of the full API-proxy **`exports.def`**, reducing DLL size. ReShade addon string exports remain via **`__declspec(dllexport)`** in **`addon.cpp`**. Full proxy rename (d3d11/dxgi/…) still requires the default build without **`DC_NO_MODULES`**.
+
 ## v0.13.85 (2026-04-01)
 - [cleanup] [settings] **`-NoModules` build** - **`bd.ps1` / `bd_core.ps1` / `build_display_commander.ps1`** accept **`-NoModules`**, which configures **`-DDC_NO_MODULES=ON`**. CMake forces **built-in module registry off** and **external modules off** (overrides **`-MODULES`**). **`DC_INTERNAL_MODULES`** is wired from CMake (default on); **`module_registry.cpp`** registers audio/controller/example_dummy only when **`DC_INTERNAL_MODULES`** is on. Module object files still link; **`Initialize` / `OnEnabled`** are not run when nothing is registered.
 

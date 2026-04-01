@@ -97,6 +97,7 @@ private_docs
 !src/**/**/**/**/**/**/**/*.cpp
 
 !src/addons/display_commander/proxy_dll/exports.def
+!src/addons/display_commander/proxy_dll/exports_addon_only.def
 !src/addons/display_commander/proxy_dll/opengl32.def
 !src/addons/display_commander/proxy_dll/version.rc.in
 !src/addons/display_commander/version_config.hpp.in

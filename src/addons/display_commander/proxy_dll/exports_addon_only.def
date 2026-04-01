@@ -1,0 +1,7 @@
+EXPORTS
+	; Minimal export table for DC_NO_MODULES builds (ReShade .addon64 / .addon32 only).
+	; Do not use this DLL renamed as d3d11/dxgi/etc. — use full proxy_dll/exports.def instead.
+	; ReShade addon metadata (NAME, AUTHOR, …) and GetDisplayCommanderVersion / LoadedNs are exported via
+	; __declspec(dllexport) in addon.cpp.
+	AddonInit
+	GetDisplayCommanderState

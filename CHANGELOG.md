@@ -18,6 +18,7 @@ Planned:
 - Hotkeys default off / add UI to enabled/disable them globally.
 
 ## v0.13.86 (2026-04-01)
+- File size reduction for DC Lite build to 1.34mb from 9mb previously.
 - [cleanup] [settings] **`DC_NO_MODULES` linker exports** - When **`DC_NO_MODULES`** is on, the addon links **`proxy_dll/exports_addon_only.def`** ( **`AddonInit`** + **`GetDisplayCommanderState`** only) instead of the full API-proxy **`exports.def`**, reducing DLL size. ReShade addon string exports remain via **`__declspec(dllexport)`** in **`addon.cpp`**. Full proxy rename (d3d11/dxgi/…) still requires the default build without **`DC_NO_MODULES`**.
 
 ## v0.13.85 (2026-04-01)

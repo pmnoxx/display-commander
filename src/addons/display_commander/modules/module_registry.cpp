@@ -6,6 +6,7 @@
 #include "../utils/srwlock_wrapper.hpp"
 #if defined(DC_EXTERNAL_MODULES)
 #include "nvapi_latency/nvapi_latency_module.hpp"
+#include "timeslowdown/timeslowdown_module.hpp"
 #endif
 
 // Libraries <standard C++>
@@ -25,6 +26,8 @@ struct ModuleEntry {
     void (*tick_fn)() = nullptr;
     void (*draw_tab_fn)(display_commander::ui::IImGuiWrapper&, reshade::api::effect_runtime*) = nullptr;
     void (*draw_overlay_fn)(display_commander::ui::IImGuiWrapper&) = nullptr;
+    ModuleLifecycleCallback on_enabled_fn = nullptr;
+    ModuleLifecycleCallback on_disabled_fn = nullptr;
     std::unique_ptr<ModuleConfigApi> config_api;
 };
 
@@ -85,22 +88,43 @@ void RegisterPublicModules() {
 
 void RegisterPrivateModules() {
 #if defined(DC_EXTERNAL_MODULES)
-    ModuleEntry entry{};
-    entry.descriptor.id = "nvapi_latency";
-    entry.descriptor.display_name = "NVAPI Latency";
-    entry.descriptor.description = "Collects Reflex marker timings and draws frame marker graphs.";
-    entry.config_api = std::make_unique<ModuleConfigApiImpl>(entry.descriptor.id);
-    entry.descriptor.enabled = entry.config_api->GetBool("enabled", false);
-    entry.descriptor.show_in_overlay = entry.config_api->GetBool("show_in_overlay", false);
-    entry.descriptor.has_tab = true;
-    entry.descriptor.tab_name = "NVAPI Latency";
-    entry.descriptor.tab_id = "nvapi_latency";
-    entry.descriptor.is_advanced_tab = true;
-    entry.initialize_fn = &nvapi_latency::Initialize;
-    entry.tick_fn = &nvapi_latency::TickFromReflexProvider;
-    entry.draw_tab_fn = &nvapi_latency::DrawTab;
-    entry.draw_overlay_fn = &nvapi_latency::DrawOverlay;
-    AddModuleEntry(std::move(entry));
+    {
+        ModuleEntry entry{};
+        entry.descriptor.id = "nvapi_latency";
+        entry.descriptor.display_name = "NVAPI Latency";
+        entry.descriptor.description = "Collects Reflex marker timings and draws frame marker graphs.";
+        entry.config_api = std::make_unique<ModuleConfigApiImpl>(entry.descriptor.id);
+        entry.descriptor.enabled = entry.config_api->GetBool("enabled", false);
+        entry.descriptor.show_in_overlay = entry.config_api->GetBool("show_in_overlay", false);
+        entry.descriptor.has_tab = true;
+        entry.descriptor.tab_name = "NVAPI Latency";
+        entry.descriptor.tab_id = "nvapi_latency";
+        entry.descriptor.is_advanced_tab = true;
+        entry.initialize_fn = &nvapi_latency::Initialize;
+        entry.tick_fn = &nvapi_latency::TickFromReflexProvider;
+        entry.draw_tab_fn = &nvapi_latency::DrawTab;
+        entry.draw_overlay_fn = &nvapi_latency::DrawOverlay;
+        AddModuleEntry(std::move(entry));
+    }
+
+    {
+        ModuleEntry entry{};
+        entry.descriptor.id = "timeslowdown";
+        entry.descriptor.display_name = "Time Slowdown";
+        entry.descriptor.description = "Private module for timer-hook based game time manipulation.";
+        entry.config_api = std::make_unique<ModuleConfigApiImpl>(entry.descriptor.id);
+        entry.descriptor.enabled = entry.config_api->GetBool("enabled", false);
+        entry.descriptor.show_in_overlay = false;
+        entry.descriptor.has_tab = true;
+        entry.descriptor.tab_name = "Time Slowdown";
+        entry.descriptor.tab_id = "timeslowdown";
+        entry.descriptor.is_advanced_tab = true;
+        entry.initialize_fn = &timeslowdown::Initialize;
+        entry.draw_tab_fn = &timeslowdown::DrawTab;
+        entry.on_enabled_fn = &timeslowdown::OnModuleEnabled;
+        entry.on_disabled_fn = &timeslowdown::OnModuleDisabled;
+        AddModuleEntry(std::move(entry));
+    }
 #endif
 }
 
@@ -121,6 +145,9 @@ void InitializeModuleRegistry() {
     for (ModuleEntry& entry : g_modules) {
         if (entry.initialize_fn != nullptr) {
             entry.initialize_fn(entry.config_api.get());
+        }
+        if (entry.descriptor.enabled && entry.on_enabled_fn != nullptr) {
+            entry.on_enabled_fn();
         }
     }
 }
@@ -150,9 +177,22 @@ bool SetModuleEnabled(std::string_view module_id, bool enabled) {
     if (entry == nullptr) {
         return false;
     }
+    const bool was_enabled = entry->descriptor.enabled;
+    if (was_enabled == enabled) {
+        return true;
+    }
     entry->descriptor.enabled = enabled;
     if (entry->config_api) {
         entry->config_api->SetBool("enabled", enabled);
+    }
+    if (enabled) {
+        if (entry->on_enabled_fn != nullptr) {
+            entry->on_enabled_fn();
+        }
+    } else {
+        if (entry->on_disabled_fn != nullptr) {
+            entry->on_disabled_fn();
+        }
     }
     return true;
 }

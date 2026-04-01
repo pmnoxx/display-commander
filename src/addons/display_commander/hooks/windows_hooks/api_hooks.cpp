@@ -14,7 +14,6 @@
 #include "../hook_suppression_manager.hpp"
 #include "../loadlibrary_hooks.hpp"
 #include "../opengl/opengl_hooks.hpp"
-#include "../system/timeslowdown_hooks.hpp"
 #include "../input/windows_gaming_input_hooks.hpp"
 #include "windows_message_hooks.hpp"
 
@@ -619,10 +618,6 @@ bool InstallApiHooks() {
     // ### SAME LIBRARY ###
     InstallWindowsMessageHooks();
 
-    if (enabled_experimental_features) {
-        InstallTimeslowdownHooks();
-    }
-
     process_exit_hooks::Initialize();
 
     // Install LoadLibrary hooks
@@ -666,9 +661,6 @@ void UninstallApiHooks() {
 
     // Uninstall Windows message hooks
     UninstallWindowsMessageHooks();
-
-    // Uninstall timeslowdown hooks
-    UninstallTimeslowdownHooks();
 
     // Uninstall process exit hooks
     process_exit_hooks::Shutdown();

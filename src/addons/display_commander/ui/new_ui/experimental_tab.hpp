@@ -21,9 +21,6 @@ void InitExperimentalTab();
 void DrawExperimentalTab(display_commander::ui::IImGuiWrapper& imgui,
                         reshade::api::effect_runtime* runtime);
 
-// Draw time slowdown controls section
-void DrawTimeSlowdownControls(display_commander::ui::IImGuiWrapper& imgui);
-
 // Draw disable flip chain controls section
 void DrawDisableFlipChainControls();
 

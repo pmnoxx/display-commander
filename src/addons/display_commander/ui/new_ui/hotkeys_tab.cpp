@@ -331,6 +331,9 @@ void InitializeHotkeyDefinitions() {
         {"timeslowdown", "Time Slowdown Toggle", "", "Toggle Time Slowdown feature",
          []() {
              if (!enabled_experimental_features) return;
+#if !defined(DC_EXTERNAL_MODULES)
+             return;
+#endif
              bool current_state = settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue();
              bool new_state = !current_state;
              settings::g_experimentalTabSettings.timeslowdown_enabled.SetValue(new_state);
@@ -624,8 +627,10 @@ void InitializeHotkeyDefinitions() {
         g_hotkey_definitions[static_cast<size_t>(HotkeyId::BackgroundToggle)].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_background_toggle.GetValue());
         if (enabled_experimental_features) {
+#if defined(DC_EXTERNAL_MODULES)
             g_hotkey_definitions[static_cast<size_t>(HotkeyId::TimeSlowdown)].parsed =
                 DeserializeHotkeyFromConfigString(settings.hotkey_timeslowdown.GetValue());
+#endif
         }
         g_hotkey_definitions[static_cast<size_t>(HotkeyId::AdhdToggle)].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_adhd_toggle.GetValue());
@@ -796,8 +801,10 @@ void SyncHotkeySettingsFromParsed() {
     s.hotkey_background_toggle.SetValue(
         SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::BackgroundToggle)].parsed));
     if (enabled_experimental_features) {
+#if defined(DC_EXTERNAL_MODULES)
         s.hotkey_timeslowdown.SetValue(
             SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::TimeSlowdown)].parsed));
+#endif
     }
     s.hotkey_adhd_toggle.SetValue(
         SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::AdhdToggle)].parsed));
@@ -869,7 +876,11 @@ void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
                     case HotkeyId::MuteUnmute: setting_ptr = &settings.hotkey_mute_unmute; break;
                     case HotkeyId::BackgroundToggle: setting_ptr = &settings.hotkey_background_toggle; break;
                     case HotkeyId::TimeSlowdown:
-                        if (enabled_experimental_features) setting_ptr = &settings.hotkey_timeslowdown;
+                        if (enabled_experimental_features) {
+#if defined(DC_EXTERNAL_MODULES)
+                            setting_ptr = &settings.hotkey_timeslowdown;
+#endif
+                        }
                         break;
                     case HotkeyId::AdhdToggle: setting_ptr = &settings.hotkey_adhd_toggle; break;
                     case HotkeyId::InputBlocking: setting_ptr = &settings.hotkey_input_blocking; break;

@@ -11,7 +11,8 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
-## Unreleased
+## v0.13.68 (2026-03-31)
+- [settings] [hooks] [ui] [experimental] **Remove UI for unneeded feature** - Cleanup.
 
 ## v0.13.67 (2026-03-31)
 - [settings] [cleanup] **Optional private external modules build flag (`-MODULES`)** - Added a new opt-in build switch so private/internal modules can stay outside the public source tree and only compile when explicitly requested.

@@ -33,6 +33,8 @@ struct ModuleDescriptor {
     bool is_advanced_tab = true;
 };
 
+using ModuleLifecycleCallback = void (*)();
+
 void InitializeModuleRegistry();
 std::vector<ModuleDescriptor> GetModules();
 bool IsModuleEnabled(std::string_view module_id);

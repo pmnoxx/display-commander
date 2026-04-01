@@ -1001,6 +1001,10 @@ void InputRemapper::execute_action(const std::string& action_name) {
             }
         }
     } else if (action_name == "time slowdown toggle") {
+#if !defined(DC_EXTERNAL_MODULES)
+        LogWarn("InputRemapper::execute_action() - Time slowdown toggle is private and requires DC_EXTERNAL_MODULES");
+        return;
+#else
         // Toggle time slowdown enabled state
         if (!enabled_experimental_features) {
             LogWarn("InputRemapper::execute_action() - Time slowdown toggle requires experimental features");
@@ -1012,6 +1016,7 @@ void InputRemapper::execute_action(const std::string& action_name) {
         display_commanderhooks::SetTimeslowdownEnabled(new_state);
         trigger_action_notification("Time Slowdown " + std::string(new_state ? "On" : "Off"));
         LogInfo("InputRemapper::execute_action() - Time slowdown %s via action", new_state ? "enabled" : "disabled");
+#endif
     } else if (action_name == "performance overlay toggle") {
         // Toggle performance overlay
         bool current_state = settings::g_mainTabSettings.show_test_overlay.GetValue();
@@ -1093,6 +1098,10 @@ void InputRemapper::execute_action(const std::string& action_name) {
             LogError("InputRemapper::execute_action() - Failed to decrease volume");
         }
     } else if (action_name == "increase game speed") {
+#if !defined(DC_EXTERNAL_MODULES)
+        LogWarn("InputRemapper::execute_action() - Increase game speed is private and requires DC_EXTERNAL_MODULES");
+        return;
+#else
         // Increase game speed by 10% (multiply multiplier by 1.1)
         if (!enabled_experimental_features) {
             LogWarn("InputRemapper::execute_action() - Increase game speed requires experimental features");
@@ -1108,7 +1117,12 @@ void InputRemapper::execute_action(const std::string& action_name) {
         trigger_action_notification("Game Speed: " + std::to_string(new_multiplier) + "x");
         LogInfo("InputRemapper::execute_action() - Game speed increased from %.2fx to %.2fx", current_multiplier,
                 new_multiplier);
+#endif
     } else if (action_name == "decrease game speed") {
+#if !defined(DC_EXTERNAL_MODULES)
+        LogWarn("InputRemapper::execute_action() - Decrease game speed is private and requires DC_EXTERNAL_MODULES");
+        return;
+#else
         // Decrease game speed by 10% (divide multiplier by 1.1)
         if (!enabled_experimental_features) {
             LogWarn("InputRemapper::execute_action() - Decrease game speed requires experimental features");
@@ -1124,6 +1138,7 @@ void InputRemapper::execute_action(const std::string& action_name) {
         trigger_action_notification("Game Speed: " + std::to_string(new_multiplier) + "x");
         LogInfo("InputRemapper::execute_action() - Game speed decreased from %.2fx to %.2fx", current_multiplier,
                 new_multiplier);
+#endif
     } else if (action_name == "display commander ui toggle") {
         // Toggle Display Commander UI
         bool current_state = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
@@ -1222,9 +1237,21 @@ std::string get_remap_type_name(RemapType type) {
 }
 
 std::vector<std::string> get_available_actions() {
-    return {"screenshot",          "time slowdown toggle", "performance overlay toggle",  "mute/unmute audio",
-            "increase volume",     "decrease volume",      "increase system volume",      "decrease system volume",
-            "increase game speed", "decrease game speed",  "display commander ui toggle", "adhd toggle",
-            "stopwatch toggle"};
+    std::vector<std::string> actions = {"screenshot",
+                                        "performance overlay toggle",
+                                        "mute/unmute audio",
+                                        "increase volume",
+                                        "decrease volume",
+                                        "increase system volume",
+                                        "decrease system volume",
+                                        "display commander ui toggle",
+                                        "adhd toggle",
+                                        "stopwatch toggle"};
+#if defined(DC_EXTERNAL_MODULES)
+    actions.push_back("time slowdown toggle");
+    actions.push_back("increase game speed");
+    actions.push_back("decrease game speed");
+#endif
+    return actions;
 }
 }  // namespace display_commander::input_remapping

@@ -14,7 +14,6 @@
 #include "../../hooks/nvidia/ngx_hooks.hpp"
 #include "../../hooks/nvidia/nvapi_hooks.hpp"
 #include "../../hooks/present_traffic_tracking.hpp"
-#include "../../hooks/system/timeslowdown_hooks.hpp"
 #include "../../hooks/vulkan/nvlowlatencyvk_hooks.hpp"
 #include "../../hooks/vulkan/vulkan_loader_hooks.hpp"
 #include "../../hooks/windows_hooks/api_hooks.hpp"
@@ -5180,7 +5179,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     bool show_overlay_vram = settings::g_mainTabSettings.show_overlay_vram.GetValue();
     bool show_dxgi_vrr_status = settings::g_mainTabSettings.show_dxgi_vrr_status.GetValue();
     bool show_dxgi_refresh_rate = settings::g_mainTabSettings.show_dxgi_refresh_rate.GetValue();
-    bool show_enabledfeatures = display_commanderhooks::IsTimeslowdownEnabled();
 
     if (settings::g_mainTabSettings.show_clock.GetValue()) {
         // Display current time
@@ -6037,70 +6035,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
             clear_notification.bool_value = false;
             clear_notification.action_name[0] = '\0';
             g_action_notification.store(clear_notification);
-        }
-    }
-
-    // Show enabled features indicator (time slowdown, auto-click, etc.)
-    if (show_enabledfeatures) {
-        char feature_text[512];
-        char tooltip_text[512];
-        feature_text[0] = '\0';
-        tooltip_text[0] = '\0';
-
-        bool first_feature = true;
-
-        // Time Slowdown
-        if (display_commanderhooks::IsTimeslowdownEnabled()) {
-            float multiplier = display_commanderhooks::GetTimeslowdownMultiplier();
-
-            // Calculate QPC difference in seconds
-            double qpc_difference_seconds = 0.0;
-            if (display_commanderhooks::QueryPerformanceCounter_Original
-                && display_commanderhooks::QueryPerformanceFrequency_Original) {
-                LARGE_INTEGER frequency;
-                if (display_commanderhooks::QueryPerformanceFrequency_Original(&frequency) && frequency.QuadPart > 0) {
-                    LARGE_INTEGER original_qpc;
-                    if (display_commanderhooks::QueryPerformanceCounter_Original(&original_qpc)) {
-                        LONGLONG spoofed_qpc = display_commanderhooks::ApplyTimeslowdownToQPC(original_qpc.QuadPart);
-                        double original_qpc_seconds =
-                            static_cast<double>(original_qpc.QuadPart) / static_cast<double>(frequency.QuadPart);
-                        double spoofed_qpc_seconds =
-                            static_cast<double>(spoofed_qpc) / static_cast<double>(frequency.QuadPart);
-                        qpc_difference_seconds = spoofed_qpc_seconds - original_qpc_seconds;
-                    }
-                }
-            }
-
-            if (first_feature) {
-                if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                    snprintf(feature_text, sizeof(feature_text), "%.2fx TS (%+.1fs)", multiplier,
-                             qpc_difference_seconds);
-                } else {
-                    snprintf(feature_text, sizeof(feature_text), "%.2fx (%+.1fs)", multiplier, qpc_difference_seconds);
-                }
-                snprintf(tooltip_text, sizeof(tooltip_text), "Time Slowdown: %.2fx multiplier, QPC diff: %+.1f s",
-                         multiplier, qpc_difference_seconds);
-                first_feature = false;
-            } else {
-                size_t len = strlen(feature_text);
-                if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                    snprintf(feature_text + len, sizeof(feature_text) - len, ", %.2fx TS (%+.1fs)", multiplier,
-                             qpc_difference_seconds);
-                } else {
-                    snprintf(feature_text + len, sizeof(feature_text) - len, ", %.2fx (%+.1fs)", multiplier,
-                             qpc_difference_seconds);
-                }
-                len = strlen(tooltip_text);
-                snprintf(tooltip_text + len, sizeof(tooltip_text) - len,
-                         " | Time Slowdown: %.2fx multiplier, QPC diff: %+.1f s", multiplier, qpc_difference_seconds);
-            }
-        }
-
-        if (feature_text[0] != '\0') {
-            imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "%s", feature_text);
-            if (imgui.IsItemHovered() && show_tooltips) {
-                imgui.SetTooltipEx("%s", tooltip_text);
-            }
         }
     }
 

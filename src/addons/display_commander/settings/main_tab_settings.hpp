@@ -100,6 +100,8 @@ class MainTabSettings {
     ui::new_ui::ComboSettingEnum<InputBlockingMode> mouse_input_blocking;
     ui::new_ui::ComboSettingEnum<InputBlockingMode> gamepad_input_blocking;
     ui::new_ui::BoolSetting clip_cursor_enabled;
+    /** Mutually exclusive with clip_cursor_enabled: force release of cursor clipping from game ClipCursor calls. */
+    ui::new_ui::BoolSetting unclip_cursor_enabled;
 
     // Render Blocking (Background) Settings
     ui::new_ui::BoolSetting no_render_in_background;

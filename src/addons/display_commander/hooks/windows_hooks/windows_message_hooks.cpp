@@ -860,6 +860,9 @@ BOOL WINAPI ClipCursor_Detour(const RECT* lpRect) {
     if (ShouldBlockMouseInput()) {
         lpRect = nullptr;
     }
+    if (settings::g_mainTabSettings.unclip_cursor_enabled.GetValue()) {
+        lpRect = nullptr;
+    }
     g_hook_stats[HOOK_ClipCursor].increment_unsuppressed();
     // Call original function
     return ClipCursor_Original != nullptr ? ClipCursor_Original(lpRect) : ClipCursor(lpRect);

@@ -175,6 +175,8 @@ void check_is_background() {
 
                     display_commanderhooks::RestoreClipCursor();
                 }
+            } else if (settings::g_mainTabSettings.unclip_cursor_enabled.GetValue()) {
+                display_commanderhooks::ClipCursor_Direct(nullptr);
             } else {
                 if (app_in_background) {
                     display_commanderhooks::ClipCursor_Direct(nullptr);

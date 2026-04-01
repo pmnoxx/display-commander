@@ -11,6 +11,10 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.71 (2026-04-01)
+- [new feature] [ui] [settings] [hooks] **Unclip Cursor** - You can turn on **Unclip Cursor** in Main tab Input Control so the game cannot lock the mouse to its window (every `ClipCursor` from the game is turned into a full release). It is mutually exclusive with **Clip Cursor**; if both were saved in config, **Unclip** is turned off on load.
+  Details: `unclip_cursor_enabled` in `main_tab_settings.*`; `ClipCursor_Detour` forces `nullptr` to the original API; `continuous_monitoring` avoids `RestoreClipCursor` while unclip is on.
+
 ## v0.13.70 (2026-04-01)
 - [removal] [ui] [settings] **Exclusive Keys feature removed** - Exclusive key-group controls were removed from Hotkeys, so Display Commander no longer applies automatic key-release/suppression behavior for grouped keys.
   Details: removed Exclusive Keys settings from `hotkeys_tab_settings.*` and `config/hotkeys_file.cpp`; removed the Exclusive Keys UI section and processing path from `ui/new_ui/hotkeys_tab.cpp`; exclusive-key hook helpers in `windows_message_hooks.cpp` were reduced to no-op behavior.

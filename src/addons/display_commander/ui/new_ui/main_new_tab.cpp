@@ -2008,18 +2008,17 @@ static void DrawMainTabOptionalPanelInputControl(display_commander::ui::IImGuiWr
 
         imgui.Spacing();
 
-        // Clip Cursor checkbox
+        // Clip Cursor checkbox (mutually exclusive with Unclip Cursor)
         bool clip_cursor = settings::g_mainTabSettings.clip_cursor_enabled.GetValue();
         if (imgui.Checkbox("Clip Cursor", &clip_cursor)) {
             settings::g_mainTabSettings.clip_cursor_enabled.SetValue(clip_cursor);
-            // If disabling, unlock cursor immediately
-            if (!clip_cursor) {
-                display_commanderhooks::ClipCursor_Direct(nullptr);
-            } else {
-                // If enabling and game is in foreground, clip immediately
+            if (clip_cursor) {
+                settings::g_mainTabSettings.unclip_cursor_enabled.SetValue(false);
                 if (!g_app_in_background.load()) {
                     display_commanderhooks::ClipCursorToGameWindow();
                 }
+            } else {
+                display_commanderhooks::ClipCursor_Direct(nullptr);
             }
         }
         if (imgui.IsItemHovered()) {
@@ -2027,7 +2026,23 @@ static void DrawMainTabOptionalPanelInputControl(display_commander::ui::IImGuiWr
                 "Limits mouse movement to the game window when the game is in foreground.\n"
                 "Unlocks cursor when game is in background.\n\n"
                 "This fixes games which don't lock the mouse cursor, preventing focus switches\n"
-                "on multimonitor setups when moving the mouse and clicking.");
+                "on multimonitor setups when moving the mouse and clicking.\n\n"
+                "Mutually exclusive with Unclip Cursor.");
+        }
+
+        bool unclip_cursor = settings::g_mainTabSettings.unclip_cursor_enabled.GetValue();
+        if (imgui.Checkbox("Unclip Cursor", &unclip_cursor)) {
+            settings::g_mainTabSettings.unclip_cursor_enabled.SetValue(unclip_cursor);
+            if (unclip_cursor) {
+                settings::g_mainTabSettings.clip_cursor_enabled.SetValue(false);
+                display_commanderhooks::ClipCursor_Direct(nullptr);
+            }
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "Stops the game from confining the mouse with ClipCursor (cursor can leave the window).\n"
+                "Useful on multi-monitor setups or when a game traps the cursor.\n\n"
+                "Mutually exclusive with Clip Cursor.");
         }
 
         imgui.Spacing();

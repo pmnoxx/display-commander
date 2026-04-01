@@ -94,6 +94,7 @@ MainTabSettings::MainTabSettings()
       gamepad_input_blocking("gamepad_input_blocking", static_cast<int>(InputBlockingMode::kDisabled),
                              {"Disabled", "Enabled", "Enabled (in background)"}, "DisplayCommander"),
       clip_cursor_enabled("clip_cursor_enabled", false, "DisplayCommander"),
+      unclip_cursor_enabled("unclip_cursor_enabled", false, "DisplayCommander"),
       no_render_in_background("no_render_in_background", false, "DisplayCommander"),
       no_present_in_background("no_present_in_background", false, "DisplayCommander"),
       cpu_cores("cpu_cores", 0, 0, 64,
@@ -232,6 +233,7 @@ MainTabSettings::MainTabSettings()
         &mouse_input_blocking,
         &gamepad_input_blocking,
         &clip_cursor_enabled,
+        &unclip_cursor_enabled,
         &no_render_in_background,
         &no_present_in_background,
         &show_test_overlay,
@@ -382,6 +384,11 @@ void GetNativeReflexPresetOverrides(FpsLimiterPreset preset, NativeReflexPresetO
 void MainTabSettings::LoadSettings() {
     LogInfo("MainTabSettings::LoadSettings() called");
     LoadTabSettingsWithSmartLogging(all_settings_, "Main Tab");
+
+    if (clip_cursor_enabled.GetValue() && unclip_cursor_enabled.GetValue()) {
+        LogInfo("Main tab: clip_cursor_enabled and unclip_cursor_enabled both true; disabling unclip_cursor_enabled.");
+        unclip_cursor_enabled.SetValue(false);
+    }
 
     // Update CPU cores maximum based on system CPU count
     UpdateCpuCoresMaximum();

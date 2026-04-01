@@ -339,7 +339,7 @@ static NVSDK_NGX_Result NVSDK_CONV DLSSOptimalSettingsCallback_Proxy(NVSDK_NGX_P
     }
     if (perf_quality_val >= 0 && perf_quality_val <= 4) {
         const float scale = settings::g_swapchainTabSettings.dlss_internal_resolution_scale.GetValue();
-        if (scale > 0.0f && width > 0 && height > 0 && NVSDK_NGX_Parameter_SetUI_Original != nullptr) {
+        if (scale > 0.3f && width > 0 && height > 0 && NVSDK_NGX_Parameter_SetUI_Original != nullptr) {
             const unsigned int outWidth = static_cast<unsigned int>(static_cast<float>(width) * scale);
             const unsigned int outHeight = static_cast<unsigned int>(static_cast<float>(height) * scale);
             NVSDK_NGX_Parameter_SetUI_Original(InParams, NVSDK_NGX_Parameter_OutWidth, outWidth);
@@ -347,15 +347,6 @@ static NVSDK_NGX_Result NVSDK_CONV DLSSOptimalSettingsCallback_Proxy(NVSDK_NGX_P
             return NVSDK_NGX_Result_Success;
         }
     }
-    // also get DLSSG.EnableInterp
-    int enable_interp = 0;
-    if (NVSDK_NGX_Parameter_GetI_Original != nullptr) {
-        NVSDK_NGX_Parameter_GetI_Original(InParams, "DLSSG.EnableInterp", &enable_interp);
-    }
-    if (enable_interp == 1) {
-        return NVSDK_NGX_Result_Success;
-    }
-
     return g_ngx_dlss_optimal_settings_callback_original(InParams);
 }
 

@@ -11,6 +11,9 @@ Feature protosal:
 - Add fix for Vulkan games with broken Reflex.
 - Add fix for games with broken native reflex.
 
+## v0.13.69 (2026-04-01)
+- [bugfix] [settings] [ui] **Fixed DLSS quality preset override with Frame Generation** - Fixed a case where changing DLSS quality preset in-game could fail when Frame Generation was active, so preset changes now apply correctly during gameplay.
+
 ## v0.13.68 (2026-03-31)
 - [bugfix] [critical] **Fixed crash when unloading modules** - Display Commander now shuts down module instances more safely during unload, preventing rare crashes when modules are being removed or the addon is exiting.
 - [new feature] [cleanup] **Added in-repo example dummy module** - Added a minimal built-in module template (tick + tab + overlay callbacks) to make creating new modules easier and less error-prone.

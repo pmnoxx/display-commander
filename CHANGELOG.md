@@ -17,6 +17,21 @@ Feature protosal:
 Planned:
 - Hotkeys default off / add UI to enabled/disable them globally.
 
+## v0.13.96 (2026-04-01)
+- [removal] [settings] [ui] [hooks] **`SuppressMinhook` removed** - Advanced tab **Suppress MinHook Initialization** and **`DisplayCommander.Safemode.SuppressMinhook`** are gone; **`SafeInitializeMinHook`** always runs normal **`MH_Initialize`** (still once per process). Old config keys are ignored. Safemode log text no longer claims MinHook suppression (safemode did not set this flag).
+
+## v0.13.95 (2026-04-01)
+- [removal] [settings] [ui] **`BlockGameOverlayRenderer` removed** - Advanced tab **Block GameOverlayRenderer (Steam overlay DLL)** and the **`BlockGameOverlayRenderer`** setting are removed; config keys are ignored. **`gameoverlayrenderer*.dll`** remain on the LoadLibrary log allowlist in **`loadlibrary_hooks.cpp`** (diagnostics only).
+
+## v0.13.94 (2026-04-01)
+- [removal] [settings] [ui] [hooks] **`DllLoadingDelayMs` removed** - Advanced tab **DLL Loading Delay** and startup delay logic are gone. **`DllLoadingDelayMs`** config keys are ignored. **`HandleSafemode()`** runs after **`InstallLoadLibraryHooks()`** again (v0.13.93 had moved it earlier only for the delay).
+
+## v0.13.93 (2026-04-01)
+- [bugfix] [hooks] [settings] **`DllLoadingDelayMs` order and save** - Startup now runs the configured delay **before** **`InstallLoadLibraryHooks`** (matching the Advanced tab tooltip). Removed a no-op **`SetValue`** that rewrote config on every launch. **`dll_loading_delay_ms`** is included in **`GetSettingsToSave()`** so **`SaveAll()`** persists it like other advanced settings.
+
+## v0.13.92 (2026-04-01)
+- [removal] [settings] [ui] **`DllsToLoadBefore` removed** - Advanced tab no longer offers **DLLs to Load Before Display Commander**, and startup no longer waits for a comma/semicolon-separated list of module names (**`GetModuleHandleW`** polling). The **`DllLoadingDelayMs`** slider is unchanged. Old config keys are ignored.
+
 ## v0.13.91 (2026-04-01)
 - [removal] [hooks] **DPI API detours removed** - Deleted **`dpi_hooks.cpp` / `dpi_hooks.hpp`** (MinHook on **`GetDpiForSystem`**, **`GetDpiForWindow`**, **`GetSystemDpiForProcess`**, thread/process DPI awareness context). **Advanced → Disable DPI scaling** still uses **`display/dpi_management`** (AppCompat + **`SetProcessDpiAwareness`** / per-monitor context) without intercepting those APIs for the whole process.
 

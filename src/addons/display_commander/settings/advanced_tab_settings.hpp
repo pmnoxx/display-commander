@@ -11,7 +11,6 @@ using ui::new_ui::BoolSetting;
 using ui::new_ui::IntSetting;
 using ui::new_ui::OverrideBoolSetting;
 using ui::new_ui::SettingBase;
-using ui::new_ui::StringSetting;
 
 // Advanced tab settings manager
 class AdvancedTabSettings {
@@ -70,20 +69,8 @@ class AdvancedTabSettings {
     // Safemode setting
     BoolSetting safemode;
 
-    /** When true, block loading of Steam overlay DLL (gameoverlayrenderer.dll / gameoverlayrenderer64.dll). */
-    BoolSetting block_gameoverlayrenderer;
-
-    // DLL loading delay setting (milliseconds)
-    IntSetting dll_loading_delay_ms;
-
-    // DLLs to load before Display Commander (comma-separated list)
-    StringSetting dlls_to_load_before;
-
     // Fake NVAPI setting
     BoolSetting fake_nvapi_enabled;
-
-    // MinHook suppression setting
-    BoolSetting suppress_minhook;
 
     /** When true, ReShade config backup is effectively enabled for all games (global_overrides.toml). Default false. */
     OverrideBoolSetting auto_enable_reshade_config_backup;

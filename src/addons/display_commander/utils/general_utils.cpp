@@ -15,7 +15,6 @@
 #include "detour_call_tracker.hpp"
 #include "../globals.hpp"
 #include "logging.hpp"
-#include "../settings/advanced_tab_settings.hpp"
 #include "../settings/main_tab_settings.hpp"
 
 
@@ -424,14 +423,8 @@ bool CreateAndEnableHookFromModule(HMODULE hModule, const char* procName, LPVOID
                                hookName != nullptr ? hookName : procName);
 }
 
-// MinHook initialization wrapper that checks suppress_minhook setting
+// MinHook initialization wrapper (single init per process)
 MH_STATUS SafeInitializeMinHook(display_commanderhooks::HookType hookType) {
-    // Check if MinHook initialization is suppressed
-    if (settings::g_advancedTabSettings.suppress_minhook.GetValue()) {
-        LogInfo("MinHook initialization suppressed by suppress_minhook setting for %s hooks",
-                display_commanderhooks::HookSuppressionManager::GetInstance().GetHookTypeName(hookType).c_str());
-        return MH_ERROR_ALREADY_INITIALIZED;  // Return this to indicate "already initialized" to avoid errors
-    }
     static bool minhook_initialized = false;
     if (minhook_initialized) {
         LogInfo("MinHook already initialized, proceeding with %s hooks",

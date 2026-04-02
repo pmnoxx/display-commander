@@ -1095,49 +1095,10 @@ bool CheckReShadeVersionCompatibility() {
 }
 
 namespace {
-void HandleSafemode_WaitForDlls(const std::string& dlls_to_load) {
-    if (dlls_to_load.empty()) {
-        return;
-    }
-    LogInfo("Waiting for DLLs to load before Display Commander: %s", dlls_to_load.c_str());
-    std::string dlls(dlls_to_load);
-    std::replace(dlls.begin(), dlls.end(), ';', ',');
-    std::istringstream iss(dlls);
-    std::string dll_name;
-    const int max_wait_time_ms = 30000;
-    const int check_interval_ms = 100;
-
-    while (std::getline(iss, dll_name, ',')) {
-        dll_name.erase(0, dll_name.find_first_not_of(" \t\n\r"));
-        dll_name.erase(dll_name.find_last_not_of(" \t\n\r") + 1);
-        if (dll_name.empty()) {
-            continue;
-        }
-        std::wstring w_dll_name(dll_name.begin(), dll_name.end());
-        LogInfo("Waiting for DLL to load: %s", dll_name.c_str());
-        int waited_ms = 0;
-        bool dll_loaded = false;
-        while (waited_ms < max_wait_time_ms) {
-            HMODULE hMod = GetModuleHandleW(w_dll_name.c_str());
-            if (hMod != nullptr) {
-                LogInfo("DLL loaded successfully: %s (0x%p)", dll_name.c_str(), hMod);
-                dll_loaded = true;
-                break;
-            }
-            Sleep(check_interval_ms);
-            waited_ms += check_interval_ms;
-        }
-        if (!dll_loaded) {
-            LogWarn("Timeout waiting for DLL to load: %s (waited %d ms)", dll_name.c_str(), waited_ms);
-        }
-    }
-    LogInfo("Finished waiting for DLLs to load");
-}
-
 void HandleSafemode_ApplySafemodeSettings() {
     LogInfo(
-        "Safemode enabled - disabling auto-apply settings, continue rendering, FPS limiter, XInput hooks, MinHook "
-        "initialization, and Streamline loading");
+        "Safemode enabled - disabling auto-apply settings, continue rendering, FPS limiter, XInput hooks, and "
+        "Streamline loading");
     settings::g_mainTabSettings.window_mode.SetValue(static_cast<int>(WindowMode::kNoChanges));
     settings::g_advancedTabSettings.continue_rendering.SetValue(false);
     settings::g_mainTabSettings.fps_limiter_enabled.SetValue(false);
@@ -1149,7 +1110,7 @@ void HandleSafemode_ApplySafemodeSettings() {
     settings::g_advancedTabSettings.SaveAll();
     LogInfo(
         "Safemode applied - auto-apply settings disabled, continue rendering disabled, FPS limiter disabled "
-        "(checkbox off), XInput hooks disabled, MinHook initialization suppressed, Streamline loading disabled, "
+        "(checkbox off), XInput hooks disabled, Streamline loading disabled, "
         "_nvngx loading disabled, nvapi64 loading disabled, XInput loading disabled");
 }
 
@@ -1169,18 +1130,6 @@ void HandleSafemode_ApplyNonSafemodeSettings() {
 // Safemode function - handles safemode logic
 void HandleSafemode() {
     bool safemode_enabled = settings::g_advancedTabSettings.safemode.GetValue();
-    std::string dlls_to_load = settings::g_advancedTabSettings.dlls_to_load_before.GetValue();
-
-    HandleSafemode_WaitForDlls(dlls_to_load);
-
-    int delay_ms = settings::g_advancedTabSettings.dll_loading_delay_ms.GetValue();
-    if (delay_ms > 0) {
-        LogInfo("DLL loading delay: waiting %d ms before installing LoadLibrary hooks", delay_ms);
-        Sleep(delay_ms);
-        LogInfo("DLL loading delay complete, proceeding with initialization");
-    }
-    settings::g_advancedTabSettings.dll_loading_delay_ms.SetValue(
-        settings::g_advancedTabSettings.dll_loading_delay_ms.GetValue());
 
     if (safemode_enabled) {
         HandleSafemode_ApplySafemodeSettings();

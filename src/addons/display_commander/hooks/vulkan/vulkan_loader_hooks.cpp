@@ -1,3 +1,4 @@
+// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "vulkan_loader_hooks.hpp"
 #include "../../globals.hpp"
 #include "../../settings/main_tab_settings.hpp"
@@ -10,7 +11,11 @@
 #include "../dxgi/dxgi_present_hooks.hpp"
 #include "../hook_suppression_manager.hpp"
 
-#include <MinHook.h>
+// ReShade / ImGui
+#define VK_NO_PROTOTYPES 1
+#include <vulkan/vulkan_core.h>
+
+// Standard C++
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
@@ -18,10 +23,11 @@
 #include <string>
 #include <vector>
 
+// Windows.h
 #include <Windows.h>
 
-#define VK_NO_PROTOTYPES 1
-#include <vulkan/vulkan_core.h>
+// Libraries <Windows>
+#include <MinHook.h>
 
 namespace {
 
@@ -51,21 +57,26 @@ static_assert(sizeof(VkSwapchainKHR) == 8, "VkSwapchainKHR must fit in uint64_t 
 static_assert(sizeof(VkSemaphore) == 8, "VkSemaphore must fit in uint64_t for round-trip");
 
 using PFN_vkGetInstanceProcAddr_t = PFN_vkGetInstanceProcAddr;
+using PFN_vkGetDeviceProcAddr_t = PFN_vkGetDeviceProcAddr;
 using PFN_vkSetLatencyMarkerNV_t = PFN_vkSetLatencyMarkerNV;
 using PFN_vkCreateDevice_t = PFN_vkCreateDevice;
 using PFN_vkQueuePresentKHR_t = VkResult(VKAPI_CALL*)(VkQueue queue, const VkPresentInfoKHR* pPresentInfo);
 using PFN_vkCreateSwapchainKHR_t = PFN_vkCreateSwapchainKHR;
 using PFN_vkBeginCommandBuffer_t = PFN_vkBeginCommandBuffer;
+using PFN_vkAcquireFullScreenExclusiveModeEXT_t = VkResult(VKAPI_CALL*)(VkDevice device, VkSwapchainKHR swapchain);
 
 static PFN_vkGetInstanceProcAddr_t vkGetInstanceProcAddr_Original = nullptr;
+static PFN_vkGetDeviceProcAddr_t vkGetDeviceProcAddr_Original = nullptr;
 static PFN_vkCreateDevice_t g_real_vkCreateDevice = nullptr;
 static PFN_vkCreateSwapchainKHR_t g_real_vkCreateSwapchainKHR = nullptr;
 static PFN_vkQueuePresentKHR_t g_real_vkQueuePresentKHR = nullptr;
 static PFN_vkBeginCommandBuffer_t g_real_vkBeginCommandBuffer = nullptr;
 static PFN_vkSetLatencyMarkerNV_t g_real_vkSetLatencyMarkerNV = nullptr;
+static PFN_vkAcquireFullScreenExclusiveModeEXT_t g_real_vkAcquireFullScreenExclusiveModeEXT = nullptr;
 
 // Forward declarations for the detour table (defined below).
 VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr_Detour(VkInstance instance, const char* pName);
+VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetDeviceProcAddr_Detour(VkDevice device, const char* pName);
 static VkResult VKAPI_CALL vkCreateDevice_Detour(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo* pCreateInfo,
                                                  const VkAllocationCallbacks* pAllocator, VkDevice* pDevice);
 static VkResult VKAPI_CALL vkQueuePresentKHR_Detour(VkQueue queue, const VkPresentInfoKHR* pPresentInfo);
@@ -76,9 +87,10 @@ static VkResult VKAPI_CALL vkBeginCommandBuffer_Detour(VkCommandBuffer commandBu
                                                        const VkCommandBufferBeginInfo* pBeginInfo);
 void VKAPI_CALL vkSetLatencyMarkerNV_Detour(VkDevice device, VkSwapchainKHR swapchain,
                                             const VkSetLatencyMarkerInfoNV* pLatencyMarkerInfo);
+static VkResult VKAPI_CALL vkAcquireFullScreenExclusiveModeEXT_Detour(VkDevice device, VkSwapchainKHR swapchain);
 
-/** Table-driven hook install: name, detour, original. All hooks installed from vulkan-1.dll exports (no
- * vkGetDeviceProcAddr). Order must match VulkanLoaderHook enum. */
+/** Table-driven hook install: name, detour, original. All hooks installed from vulkan-1.dll exports.
+ * Order must match VulkanLoaderHook enum. */
 struct VulkanLoaderHookEntry {
     const char* name;
     LPVOID detour;
@@ -88,6 +100,9 @@ static const VulkanLoaderHookEntry kVulkanLoaderHooks[static_cast<std::size_t>(V
     {.name = "vkGetInstanceProcAddr",
      .detour = reinterpret_cast<LPVOID>(&vkGetInstanceProcAddr_Detour),
      .original = reinterpret_cast<LPVOID*>(&vkGetInstanceProcAddr_Original)},
+    {.name = "vkGetDeviceProcAddr",
+     .detour = reinterpret_cast<LPVOID>(&vkGetDeviceProcAddr_Detour),
+     .original = reinterpret_cast<LPVOID*>(&vkGetDeviceProcAddr_Original)},
     {.name = "vkCreateDevice",
      .detour = reinterpret_cast<LPVOID>(&vkCreateDevice_Detour),
      .original = reinterpret_cast<LPVOID*>(&g_real_vkCreateDevice)},
@@ -103,6 +118,9 @@ static const VulkanLoaderHookEntry kVulkanLoaderHooks[static_cast<std::size_t>(V
     {.name = "vkSetLatencyMarkerNV",
      .detour = reinterpret_cast<LPVOID>(&vkSetLatencyMarkerNV_Detour),
      .original = reinterpret_cast<LPVOID*>(&g_real_vkSetLatencyMarkerNV)},
+    {.name = "vkAcquireFullScreenExclusiveModeEXT",
+     .detour = reinterpret_cast<LPVOID>(&vkAcquireFullScreenExclusiveModeEXT_Detour),
+     .original = reinterpret_cast<LPVOID*>(&g_real_vkAcquireFullScreenExclusiveModeEXT)},
 };
 static std::atomic<bool> g_loader_hooks_installed{false};
 static std::atomic<uint64_t> g_loader_marker_count{0};
@@ -253,6 +271,16 @@ static VkResult VKAPI_CALL vkBeginCommandBuffer_Detour(VkCommandBuffer commandBu
     return g_real_vkBeginCommandBuffer(commandBuffer, pBeginInfo);
 }
 
+static VkResult VKAPI_CALL vkAcquireFullScreenExclusiveModeEXT_Detour(VkDevice device, VkSwapchainKHR swapchain) {
+    CALL_GUARD_NO_TS();;
+    g_loader_hook_call_counts[static_cast<std::size_t>(VulkanLoaderHook::AcquireFullScreenExclusiveModeEXT)].fetch_add(
+        1);
+    // Spoof success unconditionally so callers always treat exclusive acquire as successful.
+    (void)device;
+    (void)swapchain;
+    return VK_SUCCESS;
+}
+
 void VKAPI_CALL vkSetLatencyMarkerNV_Detour(VkDevice device, VkSwapchainKHR swapchain,
                                             const VkSetLatencyMarkerInfoNV* pLatencyMarkerInfo) {
     CALL_GUARD_NO_TS();;
@@ -309,6 +337,25 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr_Detour(VkInstance
     // Return our detour so callers that resolve vkCreateDevice via vkGetInstanceProcAddr hit us.
     if (pName != nullptr && std::strcmp(pName, "vkCreateDevice") == 0 && result != nullptr) {
         result = reinterpret_cast<PFN_vkVoidFunction>(&vkCreateDevice_Detour);
+    }
+    if (pName != nullptr && std::strcmp(pName, "vkGetDeviceProcAddr") == 0 && result != nullptr) {
+        result = reinterpret_cast<PFN_vkVoidFunction>(&vkGetDeviceProcAddr_Detour);
+    }
+    if (pName != nullptr && std::strcmp(pName, "vkAcquireFullScreenExclusiveModeEXT") == 0 && result != nullptr) {
+        result = reinterpret_cast<PFN_vkVoidFunction>(&vkAcquireFullScreenExclusiveModeEXT_Detour);
+    }
+    return result;
+}
+
+VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetDeviceProcAddr_Detour(VkDevice device, const char* pName) {
+    CALL_GUARD_NO_TS();;
+    g_loader_hook_call_counts[static_cast<std::size_t>(VulkanLoaderHook::GetDeviceProcAddr)].fetch_add(1);
+    if (vkGetDeviceProcAddr_Original == nullptr) {
+        return nullptr;
+    }
+    PFN_vkVoidFunction result = vkGetDeviceProcAddr_Original(device, pName);
+    if (pName != nullptr && std::strcmp(pName, "vkAcquireFullScreenExclusiveModeEXT") == 0 && result != nullptr) {
+        result = reinterpret_cast<PFN_vkVoidFunction>(&vkAcquireFullScreenExclusiveModeEXT_Detour);
     }
     return result;
 }
@@ -422,7 +469,9 @@ void GetVulkanLoaderDebugState(uint64_t* out_marker_count, int* out_last_marker_
         *out_last_present_id = g_loader_last_present_id.load();
     }
     if (out_intercept_count) {
-        *out_intercept_count = 0;  // No longer used (hooks are from exports, not vkGetDeviceProcAddr).
+        *out_intercept_count =
+            g_loader_hook_call_counts[static_cast<std::size_t>(VulkanLoaderHook::AcquireFullScreenExclusiveModeEXT)]
+                .load();
     }
 }
 
@@ -432,7 +481,10 @@ void GetVulkanLoaderCallCounts(uint64_t* out_vkGetInstanceProcAddr, uint64_t* ou
         *out_vkGetInstanceProcAddr =
             g_loader_hook_call_counts[static_cast<std::size_t>(VulkanLoaderHook::GetInstanceProcAddr)].load();
     }
-    if (out_vkGetDeviceProcAddr) *out_vkGetDeviceProcAddr = 0;  // vkGetDeviceProcAddr not hooked.
+    if (out_vkGetDeviceProcAddr) {
+        *out_vkGetDeviceProcAddr =
+            g_loader_hook_call_counts[static_cast<std::size_t>(VulkanLoaderHook::GetDeviceProcAddr)].load();
+    }
     if (out_vkCreateDevice) {
         *out_vkCreateDevice =
             g_loader_hook_call_counts[static_cast<std::size_t>(VulkanLoaderHook::CreateDevice)].load();

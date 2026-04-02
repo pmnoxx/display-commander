@@ -19,6 +19,9 @@ Planned:
 
 ## Unreleased
 - [new feature] [ui] [hooks] **Debug Window Messages tab (build-gated)** - Added a new `Debug Messages` tab that shows the latest 50 message types seen by `ProcessWindowMessage`, including message name and numeric ID, so you can quickly inspect recent Win32 message traffic while troubleshooting focus/input behavior. Enabled only in builds created with `bd.ps1 -DebugTabs`.
+- [new feature] [ui] [hooks] **Debug Vulkan tab (build-gated)** - Added a `Debug Vulkan` tab (enabled only with `bd.ps1 -DebugTabs`) that shows Vulkan loader-hook install status, per-hook call counts, and captured enabled device extensions to help troubleshoot Vulkan hook and HDR/FSE-related behavior.
+- [new feature] [hooks] [experimental] **Vulkan fullscreen-exclusive acquire spoof** - Added Vulkan loader detours so `vkAcquireFullScreenExclusiveModeEXT` is intercepted and forced to return `VK_SUCCESS`, making games that gate HDR or other paths on this call behave as if exclusive acquisition succeeded.
+  Details: `vulkan_loader_hooks` now hooks both `vkGetInstanceProcAddr` and `vkGetDeviceProcAddr` resolution paths for the extension function, and tracks call counts for the spoof detour.
 
 ## v0.13.101 (2026-04-01)
 - [bugfix] [ui] **Restored "Inject Reflex" checkbox** - The Inject Reflex option is visible again.

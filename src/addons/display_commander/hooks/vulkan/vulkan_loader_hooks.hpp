@@ -9,11 +9,13 @@
  *  Last value Count is the number of hooks; use static_cast<std::size_t>(VulkanLoaderHook::Count) for array size. */
 enum class VulkanLoaderHook : std::size_t {
     GetInstanceProcAddr = 0,
+    GetDeviceProcAddr,
     CreateDevice,
     CreateSwapchainKHR,
     QueuePresentKHR,
     BeginCommandBuffer,
     SetLatencyMarkerNV,
+    AcquireFullScreenExclusiveModeEXT,
     Count
 };
 
@@ -23,9 +25,10 @@ const char* GetVulkanLoaderHookName(VulkanLoaderHook hook);
 /** Fill call counts for each loader hook. out_counts must have at least Count elements. */
 void GetVulkanLoaderHookCallCounts(uint64_t* out_counts, std::size_t count);
 
-/** Install hooks on vulkan-1.dll exports (vkGetInstanceProcAddr, vkCreateDevice, vkCreateSwapchainKHR, vkQueuePresentKHR,
- *  vkBeginCommandBuffer, vkSetLatencyMarkerNV). No vkGetDeviceProcAddr; all hooks are from GetProcAddress(module, name).
- *  Logging and stats only; no Reflex injection. Missing exports (e.g. vkSetLatencyMarkerNV) are skipped.
+/** Install hooks on vulkan-1.dll exports (vkGetInstanceProcAddr, vkGetDeviceProcAddr, vkCreateDevice,
+ *  vkCreateSwapchainKHR, vkQueuePresentKHR, vkBeginCommandBuffer, vkSetLatencyMarkerNV,
+ *  vkAcquireFullScreenExclusiveModeEXT). Logging and stats only; no Reflex injection.
+ *  Missing exports (e.g. vkSetLatencyMarkerNV) are skipped.
  *  Called from LoadLibrary detour when vulkan-1.dll is loaded, or when user enables the setting and the loader is already loaded.
  */
 bool InstallVulkanLoaderHooks(void* vulkan1_module);
@@ -37,7 +40,7 @@ bool AreVulkanLoaderHooksInstalled();
 void UninstallVulkanLoaderHooks();
 
 /** Debug state for VK_NV_low_latency2 path. All params nullable.
- *  out_intercept_count is unused (always 0; we no longer hook vkGetDeviceProcAddr). */
+ *  out_intercept_count is vkAcquireFullScreenExclusiveModeEXT spoof call count. */
 void GetVulkanLoaderDebugState(uint64_t* out_marker_count,
                                int* out_last_marker_type,
                                uint64_t* out_last_present_id,

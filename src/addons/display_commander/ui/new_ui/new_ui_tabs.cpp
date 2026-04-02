@@ -10,6 +10,7 @@
 #include "addons_tab.hpp"
 #include "advanced_tab.hpp"
 #if defined(DISPLAY_COMMANDER_DEBUG_TABS)
+#include "debug/vulkan_tab.hpp"
 #include "debug/window_messages_tab.hpp"
 #endif
 #include "hotkeys_tab.hpp"
@@ -327,6 +328,21 @@ void InitializeNewUI() {
                 LogError("Error drawing debug messages tab: %s", e.what());
             } catch (...) {
                 LogError("Unknown error drawing debug messages tab");
+            }
+        },
+        false);  // Not an advanced-tab gated tab; only compile-time gated.
+
+    g_tab_manager.AddTab(
+        "Debug Vulkan", "debug_vulkan",
+        [](reshade::api::effect_runtime* runtime) {
+            (void)runtime;
+            try {
+                display_commander::ui::ImGuiWrapperReshade wrapper;
+                ui::new_ui::debug::DrawVulkanTab(wrapper);
+            } catch (const std::exception& e) {
+                LogError("Error drawing debug vulkan tab: %s", e.what());
+            } catch (...) {
+                LogError("Unknown error drawing debug vulkan tab");
             }
         },
         false);  // Not an advanced-tab gated tab; only compile-time gated.

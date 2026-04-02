@@ -275,10 +275,10 @@ static VkResult VKAPI_CALL vkAcquireFullScreenExclusiveModeEXT_Detour(VkDevice d
     CALL_GUARD_NO_TS();;
     g_loader_hook_call_counts[static_cast<std::size_t>(VulkanLoaderHook::AcquireFullScreenExclusiveModeEXT)].fetch_add(
         1);
-    // Spoof success unconditionally so callers always treat exclusive acquire as successful.
-    (void)device;
-    (void)swapchain;
-    return VK_SUCCESS;
+    if (g_real_vkAcquireFullScreenExclusiveModeEXT == nullptr) {
+        return VK_ERROR_INITIALIZATION_FAILED;
+    }
+    return g_real_vkAcquireFullScreenExclusiveModeEXT(device, swapchain);
 }
 
 void VKAPI_CALL vkSetLatencyMarkerNV_Detour(VkDevice device, VkSwapchainKHR swapchain,

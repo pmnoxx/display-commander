@@ -3,6 +3,8 @@
 #include <reshade_imgui.hpp>
 #include "../imgui_wrapper_base.hpp"
 
+struct DLSSGSummary;
+
 namespace ui::new_ui {
 
 void InitMainNewTab();
@@ -15,7 +17,6 @@ display_commander::ui::GraphicsApi GetGraphicsApiFromLastDeviceApi();
 
 // Draw the main new tab content (api = device API in ReShade; GraphicsApi::Unknown in standalone).
 // Two-arg overload for standalone UI (no runtime); three-arg when runtime is provided (backbuffer size/format from runtime).
-void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui);
 void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui,
                     reshade::api::effect_runtime* runtime);
 
@@ -59,5 +60,7 @@ void DrawRefreshRateFrameTimesGraph(display_commander::ui::IImGuiWrapper& imgui,
 // device.
 void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                                    display_commander::ui::GraphicsApi device_api, bool show_tooltips = true);
+
+void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummary& dlssg_summary);
 
 }  // namespace ui::new_ui

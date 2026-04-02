@@ -9,6 +9,9 @@
 #include "../../utils/logging.hpp"
 #include "addons_tab.hpp"
 #include "advanced_tab.hpp"
+#if defined(DISPLAY_COMMANDER_DEBUG_TABS)
+#include "debug/window_messages_tab.hpp"
+#endif
 #include "hotkeys_tab.hpp"
 #include "main_new_tab.hpp"
 
@@ -311,6 +314,23 @@ void InitializeNewUI() {
             }
         },
         true);  // ReShade tab is advanced
+
+#if defined(DISPLAY_COMMANDER_DEBUG_TABS)
+    g_tab_manager.AddTab(
+        "Debug Messages", "debug_messages",
+        [](reshade::api::effect_runtime* runtime) {
+            (void)runtime;
+            try {
+                display_commander::ui::ImGuiWrapperReshade wrapper;
+                ui::new_ui::debug::DrawWindowMessagesTab(wrapper);
+            } catch (const std::exception& e) {
+                LogError("Error drawing debug messages tab: %s", e.what());
+            } catch (...) {
+                LogError("Unknown error drawing debug messages tab");
+            }
+        },
+        false);  // Not an advanced-tab gated tab; only compile-time gated.
+#endif
 
     const std::vector<modules::ModuleDescriptor> modules_list = modules::GetModules();
     for (const modules::ModuleDescriptor& module : modules_list) {

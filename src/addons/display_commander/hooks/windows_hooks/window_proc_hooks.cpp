@@ -9,8 +9,11 @@
 
 #include "window_proc_hooks.hpp"
 #include <atomic>
+#include <array>
+#include <cstdio>
 #include <thread>
 #include <unordered_map>
+#include <vector>
 #include "../../exit_handler.hpp"
 #include "../../globals.hpp"
 #include "../../settings/advanced_tab_settings.hpp"
@@ -44,6 +47,48 @@ static std::atomic<uint32_t> g_message_rate_count{0};
 static std::atomic<uint32_t> g_message_rate_last_logged_threshold{0};
 static std::atomic<uint32_t> g_message_rate_print_remaining{0};
 static std::atomic<uint32_t> g_message_rate_next_print_count{kMessageRatePrintNextCountInitial};
+
+static constexpr size_t kWindowMessageHistoryCapacity = 50;
+static constexpr UINT kIgnoredWindowMessageA = 0x14FE;
+static constexpr UINT kIgnoredWindowMessageB = 0xC2A1;
+static constexpr UINT kIgnoredWindowMessageC = 0x0060;  // WM_SETREDRAW
+static constexpr UINT kIgnoredWindowMessageD = 0x0113;  // WM_TIMER
+static std::array<WindowMessageRecord, kWindowMessageHistoryCapacity> g_window_message_history = {};
+static size_t g_window_message_history_next_index = 0;
+static size_t g_window_message_history_count = 0;
+static SRWLOCK g_window_message_history_lock = SRWLOCK_INIT;
+static std::atomic<bool> g_filter_ignored_message_a{false};
+static std::atomic<bool> g_filter_ignored_message_b{false};
+static std::atomic<bool> g_filter_ignored_message_c{false};
+static std::atomic<bool> g_filter_ignored_message_d{false};
+
+static bool ShouldIgnoreWindowMessageForDebugHistory(UINT message_id) {
+    if (message_id == kIgnoredWindowMessageA) {
+        return g_filter_ignored_message_a.load(std::memory_order_acquire);
+    }
+    if (message_id == kIgnoredWindowMessageB) {
+        return g_filter_ignored_message_b.load(std::memory_order_acquire);
+    }
+    if (message_id == kIgnoredWindowMessageC) {
+        return g_filter_ignored_message_c.load(std::memory_order_acquire);
+    }
+    if (message_id == kIgnoredWindowMessageD) {
+        return g_filter_ignored_message_d.load(std::memory_order_acquire);
+    }
+    return false;
+}
+
+static void RecordWindowMessage(UINT message_id) {
+    if (ShouldIgnoreWindowMessageForDebugHistory(message_id)) {
+        return;
+    }
+    utils::SRWLockExclusive guard(g_window_message_history_lock);
+    g_window_message_history[g_window_message_history_next_index].message_id = message_id;
+    g_window_message_history_next_index = (g_window_message_history_next_index + 1) % kWindowMessageHistoryCapacity;
+    if (g_window_message_history_count < kWindowMessageHistoryCapacity) {
+        ++g_window_message_history_count;
+    }
+}
 
 // Trampoline (SK-style): 1) ProcessWindowMessage; 2) if not skipped, call original WNDPROC.
 static LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -122,6 +167,8 @@ static int CountOtherProcessWindows(HWND exclude_hwnd) {
 // Process window message - returns true if message should be suppressed
 // This function contains the logic previously in WindowProc_Detour
 bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    RecordWindowMessage(uMsg);
+
     // Check if continue rendering is enabled
     // Special-K style: set ping signal when ping message is received, inject marker on next SIMULATION_START
     if (PCLSTATS_IS_PING_MSG_ID(uMsg)) {
@@ -312,6 +359,130 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     }
 
     return false;  // Don't suppress the message
+}
+
+std::vector<WindowMessageRecord> GetRecentWindowMessagesSnapshot() {
+    std::vector<WindowMessageRecord> snapshot;
+    utils::SRWLockShared guard(g_window_message_history_lock);
+    snapshot.reserve(g_window_message_history_count);
+    for (size_t i = 0; i < g_window_message_history_count; ++i) {
+        const size_t index = (g_window_message_history_next_index + kWindowMessageHistoryCapacity - 1 - i)
+                             % kWindowMessageHistoryCapacity;
+        snapshot.push_back(g_window_message_history[index]);
+    }
+    return snapshot;
+}
+
+void ClearRecentWindowMessages() {
+    utils::SRWLockExclusive guard(g_window_message_history_lock);
+    g_window_message_history_count = 0;
+    g_window_message_history_next_index = 0;
+}
+
+bool GetDebugHistoryFilterEnabledForMessage(UINT message_id) {
+    if (message_id == kIgnoredWindowMessageA) {
+        return g_filter_ignored_message_a.load(std::memory_order_acquire);
+    }
+    if (message_id == kIgnoredWindowMessageB) {
+        return g_filter_ignored_message_b.load(std::memory_order_acquire);
+    }
+    if (message_id == kIgnoredWindowMessageC) {
+        return g_filter_ignored_message_c.load(std::memory_order_acquire);
+    }
+    if (message_id == kIgnoredWindowMessageD) {
+        return g_filter_ignored_message_d.load(std::memory_order_acquire);
+    }
+    return false;
+}
+
+void SetDebugHistoryFilterEnabledForMessage(UINT message_id, bool enabled) {
+    if (message_id == kIgnoredWindowMessageA) {
+        g_filter_ignored_message_a.store(enabled, std::memory_order_release);
+        return;
+    }
+    if (message_id == kIgnoredWindowMessageB) {
+        g_filter_ignored_message_b.store(enabled, std::memory_order_release);
+        return;
+    }
+    if (message_id == kIgnoredWindowMessageC) {
+        g_filter_ignored_message_c.store(enabled, std::memory_order_release);
+        return;
+    }
+    if (message_id == kIgnoredWindowMessageD) {
+        g_filter_ignored_message_d.store(enabled, std::memory_order_release);
+        return;
+    }
+}
+
+const char* GetWindowMessageName(UINT message_id) {
+    switch (message_id) {
+        case WM_NULL: return "WM_NULL";
+        case WM_ACTIVATE: return "WM_ACTIVATE";
+        case WM_ACTIVATEAPP: return "WM_ACTIVATEAPP";
+        case WM_CHAR: return "WM_CHAR";
+        case WM_CLOSE: return "WM_CLOSE";
+        case WM_DEADCHAR: return "WM_DEADCHAR";
+        case WM_DESTROY: return "WM_DESTROY";
+        case WM_DISPLAYCHANGE: return "WM_DISPLAYCHANGE";
+        case WM_INPUT: return "WM_INPUT";
+        case WM_KEYDOWN: return "WM_KEYDOWN";
+        case WM_KEYUP: return "WM_KEYUP";
+        case WM_KILLFOCUS: return "WM_KILLFOCUS";
+        case WM_LBUTTONDOWN: return "WM_LBUTTONDOWN";
+        case WM_LBUTTONUP: return "WM_LBUTTONUP";
+        case WM_MBUTTONDOWN: return "WM_MBUTTONDOWN";
+        case WM_MBUTTONUP: return "WM_MBUTTONUP";
+        case WM_MOUSEACTIVATE: return "WM_MOUSEACTIVATE";
+        case WM_MOUSEHWHEEL: return "WM_MOUSEHWHEEL";
+        case WM_MOUSEMOVE: return "WM_MOUSEMOVE";
+        case WM_MOUSEWHEEL: return "WM_MOUSEWHEEL";
+        case WM_NCACTIVATE: return "WM_NCACTIVATE";
+        case WM_QUIT: return "WM_QUIT";
+        case WM_RBUTTONDOWN: return "WM_RBUTTONDOWN";
+        case WM_RBUTTONUP: return "WM_RBUTTONUP";
+        case WM_SETCURSOR: return "WM_SETCURSOR";
+        case WM_SETFOCUS: return "WM_SETFOCUS";
+        case WM_SHOWWINDOW: return "WM_SHOWWINDOW";
+        case WM_SIZE: return "WM_SIZE";
+        case WM_SYSCOMMAND: return "WM_SYSCOMMAND";
+        case WM_SYSCHAR: return "WM_SYSCHAR";
+        case WM_SYSDEADCHAR: return "WM_SYSDEADCHAR";
+        case WM_SYSKEYDOWN: return "WM_SYSKEYDOWN";
+        case WM_SYSKEYUP: return "WM_SYSKEYUP";
+        case WM_WINDOWPOSCHANGED: return "WM_WINDOWPOSCHANGED";
+        case WM_WINDOWPOSCHANGING: return "WM_WINDOWPOSCHANGING";
+        case WM_XBUTTONDOWN: return "WM_XBUTTONDOWN";
+        case WM_XBUTTONUP: return "WM_XBUTTONUP";
+        default: {
+            static thread_local char message_name[128];
+
+            if (message_id >= WM_APP) {
+                snprintf(message_name, sizeof(message_name), "WM_APP+%u", message_id - WM_APP);
+                return message_name;
+            }
+            if (message_id >= WM_USER) {
+                snprintf(message_name, sizeof(message_name), "WM_USER+%u", message_id - WM_USER);
+                return message_name;
+            }
+            if (message_id >= 0xC000 && message_id <= 0xFFFF) {
+                wchar_t atom_name_w[96] = {};
+                const UINT atom_name_len = GlobalGetAtomNameW(static_cast<ATOM>(message_id), atom_name_w,
+                                                              static_cast<int>(sizeof(atom_name_w) / sizeof(wchar_t)));
+                if (atom_name_len > 0) {
+                    char atom_name_utf8[96] = {};
+                    int converted = WideCharToMultiByte(CP_UTF8, 0, atom_name_w, -1, atom_name_utf8,
+                                                        static_cast<int>(sizeof(atom_name_utf8)), nullptr, nullptr);
+                    if (converted > 0) {
+                        snprintf(message_name, sizeof(message_name), "REGISTERED:%s", atom_name_utf8);
+                        return message_name;
+                    }
+                }
+            }
+
+            snprintf(message_name, sizeof(message_name), "WM_0x%04X", message_id);
+            return message_name;
+        }
+    }
 }
 
 // Install WNDPROC hook on target_hwnd (SK_InstallWindowHook style). Sets game window (atomic).

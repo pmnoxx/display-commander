@@ -17,6 +17,9 @@ Feature protosal:
 Planned:
 - Hotkeys default off / add UI to enabled/disable them globally.
 
+## Unreleased
+- [new feature] [ui] [hooks] **Debug Window Messages tab (build-gated)** - Added a new `Debug Messages` tab that shows the latest 50 message types seen by `ProcessWindowMessage`, including message name and numeric ID, so you can quickly inspect recent Win32 message traffic while troubleshooting focus/input behavior. Enabled only in builds created with `bd.ps1 -DebugTabs`.
+
 ## v0.13.101 (2026-04-01)
 - [bugfix] [ui] **Restored "Inject Reflex" checkbox** - The Inject Reflex option is visible again.
 

@@ -38,10 +38,6 @@ void DrawWindowControlButtons(display_commander::ui::IImGuiWrapper& imgui);
 // Draw black curtain (game / other displays) controls on Main tab
 void DrawAdhdMultiMonitorControls(display_commander::ui::IImGuiWrapper& imgui);
 
-// Draw important information section (Flip State)
-// When has_effect_runtime is false (e.g. standalone UI), frame timing/graphs are skipped to avoid crashes.
-void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui);
-
 // Draw frame time graph section
 void DrawFrameTimeGraph(display_commander::ui::IImGuiWrapper& imgui);
 void DrawNativeFrameTimeGraph(display_commander::ui::IImGuiWrapper& imgui);

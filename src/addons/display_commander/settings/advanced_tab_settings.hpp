@@ -94,14 +94,6 @@ class AdvancedTabSettings {
     // 61=forever.
     IntSetting win_up_grace_seconds;
 
-    // PresentMon ETW tracing setting
-    BoolSetting enable_presentmon_tracing;
-    // Which ETW providers to subscribe to (take effect on next PresentMon start)
-    BoolSetting presentmon_provider_dxgkrnl;
-    BoolSetting presentmon_provider_dxgi;
-    BoolSetting presentmon_provider_dwm;
-    BoolSetting presentmon_provider_d3d9;
-
     // DPI scaling disable setting
     BoolSetting disable_dpi_scaling;
 

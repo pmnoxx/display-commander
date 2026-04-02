@@ -57,11 +57,6 @@ AdvancedTabSettings::AdvancedTabSettings()
       suppress_window_changes("SuppressWindowChanges", false, "DisplayCommander.Safemode"),
       enable_dxgi_refresh_rate_vrr_detection("EnableDxgiRefreshRateVrrDetection", false, "DisplayCommander"),
       win_up_grace_seconds("WinUpGraceSeconds", 1, 0, 61, "DisplayCommander"),
-      enable_presentmon_tracing("EnablePresentMonTracing", false, "DisplayCommander"),
-      presentmon_provider_dxgkrnl("PresentMonProviderDxgKrnl", false, "DisplayCommander"),
-      presentmon_provider_dxgi("PresentMonProviderDXGI", false, "DisplayCommander"),
-      presentmon_provider_dwm("PresentMonProviderDwm", true, "DisplayCommander"),
-      presentmon_provider_d3d9("PresentMonProviderD3D9", false, "DisplayCommander"),
       disable_dpi_scaling("DisableDpiScaling", true, "DisplayCommander") {}
 
 void AdvancedTabSettings::LoadAll() {
@@ -94,9 +89,7 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
             &fake_nvapi_enabled,
             &suppress_wgi_globally, &suppress_wgi_enabled, &suppress_wgi_for_unity, &suppress_wgi_for_non_unity_games,
             &debug_layer_enabled, &debug_break_on_severity, &suppress_window_changes,
-            &enable_dxgi_refresh_rate_vrr_detection, &win_up_grace_seconds, &enable_presentmon_tracing,
-            &presentmon_provider_dxgkrnl, &presentmon_provider_dxgi, &presentmon_provider_dwm,
-            &presentmon_provider_d3d9, &disable_dpi_scaling};
+            &enable_dxgi_refresh_rate_vrr_detection, &win_up_grace_seconds, &disable_dpi_scaling};
 }
 
 std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetSettingsToSave() {
@@ -116,11 +109,6 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetSettingsToSave() {
             &debug_break_on_severity,
             &suppress_window_changes,
             &enable_dxgi_refresh_rate_vrr_detection,
-            &enable_presentmon_tracing,
-            &presentmon_provider_dxgkrnl,
-            &presentmon_provider_dxgi,
-            &presentmon_provider_dwm,
-            &presentmon_provider_d3d9,
             &disable_dpi_scaling};
 }
 

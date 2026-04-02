@@ -39,10 +39,6 @@ const char* const DEFAULT_SETTINGS_TEMPLATE = R"(# Display Commander — User de
 # 0 = do not override (use game’s value). Uncomment and set to 16 for best quality.
 # max_anisotropy = 16
 
-# PresentMon ETW tracing: enables flip mode and present stats on the Main tab (Advanced tab controls).
-# Uncomment to enable by default for all games.
-# EnablePresentMonTracing = true
-
 # FPS limiter: fps_limit = target FPS (0 = unlimited, 1–240 otherwise). Requires fps_limiter_enabled = true.
 # fps_limiter_mode: 0 = Default, 1 = Reflex (low latency), 2 = Sync to display refresh rate.
 # fps_limit_background = limit when game window has no focus (0 = unlimited).

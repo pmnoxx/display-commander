@@ -17,6 +17,9 @@ Feature protosal:
 Planned:
 - Hotkeys default off / add UI to enabled/disable them globally.
 
+## v0.13.99 (2026-04-01)
+- [removal] [settings] [ui] **PresentMon is a private optional module** - PresentMon ETW tracing and its Advanced/Main tab UI are removed from the public addon tree. When **`DC_EXTERNAL_MODULES`** is on, **`external-private/display-commander2-modules`** supplies the **PresentMon** module: enable it under Main tab **Features**, use the **PresentMon** tab for providers and diagnostics, and **`Modules_presentmon`** stores **`provider_*`** toggles. **`EnablePresentMonTracing`** and related Advanced settings are gone. **`exit_handler`** calls **`ShutdownPresentMonForProcessExit`** so ETW sessions are not left behind on exit. Details: **`external-private/display-commander2-modules/src/nmodules/presentmon/`** (manager + tab), **`private_modules_registration.cpp`**.
+
 ## v0.13.98 (2026-04-01)
 - [removal] [settings] [ui] **Safemode removed** - Advanced tab **Safemode (requires restart)** and **`DisplayCommander.Safemode.Safemode`** are removed. Startup no longer runs **`HandleSafemode`** (no automatic disabling of auto-apply, continue rendering, FPS limiter, XInput suppression, or the former non-safemode **`SaveAll`** / D3D9 flipex writes). **`SuppressPinModule`** and **`SuppressWindowChanges`** still use the **`[DisplayCommander.Safemode]`** config section where applicable.
 

@@ -9,7 +9,9 @@
 #include "settings/main_tab_settings.hpp"
 #include "utils/general_utils.hpp"
 #include "hooks/loadlibrary_hooks.hpp"
-#include "presentmon/presentmon_manager.hpp"
+#if defined(DC_EXTERNAL_MODULES)
+#include "presentmon/presentmon_module.hpp"
+#endif
 #include "utils.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/display_commander_logger.hpp"
@@ -79,9 +81,9 @@ void OnHandleExit(ExitSource source, const std::string& message) {
     //display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
     display_commander::logger::FlushLogs();
 
-    if (presentmon::kPresentMonEnabled) {
-        presentmon::StopAndDestroyPresentMon(presentmon::PresentMonStopReason::AddonShutdownExitHandler);
-    }
+#if defined(DC_EXTERNAL_MODULES)
+    modules::presentmon_module::ShutdownPresentMonForProcessExit();
+#endif
     // Flush all logs before exit to ensure all messages are written to disk
 }
 

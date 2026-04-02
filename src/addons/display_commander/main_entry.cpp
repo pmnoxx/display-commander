@@ -2137,9 +2137,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 g_reflexProvider->Shutdown();
             }
 
-            // Clean up PresentMon (must stop ETW session to prevent system-wide resource leaks)
-            // ETW sessions are system-wide and persist until explicitly stopped
-            // If not stopped, they can interfere with future processes
+            // PresentMon ETW (optional private module): stopped from exit_handler via
+            // ShutdownPresentMonForProcessExit when DC_EXTERNAL_MODULES is on.
 
             // Note: reshade::unregister_addon() will automatically unregister all events and overlays
             // registered by this add-on, so manual unregistration is not needed and can cause issues

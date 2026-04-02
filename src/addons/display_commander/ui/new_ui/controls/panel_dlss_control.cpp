@@ -1,5 +1,6 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "panels_internal.hpp"
+#include "dlss/dlss_info.hpp"
 #include "../../../globals.hpp"
 #include "../../../hooks/nvidia/ngx_hooks.hpp"
 #include "../../../hooks/vulkan/nvlowlatencyvk_hooks.hpp"

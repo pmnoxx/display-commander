@@ -3,8 +3,6 @@
 #include <reshade_imgui.hpp>
 #include "../imgui_wrapper_base.hpp"
 
-struct DLSSGSummary;
-
 namespace ui::new_ui {
 
 void InitMainNewTab();
@@ -56,7 +54,5 @@ void DrawRefreshRateFrameTimesGraph(display_commander::ui::IImGuiWrapper& imgui,
 // device.
 void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                                    display_commander::ui::GraphicsApi device_api, bool show_tooltips = true);
-
-void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummary& dlssg_summary);
 
 }  // namespace ui::new_ui

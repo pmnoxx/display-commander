@@ -25,6 +25,8 @@ LONGLONG get_now_qpc();
 
 void wait_until_ns(LONGLONG target_ns);
 LONGLONG get_now_ns();
+// Monotonic time in nanoseconds (same as get_now_ns; uses QPC original when time-slowdown hooks are active).
+inline LONGLONG get_time_ns() { return get_now_ns(); }
 
 // Get real time bypassing any hooks (for comparison with spoofed time)
 LONGLONG get_real_time_ns();

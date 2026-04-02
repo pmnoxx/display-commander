@@ -5,7 +5,6 @@
 #include "../../config/display_commander_config.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/hook_suppression_manager.hpp"
-#include "../../hooks/system/timeslowdown_hooks.hpp"
 #include "windows_gaming_input_hooks.hpp"
 #include "xinput_hooks.hpp"
 #include "../../settings/advanced_tab_settings.hpp"
@@ -35,13 +34,10 @@ namespace {
 constexpr uint64_t VIBRATION_TEST_DURATION_NS = 10ULL * 1000000000ULL;  // 10 seconds
 }
 
-// Helper function to get original GetTickCount64 value (unhooked)
-static ULONGLONG GetOriginalTickCount64() {
-    if (enabled_experimental_features && display_commanderhooks::GetTickCount64_Original) {
-        return display_commanderhooks::GetTickCount64_Original();
-    } else {
-        return GetTickCount64();
-    }
+// Monotonic time in ms (QPC via utils::get_time_ns; uses QPC original when time-slowdown is active).
+static ULONGLONG GetMonotonicTimeMs() {
+    const LONGLONG ns = utils::get_time_ns();
+    return (ns > 0) ? static_cast<ULONGLONG>(ns / utils::NS_TO_MS) : 0;
 }
 
 // Global shared state
@@ -668,7 +664,7 @@ void XInputWidget::DrawControllerState(display_commander::ui::IImGuiWrapper& img
     uint64_t last_update = g_shared_state->last_update_times[selected_controller_].load();
     if (last_update > 0) {
         // Convert to milliseconds for display
-        uint64_t now = GetOriginalTickCount64();
+        uint64_t now = GetMonotonicTimeMs();
         uint64_t age_ms = now - last_update;
         imgui.Text("Last Update: %llu ms ago", age_ms);
     }
@@ -1587,7 +1583,7 @@ void UpdateXInputState(DWORD user_index, const XINPUT_STATE* state) {
     shared_state->controller_states[user_index] = *state;
     shared_state->controller_connected[user_index] = ControllerState::Connected;
     shared_state->last_packet_numbers[user_index] = state->dwPacketNumber;
-    shared_state->last_update_times[user_index] = GetOriginalTickCount64();
+    shared_state->last_update_times[user_index] = GetMonotonicTimeMs();
 
     // Increment event counters
     shared_state->total_events.fetch_add(1);
@@ -1744,7 +1740,7 @@ void UpdateBatteryStatus(DWORD user_index) {
     }
 
     // Check if we need to update battery status (update every 5 seconds)
-    auto current_time = GetOriginalTickCount64();
+    auto current_time = GetMonotonicTimeMs();
     auto last_update = shared_state->last_battery_update_times[user_index].load();
 
     if (current_time - last_update < 5000) {  // 5 seconds

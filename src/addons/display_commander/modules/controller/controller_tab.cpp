@@ -3,8 +3,8 @@
 
 // Source Code <Display Commander>
 #include "../../globals.hpp"
-#include "../../hooks/system/timeslowdown_hooks.hpp"
 #include "../../ui/imgui_wrapper_base.hpp"
+#include "../../utils/timing.hpp"
 #include "remapping_widget.hpp"
 #include "xinput_hooks.hpp"
 #include "xinput_widget.hpp"
@@ -25,11 +25,9 @@ uint64_t g_last_getstate0_count = 0;
 uint64_t g_last_getstate0_tick_ms = 0;
 float g_getstate0_rate_hz = 0.0f;
 
-uint64_t GetOriginalTickCount64Ms() {
-    if (enabled_experimental_features && display_commanderhooks::GetTickCount64_Original) {
-        return display_commanderhooks::GetTickCount64_Original();
-    }
-    return GetTickCount64();
+uint64_t GetMonotonicTimeMs() {
+    const LONGLONG ns = utils::get_time_ns();
+    return (ns > 0) ? static_cast<uint64_t>(ns / utils::NS_TO_MS) : 0;
 }
 
 void DrawControllerPollingRatesSection(display_commander::ui::IImGuiWrapper& imgui) {
@@ -42,7 +40,7 @@ void DrawControllerPollingRatesSection(display_commander::ui::IImGuiWrapper& img
     }
 
     const uint64_t getstate0_calls = display_commanderhooks::GetXInputGetStateUserIndexZeroCallCount();
-    const uint64_t now_ms = GetOriginalTickCount64Ms();
+    const uint64_t now_ms = GetMonotonicTimeMs();
     if (g_last_getstate0_tick_ms == 0) {
         g_last_getstate0_tick_ms = now_ms;
         g_last_getstate0_count = getstate0_calls;

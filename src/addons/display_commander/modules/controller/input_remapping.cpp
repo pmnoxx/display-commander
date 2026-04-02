@@ -5,13 +5,13 @@
 #include "../../adhd_multi_monitor/adhd_simple_api.hpp"
 #include "../../config/display_commander_config.hpp"
 #include "../../globals.hpp"
-#include "../../hooks/system/timeslowdown_hooks.hpp"
 #include "../../hooks/windows_hooks/api_hooks.hpp"
 #include "../../modules/module_registry.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/srwlock_wrapper.hpp"
+#include "../../utils/timing.hpp"
 #include "xinput_widget.hpp"
 
 // Libraries <ReShade> / <imgui>
@@ -19,13 +19,10 @@
 
 namespace display_commander::input_remapping {
 
-// Helper function to get original GetTickCount64 value (unhooked)
-static ULONGLONG GetOriginalTickCount64() {
-    if (enabled_experimental_features && display_commanderhooks::GetTickCount64_Original) {
-        return display_commanderhooks::GetTickCount64_Original();
-    } else {
-        return GetTickCount64();
-    }
+// Monotonic time in ms (QPC via utils::get_time_ns; uses QPC original when time-slowdown is active).
+static ULONGLONG GetMonotonicTimeMs() {
+    const LONGLONG ns = utils::get_time_ns();
+    return (ns > 0) ? static_cast<ULONGLONG>(ns / utils::NS_TO_MS) : 0;
 }
 
 InputRemapper& InputRemapper::get_instance() {
@@ -655,7 +652,7 @@ void InputRemapper::handle_button_press(WORD gamepad_button, DWORD user_index, W
     }
 
     remap->is_pressed.store(true);
-    remap->last_press_time.store(GetOriginalTickCount64());
+    remap->last_press_time.store(GetMonotonicTimeMs());
 
     bool success = false;
 

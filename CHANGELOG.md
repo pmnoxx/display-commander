@@ -17,8 +17,13 @@ Feature protosal:
 Planned:
 - Hotkeys default off / add UI to enabled/disable them globally.
 
+## v0.13.101 (2026-04-01)
+- [bugfix] [ui] **Restored "Inject Reflex" checkbox** - The Inject Reflex option is visible again.
+
 ## v0.13.100 (2026-04-01)
 - [bugfix] [ui] **Fixed FG rate display for 5x/6x Frame Generation modes** - The performance overlay now shows the correct FG multiplier for 5x and 6x instead of incorrectly dropping to `OFF`.
+- [removal] [settings] [ui] **Removed Debug Layer toggle** - The Advanced tab no longer provides the DX11/DX12 Debug Layer option, along with its related configuration setting.
+- [removal] [ui] **Removed Win+Up grace period customization** - The Advanced tab no longer exposes the Win+Up “after leaving foreground” grace period slider; the grace period is fixed to `1s`.
 
 ## v0.13.99 (2026-04-01)
 - [removal] [settings] [ui] **PresentMon is a private optional module** - PresentMon ETW tracing and its Advanced/Main tab UI are removed from the public addon tree. When **`DC_EXTERNAL_MODULES`** is on, **`external-private/display-commander2-modules`** supplies the **PresentMon** module: enable it under Main tab **Features**, use the **PresentMon** tab for providers and diagnostics, and **`Modules_presentmon`** stores **`provider_*`** toggles. **`EnablePresentMonTracing`** and related Advanced settings are gone. **`exit_handler`** calls **`ShutdownPresentMonForProcessExit`** so ETW sessions are not left behind on exit. Details: **`external-private/display-commander2-modules/src/nmodules/presentmon/`** (manager + tab), **`private_modules_registration.cpp`**.

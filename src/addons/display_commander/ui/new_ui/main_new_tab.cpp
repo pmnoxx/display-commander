@@ -3375,6 +3375,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
             imgui.TextColored(ui::colors::TEXT_WARNING,
                               ICON_FK_WARNING " Warning: Reflex does not work with Direct3D 9");
         }
+        drawPclStatsCheckbox();
 
         // Low Latency Ratio Selector (Experimental WIP placeholder)
         auto display_input_ratio = !(::IsNativeFramePacingInSync() && GetEffectiveNativePacingSimStartOnly());
@@ -3484,9 +3485,8 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
                 imgui.End();
             }
         }
-    }
+    } else {
     // FPS limiter presets (only visible if OnPresentSync mode is selected and in sync)
-    if (::IsNativeFramePacingInSync()) {
         const int raw = settings::g_mainTabSettings.native_reflex_fps_preset.GetValue();
         if (raw < 0 || raw > static_cast<int>(FpsLimiterPreset::kCustom)) {
             settings::g_mainTabSettings.native_reflex_fps_preset.SetValue(FpsLimiterPreset::kDCPaceLockQ2);
@@ -3723,6 +3723,10 @@ static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWr
                                       " Warning: Both native and injected Reflex are active - this may cause "
                                       "conflicts! (FIXME)");
                 }
+
+                // Reflex-mode: restore Inject Reflex + PCL stats injection UI.
+                // This callback is drawn in OnPresentSync mode elsewhere.
+                drawPclStatsCheckbox();
             }
         }
     }

@@ -52,6 +52,7 @@ void DrawAdvancedTab(display_commander::ui::GraphicsApi api, display_commander::
     if (imgui.CollapsingHeader("Features Enabled By Default", wrapper_flags::TreeNodeFlags_None)) {
         DrawFeaturesEnabledByDefault(imgui);
     }
+
     // Advanced Settings Section
     if (imgui.CollapsingHeader("Advanced Settings", wrapper_flags::TreeNodeFlags_None)) {
         DrawAdvancedTabSettingsSection(api, imgui);
@@ -137,8 +138,8 @@ void DrawGlobalSettingsSection(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Unindent();
 }
 
-void DrawAdvancedTabSettingsSection(display_commander::ui::GraphicsApi api,
-                                    display_commander::ui::IImGuiWrapper& imgui) {
+void DrawAdvancedTabSettingsSection(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui) {
+    (void)api;
     imgui.Indent();
 
     // Suppress Window Changes setting
@@ -152,97 +153,6 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::GraphicsApi api,
             "When enabled, ApplyWindowChange will not be called automatically.\n"
             "This is a compatibility feature for cases where automatic window management causes issues.\n\n"
             "Default: disabled (window changes are applied automatically).");
-    }
-
-    imgui.Spacing();
-
-    // Win+Up grace period (global setting, stored in Display Commander folder)
-    {
-        int grace = settings::g_advancedTabSettings.win_up_grace_seconds.GetValue();
-        const char* format = (grace >= 61) ? "Forever" : "%d s";
-        if (imgui.SliderInt("Win+Up grace period (after leaving foreground)", &grace, 0, 61, format)) {
-            if (grace < 0) {
-                grace = 0;
-            } else if (grace > 61) {
-                grace = 61;
-            }
-            settings::g_advancedTabSettings.win_up_grace_seconds.SetValue(grace);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "For borderless windows: how long after the game loses focus Win+Up (restore) still works.\n"
-                "0 = only when game is in foreground; 1-60 = seconds; 61 = Forever (Win+Up always works).\n"
-                "Stored in Display Commander config (global). Default: 1 s.");
-        }
-    }
-
-    imgui.Spacing();
-
-    // Debug Layer checkbox with warning
-    imgui.TextColored(::ui::colors::ICON_WARNING, ICON_FK_WARNING);
-    imgui.SameLine();
-    imgui.TextColored(::ui::colors::ICON_WARNING, "REQUIRES SETUP:");
-    imgui.SameLine();
-    if (CheckboxSetting(settings::g_advancedTabSettings.debug_layer_enabled, "Enable DX11/DX12 Debug Layer", imgui)) {
-        LogInfo("Debug layer setting changed to: %s",
-                settings::g_advancedTabSettings.debug_layer_enabled.GetValue() ? "enabled" : "disabled");
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(ICON_FK_WARNING
-                           " WARNING: Debug Layer Setup Required " ICON_FK_WARNING
-                           "\n\n"
-                           "REQUIREMENTS:\n"
-                           "- Windows 11 SDK must be installed\n"
-                           "- Download: https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/\n"
-                           "- Install 'Graphics Tools' and 'Debugging Tools for Windows'\n\n"
-                           "SETUP STEPS:\n"
-                           "1. Install Windows 11 SDK with Graphics Tools\n"
-                           "2. Run DbgView.exe as Administrator\n"
-                           "3. Enable this setting\n"
-                           "4. RESTART THE GAME for changes to take effect\n\n"
-                           "FEATURES:\n"
-                           "- D3D11: Adds D3D11_CREATE_DEVICE_DEBUG flag\n"
-                           "- D3D12: Enables debug layer via D3D12GetDebugInterface\n"
-                           "- Breaks on all severity levels (ERROR, WARNING, INFO)\n"
-                           "- Debug output appears in DbgView\n\n" ICON_FK_WARNING
-                           " May significantly impact performance when enabled!");
-    }
-
-    // Show status when debug layer is enabled
-    if (settings::g_advancedTabSettings.debug_layer_enabled.GetValue()) {
-        imgui.SameLine();
-        imgui.TextColored(::ui::colors::ICON_SUCCESS, ICON_FK_OK " ACTIVE");
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Debug layer is currently ENABLED.\n"
-                "- Debug output should appear in DbgView\n"
-                "- Performance may be significantly reduced\n"
-                "- Restart game if you just enabled this setting\n"
-                "- Disable when not debugging to restore performance");
-        }
-    }
-
-    // SetBreakOnSeverity checkbox (only shown when debug layer is enabled)
-    if (settings::g_advancedTabSettings.debug_layer_enabled.GetValue()) {
-        imgui.Indent();
-        if (CheckboxSetting(settings::g_advancedTabSettings.debug_break_on_severity, "SetBreakOnSeverity (All Levels)",
-                            imgui)) {
-            LogInfo("Debug break on severity setting changed to: %s",
-                    settings::g_advancedTabSettings.debug_break_on_severity.GetValue() ? "enabled" : "disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Enable SetBreakOnSeverity for all debug message levels.\n"
-                "When enabled, the debugger will break on:\n"
-                "- ERROR messages\n"
-                "- CORRUPTION messages\n"
-                "- WARNING messages\n"
-                "- INFO messages\n"
-                "- MESSAGE messages\n\n"
-                "This setting only takes effect when debug layer is enabled.\n"
-                "Requires a game restart to take effect.");
-        }
-        imgui.Unindent();
     }
 
     imgui.Unindent();

@@ -52,7 +52,6 @@ AdvancedTabSettings::AdvancedTabSettings()
       suppress_wgi_enabled("SuppressWgiEnabled", false, "DisplayCommander"),
       suppress_wgi_for_unity("SuppressWgiForUnity", false, "DisplayCommander"),
       suppress_wgi_for_non_unity_games("SuppressWgiForNonUnityGames", false, "DisplayCommander"),
-      debug_layer_enabled("DebugLayerEnabled", false, "DisplayCommander"),
       debug_break_on_severity("DebugBreakOnSeverity", false, "DisplayCommander"),
       suppress_window_changes("SuppressWindowChanges", false, "DisplayCommander.Safemode"),
       enable_dxgi_refresh_rate_vrr_detection("EnableDxgiRefreshRateVrrDetection", false, "DisplayCommander"),
@@ -65,6 +64,10 @@ void AdvancedTabSettings::LoadAll() {
 
     // Use smart logging to show only changed settings
     ui::new_ui::LoadTabSettingsWithSmartLogging(all_settings, "Advanced Tab");
+
+    // Win+Up grace period is fixed to 1s to keep behavior deterministic.
+    // (The Advanced tab UI no longer exposes this knob.)
+    win_up_grace_seconds.SetValue(1);
 }
 
 void AdvancedTabSettings::SaveAll() {
@@ -88,7 +91,7 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
             &enable_performance_overlay_shortcut,
             &fake_nvapi_enabled,
             &suppress_wgi_globally, &suppress_wgi_enabled, &suppress_wgi_for_unity, &suppress_wgi_for_non_unity_games,
-            &debug_layer_enabled, &debug_break_on_severity, &suppress_window_changes,
+            &debug_break_on_severity, &suppress_window_changes,
             &enable_dxgi_refresh_rate_vrr_detection, &win_up_grace_seconds, &disable_dpi_scaling};
 }
 
@@ -105,7 +108,6 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetSettingsToSave() {
             &suppress_wgi_enabled,
             &suppress_wgi_for_unity,
             &suppress_wgi_for_non_unity_games,
-            &debug_layer_enabled,
             &debug_break_on_severity,
             &suppress_window_changes,
             &enable_dxgi_refresh_rate_vrr_detection,

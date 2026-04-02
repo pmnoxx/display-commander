@@ -79,8 +79,7 @@ class AdvancedTabSettings {
     /** Only visible when UnityPlayer.dll is not loaded. When true, suppress WGI for non-Unity games. Default false. */
     BoolSetting suppress_wgi_for_non_unity_games;
 
-    // Debug Layer setting
-    BoolSetting debug_layer_enabled;
+    // Debug break on severity setting
     BoolSetting debug_break_on_severity;
 
     // Window management compatibility setting

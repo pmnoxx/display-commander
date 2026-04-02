@@ -390,7 +390,7 @@ void InitializeHotkeyDefinitions() {
              ShowWindow_Direct(game_hwnd, SW_MINIMIZE);
          }},
         {"win_up", "Win+Up (Restore)", "win up",
-         "Restore minimized borderless game. Works in foreground or within grace period (Advanced tab).",
+         "Restore minimized borderless game. Works in foreground or within 1s grace period.",
          []() {
              HWND game_hwnd = g_last_swapchain_hwnd.load();
              if (!game_hwnd) return;
@@ -1006,7 +1006,7 @@ void ProcessHotkeys() {
 
     // Allow hotkeys if game in foreground or overlay UI open
     if (!allow_hotkeys) {
-        // Win+Up (restore) grace: allow for a short time after leaving foreground, or forever if setting is 61.
+        // Win+Up (restore) grace: allow for a short time after leaving foreground (fixed to 1s).
         // Use the configured Win+Up hotkey (may be remapped in Hotkeys tab).
         int grace_sec = settings::g_advancedTabSettings.win_up_grace_seconds.GetValue();
         bool grace_ok =

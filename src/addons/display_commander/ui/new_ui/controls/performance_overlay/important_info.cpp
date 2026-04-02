@@ -1,10 +1,12 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 // Headers <Display Commander>
 #include "performance_overlay_internal.hpp"
+#include "hooks/nvidia/ngx_hooks.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "nvapi/gpu_dynamic_utilization.hpp"
 #include "nvapi/nvapi_actual_refresh_rate_monitor.hpp"
 #include "nvapi/nvapi_init.hpp"
+#include "swapchain_events.hpp"
 #include "ui/forkawesome.h"
 #include "utils.hpp"
 

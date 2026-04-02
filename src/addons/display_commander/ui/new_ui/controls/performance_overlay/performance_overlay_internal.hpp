@@ -6,6 +6,7 @@
 #include "settings/advanced_tab_settings.hpp"
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
+#include "swapchain_events.hpp"
 #include "ui/new_ui/main_new_tab.hpp"
 #include "ui/ui_colors.hpp"
 #include "utils/detour_call_tracker.hpp"

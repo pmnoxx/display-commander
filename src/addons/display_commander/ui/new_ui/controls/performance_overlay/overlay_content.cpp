@@ -9,6 +9,7 @@
 #include "nvapi/nvapi_actual_refresh_rate_monitor.hpp"
 #include "nvapi/gpu_dynamic_utilization.hpp"
 #include "nvapi/vrr_status.hpp"
+#include "swapchain_events.hpp"
 #include "utils.hpp"
 
 // Libraries <Windows.h>

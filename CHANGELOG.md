@@ -21,6 +21,7 @@ Planned:
 - Improve OSD, instead of (X/Y) frame rate, show text indicating what's bases fps instead.
 
 ## v0.13.111 (2026-04-03)
+- [cleanup] **ReShade performance overlay TU split** - Moved the `reshade_overlay` handler from `main_entry.cpp` to `reshade_overlay_event.cpp`; behavior unchanged.
 - [settings] **Make config entries sorted** - Saving `DisplayCommander.ini` writes sections and keys in sorted order for easier diffs and editing.
 
 ## v0.13.110 (2026-04-03)

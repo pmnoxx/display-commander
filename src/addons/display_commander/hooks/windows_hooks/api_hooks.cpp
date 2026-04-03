@@ -603,32 +603,36 @@ bool InstallApiHooks() {
         AppendDisplayCommanderBootLog("[InstallApiHooks] return false (MinHook init failed)");
         return false;
     }
+    AppendDisplayCommanderBootLog("[InstallApiHooks] after SafeInitializeMinHook");
 
     if (init_status == MH_ERROR_ALREADY_INITIALIZED) {
         LogInfo("MinHook already initialized, proceeding with API hooks");
     } else {
         LogInfo("MinHook initialized successfully for API hooks");
     }
-
+    AppendDisplayCommanderBootLog("[InstallApiHooks] after LogInfo");
     // Install Windows API hooks
     InstallWindowsApiHooks();
+    AppendDisplayCommanderBootLog("[InstallApiHooks] after InstallWindowsApiHooks");
     // todo: move to loadlibrary hooks
     // Install Windows message hooks
 
     // ### SAME LIBRARY ###
     InstallWindowsMessageHooks();
-
+    AppendDisplayCommanderBootLog("[InstallApiHooks] after InstallWindowsMessageHooks");
     process_exit_hooks::Initialize();
 
+    AppendDisplayCommanderBootLog("[InstallApiHooks] after process_exit_hooks::Initialize");
     // Install LoadLibrary hooks
     InstallLoadLibraryHooks();
-
+    AppendDisplayCommanderBootLog("[InstallApiHooks] after InstallLoadLibraryHooks");
     // DirectInput and OpenGL hooks are installed via OnModuleLoaded when dinput8.dll, dinput.dll, or opengl32.dll is
     // loaded
 
     // Install display settings hooks
     InstallDisplaySettingsHooks();
 
+    AppendDisplayCommanderBootLog("[InstallApiHooks] after InstallDisplaySettingsHooks");
     // PCLStats ETW hooks are installed via OnModuleLoaded when advapi32.dll is loaded
 
     g_api_hooks_installed.store(true);

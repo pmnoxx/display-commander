@@ -21,6 +21,7 @@ Planned:
 - Improve OSD, instead of (X/Y) frame rate, show text indicating what's bases fps instead.
 
 ## v0.13.110 (2026-04-03)
+- [cleanup] [hooks] [compatibility] **ReShade unload diagnostics** - When the ReShade module unloads (`FreeLibrary` refcount zero or `FreeLibraryAndExitThread`), the log now includes the same **section context** (continuous monitoring / UI section + frame id) and **detour tracker** blocks (recent detour calls, undestroyed guards) as the vectored crash report, via shared helpers `LogDiagnosticSectionContext` and `LogDetourGuardDiagnostics`. Helps correlate unload with in-flight work. Details: `process_exit_hooks.cpp`, `OnReshadeUnload` in `globals.cpp`.
 - [removal] [ui] [hooks] **Controller tab: no XInput battery UI or queries** - The Controller / XInput panel no longer shows battery type/level or calls `XInputGetBatteryInformation` via the resolved direct pointer from the hooked XInput module. Slightly less overhead on the XInput detour path and one fewer XInput export dependency.
 
 ## v0.13.109 (2026-04-03)

@@ -15,6 +15,12 @@ void Initialize();
 // Remove handlers if needed (best-effort, safe to call multiple times).
 void Shutdown();
 
+// Log continuous-monitoring / UI section pointers and frame id (same as vectored crash report context).
+void LogDiagnosticSectionContext();
+
+// Log recent detour calls and undestroyed detour guards (same snapshot as crash report).
+void LogDetourGuardDiagnostics();
+
 // Our custom unhandled exception handler function
 LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS* exception_info);
 

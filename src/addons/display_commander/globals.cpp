@@ -5,6 +5,7 @@
 #include "hooks/windows_hooks/api_hooks.hpp"
 #include "latency/reflex_provider.hpp"
 #include "nvapi/vrr_status.hpp"
+#include "process_exit_hooks.hpp"
 #include "settings/advanced_tab_settings.hpp"
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/hook_suppression_settings.hpp"
@@ -13,6 +14,7 @@
 #include "settings/reshade_tab_settings.hpp"
 #include "settings/streamline_tab_settings.hpp"
 #include "settings/swapchain_tab_settings.hpp"
+#include "utils/display_commander_logger.hpp"
 #include "utils/general_utils.hpp"
 #include "utils/logging.hpp"
 #include "utils/srwlock_wrapper.hpp"
@@ -1340,10 +1342,13 @@ size_t GetReShadeRuntimeCount() {
 }
 
 void OnReshadeUnload() {
+    process_exit_hooks::LogDiagnosticSectionContext();
+    process_exit_hooks::LogDetourGuardDiagnostics();
     utils::SRWLockExclusive lock(utils::g_reshade_runtimes_lock);
     g_reshade_runtimes.clear();
     // g_reshade_module = nullptr;  // module unloaded; avoid using stale handle
     LogInfo("OnReshadeUnload: Cleared all ReShade runtimes and g_reshade_module");
+    display_commander::logger::FlushLogs();
 }
 
 bool SwapchainTrackingManager::IsLockHeldForDiagnostics() const {

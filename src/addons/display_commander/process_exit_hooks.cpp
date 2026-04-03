@@ -241,25 +241,47 @@ void PrintLoadedModules() {
     }
 }
 
+}  // anonymous namespace
+
+namespace process_exit_hooks {
+
+void LogDiagnosticSectionContext() {
+    const char* monitoring_section = g_continuous_monitoring_section.load(std::memory_order_acquire);
+    const char* rendering_section = g_rendering_ui_section.load(std::memory_order_acquire);
+    const uint64_t frame_id = g_global_frame_id.load(std::memory_order_acquire);
+    std::ostringstream section_msg;
+    section_msg << "g_continuous_monitoring_section: " << (monitoring_section != nullptr ? monitoring_section : "(null)")
+                << " g_global_frame_id=" << frame_id;
+    LogInfo("%s", section_msg.str().c_str());
+    section_msg.str("");
+    section_msg << "g_rendering_ui_section: " << (rendering_section != nullptr ? rendering_section : "(null)")
+                << " g_global_frame_id=" << frame_id;
+    LogInfo("%s", section_msg.str().c_str());
+}
+
+void LogDetourGuardDiagnostics() {
+    const uint64_t crash_timestamp_ns = utils::get_real_time_ns();
+    std::string recent_detour_info = detour_call_tracker::FormatRecentDetourCalls(crash_timestamp_ns, 256);
+    LogInfo("=== RECENT DETOUR CALLS ===");
+    exit_handler::WriteMultiLineToDebugLog(recent_detour_info, "Recent Detour Calls: <none recorded>");
+    LogInfo("=== END RECENT DETOUR CALLS ===");
+
+    std::string undestroyed_guards_info = detour_call_tracker::FormatUndestroyedGuards(crash_timestamp_ns);
+    LogInfo("=== UNDESTROYED DETOUR GUARDS (CRASH DETECTION) ===");
+    exit_handler::WriteMultiLineToDebugLog(undestroyed_guards_info, "Undestroyed Detour Guards: 0");
+    LogInfo("=== END UNDESTROYED DETOUR GUARDS ===");
+}
+
+}  // namespace process_exit_hooks
+
+namespace {
+
 // Shared crash report: header, optional section context, version/system/process info,
 // exception details, memory load, recent detour calls, undestroyed guards, stack trace, loaded modules.
-void LogCrashReport(PEXCEPTION_POINTERS exception_info, const char* header_line, bool log_section_context) {
+void LogCrashReport(PEXCEPTION_POINTERS exception_info, const char* header_line) {
     LogInfo("%s", header_line);
 
-    if (log_section_context) {
-        const char* monitoring_section = g_continuous_monitoring_section.load(std::memory_order_acquire);
-        const char* rendering_section = g_rendering_ui_section.load(std::memory_order_acquire);
-        const uint64_t frame_id = g_global_frame_id.load(std::memory_order_acquire);
-        std::ostringstream section_msg;
-        section_msg << "g_continuous_monitoring_section: "
-                    << (monitoring_section != nullptr ? monitoring_section : "(null)")
-                    << " g_global_frame_id=" << frame_id;
-        LogInfo("%s", section_msg.str().c_str());
-        section_msg.str("");
-        section_msg << "g_rendering_ui_section: " << (rendering_section != nullptr ? rendering_section : "(null)")
-                    << " g_global_frame_id=" << frame_id;
-        LogInfo("%s", section_msg.str().c_str());
-    }
+    process_exit_hooks::LogDiagnosticSectionContext();
 
     PrintVersionInfo();
     PrintSystemInfo();
@@ -287,16 +309,7 @@ void LogCrashReport(PEXCEPTION_POINTERS exception_info, const char* header_line,
         LogInfo("%s", mem_details.str().c_str());
     }
 
-    uint64_t crash_timestamp_ns = utils::get_real_time_ns();
-    std::string recent_detour_info = detour_call_tracker::FormatRecentDetourCalls(crash_timestamp_ns, 256);
-    LogInfo("=== RECENT DETOUR CALLS ===");
-    exit_handler::WriteMultiLineToDebugLog(recent_detour_info, "Recent Detour Calls: <none recorded>");
-    LogInfo("=== END RECENT DETOUR CALLS ===");
-
-    std::string undestroyed_guards_info = detour_call_tracker::FormatUndestroyedGuards(crash_timestamp_ns);
-    LogInfo("=== UNDESTROYED DETOUR GUARDS (CRASH DETECTION) ===");
-    exit_handler::WriteMultiLineToDebugLog(undestroyed_guards_info, "Undestroyed Detour Guards: 0");
-    LogInfo("=== END UNDESTROYED DETOUR GUARDS ===");
+    process_exit_hooks::LogDetourGuardDiagnostics();
 
     LogInfo("=== GENERATING STACK TRACE ===");
     CONTEXT* exception_context =
@@ -363,7 +376,7 @@ LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS* exception_info) {
 
     dbghelp_loader::LoadDbgHelp();
 
-    LogCrashReport(exception_info, "=== CRASH DETECTED - DETAILED CRASH REPORT ===", false);
+    LogCrashReport(exception_info, "=== CRASH DETECTED - DETAILED CRASH REPORT ===");
 
     return EXCEPTION_EXECUTE_HANDLER;
 }
@@ -405,7 +418,7 @@ LONG WINAPI VectoredExceptionHandler(PEXCEPTION_POINTERS ex) {
 
     dbghelp_loader::LoadDbgHelp();
 
-    LogCrashReport(ex, "=== VECTORED EXCEPTION HANDLER - CRASH DETECTED ===", true);
+    LogCrashReport(ex, "=== VECTORED EXCEPTION HANDLER - CRASH DETECTED ===");
 
     return EXCEPTION_CONTINUE_SEARCH;
 }

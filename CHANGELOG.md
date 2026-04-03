@@ -20,6 +20,9 @@ Planned:
 - Add option (UI or config only), to not conpensave for fps in cutsecnes/UI, when FG disingegaes. (bottleneck, figured out the UI for it) @maxton
 - Improve OSD, instead of (X/Y) frame rate, show text indicating what's bases fps instead.
 
+## v0.13.111 (2026-04-03)
+- [settings] **Make config entries sorted** - Saving `DisplayCommander.ini` writes sections and keys in sorted order for easier diffs and editing.
+
 ## v0.13.110 (2026-04-03)
 - [cleanup] **InstallApiHooks sub-milestones** - `DisplayCommander.log` also records steps after MinHook init, `InstallWindowsApiHooks`, `InstallWindowsMessageHooks`, `process_exit_hooks::Initialize`, `InstallLoadLibraryHooks`, and `InstallDisplaySettingsHooks` so a crash during API hook setup shows the last completed phase. Details: `api_hooks.cpp` `InstallApiHooks`.
 - [cleanup] **InstallApiHooks / process_exit_hooks boot lines** - `DisplayCommander.log` records `[InstallApiHooks] enter`, `complete`, `skip (already installed)`, or `return false (MinHook init failed)` for API hook setup, and `[process_exit_hooks] enter`, `complete`, or `skip (already initialized)` for exit/exception hook registration. Boot append logic is centralized in `AppendDisplayCommanderBootLog` (`globals.cpp`); `main_entry` `LogBoot` delegates to it.

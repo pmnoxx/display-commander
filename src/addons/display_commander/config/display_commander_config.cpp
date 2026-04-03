@@ -18,11 +18,52 @@
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+#include <string_view>
 
 
 #undef what
 
 namespace display_commander::config {
+
+namespace {
+
+// Keys like Remapping2.GamepadButton: sort by index numerically so Remapping10 follows Remapping9.
+bool TryParseRemappingIniKey(std::string_view key, unsigned long& out_index, std::string_view& out_suffix) {
+    constexpr std::string_view k_prefix = "Remapping";
+    if (key.size() < k_prefix.size() + 1) return false;
+    if (key.compare(0, k_prefix.size(), k_prefix) != 0) return false;
+    size_t i = k_prefix.size();
+    if (i >= key.size() || std::isdigit(static_cast<unsigned char>(key[i])) == 0) return false;
+    out_index = 0;
+    while (i < key.size() && std::isdigit(static_cast<unsigned char>(key[i])) != 0) {
+        constexpr unsigned long k_radix = 10;
+        out_index = out_index * k_radix + static_cast<unsigned long>(key[i] - '0');
+        ++i;
+    }
+    if (i < key.size()) {
+        if (key[i] != '.') return false;
+        out_suffix = key.substr(i + 1);
+    } else {
+        out_suffix = {};
+    }
+    return true;
+}
+
+bool CompareIniKeysForSave(std::string_view a, std::string_view b) {
+    unsigned long ia = 0;
+    unsigned long ib = 0;
+    std::string_view sa;
+    std::string_view sb;
+    const bool pa = TryParseRemappingIniKey(a, ia, sa);
+    const bool pb = TryParseRemappingIniKey(b, ib, sb);
+    if (pa && pb) {
+        if (ia != ib) return ia < ib;
+        return sa < sb;
+    }
+    return a < b;
+}
+
+}  // namespace
 
 // Shared section representation for INI
 struct ConfigSection {
@@ -88,9 +129,23 @@ class IniFile {
         std::ofstream file(temp_filepath);
         if (!file.is_open()) return false;
 
-        for (const auto& section : sections_) {
+        std::vector<size_t> section_order(sections_.size());
+        for (size_t i = 0; i < section_order.size(); ++i) {
+            section_order[i] = i;
+        }
+        std::sort(section_order.begin(), section_order.end(), [this](size_t a, size_t b) {
+            return sections_[a].name < sections_[b].name;
+        });
+
+        for (size_t si : section_order) {
+            const auto& section = sections_[si];
+            std::vector<std::pair<std::string, std::string>> kvs = section.key_values;
+            std::sort(kvs.begin(), kvs.end(), [](const auto& x, const auto& y) {
+                return CompareIniKeysForSave(x.first, y.first);
+            });
+
             file << "[" << section.name << "]\n";
-            for (const auto& kv : section.key_values) {
+            for (const auto& kv : kvs) {
                 file << kv.first << "=" << kv.second << "\n";
             }
             file << "\n";

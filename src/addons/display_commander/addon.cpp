@@ -10,13 +10,16 @@
 
 // 5
 #include "globals.hpp"
+#include "ui/new_ui/controls/performance_overlay/reshade_overlay_event.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/logging.hpp"
 #include "version.hpp"
 
-
-// Forward declaration
-void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime);
+// Export for multi-proxy coordination: other DC instances (dxgi, winmm, version.dll) scan this to decide HOOKED vs
+// PROXY_DLL_ONLY
+extern "C" __declspec(dllexport) int GetDisplayCommanderState() {
+    return static_cast<int>(g_display_commander_state.load(std::memory_order_acquire));
+}
 
 // Export addon information
 extern "C" __declspec(dllexport) constexpr const char* NAME = "Display Commander";

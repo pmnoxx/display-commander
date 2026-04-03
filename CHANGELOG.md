@@ -21,6 +21,10 @@ Planned:
 - Improve OSD, instead of (X/Y) frame rate, show text indicating what's bases fps instead.
 
 ## v0.13.111 (2026-04-03)
+- [cleanup] **`main_entry` split (DllMain-only TU)** - DLL startup and shutdown are unchanged for users, but the code is organized into smaller source files so maintainers can find boot logging, attach logic, and ReShade helpers without opening one huge file. `main_entry.cpp` now only implements `DllMain` and calls `display_commander::dll_main::OnProcessAttach` / `OnProcessDetach`. Details: `dll_boot_logging.*`, `dll_process_attach.*`, `init_without_hwnd.*`, `reshade_module_detection.*`, `reshade_addon_handlers.*`; `GetDisplayCommanderState` lives in `addon.cpp` with the other exports.
+- [cleanup] **Overlay registration stays with performance overlay TU** - `OnRegisterOverlayDisplayCommander` remains implemented in `reshade_overlay_event.cpp` (with `OnPerformanceOverlay`) so `ImGuiWrapperReshade` stays in the same translation unit as other overlay ImGui code, matching the header’s intent and avoiding link issues.
+- [bugfix] **ReShade auto-load path check compiles** - Fixed a broken identifier in the “ReShade DLL path exists” check used when loading ReShade from the Display Commander ReShade folder. Details: `dll_process_attach.cpp` `ProcessAttach_TryLoadReShadeWhenNotLoaded`.
+- [compatibility] **ReShade registration failure: version dialog** - If addon registration fails, the existing “ReShade 6.6.2+ required” message box now runs once (previously the helper was never called). Details: `CheckReShadeVersionCompatibility` in `reshade_module_detection.cpp`, called from `dll_process_attach.cpp`.
 - [cleanup] **ReShade event registration TU split** - Moved `RegisterReShadeEvents` from `main_entry.cpp` to `reshade_event_registration.cpp`; behavior unchanged.
 - [cleanup] **ReShade config overrides TU split** - Moved `OverrideReShadeSettings` and helpers from `main_entry.cpp` to `override_reshade_settings.cpp`; behavior unchanged.
 - [cleanup] **ReShade performance overlay TU split** - Moved the `reshade_overlay` handler from `main_entry.cpp` to `reshade_overlay_event.cpp`; behavior unchanged.

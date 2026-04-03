@@ -1,6 +1,7 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "reshade_overlay_event.hpp"
 
+#include "config/display_commander_config.hpp"
 #include "globals.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "ui/imgui_wrapper_reshade.hpp"
@@ -162,4 +163,26 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
         return;
     }
     reshade_overlay_detail::OnPerformanceOverlay_TestWindow(runtime, show_tooltips);
+}
+
+void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
+    CALL_GUARD_NO_TS();;
+    if (runtime != nullptr) {
+        AddReShadeRuntime(runtime);
+    }
+    const bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
+    if (show_display_commander_ui) {
+        settings::g_mainTabSettings.show_display_commander_ui.SetValue(false);
+    }
+    {
+        display_commander::ui::ImGuiWrapperReshade gui_wrapper;
+        ui::new_ui::NewUISystem::GetInstance().Draw(runtime, gui_wrapper);
+    }
+
+    static LONGLONG last_save_time = utils::get_now_ns();
+    LONGLONG now = utils::get_now_ns();
+    if ((now - last_save_time) >= 5 * utils::SEC_TO_NS) {
+        display_commander::config::save_config("periodic save (every 5 seconds)");
+        last_save_time = now;
+    }
 }

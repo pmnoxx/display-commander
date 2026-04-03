@@ -20,6 +20,9 @@ Planned:
 - Add option (UI or config only), to not conpensave for fps in cutsecnes/UI, when FG disingegaes. (bottleneck, figured out the UI for it) @maxton
 - Improve OSD, instead of (X/Y) frame rate, show text indicating what's bases fps instead.
 
+## v0.13.110 (2026-04-03)
+- [removal] [ui] [hooks] **Controller tab: no XInput battery UI or queries** - The Controller / XInput panel no longer shows battery type/level or calls `XInputGetBatteryInformation` via the resolved direct pointer from the hooked XInput module. Slightly less overhead on the XInput detour path and one fewer XInput export dependency.
+
 ## v0.13.109 (2026-04-03)
 - [new feature] **`[InitWithoutHwnd]` boot milestones** - `DoInitializationWithoutHwndSafe`, `DoInitializationWithoutHwndSafe_Early`, and `DoInitializationWithoutHwndSafe_Late` append `DisplayCommander.log` lines (settings load, LoadLibrary hooks, exit hooks, API/DXGI hooks, display cache/UI, monitoring, keyboard tracker) so crashes during no-HWND init show the last completed step. Details: `main_entry.cpp` `LogBootInitWithoutHwndStage`.
 

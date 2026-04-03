@@ -44,7 +44,6 @@ namespace display_commanderhooks {
 XInputGetState_pfn XInputGetState_Direct = nullptr;
 XInputGetStateEx_pfn XInputGetStateEx_Direct = nullptr;
 XInputSetState_pfn XInputSetState_Direct = nullptr;
-XInputGetBatteryInformation_pfn XInputGetBatteryInformation_Direct = nullptr;
 XInputGetCapabilities_pfn XInputGetCapabilities_Direct = nullptr;
 
 // Hook state
@@ -445,9 +444,6 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE* pState, std:
         // Always update the UI state with the original state (before suppression/modifications)
         // This ensures the UI shows the actual controller state regardless of suppression
         display_commander::widgets::xinput_widget::UpdateXInputState(dwUserIndex, &original_state);
-
-        // Update battery status periodically
-        display_commander::widgets::xinput_widget::UpdateBatteryStatus(dwUserIndex);
     } else {
         // Mark controller as disconnected in shared state
         if (dwUserIndex < XUSER_MAX_COUNT) {
@@ -757,8 +753,6 @@ bool InstallXInputHooks(HMODULE xinput_module) {
             if (XInputSetState_Direct == nullptr) {
                 XInputSetState_Direct = (XInputSetState_pfn)GetProcAddress(xinput_module, "XInputSetState");
             }
-            XInputGetBatteryInformation_Direct =
-                (XInputGetBatteryInformation_pfn)GetProcAddress(xinput_module, "XInputGetBatteryInformation");
             XInputGetCapabilities_Direct =
                 (XInputGetCapabilities_pfn)GetProcAddress(xinput_module, "XInputGetCapabilities");
         }

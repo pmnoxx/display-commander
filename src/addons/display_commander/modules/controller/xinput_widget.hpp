@@ -114,11 +114,6 @@ struct XInputSharedState {
     // Last update time for each controller
     std::array<std::atomic<uint64_t>, XUSER_MAX_COUNT> last_update_times;
 
-    // Battery information for each controller
-    std::array<XINPUT_BATTERY_INFORMATION, XUSER_MAX_COUNT> battery_info;
-    std::array<std::atomic<uint64_t>, XUSER_MAX_COUNT> last_battery_update_times;
-    std::array<std::atomic<bool>, XUSER_MAX_COUNT> battery_info_valid;
-
     // Recenter calibration data
     struct RecenterData {
         // Raw min/max values for each axis (range -32768 to 32767)
@@ -256,7 +251,6 @@ class XInputWidget {
                                  float left_min_out, float left_max_out, float right_min_in, float right_max_in,
                                  float right_min_out, float right_max_out);
     void DrawTriggerStates(display_commander::ui::IImGuiWrapper& imgui, const XINPUT_GAMEPAD& gamepad);
-    void DrawBatteryStatus(display_commander::ui::IImGuiWrapper& imgui, int controller_index);
 
     // Helper functions
     std::string GetButtonName(WORD button) const;
@@ -290,7 +284,6 @@ void InitializeXInputWidget();
 
 // Global functions for hooks to use
 void UpdateXInputState(DWORD user_index, const XINPUT_STATE* state);
-void UpdateBatteryStatus(DWORD user_index);
 void IncrementEventCounter(const std::string& event_type);
 void CheckAndHandleScreenshot();
 void ProcessAutofire(DWORD user_index, XINPUT_STATE* pState);

@@ -28,6 +28,7 @@
 #include <atomic>
 #include <cctype>
 #include <filesystem>
+#include <fstream>
 
 // Libraries <Windows>
 #include <psapi.h>
@@ -64,6 +65,17 @@ HMODULE g_hmodule = nullptr;
 std::string g_dll_load_caller_path;
 std::string g_dll_load_call_stack_list;
 std::string g_dll_main_log_path;
+
+void AppendDisplayCommanderBootLog(const std::string& text) {
+    try {
+        if (g_dll_main_log_path.empty()) return;
+        std::ofstream f(g_dll_main_log_path, std::ios::app);
+        if (!f) return;
+        f << text << '\n';
+        f.flush();
+    } catch (...) {
+    }
+}
 
 // Our addon DLL module handle (set in AddonInit; atomic for lock-free caller checks in hooks).
 std::atomic<HMODULE> g_module{nullptr};

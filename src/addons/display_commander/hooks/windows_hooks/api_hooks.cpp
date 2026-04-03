@@ -591,14 +591,16 @@ bool InstallWindowsApiHooks() {
 
 bool InstallApiHooks() {
     CALL_GUARD(utils::get_now_ns());
+    AppendDisplayCommanderBootLog("[InstallApiHooks] enter");
     if (g_api_hooks_installed.load()) {
+        AppendDisplayCommanderBootLog("[InstallApiHooks] skip (already installed)");
         return true;
     }
-#if 1
     // Initialize MinHook (only if not already initialized)
     MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::API);
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
         LogError("Failed to initialize MinHook for API hooks - Status: %d", init_status);
+        AppendDisplayCommanderBootLog("[InstallApiHooks] return false (MinHook init failed)");
         return false;
     }
 
@@ -607,7 +609,6 @@ bool InstallApiHooks() {
     } else {
         LogInfo("MinHook initialized successfully for API hooks");
     }
-#endif
 
     // Install Windows API hooks
     InstallWindowsApiHooks();
@@ -637,6 +638,7 @@ bool InstallApiHooks() {
     bool current_state = settings::g_advancedTabSettings.continue_rendering.GetValue();
     LogInfo("API hooks installed - continue_rendering state: %s", current_state ? "enabled" : "disabled");
 
+    AppendDisplayCommanderBootLog("[InstallApiHooks] complete");
     return true;
 }
 

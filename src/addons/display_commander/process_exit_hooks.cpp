@@ -424,8 +424,10 @@ LONG WINAPI VectoredExceptionHandler(PEXCEPTION_POINTERS ex) {
 }
 
 void Initialize() {
+    AppendDisplayCommanderBootLog("[process_exit_hooks] enter");
     bool expected = false;
     if (!g_installed.compare_exchange_strong(expected, true)) {
+        AppendDisplayCommanderBootLog("[process_exit_hooks] skip (already initialized)");
         return;
     }
 
@@ -447,6 +449,8 @@ void Initialize() {
     } else {
         LogInfo("Vectored exception handler installed successfully");
     }
+
+    AppendDisplayCommanderBootLog("[process_exit_hooks] complete");
 }
 
 void Shutdown() {

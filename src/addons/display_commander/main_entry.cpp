@@ -58,7 +58,6 @@
 #include <cctype>
 #include <cstdio>
 #include <filesystem>
-#include <fstream>
 #include <functional>
 #include <iostream>
 #include <optional>
@@ -246,7 +245,6 @@ void OnReShadeBeginEffects(reshade::api::effect_runtime* runtime, reshade::api::
 
 void OnReShadeFinishEffects(reshade::api::effect_runtime* runtime, reshade::api::command_list* cmd_list,
                             reshade::api::resource_view rtv, reshade::api::resource_view rtv_srgb) {
-    if (IsDisplayCommanderHookingInstance()) display_commanderhooks::InstallApiHooks();
     CALL_GUARD_NO_TS();;
     // ReShade effects finish tracking
     if (runtime == nullptr || cmd_list == nullptr) {
@@ -1818,15 +1816,7 @@ static void CaptureDllLoadCallerPath(HMODULE h_our_module) {
 // No-throw; safe to call from DllMain. Does not create directories; only writes if the DLL's dir exists (it always
 // does).
 static void LogBoot(const std::string& text) {
-    try {
-        if (g_dll_main_log_path.empty()) return;
-        std::ofstream f(g_dll_main_log_path, std::ios::app);
-        if (!f) return;
-        f << text << "\n";
-        f.flush();
-    } catch (...) {
-        // avoid crashing DllMain
-    }
+    AppendDisplayCommanderBootLog(text);
 }
 
 static std::string WideToNarrowCpAcp(std::wstring_view w) {

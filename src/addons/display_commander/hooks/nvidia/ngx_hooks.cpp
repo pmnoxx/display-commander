@@ -83,12 +83,14 @@ typedef void(NVSDK_CONV* PFN_NVSDK_NGX_ProgressCallback)(float InCurrentProgress
 static std::map<NVSDK_NGX_Handle*, NVSDK_NGX_Feature> g_ngx_handle_map;
 
 namespace {
-// Debug tab: session-only overrides for frame generation on NVSDK_NGX_UpdateFeature (-1 = use game values).
+// Debug tab: session-only overrides for frame generation on D3D11/D3D12 EvaluateFeature (-1 = use game values).
 std::atomic<int> s_debug_dlssg_multiframe_mfc{-1};
 std::atomic<int> s_debug_dlssg_mode{-1};
+std::atomic<int> s_debug_dlssg_enable_interp{-1};
 
 // Not defined in bundled nvsdk_ngx_defs_dlssg.h; int via SetI (matches sl::DLSSGMode: off=0, on=1, auto=2).
 static constexpr const char* kNgxDlssgParameterMode = "DLSSG.Mode";
+static constexpr const char* kNgxDlssgParameterEnableInterp = "DLSSG.EnableInterp";
 } // namespace
 
 int GetDebugDLSSGMultiFrameCountOverride() {
@@ -111,6 +113,17 @@ void SetDebugDLSSGModeOverride(int mode) {
         return;
     }
     s_debug_dlssg_mode.store(mode, std::memory_order_relaxed);
+}
+
+int GetDebugDLSSGEnableInterpOverride() {
+    return s_debug_dlssg_enable_interp.load(std::memory_order_relaxed);
+}
+
+void SetDebugDLSSGEnableInterpOverride(int enable_interp) {
+    if (enable_interp < -1 || enable_interp > 1) {
+        return;
+    }
+    s_debug_dlssg_enable_interp.store(enable_interp, std::memory_order_relaxed);
 }
 
 // Using official NVIDIA NGX enums from nvsdk_ngx_defs.h
@@ -1380,6 +1393,42 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_ReleaseFeature_Detour(NVSDK_NGX_Hand
     return NVSDK_NGX_Result_Fail;
 }
 
+namespace {
+
+// Debug NGX tab: push multiplier/mode onto the same NVSDK_NGX_Parameter object the game passes to EvaluateFeature.
+void ApplyDebugDLSSGParameterOverridesForEvaluate(NVSDK_NGX_Parameter* param,
+                                                  const NVSDK_NGX_Handle* feature_handle) {
+    CALL_GUARD_NO_TS();
+    if (param == nullptr) {
+        return;
+    }
+    NVSDK_NGX_Handle* handle_for_lookup = const_cast<NVSDK_NGX_Handle*>(feature_handle);
+  //  if (GetFeatureFromHandle(handle_for_lookup) != NVSDK_NGX_Feature_FrameGeneration) {
+ //       return;
+  //  }
+
+    const int mfc_override = s_debug_dlssg_multiframe_mfc.load(std::memory_order_relaxed);
+    if (mfc_override >= 0 && NVSDK_NGX_Parameter_SetUI_Original != nullptr) {
+        const unsigned int v = static_cast<unsigned int>(mfc_override);
+        NVSDK_NGX_Parameter_SetUI_Original(param, NVSDK_NGX_DLSSG_Parameter_MultiFrameCount, v);
+        g_ngx_parameters.update_uint("DLSSG.MultiFrameCount", v);
+    }
+
+    const int mode_override = s_debug_dlssg_mode.load(std::memory_order_relaxed);
+    if (mode_override >= 0 && NVSDK_NGX_Parameter_SetI_Original != nullptr) {
+        NVSDK_NGX_Parameter_SetI_Original(param, kNgxDlssgParameterMode, mode_override);
+        g_ngx_parameters.update_int("DLSSG.Mode", mode_override);
+    }
+
+    const int interp_override = s_debug_dlssg_enable_interp.load(std::memory_order_relaxed);
+    if (interp_override >= 0 && NVSDK_NGX_Parameter_SetI_Original != nullptr) {
+        NVSDK_NGX_Parameter_SetI_Original(param, kNgxDlssgParameterEnableInterp, interp_override);
+        g_ngx_parameters.update_int("DLSSG.EnableInterp", interp_override);
+    }
+}
+
+}  // namespace
+
 // D3D12 EvaluateFeature detour
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_EvaluateFeature_Detour(ID3D12GraphicsCommandList* InCmdList,
                                                                    const NVSDK_NGX_Handle* InFeatureHandle,
@@ -1396,6 +1445,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_EvaluateFeature_Detour(ID3D12Graphic
     if (InParameters != nullptr) {
         HookNGXParameterVTable((NVSDK_NGX_Parameter*)InParameters, "D3D12_EvaluateFeature");
         UpdateDLSSGEnableInterpFromEvaluate(InFeatureHandle, InParameters);
+        ApplyDebugDLSSGParameterOverridesForEvaluate((NVSDK_NGX_Parameter*)InParameters, InFeatureHandle);
     }
 
     if (NVSDK_NGX_D3D12_EvaluateFeature_Original != nullptr) {
@@ -1438,6 +1488,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_EvaluateFeature_C_Detour(ID3D12Graph
     if (InParameters != nullptr) {
         HookNGXParameterVTable((NVSDK_NGX_Parameter*)InParameters, "D3D12_EvaluateFeature_C");
         UpdateDLSSGEnableInterpFromEvaluate(InFeatureHandle, InParameters);
+        ApplyDebugDLSSGParameterOverridesForEvaluate((NVSDK_NGX_Parameter*)InParameters, InFeatureHandle);
     }
     if (NVSDK_NGX_D3D12_EvaluateFeature_C_Original != nullptr) {
         return NVSDK_NGX_D3D12_EvaluateFeature_C_Original(InCmdList, InFeatureHandle, InParameters, InCallback);
@@ -1456,6 +1507,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_EvaluateFeature_C_Detour(ID3D11Devic
     if (InParameters != nullptr) {
         HookNGXParameterVTable((NVSDK_NGX_Parameter*)InParameters, "D3D11_EvaluateFeature_C");
         UpdateDLSSGEnableInterpFromEvaluate(InFeatureHandle, InParameters);
+        ApplyDebugDLSSGParameterOverridesForEvaluate((NVSDK_NGX_Parameter*)InParameters, InFeatureHandle);
     }
     if (NVSDK_NGX_D3D11_EvaluateFeature_C_Original != nullptr) {
         return NVSDK_NGX_D3D11_EvaluateFeature_C_Original(InDevCtx, InFeatureHandle, InParameters, InCallback);
@@ -1808,6 +1860,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_EvaluateFeature_Detour(ID3D11DeviceC
     if (InParameters != nullptr) {
         HookNGXParameterVTable((NVSDK_NGX_Parameter*)InParameters, "D3D11_EvaluateFeature");
         UpdateDLSSGEnableInterpFromEvaluate(InFeatureHandle, InParameters);
+        ApplyDebugDLSSGParameterOverridesForEvaluate((NVSDK_NGX_Parameter*)InParameters, InFeatureHandle);
     }
 
     if (NVSDK_NGX_D3D11_EvaluateFeature_Original != nullptr) {
@@ -1834,23 +1887,6 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_UpdateFeature_Detour(const NVSDK_NGX_Appli
             LogInfo("NGX UpdateFeature - ApplicationId: %llu", ApplicationId->v.ApplicationId);
         } else if (ApplicationId->IdentifierType == NVSDK_NGX_Application_Identifier_Type_Project_Id) {
             LogInfo("NGX UpdateFeature - ProjectId: %s", ApplicationId->v.ProjectDesc.ProjectId);
-        }
-    }
-
-    if (FeatureID == NVSDK_NGX_Feature_FrameGeneration) {
-        NVSDK_NGX_Parameter* param = g_last_ngx_parameter.load(std::memory_order_relaxed);
-
-        const int mfc_override = s_debug_dlssg_multiframe_mfc.load(std::memory_order_relaxed);
-        if (mfc_override >= 0 && param != nullptr && NVSDK_NGX_Parameter_SetUI_Original != nullptr) {
-            const unsigned int v = static_cast<unsigned int>(mfc_override);
-            NVSDK_NGX_Parameter_SetUI_Original(param, NVSDK_NGX_DLSSG_Parameter_MultiFrameCount, v);
-            g_ngx_parameters.update_uint("DLSSG.MultiFrameCount", v);
-        }
-
-        const int mode_override = s_debug_dlssg_mode.load(std::memory_order_relaxed);
-        if (mode_override >= 0 && param != nullptr && NVSDK_NGX_Parameter_SetI_Original != nullptr) {
-            NVSDK_NGX_Parameter_SetI_Original(param, kNgxDlssgParameterMode, mode_override);
-            g_ngx_parameters.update_int("DLSSG.Mode", mode_override);
         }
     }
 

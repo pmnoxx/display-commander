@@ -37,10 +37,14 @@ bool AreNGXParameterVTableHooksInstalled();
 const char* GetNGXCounterKindLabel(NGXCounterKind kind);
 uint32_t GetNGXCounterValue(NGXCounterKind kind);
 
-/** Debug-only frame-gen multiplier override for `NVSDK_NGX_UpdateFeature_Detour`: -1 = game default, 0–5 → 1x–6x. */
+/** Debug-only frame-gen multiplier override on D3D11/D3D12 EvaluateFeature: -1 = game default, 0–5 → 1x–6x. */
 int GetDebugDLSSGMultiFrameCountOverride();
 void SetDebugDLSSGMultiFrameCountOverride(int multiframe_count);
 
-/** Debug-only frame-gen operating mode override for the same path: -1 = game default, 0 = off, 1 = on, 2 = auto (Streamline-compatible ints). */
+/** Debug-only frame-gen operating mode on the same EvaluateFeature path: -1 = game default, 0 = off, 1 = on, 2 = auto. */
 int GetDebugDLSSGModeOverride();
 void SetDebugDLSSGModeOverride(int mode);
+
+/** Debug-only generated-frame interpolation flag on the same path: -1 = game default, 0 = off, 1 = on. */
+int GetDebugDLSSGEnableInterpOverride();
+void SetDebugDLSSGEnableInterpOverride(int enable_interp);

@@ -21,8 +21,17 @@ Planned:
 - Improve OSD, instead of (X/Y) frame rate, show text indicating what's bases fps instead.
 - FG rate counter
 
+## v0.13.124 (2026-04-03)
+- [new feature] [ui] [hooks] **Debug NGX** - Add more options to internal debug tab
+
+## v0.13.123 (2026-04-03)
+- [new feature] [ui] **Debug NGX: captured parameter list** - Add more options to internal debug tab
+
+## v0.13.122 (2026-04-03)
+- [bugfix] [hooks] **Debug NGX frame-gen overrides use EvaluateFeature parameters** - Multiplier and operating-mode session overrides are applied on **D3D11/D3D12 EvaluateFeature** (including **EvaluateFeature_C**) via the call’s **`InParameters`** and tracked handle, not on **UpdateFeature** with **`g_last_ngx_parameter`** (which could be the wrong object). **Details:** `ApplyDebugDLSSGParameterOverridesForEvaluate` in `ngx_hooks.cpp`.
+
 ## v0.13.121 (2026-04-03)
-- [new feature] [ui] [hooks] **Debug NGX: frame generation mode override** - With **DEBUG_TABS**, **Debug NGX** adds a session-only **Operating mode** combo (**Default**, **Off**, **On**, **Auto**) applied on the same NGX frame-generation update path as the multiplier override (driver **SetI** + internal summary mirror). Debug copy no longer names internal NGX parameter strings. **Details:** `GetDebugDLSSGModeOverride` / `SetDebugDLSSGModeOverride`, `NVSDK_NGX_UpdateFeature_Detour`, `ngx_counters_tab.cpp`.
+- [new feature] [ui] [hooks] **Debug NGX: frame generation mode override** - With **DEBUG_TABS**, **Debug NGX** adds a session-only **Operating mode** combo (**Default**, **Off**, **On**, **Auto**) alongside the multiplier override (driver **SetI** / **SetUI** + internal summary mirror). Debug copy does not name internal NGX parameter strings. **Details:** `GetDebugDLSSGModeOverride` / `SetDebugDLSSGModeOverride`, `ngx_counters_tab.cpp`. *(Application site corrected in v0.13.122.)*
 
 ## v0.13.120 (2026-04-03)
 - [bugfix] [hooks] **Native Reflex + FPS cap no longer stuck at half rate** - Fixed issue causing game to run at half fps, when using native reflex in Default mode / pace native frames.

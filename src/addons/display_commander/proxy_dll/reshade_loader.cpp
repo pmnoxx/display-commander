@@ -4,9 +4,10 @@
  */
 
 #include "reshade_loader.hpp"
+#include "../utils/log_path_privacy.hpp"
+
 #include <windows.h>
 #include <atomic>
-
 
 // Defined in globals.cpp; set when ReShade is loaded so UI and other code can detect it.
 extern std::atomic<HMODULE> g_reshade_module;
@@ -14,11 +15,13 @@ extern std::atomic<HMODULE> g_reshade_module;
 #include <fstream>
 #include <iomanip>
 #include <sstream>
+#include <string>
 
 // Helper function to write to DisplayCommander.log before the logger is initialized
 namespace {
 void WriteToLogFile(const std::string& message, const char* level = "INFO") {
     try {
+        const std::string sanitized = display_commander::utils::SanitizeLogUserPaths(message);
         // Get the game executable path to determine log file location
         WCHAR exe_path[MAX_PATH];
         if (GetModuleFileNameW(nullptr, exe_path, MAX_PATH) == 0) {
@@ -40,7 +43,7 @@ void WriteToLogFile(const std::string& message, const char* level = "INFO") {
 
         // Format log entry
         std::ostringstream log_entry;
-        log_entry << "[" << timestamp.str() << "] [" << level << "] " << message << "\n";
+        log_entry << "[" << timestamp.str() << "] [" << level << "] " << sanitized << "\n";
 
         // Write to log file
         std::ofstream log_file(log_path, std::ios::app);

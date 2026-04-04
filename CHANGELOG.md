@@ -21,6 +21,9 @@ Planned:
 - Improve OSD, instead of (X/Y) frame rate, show text indicating what's bases fps instead.
 - FG rate counter
 
+## v0.13.131 (2026-04-04)
+- [cleanup] **Log privacy: Windows profile name redacted** - Log file lines no longer include your user folder name.
+
 ## v0.13.130 (2026-04-03)
 - [ui] [settings] **Performance overlay: separate RAM and VRAM** - Part of Overlay Rework.
 

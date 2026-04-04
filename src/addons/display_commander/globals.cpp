@@ -16,6 +16,7 @@
 #include "settings/swapchain_tab_settings.hpp"
 #include "utils/display_commander_logger.hpp"
 #include "utils/general_utils.hpp"
+#include "utils/log_path_privacy.hpp"
 #include "utils/logging.hpp"
 #include "utils/srwlock_wrapper.hpp"
 
@@ -71,7 +72,8 @@ void AppendDisplayCommanderBootLog(const std::string& text) {
         if (g_dll_main_log_path.empty()) return;
         std::ofstream f(g_dll_main_log_path, std::ios::app);
         if (!f) return;
-        f << text << '\n';
+        const std::string sanitized = display_commander::utils::SanitizeLogUserPaths(text);
+        f << sanitized << '\n';
         f.flush();
     } catch (...) {
     }

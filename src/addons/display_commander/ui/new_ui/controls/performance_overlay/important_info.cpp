@@ -22,7 +22,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
 static void DrawDxgiOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Columns(1);
     imgui.Separator();
-    imgui.TextUnformatted("DXGI");
+    imgui.TextUnformatted("Measured refresh");
     imgui.Columns(4, "overlay_checkboxes", false);
 
     const bool dxgi_detection_enabled =

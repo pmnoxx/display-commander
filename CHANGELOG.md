@@ -23,6 +23,8 @@ Planned:
 - FG rate counter
 
 ## v0.13.132 (2026-04-04)
+- [ui] **Performance overlay: user-facing names for measured refresh and VRR** - Overlay and main-tab subsection use short **Hz** / full **Measured refresh** and short **VRR** / full **VRR (estimate)** instead of DXGI-prefixed labels; tooltips still describe the data source.
+- [ui] **Performance overlay: clock, playtime, and VRR status in scalar columns** - Local time, playtime, NVAPI VRR, and estimated VRR use the same two-column table layout as other metrics (values line up).
 - [ui] [settings] **Performance overlay: label modes, two-column scalars, FPS split, HUD order** - Present FPS and native FPS are on separate lines with clear names.
 
 ## v0.13.131 (2026-04-04)

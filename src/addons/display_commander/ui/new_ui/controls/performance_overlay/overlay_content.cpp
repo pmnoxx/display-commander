@@ -31,6 +31,8 @@ namespace ui::new_ui {
 namespace {
 
 // Overlay label column (col 0): None = no label (value only in col 1). Short = compact token. Full = readable phrase.
+// Examples: Time / Local time, Play / Playtime, Present / Present FPS, NV VRR / VRR (NVAPI), Hz / Measured refresh,
+// VRR / VRR (estimate) — swap-chain heuristic row; tooltips name DXGI/GetFrameStatistics for advanced users.
 const char* OverlayCol0Label(OverlayLabelMode m, const char* short_s, const char* full_s) {
     if (m == OverlayLabelMode::kNone) return nullptr;
     if (m == OverlayLabelMode::kShort) return short_s;
@@ -138,42 +140,13 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     bool show_dxgi_vrr_status = settings::g_mainTabSettings.show_dxgi_vrr_status.GetValue();
     bool show_dxgi_refresh_rate = settings::g_mainTabSettings.show_dxgi_refresh_rate.GetValue();
 
-    // ----- Time -----
-    if (settings::g_mainTabSettings.show_clock.GetValue()) {
-        SYSTEMTIME st;
-        GetLocalTime(&st);
-        imgui.Text("%02d:%02d:%02d", st.wHour, st.wMinute, st.wSecond);
-    }
+    const bool show_clock_setting = settings::g_mainTabSettings.show_clock.GetValue();
+    const bool show_playtime_setting = settings::g_mainTabSettings.show_playtime.GetValue();
+    const LONGLONG game_start_time_ns_for_playtime = g_game_start_time_ns.load();
+    const bool playtime_row_valid = show_playtime_setting && game_start_time_ns_for_playtime > 0;
 
-    if (settings::g_mainTabSettings.show_playtime.GetValue()) {
-        LONGLONG game_start_time_ns = g_game_start_time_ns.load();
-        if (game_start_time_ns > 0) {
-            LONGLONG now_ns = utils::get_now_ns();
-            LONGLONG playtime_ns = now_ns - game_start_time_ns;
-            double playtime_seconds = static_cast<double>(playtime_ns) / static_cast<double>(utils::SEC_TO_NS);
-
-            int hours = static_cast<int>(playtime_seconds / 3600.0);
-            int minutes = static_cast<int>((playtime_seconds - (hours * 3600.0)) / 60.0);
-            int seconds = static_cast<int>(playtime_seconds - (hours * 3600.0) - (minutes * 60.0));
-
-            const char* pl_short = "Play";
-            const char* pl_full = "Playtime";
-            if (label_mode == OverlayLabelMode::kNone) {
-                imgui.Text("%02d:%02d:%02d", hours, minutes, seconds);
-            } else if (label_mode == OverlayLabelMode::kShort) {
-                imgui.Text("%s %02d:%02d:%02d", pl_short, hours, minutes, seconds);
-            } else {
-                imgui.Text("%s %02d:%02d:%02d", pl_full, hours, minutes, seconds);
-            }
-
-            if (imgui.IsItemHovered() && show_tooltips) {
-                imgui.SetTooltipEx("Playtime: Time elapsed since game start");
-            }
-        }
-    }
-
-    // ----- Table: frame rate + limiter -----
-    bool table1_any = false;
+    // ----- Table: frame rate + limiter (optional clock/playtime rows first) -----
+    bool table1_any = show_clock_setting || playtime_row_valid;
     bool fps_samples_ok = false;
     double average_fps = 0.0;
     if (show_fps_counter) {
@@ -214,6 +187,24 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
 
     if (table1_any) {
         OverlayScalarTableBegin(imgui);
+        if (show_clock_setting) {
+            SYSTEMTIME st;
+            GetLocalTime(&st);
+            char tbuf[16];
+            (void)snprintf(tbuf, sizeof(tbuf), "%02d:%02d:%02d", static_cast<int>(st.wHour),
+                           static_cast<int>(st.wMinute), static_cast<int>(st.wSecond));
+            OverlayTableRow_TextUnformatted(imgui, label_mode, "Time", "Local time", tbuf);
+        }
+        if (playtime_row_valid) {
+            LONGLONG now_ns_pt = utils::get_now_ns();
+            LONGLONG playtime_ns = now_ns_pt - game_start_time_ns_for_playtime;
+            double playtime_seconds = static_cast<double>(playtime_ns) / static_cast<double>(utils::SEC_TO_NS);
+            int hours = static_cast<int>(playtime_seconds / 3600.0);
+            int minutes = static_cast<int>((playtime_seconds - (hours * 3600.0)) / 60.0);
+            int seconds = static_cast<int>(playtime_seconds - (hours * 3600.0) - (minutes * 60.0));
+            OverlayTableRow_Text(imgui, label_mode, "Play", "Playtime", show_tooltips,
+                                 "Playtime: Time elapsed since game start", "%02d:%02d:%02d", hours, minutes, seconds);
+        }
         if (fps_samples_ok) {
             char buf[64];
             (void)snprintf(buf, sizeof(buf), "%.1f fps", average_fps);
@@ -307,8 +298,33 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         ui::new_ui::DrawRefreshRateFrameTimesGraph(imgui, show_tooltips);
     }
 
-    // ----- Table: refresh rates (NVAPI actual + DXGI) -----
-    bool table2_any = show_actual_refresh_rate || show_dxgi_refresh_rate;
+    // ----- Refresh / VRR: shared cache for NVAPI table row + debug overlay -----
+    static dxgi::fps_limiter::RefreshRateStats cached_vrr_stats{};
+    static LONGLONG last_valid_vrr_sample_ns = 0;
+    const bool show_vrr_debug_mode = settings::g_mainTabSettings.vrr_debug_mode.GetValue();
+    const bool vrr_overlay_cache = show_vrr_status || show_vrr_debug_mode;
+    LONGLONG now_ns_vrr = 0;
+    bool has_recent_vrr_sample = false;
+    if (vrr_overlay_cache) {
+        now_ns_vrr = utils::get_now_ns();
+        auto shared_stats_vrr = g_cached_refresh_rate_stats.load();
+        if (shared_stats_vrr && shared_stats_vrr->is_valid && shared_stats_vrr->sample_count > 0) {
+            cached_vrr_stats = *shared_stats_vrr;
+            last_valid_vrr_sample_ns = now_ns_vrr;
+        }
+        const LONGLONG sample_timeout_ns = 1000 * utils::NS_TO_MS;
+        has_recent_vrr_sample = (now_ns_vrr - last_valid_vrr_sample_ns) < sample_timeout_ns;
+    }
+
+    dxgi::fps_limiter::RefreshRateStats dxgi_stats{};
+    const bool need_dxgi_stats = show_dxgi_refresh_rate || show_dxgi_vrr_status;
+    if (need_dxgi_stats) {
+        dxgi_stats = dxgi::fps_limiter::GetRefreshRateStats();
+    }
+
+    // ----- Table: refresh rates (NVAPI actual + measured from presents) + VRR summary rows -----
+    bool table2_any =
+        show_actual_refresh_rate || show_dxgi_refresh_rate || show_vrr_status || show_dxgi_vrr_status;
     static double s_smoothed_actual_hz = 0.0;
     double actual_hz_live = display_commander::nvapi::GetNvapiActualRefreshRateHz();
     double dxgi_hz_live = 0.0;
@@ -333,120 +349,112 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         if (show_dxgi_refresh_rate) {
             if (dxgi_hz_live > 0.0) {
                 OverlayTableRow_Text(
-                    imgui, label_mode, "DXGI Hz", "DXGI refresh", show_tooltips,
+                    imgui, label_mode, "Hz", "Measured refresh", show_tooltips,
                     "From swap chain GetFrameStatistics (RefreshRateMonitor). Enable DXGI refresh rate / VRR detection "
                     "in the Debug DXGI refresh tab (-DebugTabs build) or via addon config.",
                     "%.1f Hz", dxgi_hz_live);
             } else {
                 OverlayTableRow_TextColored(
-                    imgui, label_mode, "DXGI Hz", "DXGI refresh", ui::colors::TEXT_DIMMED, show_tooltips,
+                    imgui, label_mode, "Hz", "Measured refresh", ui::colors::TEXT_DIMMED, show_tooltips,
                     "From swap chain GetFrameStatistics (RefreshRateMonitor). Enable DXGI refresh rate / VRR detection "
                     "in the Debug DXGI refresh tab (-DebugTabs build) or via addon config.",
                     "%s", "-- Hz");
             }
         }
-        imgui.EndTable();
-    }
-
-    // ----- NVAPI VRR + debug (full width) -----
-    {
-        bool show_vrr_debug_mode = settings::g_mainTabSettings.vrr_debug_mode.GetValue();
-
-        if (show_vrr_status || show_vrr_debug_mode) {
-            perf_measurement::ScopedTimer overlay_show_vrr_status_timer(perf_measurement::Metric::OverlayShowVrrStatus);
-            static dxgi::fps_limiter::RefreshRateStats cached_stats{};
-            static LONGLONG last_valid_sample_ns = 0;
-
+        if (show_vrr_status) {
             bool cached_nvapi_ok = vrr_status::cached_nvapi_ok.load();
             std::shared_ptr<nvapi::VrrStatus> cached_nvapi_vrr = vrr_status::cached_nvapi_vrr.load();
-
-            LONGLONG now_ns = utils::get_now_ns();
-
-            auto shared_stats = g_cached_refresh_rate_stats.load();
-            if (shared_stats && shared_stats->is_valid && shared_stats->sample_count > 0) {
-                cached_stats = *shared_stats;
-                last_valid_sample_ns = now_ns;
-            }
-
-            const LONGLONG sample_timeout_ns = 1000 * utils::NS_TO_MS;
-            bool has_recent_sample = (now_ns - last_valid_sample_ns) < sample_timeout_ns;
-
-            if (show_vrr_status) {
-                if (cached_nvapi_ok && cached_nvapi_vrr) {
-                    if (cached_nvapi_vrr->is_display_in_vrr_mode && cached_nvapi_vrr->is_vrr_enabled) {
-                        imgui.TextColored(ui::colors::TEXT_SUCCESS, "VRR: On");
-                    } else if (cached_nvapi_vrr->is_display_in_vrr_mode) {
-                        imgui.TextColored(ui::colors::TEXT_WARNING, "VRR: Capable");
-                    } else if (cached_nvapi_vrr->is_vrr_requested) {
-                        imgui.TextColored(ui::colors::TEXT_WARNING, "VRR: Requested");
-                    } else {
-                        imgui.TextColored(ui::colors::TEXT_DIMMED, "VRR: Off");
-                    }
+            if (cached_nvapi_ok && cached_nvapi_vrr) {
+                if (cached_nvapi_vrr->is_display_in_vrr_mode && cached_nvapi_vrr->is_vrr_enabled) {
+                    OverlayTableRow_TextColored(imgui, label_mode, "NV VRR", "VRR (NVAPI)", ui::colors::TEXT_SUCCESS,
+                                                show_tooltips, nullptr, "%s", "On");
+                } else if (cached_nvapi_vrr->is_display_in_vrr_mode) {
+                    OverlayTableRow_TextColored(imgui, label_mode, "NV VRR", "VRR (NVAPI)", ui::colors::TEXT_WARNING,
+                                                show_tooltips, nullptr, "%s", "Capable");
+                } else if (cached_nvapi_vrr->is_vrr_requested) {
+                    OverlayTableRow_TextColored(imgui, label_mode, "NV VRR", "VRR (NVAPI)", ui::colors::TEXT_WARNING,
+                                                show_tooltips, nullptr, "%s", "Requested");
                 } else {
-                    if (cached_stats.all_last_20_within_1s && cached_stats.samples_below_threshold_last_10s >= 2) {
-                        imgui.TextColored(ui::colors::TEXT_SUCCESS, "VRR: On");
-                    } else {
-                        imgui.TextColored(ui::colors::TEXT_DIMMED, "VRR: NO NVAPI");
-                    }
+                    OverlayTableRow_TextColored(imgui, label_mode, "NV VRR", "VRR (NVAPI)", ui::colors::TEXT_DIMMED,
+                                                show_tooltips, nullptr, "%s", "Off");
                 }
-            }
-
-            if (show_vrr_debug_mode && has_recent_sample && cached_stats.is_valid) {
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "  Fixed: %.2f Hz", cached_stats.fixed_refresh_hz);
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "  Threshold: %.2f Hz", cached_stats.threshold_hz);
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "  Total samples (10s): %u",
-                                  cached_stats.total_samples_last_10s);
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "  Below threshold: %u",
-                                  cached_stats.samples_below_threshold_last_10s);
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "  Last 20 within 1s: %s",
-                                  cached_stats.all_last_20_within_1s ? "Yes" : "No");
-            }
-
-            if (show_vrr_debug_mode && cached_nvapi_vrr) {
-                if (!cached_nvapi_vrr->nvapi_initialized) {
-                    imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: Unavailable");
-                } else if (!cached_nvapi_vrr->display_id_resolved) {
-                    imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: No displayId (st=%d)",
-                                      (int)cached_nvapi_vrr->resolve_status);
-                    if (!cached_nvapi_vrr->nvapi_display_name.empty()) {
-                        imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI Name: %s",
-                                          cached_nvapi_vrr->nvapi_display_name.c_str());
-                    }
-                } else if (!cached_nvapi_ok) {
-                    imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: Query failed (st=%d)",
-                                      (int)cached_nvapi_vrr->query_status);
-                    imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI DisplayId: %u", cached_nvapi_vrr->display_id);
+            } else {
+                if (cached_vrr_stats.all_last_20_within_1s && cached_vrr_stats.samples_below_threshold_last_10s >= 2) {
+                    OverlayTableRow_TextColored(imgui, label_mode, "NV VRR", "VRR (NVAPI)", ui::colors::TEXT_SUCCESS,
+                                                show_tooltips, nullptr, "%s", "On");
                 } else {
-                    imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: enabled=%d req=%d poss=%d in_mode=%d",
-                                      (int)cached_nvapi_vrr->is_vrr_enabled, (int)cached_nvapi_vrr->is_vrr_requested,
-                                      (int)cached_nvapi_vrr->is_vrr_possible,
-                                      (int)cached_nvapi_vrr->is_display_in_vrr_mode);
-                    if (cached_nvapi_vrr->is_display_in_vrr_mode) {
-                        imgui.TextColored(ui::colors::TEXT_DIMMED, "  -> Display is in VRR mode (authoritative)");
-                    } else if (cached_nvapi_vrr->is_vrr_enabled) {
-                        imgui.TextColored(ui::colors::TEXT_DIMMED, "  -> VRR enabled (fallback)");
-                    }
+                    OverlayTableRow_TextColored(imgui, label_mode, "NV VRR", "VRR (NVAPI)", ui::colors::TEXT_DIMMED,
+                                                show_tooltips, nullptr, "%s", "NO NVAPI");
                 }
             }
         }
-    }
-
-    // ----- DXGI VRR heuristic (full width) -----
-    if (show_dxgi_vrr_status || show_dxgi_refresh_rate) {
-        dxgi::fps_limiter::RefreshRateStats dxgi_stats = dxgi::fps_limiter::GetRefreshRateStats();
         if (show_dxgi_vrr_status) {
             if (dxgi_stats.is_valid && dxgi_stats.all_last_20_within_1s
                 && dxgi_stats.samples_below_threshold_last_10s >= 2) {
-                imgui.TextColored(ui::colors::TEXT_SUCCESS, "VRR: On");
+                OverlayTableRow_TextColored(imgui, label_mode, "VRR", "VRR (estimate)", ui::colors::TEXT_SUCCESS,
+                                            show_tooltips,
+                                            "Heuristic from present timing (RefreshRateMonitor / DXGI). Enable DXGI "
+                                            "refresh rate / VRR detection in the Debug DXGI refresh tab (-DebugTabs "
+                                            "build) or via addon config.",
+                                            "%s", "On");
             } else if (dxgi_stats.is_valid) {
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "VRR: Off");
+                OverlayTableRow_TextColored(
+                    imgui, label_mode, "VRR", "VRR (estimate)", ui::colors::TEXT_DIMMED, show_tooltips,
+                    "Heuristic from present timing (RefreshRateMonitor / DXGI). Enable DXGI refresh rate / VRR "
+                    "detection in the Debug DXGI refresh tab (-DebugTabs build) or via addon config.",
+                    "%s", "Off");
             } else {
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "VRR: --");
+                OverlayTableRow_TextColored(
+                    imgui, label_mode, "VRR", "VRR (estimate)", ui::colors::TEXT_DIMMED, show_tooltips,
+                    "Heuristic from present timing (RefreshRateMonitor / DXGI). Enable DXGI refresh rate / VRR "
+                    "detection in the Debug DXGI refresh tab (-DebugTabs build) or via addon config.",
+                    "%s", "--");
             }
-            if (imgui.IsItemHovered() && show_tooltips) {
-                imgui.SetTooltipEx(
-                    "DXGI-based VRR heuristic (RefreshRateMonitor). Enable DXGI refresh rate / VRR detection in the "
-                    "Debug DXGI refresh tab (-DebugTabs build) or via addon config.");
+        }
+        imgui.EndTable();
+    }
+
+    // ----- NVAPI VRR debug (full width, below table) -----
+    if (vrr_overlay_cache) {
+        perf_measurement::ScopedTimer overlay_show_vrr_status_timer(perf_measurement::Metric::OverlayShowVrrStatus);
+        bool cached_nvapi_ok = vrr_status::cached_nvapi_ok.load();
+        std::shared_ptr<nvapi::VrrStatus> cached_nvapi_vrr = vrr_status::cached_nvapi_vrr.load();
+
+        if (show_vrr_debug_mode && has_recent_vrr_sample && cached_vrr_stats.is_valid) {
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "  Fixed: %.2f Hz", cached_vrr_stats.fixed_refresh_hz);
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "  Threshold: %.2f Hz", cached_vrr_stats.threshold_hz);
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "  Total samples (10s): %u",
+                              cached_vrr_stats.total_samples_last_10s);
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "  Below threshold: %u",
+                              cached_vrr_stats.samples_below_threshold_last_10s);
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "  Last 20 within 1s: %s",
+                              cached_vrr_stats.all_last_20_within_1s ? "Yes" : "No");
+        }
+
+        if (show_vrr_debug_mode && cached_nvapi_vrr) {
+            if (!cached_nvapi_vrr->nvapi_initialized) {
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: Unavailable");
+            } else if (!cached_nvapi_vrr->display_id_resolved) {
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: No displayId (st=%d)",
+                                  (int)cached_nvapi_vrr->resolve_status);
+                if (!cached_nvapi_vrr->nvapi_display_name.empty()) {
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI Name: %s",
+                                      cached_nvapi_vrr->nvapi_display_name.c_str());
+                }
+            } else if (!cached_nvapi_ok) {
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: Query failed (st=%d)",
+                                  (int)cached_nvapi_vrr->query_status);
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI DisplayId: %u", cached_nvapi_vrr->display_id);
+            } else {
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: enabled=%d req=%d poss=%d in_mode=%d",
+                                  (int)cached_nvapi_vrr->is_vrr_enabled, (int)cached_nvapi_vrr->is_vrr_requested,
+                                  (int)cached_nvapi_vrr->is_vrr_possible,
+                                  (int)cached_nvapi_vrr->is_display_in_vrr_mode);
+                if (cached_nvapi_vrr->is_display_in_vrr_mode) {
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "  -> Display is in VRR mode (authoritative)");
+                } else if (cached_nvapi_vrr->is_vrr_enabled) {
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "  -> VRR enabled (fallback)");
+                }
             }
         }
     }

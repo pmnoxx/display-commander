@@ -83,8 +83,12 @@ typedef void(NVSDK_CONV* PFN_NVSDK_NGX_ProgressCallback)(float InCurrentProgress
 static std::map<NVSDK_NGX_Handle*, NVSDK_NGX_Feature> g_ngx_handle_map;
 
 namespace {
-// Debug tab: session-only override for DLSSG.MultiFrameCount (-1 = off, 0–5 = uint for 1x–6x display).
+// Debug tab: session-only overrides for frame generation on NVSDK_NGX_UpdateFeature (-1 = use game values).
 std::atomic<int> s_debug_dlssg_multiframe_mfc{-1};
+std::atomic<int> s_debug_dlssg_mode{-1};
+
+// Not defined in bundled nvsdk_ngx_defs_dlssg.h; int via SetI (matches sl::DLSSGMode: off=0, on=1, auto=2).
+static constexpr const char* kNgxDlssgParameterMode = "DLSSG.Mode";
 } // namespace
 
 int GetDebugDLSSGMultiFrameCountOverride() {
@@ -96,6 +100,17 @@ void SetDebugDLSSGMultiFrameCountOverride(int multiframe_count) {
         return;
     }
     s_debug_dlssg_multiframe_mfc.store(multiframe_count, std::memory_order_relaxed);
+}
+
+int GetDebugDLSSGModeOverride() {
+    return s_debug_dlssg_mode.load(std::memory_order_relaxed);
+}
+
+void SetDebugDLSSGModeOverride(int mode) {
+    if (mode < -1 || mode > 2) {
+        return;
+    }
+    s_debug_dlssg_mode.store(mode, std::memory_order_relaxed);
 }
 
 // Using official NVIDIA NGX enums from nvsdk_ngx_defs.h
@@ -1822,13 +1837,20 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_UpdateFeature_Detour(const NVSDK_NGX_Appli
         }
     }
 
-    const int mfc_override = s_debug_dlssg_multiframe_mfc.load(std::memory_order_relaxed);
-    if (mfc_override >= 0 && FeatureID == NVSDK_NGX_Feature_FrameGeneration) {
+    if (FeatureID == NVSDK_NGX_Feature_FrameGeneration) {
         NVSDK_NGX_Parameter* param = g_last_ngx_parameter.load(std::memory_order_relaxed);
-        if (param != nullptr && NVSDK_NGX_Parameter_SetUI_Original != nullptr) {
+
+        const int mfc_override = s_debug_dlssg_multiframe_mfc.load(std::memory_order_relaxed);
+        if (mfc_override >= 0 && param != nullptr && NVSDK_NGX_Parameter_SetUI_Original != nullptr) {
             const unsigned int v = static_cast<unsigned int>(mfc_override);
             NVSDK_NGX_Parameter_SetUI_Original(param, NVSDK_NGX_DLSSG_Parameter_MultiFrameCount, v);
             g_ngx_parameters.update_uint("DLSSG.MultiFrameCount", v);
+        }
+
+        const int mode_override = s_debug_dlssg_mode.load(std::memory_order_relaxed);
+        if (mode_override >= 0 && param != nullptr && NVSDK_NGX_Parameter_SetI_Original != nullptr) {
+            NVSDK_NGX_Parameter_SetI_Original(param, kNgxDlssgParameterMode, mode_override);
+            g_ngx_parameters.update_int("DLSSG.Mode", mode_override);
         }
     }
 

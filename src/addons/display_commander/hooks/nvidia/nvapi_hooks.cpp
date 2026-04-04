@@ -144,8 +144,14 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
     // SetSleepMode_Detour and Sleep_Detour return early and never forward to the driver, preventing
     // Reflex low-latency and sleep from working (e.g. with Streamline).
 
-    // only for first 6 latency marker types
-    if (marker_type == marker_types.present_start || marker_type == marker_types.sleep) {
+    const int reflex_fps_limiter_max_queued_frames = GetEffectiveReflexFpsLimiterMaxQueuedFrames();
+    const bool native_pacing_sim_start_only = GetEffectiveNativePacingSimStartOnly()
+                                              && reflex_fps_limiter_max_queued_frames == 0;  // game default
+
+    // Refresh chosen site + reflex timestamp before pacing. For sim-start-only native pacing, PRESENT_START may
+    // run after DXGI/ReShade present in the same frame; without this, ReShade/DXGI can win and pace again (~half FPS).
+    if (marker_type == marker_types.present_start || marker_type == marker_types.sleep
+        || (native_pacing_sim_start_only && marker_type == marker_types.simulation_start)) {
         ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()), site);
     }
     bool use_fps_limiter = GetChosenFpsLimiter(site);
@@ -172,17 +178,7 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
 
     int result = 0;
 
-    const int reflex_fps_limiter_max_queued_frames = GetEffectiveReflexFpsLimiterMaxQueuedFrames();
-
-    bool native_pacing_sim_start_only = GetEffectiveNativePacingSimStartOnly()
-                                        && reflex_fps_limiter_max_queued_frames == 0;  // game default
-
-
-    bool is_effective_sim_start =  marker_type == marker_types.sleep;
-    if ( marker_type == marker_types.simulation_start && g_latency_marker_buffer_per_type[marker_types.simulation_start].load(std::memory_order_relaxed)
-        !=  g_latency_marker_buffer_per_type[marker_types.sleep].load(std::memory_order_relaxed) ) {
-        is_effective_sim_start = true;
-    }
+    bool is_effective_sim_start =  marker_type == marker_types.simulation_start;
 
     if (native_pacing_sim_start_only) {
         if (is_effective_sim_start) {

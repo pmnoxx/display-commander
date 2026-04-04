@@ -21,6 +21,12 @@ Planned:
 - Improve OSD, instead of (X/Y) frame rate, show text indicating what's bases fps instead.
 - FG rate counter
 
+## v0.13.121 (2026-04-03)
+- [new feature] [ui] [hooks] **Debug NGX: frame generation mode override** - With **DEBUG_TABS**, **Debug NGX** adds a session-only **Operating mode** combo (**Default**, **Off**, **On**, **Auto**) applied on the same NGX frame-generation update path as the multiplier override (driver **SetI** + internal summary mirror). Debug copy no longer names internal NGX parameter strings. **Details:** `GetDebugDLSSGModeOverride` / `SetDebugDLSSGModeOverride`, `NVSDK_NGX_UpdateFeature_Detour`, `ngx_counters_tab.cpp`.
+
+## v0.13.120 (2026-04-03)
+- [bugfix] [hooks] **Native Reflex + FPS cap no longer stuck at half rate** - Fixed issue causing game to run at half fps, when using native reflex in Default mode / pace native frames.
+
 ## v0.13.119 (2026-04-03)
 - [new feature] [ui] **Debug FPS limiter: targets, sleeps, call rates** - more fps limiter stats.
 
@@ -28,10 +34,10 @@ Planned:
 - [new feature] [ui] **Debug FPS limiter tab** -FPS limiter debugger internal page.
 
 ## v0.13.117 (2026-04-03)
-- [new feature] [ui] [hooks] **Debug NGX: DLSSG.MultiFrameCount override and UpdateFeature hook** - With **DEBUG_TABS**, **Debug NGX** adds a session-only combo (**Default**, **1x**–**6x**) that sets **`DLSSG.MultiFrameCount`** via **`Parameter_SetUI`** on **`g_last_ngx_parameter`** before **`NVSDK_NGX_UpdateFeature`** when the feature is frame generation; mirrors into **`g_ngx_parameters`** for UI consistency. **`NVSDK_NGX_UpdateFeature`** is now listed in **`kNGXHooks`** so the detour runs when the export exists. **Details:** `GetDebugDLSSGMultiFrameCountOverride` / `SetDebugDLSSGMultiFrameCountOverride`, `ngx_counters_tab.*`, `ngx_hooks.*`.
+- [new feature] [ui] [hooks] **Change FG rate on the fly** - Only in debug build, testers needed.
 
 ## v0.13.116 (2026-04-03)
-- [new feature] [ui] **Debug NGX counters tab** - With **DEBUG_TABS** (`bd.ps1 -DebugTabs`), **Debug NGX** shows a table of detour call counts indexed by **`NGXCounterKind`** (Parameter vtable aggregates, `_nvngx` export order, framegen attempts, total). Added dedicated counters for Shutdown1, EvaluateFeature_C, and GetCapabilityParameters (D3D11/D3D12). **Details:** `globals.hpp` `NGXCounters` / `NGXCounterKind`, `GetNGXCounterKindLabel` / `GetNGXCounterValue` in `ngx_hooks.cpp`, `ui/new_ui/debug/ngx_counters_tab.*`, `new_ui_tabs.cpp`.
+- [new feature] [ui] **Debug NGX counters tab** - New tab, not in release builds.
 
 ## v0.13.115 (2026-04-03)
 - [bugfix] [hooks] **PCLStats ETW hooks restored** - Added safety guards, to prevent injected reflex interfearing from native reflex.

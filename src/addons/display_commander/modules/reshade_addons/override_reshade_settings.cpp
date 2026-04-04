@@ -1,10 +1,11 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
-#include "override_reshade_settings.hpp"
+#include "../../config/override_reshade_settings.hpp"
 
-#include "display_commander_config.hpp"
-#include "../globals.hpp"
-#include "../utils/general_utils.hpp"
-#include "../utils/logging.hpp"
+// Source Code <Display Commander>
+#include "../../config/display_commander_config.hpp"
+#include "../../globals.hpp"
+#include "../../utils/general_utils.hpp"
+#include "../../utils/logging.hpp"
 
 // Libraries <ReShade> / <imgui>
 #include <reshade.hpp>

@@ -1,7 +1,7 @@
 # Version (single source of truth for addon; used by compile definitions and version.rc)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 13)
-set(DISPLAY_COMMANDER_VERSION_PATCH 112)
+set(DISPLAY_COMMANDER_VERSION_PATCH 113)
 
 # Repository root (this file: src/addons/display_commander/CMakeLists.txt → ../../..).
 set(_dc_repo_root "${CMAKE_CURRENT_LIST_DIR}/../../..")
@@ -16,12 +16,17 @@ file(GLOB_RECURSE DISPLAY_COMMANDER_SOURCES
 
 
 # DC_NO_MODULES=ON: omit in-repo module implementations (audio/controller/reshade_addons); module_registry.cpp remains (empty
-# registry + stubs via DC_INTERNAL_MODULES=0). proxy_dll/*.cpp stay in the build so the same binary works as a renamed
-# d3d11/dxgi/etc. proxy (full exports.def). For addon-only minimal exports see proxy_dll/exports_addon_only.def (not wired by default).
+# registry + stubs via DC_INTERNAL_MODULES=0). ReShade ini overrides live under modules/reshade_addons/ and are excluded
+# here; config/override_reshade_settings_stub.cpp stays in the build (from GLOB) as a no-op OverrideReShadeSettings.
+# When DC_NO_MODULES=OFF, exclude that stub so only modules/reshade_addons/override_reshade_settings.cpp provides the symbol.
+# proxy_dll/*.cpp stay in the build so the same binary works as a renamed d3d11/dxgi/etc. proxy (full exports.def).
+# For addon-only minimal exports see proxy_dll/exports_addon_only.def (not wired by default).
 if(DC_NO_MODULES)
   list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/modules/audio/.*\\.cpp$")
   list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/modules/controller/.*\\.cpp$")
   list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/modules/reshade_addons/.*\\.cpp$")
+else()
+  list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/config/override_reshade_settings_stub\\.cpp$")
 endif()
 
 if(DC_EXTERNAL_MODULES)

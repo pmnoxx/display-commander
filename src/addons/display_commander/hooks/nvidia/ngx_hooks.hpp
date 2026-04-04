@@ -2,12 +2,14 @@
 
 // Source Code <Display Commander>
 
+#include <cstdint>
 #include <string>
 
 #include <windows.h>
 
 // Forward declarations for NGX types
 struct NVSDK_NGX_Parameter;
+enum class NGXCounterKind : int;
 
 // NGX hook functions
 bool InstallNGXHooks(HMODULE ngx_module);
@@ -30,3 +32,11 @@ bool ApplyNGXParameterOverride(const char* param_name, const char* param_type);
 
 // True if HookNGXParameterVTable was called at least once (NGX Parameter vtable hooks are active)
 bool AreNGXParameterVTableHooksInstalled();
+
+/** Labels and values for debug NGX counter table (`NGXCounterKind` in globals.hpp). */
+const char* GetNGXCounterKindLabel(NGXCounterKind kind);
+uint32_t GetNGXCounterValue(NGXCounterKind kind);
+
+/** Debug-only DLSSG.MultiFrameCount override for `NVSDK_NGX_UpdateFeature_Detour`: -1 = game default, 0–5 = NGX uint (display 1x–6x as count+1). */
+int GetDebugDLSSGMultiFrameCountOverride();
+void SetDebugDLSSGMultiFrameCountOverride(int multiframe_count);

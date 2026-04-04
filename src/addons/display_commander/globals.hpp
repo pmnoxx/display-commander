@@ -1047,6 +1047,44 @@ extern UnifiedParameterMap
     g_ngx_parameter_overrides;  // NGX parameter overrides (user-defined values to replace game values)
 extern std::atomic<NVSDK_NGX_Parameter*> g_last_ngx_parameter;  // Last NGX parameter object for direct API calls
 
+/** Debug table row order: Parameter vtable aggregate counts, then _nvngx export order (kNGXHooks), framegen, total. */
+enum class NGXCounterKind : int {
+    ParameterSetF = 0,
+    ParameterSetD,
+    ParameterSetI,
+    ParameterSetUI,
+    ParameterSetULL,
+    ParameterGetI,
+    ParameterGetUI,
+    ParameterGetULL,
+    ParameterGetVoidPointer,
+    D3D12_Init,
+    D3D12_InitExt,
+    D3D12_InitProjectId,
+    D3D12_Shutdown1,
+    D3D12_CreateFeature,
+    D3D12_ReleaseFeature,
+    D3D12_EvaluateFeature,
+    D3D12_EvaluateFeature_C,
+    D3D11_Init,
+    D3D11_InitExt,
+    D3D11_InitProjectId,
+    D3D11_Shutdown1,
+    D3D11_CreateFeature,
+    D3D11_ReleaseFeature,
+    D3D11_EvaluateFeature,
+    D3D11_EvaluateFeature_C,
+    D3D12_GetParameters,
+    D3D12_GetCapabilityParameters,
+    D3D12_AllocateParameters,
+    D3D11_GetParameters,
+    D3D11_GetCapabilityParameters,
+    D3D11_AllocateParameters,
+    FramegenCreateAttempt,
+    Total,
+    Count_
+};
+
 // NGX Counters structure for tracking NGX function calls
 struct NGXCounters {
     // Parameter functions
@@ -1064,20 +1102,26 @@ struct NGXCounters {
     std::atomic<uint32_t> d3d12_init_count;
     std::atomic<uint32_t> d3d12_init_ext_count;
     std::atomic<uint32_t> d3d12_init_projectid_count;
+    std::atomic<uint32_t> d3d12_shutdown1_count;
     std::atomic<uint32_t> d3d12_createfeature_count;
     std::atomic<uint32_t> d3d12_releasefeature_count;
     std::atomic<uint32_t> d3d12_evaluatefeature_count;
+    std::atomic<uint32_t> d3d12_evaluatefeature_c_count;
     std::atomic<uint32_t> d3d12_getparameters_count;
+    std::atomic<uint32_t> d3d12_getcapabilityparameters_count;
     std::atomic<uint32_t> d3d12_allocateparameters_count;
 
     // D3D11 Feature management functions
     std::atomic<uint32_t> d3d11_init_count;
     std::atomic<uint32_t> d3d11_init_ext_count;
     std::atomic<uint32_t> d3d11_init_projectid_count;
+    std::atomic<uint32_t> d3d11_shutdown1_count;
     std::atomic<uint32_t> d3d11_createfeature_count;
     std::atomic<uint32_t> d3d11_releasefeature_count;
     std::atomic<uint32_t> d3d11_evaluatefeature_count;
+    std::atomic<uint32_t> d3d11_evaluatefeature_c_count;
     std::atomic<uint32_t> d3d11_getparameters_count;
+    std::atomic<uint32_t> d3d11_getcapabilityparameters_count;
     std::atomic<uint32_t> d3d11_allocateparameters_count;
 
     // Frame Generation (DLSS-G) create attempt count
@@ -1100,18 +1144,24 @@ struct NGXCounters {
           d3d12_init_count(0),
           d3d12_init_ext_count(0),
           d3d12_init_projectid_count(0),
+          d3d12_shutdown1_count(0),
           d3d12_createfeature_count(0),
           d3d12_releasefeature_count(0),
           d3d12_evaluatefeature_count(0),
+          d3d12_evaluatefeature_c_count(0),
           d3d12_getparameters_count(0),
+          d3d12_getcapabilityparameters_count(0),
           d3d12_allocateparameters_count(0),
           d3d11_init_count(0),
           d3d11_init_ext_count(0),
           d3d11_init_projectid_count(0),
+          d3d11_shutdown1_count(0),
           d3d11_createfeature_count(0),
           d3d11_releasefeature_count(0),
           d3d11_evaluatefeature_count(0),
+          d3d11_evaluatefeature_c_count(0),
           d3d11_getparameters_count(0),
+          d3d11_getcapabilityparameters_count(0),
           d3d11_allocateparameters_count(0),
           framegen_create_attempt_count(0),
           total_count(0) {}
@@ -1130,18 +1180,24 @@ struct NGXCounters {
         d3d12_init_count.store(0);
         d3d12_init_ext_count.store(0);
         d3d12_init_projectid_count.store(0);
+        d3d12_shutdown1_count.store(0);
         d3d12_createfeature_count.store(0);
         d3d12_releasefeature_count.store(0);
         d3d12_evaluatefeature_count.store(0);
+        d3d12_evaluatefeature_c_count.store(0);
         d3d12_getparameters_count.store(0);
+        d3d12_getcapabilityparameters_count.store(0);
         d3d12_allocateparameters_count.store(0);
         d3d11_init_count.store(0);
         d3d11_init_ext_count.store(0);
         d3d11_init_projectid_count.store(0);
+        d3d11_shutdown1_count.store(0);
         d3d11_createfeature_count.store(0);
         d3d11_releasefeature_count.store(0);
         d3d11_evaluatefeature_count.store(0);
+        d3d11_evaluatefeature_c_count.store(0);
         d3d11_getparameters_count.store(0);
+        d3d11_getcapabilityparameters_count.store(0);
         d3d11_allocateparameters_count.store(0);
         framegen_create_attempt_count.store(0);
         total_count.store(0);

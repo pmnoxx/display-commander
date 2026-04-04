@@ -19,9 +19,16 @@ Planned:
 - Hotkeys default off / add UI to enabled/disable them globally.
 - Add option (UI or config only), to not conpensave for fps in cutsecnes/UI, when FG disingegaes. (bottleneck, figured out the UI for it) @maxton
 - Improve OSD, instead of (X/Y) frame rate, show text indicating what's bases fps instead.
+- FG rate counter
+
+## v0.13.117 (2026-04-03)
+- [new feature] [ui] [hooks] **Debug NGX: DLSSG.MultiFrameCount override and UpdateFeature hook** - With **DEBUG_TABS**, **Debug NGX** adds a session-only combo (**Default**, **1x**–**6x**) that sets **`DLSSG.MultiFrameCount`** via **`Parameter_SetUI`** on **`g_last_ngx_parameter`** before **`NVSDK_NGX_UpdateFeature`** when the feature is frame generation; mirrors into **`g_ngx_parameters`** for UI consistency. **`NVSDK_NGX_UpdateFeature`** is now listed in **`kNGXHooks`** so the detour runs when the export exists. **Details:** `GetDebugDLSSGMultiFrameCountOverride` / `SetDebugDLSSGMultiFrameCountOverride`, `ngx_counters_tab.*`, `ngx_hooks.*`.
+
+## v0.13.116 (2026-04-03)
+- [new feature] [ui] **Debug NGX counters tab** - With **DEBUG_TABS** (`bd.ps1 -DebugTabs`), **Debug NGX** shows a table of detour call counts indexed by **`NGXCounterKind`** (Parameter vtable aggregates, `_nvngx` export order, framegen attempts, total). Added dedicated counters for Shutdown1, EvaluateFeature_C, and GetCapabilityParameters (D3D11/D3D12). **Details:** `globals.hpp` `NGXCounters` / `NGXCounterKind`, `GetNGXCounterKindLabel` / `GetNGXCounterValue` in `ngx_hooks.cpp`, `ui/new_ui/debug/ngx_counters_tab.*`, `new_ui_tabs.cpp`.
 
 ## v0.13.115 (2026-04-03)
-- [bugfix] [hooks] **PCLStats ETW hooks restored** - Re-added advapi32 **EventRegister** / **EventWriteTransfer** detours to detect when another module registers **PCLStatsTraceLoggingProvider** or emits **PCLStatsInit**. Display Commander skips its own **PCLSTATS_INIT** when that happens. **Details:** `pclstats_etw_hooks.cpp`, `EnsurePCLStatsInitialized` in `reflex_provider.cpp`, `OnModuleLoaded` for `advapi32.dll`, `UninstallPCLStatsEtwHooks` in `UninstallApiHooks`.
+- [bugfix] [hooks] **PCLStats ETW hooks restored** - Added safety guards, to prevent injected reflex interfearing from native reflex.
 
 ## v0.13.114 (2026-04-03)
 - [bugfix] [hooks] **NVIDIA overlay latency** - Fixed the NVIDIA overlay not showing correct Reflex latency. Prevent intiializing PCL_STATS for games using native reflex.

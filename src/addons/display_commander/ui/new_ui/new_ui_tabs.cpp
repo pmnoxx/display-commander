@@ -10,6 +10,7 @@
 #include "advanced_tab.hpp"
 #if defined(DISPLAY_COMMANDER_DEBUG_TABS)
 #include "debug/dxgi_refresh_rate_tab.hpp"
+#include "debug/ngx_counters_tab.hpp"
 #include "debug/reflex_pclstats_tab.hpp"
 #include "debug/vulkan_tab.hpp"
 #include "debug/window_messages_tab.hpp"
@@ -358,6 +359,21 @@ void InitializeNewUI() {
                 LogError("Error drawing debug Reflex / PCLStats tab: %s", e.what());
             } catch (...) {
                 LogError("Unknown error drawing debug Reflex / PCLStats tab");
+            }
+        },
+        false);
+
+    g_tab_manager.AddTab(
+        "Debug NGX", "debug_ngx_counters",
+        [](reshade::api::effect_runtime* runtime) {
+            (void)runtime;
+            try {
+                display_commander::ui::ImGuiWrapperReshade wrapper;
+                ui::new_ui::debug::DrawNGXCountersTab(wrapper);
+            } catch (const std::exception& e) {
+                LogError("Error drawing debug NGX tab: %s", e.what());
+            } catch (...) {
+                LogError("Unknown error drawing debug NGX tab");
             }
         },
         false);

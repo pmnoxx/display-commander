@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "../../../../external/nvidia-dlss/include/nvsdk_ngx_defs.h"
+#include "../../../../external/nvidia-dlss/include/nvsdk_ngx_defs_dlssg.h"
 #include "../../globals.hpp"
 #include "../../settings/advanced_tab_settings.hpp"
 #include "../../settings/swapchain_tab_settings.hpp"
@@ -80,6 +81,22 @@ typedef void(NVSDK_CONV* PFN_NVSDK_NGX_ProgressCallback)(float InCurrentProgress
 
 // Handle tracking for NGX features
 static std::map<NVSDK_NGX_Handle*, NVSDK_NGX_Feature> g_ngx_handle_map;
+
+namespace {
+// Debug tab: session-only override for DLSSG.MultiFrameCount (-1 = off, 0–5 = uint for 1x–6x display).
+std::atomic<int> s_debug_dlssg_multiframe_mfc{-1};
+} // namespace
+
+int GetDebugDLSSGMultiFrameCountOverride() {
+    return s_debug_dlssg_multiframe_mfc.load(std::memory_order_relaxed);
+}
+
+void SetDebugDLSSGMultiFrameCountOverride(int multiframe_count) {
+    if (multiframe_count < -1 || multiframe_count > 5) {
+        return;
+    }
+    s_debug_dlssg_multiframe_mfc.store(multiframe_count, std::memory_order_relaxed);
+}
 
 // Using official NVIDIA NGX enums from nvsdk_ngx_defs.h
 
@@ -1376,6 +1393,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_EvaluateFeature_Detour(ID3D12Graphic
 // D3D12 Shutdown1 detour
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Shutdown1_Detour(ID3D12Device* InDevice) {
     CALL_GUARD_NO_TS();;
+    g_ngx_counters.d3d12_shutdown1_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
     if (NVSDK_NGX_D3D12_Shutdown1_Original != nullptr) {
         return NVSDK_NGX_D3D12_Shutdown1_Original(InDevice);
@@ -1386,6 +1404,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Shutdown1_Detour(ID3D12Device* InDev
 // D3D11 Shutdown1 detour
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Shutdown1_Detour(ID3D11Device* InDevice) {
     CALL_GUARD_NO_TS();;
+    g_ngx_counters.d3d11_shutdown1_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
     if (NVSDK_NGX_D3D11_Shutdown1_Original != nullptr) {
         return NVSDK_NGX_D3D11_Shutdown1_Original(InDevice);
@@ -1399,6 +1418,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_EvaluateFeature_C_Detour(ID3D12Graph
                                                                      const NVSDK_NGX_Parameter* InParameters,
                                                                      PFN_NVSDK_NGX_ProgressCallback_C InCallback) {
     CALL_GUARD_NO_TS();;
+    g_ngx_counters.d3d12_evaluatefeature_c_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
     if (InParameters != nullptr) {
         HookNGXParameterVTable((NVSDK_NGX_Parameter*)InParameters, "D3D12_EvaluateFeature_C");
@@ -1416,6 +1436,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_EvaluateFeature_C_Detour(ID3D11Devic
                                                                      const NVSDK_NGX_Parameter* InParameters,
                                                                      PFN_NVSDK_NGX_ProgressCallback_C InCallback) {
     CALL_GUARD_NO_TS();;
+    g_ngx_counters.d3d11_evaluatefeature_c_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
     if (InParameters != nullptr) {
         HookNGXParameterVTable((NVSDK_NGX_Parameter*)InParameters, "D3D11_EvaluateFeature_C");
@@ -1801,6 +1822,16 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_UpdateFeature_Detour(const NVSDK_NGX_Appli
         }
     }
 
+    const int mfc_override = s_debug_dlssg_multiframe_mfc.load(std::memory_order_relaxed);
+    if (mfc_override >= 0 && FeatureID == NVSDK_NGX_Feature_FrameGeneration) {
+        NVSDK_NGX_Parameter* param = g_last_ngx_parameter.load(std::memory_order_relaxed);
+        if (param != nullptr && NVSDK_NGX_Parameter_SetUI_Original != nullptr) {
+            const unsigned int v = static_cast<unsigned int>(mfc_override);
+            NVSDK_NGX_Parameter_SetUI_Original(param, NVSDK_NGX_DLSSG_Parameter_MultiFrameCount, v);
+            g_ngx_parameters.update_uint("DLSSG.MultiFrameCount", v);
+        }
+    }
+
     if (NVSDK_NGX_UpdateFeature_Original != nullptr) {
         return NVSDK_NGX_UpdateFeature_Original(ApplicationId, FeatureID);
     }
@@ -1927,6 +1958,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_GetParameters_Detour(NVSDK_NGX_Param
 // NGX D3D12 GetCapabilityParameters detour (used for DLSS optimal settings before AllocateParameters)
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_GetCapabilityParameters_Detour(NVSDK_NGX_Parameter** InParameters) {
     CALL_GUARD_NO_TS();;
+    g_ngx_counters.d3d12_getcapabilityparameters_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
 
     NVSDK_NGX_Result ret = NVSDK_NGX_Result_Fail;
@@ -1995,6 +2027,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_GetParameters_Detour(NVSDK_NGX_Param
 // NGX D3D11 GetCapabilityParameters detour (used for DLSS optimal settings before AllocateParameters)
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_GetCapabilityParameters_Detour(NVSDK_NGX_Parameter** InParameters) {
     CALL_GUARD_NO_TS();;
+    g_ngx_counters.d3d11_getcapabilityparameters_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
 
     NVSDK_NGX_Result ret = NVSDK_NGX_Result_Fail;
@@ -2036,7 +2069,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_AllocateParameters_Detour(NVSDK_NGX_
     return ret;
 }
 
-static constexpr std::size_t kNGXHookCount = 21;
+static constexpr std::size_t kNGXHookCount = 22;
 // Detour signatures follow bundled nvsdk_ngx.h; Init and related variants differ by NGX_SNIPPET_BUILD — see ABI block.
 static const NGXHookEntry kNGXHooks[kNGXHookCount] = {
     {.name = "NVSDK_NGX_D3D12_Init",
@@ -2102,6 +2135,9 @@ static const NGXHookEntry kNGXHooks[kNGXHookCount] = {
     {.name = "NVSDK_NGX_D3D11_AllocateParameters",
      .detour = reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D11_AllocateParameters_Detour),
      .original = reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_AllocateParameters_Original)},
+    {.name = "NVSDK_NGX_UpdateFeature",
+     .detour = reinterpret_cast<LPVOID>(&NVSDK_NGX_UpdateFeature_Detour),
+     .original = reinterpret_cast<LPVOID*>(&NVSDK_NGX_UpdateFeature_Original)},
 };
 // Install NGX hooks
 bool InstallNGXHooks(HMODULE ngx_dll) {
@@ -2246,3 +2282,154 @@ bool ApplyNGXParameterOverride(const char* param_name, const char* param_type) {
 
     return false;
 }
+
+const char* GetNGXCounterKindLabel(NGXCounterKind kind) {
+    switch (kind) {
+    case NGXCounterKind::ParameterSetF:
+        return "Parameter::SetF";
+    case NGXCounterKind::ParameterSetD:
+        return "Parameter::SetD";
+    case NGXCounterKind::ParameterSetI:
+        return "Parameter::SetI";
+    case NGXCounterKind::ParameterSetUI:
+        return "Parameter::SetUI";
+    case NGXCounterKind::ParameterSetULL:
+        return "Parameter::SetULL";
+    case NGXCounterKind::ParameterGetI:
+        return "Parameter::GetI";
+    case NGXCounterKind::ParameterGetUI:
+        return "Parameter::GetUI";
+    case NGXCounterKind::ParameterGetULL:
+        return "Parameter::GetULL";
+    case NGXCounterKind::ParameterGetVoidPointer:
+        return "Parameter::GetVoidPointer";
+    case NGXCounterKind::D3D12_Init:
+        return "NVSDK_NGX_D3D12_Init";
+    case NGXCounterKind::D3D12_InitExt:
+        return "NVSDK_NGX_D3D12_Init_Ext";
+    case NGXCounterKind::D3D12_InitProjectId:
+        return "NVSDK_NGX_D3D12_Init_with_ProjectID";
+    case NGXCounterKind::D3D12_Shutdown1:
+        return "NVSDK_NGX_D3D12_Shutdown1";
+    case NGXCounterKind::D3D12_CreateFeature:
+        return "NVSDK_NGX_D3D12_CreateFeature";
+    case NGXCounterKind::D3D12_ReleaseFeature:
+        return "NVSDK_NGX_D3D12_ReleaseFeature";
+    case NGXCounterKind::D3D12_EvaluateFeature:
+        return "NVSDK_NGX_D3D12_EvaluateFeature";
+    case NGXCounterKind::D3D12_EvaluateFeature_C:
+        return "NVSDK_NGX_D3D12_EvaluateFeature_C";
+    case NGXCounterKind::D3D11_Init:
+        return "NVSDK_NGX_D3D11_Init";
+    case NGXCounterKind::D3D11_InitExt:
+        return "NVSDK_NGX_D3D11_Init_Ext";
+    case NGXCounterKind::D3D11_InitProjectId:
+        return "NVSDK_NGX_D3D11_Init_with_ProjectID";
+    case NGXCounterKind::D3D11_Shutdown1:
+        return "NVSDK_NGX_D3D11_Shutdown1";
+    case NGXCounterKind::D3D11_CreateFeature:
+        return "NVSDK_NGX_D3D11_CreateFeature";
+    case NGXCounterKind::D3D11_ReleaseFeature:
+        return "NVSDK_NGX_D3D11_ReleaseFeature";
+    case NGXCounterKind::D3D11_EvaluateFeature:
+        return "NVSDK_NGX_D3D11_EvaluateFeature";
+    case NGXCounterKind::D3D11_EvaluateFeature_C:
+        return "NVSDK_NGX_D3D11_EvaluateFeature_C";
+    case NGXCounterKind::D3D12_GetParameters:
+        return "NVSDK_NGX_D3D12_GetParameters";
+    case NGXCounterKind::D3D12_GetCapabilityParameters:
+        return "NVSDK_NGX_D3D12_GetCapabilityParameters";
+    case NGXCounterKind::D3D12_AllocateParameters:
+        return "NVSDK_NGX_D3D12_AllocateParameters";
+    case NGXCounterKind::D3D11_GetParameters:
+        return "NVSDK_NGX_D3D11_GetParameters";
+    case NGXCounterKind::D3D11_GetCapabilityParameters:
+        return "NVSDK_NGX_D3D11_GetCapabilityParameters";
+    case NGXCounterKind::D3D11_AllocateParameters:
+        return "NVSDK_NGX_D3D11_AllocateParameters";
+    case NGXCounterKind::FramegenCreateAttempt:
+        return "FrameGen create attempt (DLSS-G)";
+    case NGXCounterKind::Total:
+        return "total (all hooked NGX paths)";
+    case NGXCounterKind::Count_:
+    default:
+        return "?";
+    }
+}
+
+uint32_t GetNGXCounterValue(NGXCounterKind kind) {
+    switch (kind) {
+    case NGXCounterKind::ParameterSetF:
+        return g_ngx_counters.parameter_setf_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::ParameterSetD:
+        return g_ngx_counters.parameter_setd_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::ParameterSetI:
+        return g_ngx_counters.parameter_seti_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::ParameterSetUI:
+        return g_ngx_counters.parameter_setui_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::ParameterSetULL:
+        return g_ngx_counters.parameter_setull_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::ParameterGetI:
+        return g_ngx_counters.parameter_geti_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::ParameterGetUI:
+        return g_ngx_counters.parameter_getui_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::ParameterGetULL:
+        return g_ngx_counters.parameter_getull_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::ParameterGetVoidPointer:
+        return g_ngx_counters.parameter_getvoidpointer_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::D3D12_Init:
+        return g_ngx_counters.d3d12_init_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::D3D12_InitExt:
+        return g_ngx_counters.d3d12_init_ext_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::D3D12_InitProjectId:
+        return g_ngx_counters.d3d12_init_projectid_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::D3D12_Shutdown1:
+        return g_ngx_counters.d3d12_shutdown1_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::D3D12_CreateFeature:
+        return g_ngx_counters.d3d12_createfeature_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::D3D12_ReleaseFeature:
+        return g_ngx_counters.d3d12_releasefeature_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::D3D12_EvaluateFeature:
+        return g_ngx_counters.d3d12_evaluatefeature_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::D3D12_EvaluateFeature_C:
+        return g_ngx_counters.d3d12_evaluatefeature_c_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::D3D11_Init:
+        return g_ngx_counters.d3d11_init_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::D3D11_InitExt:
+        return g_ngx_counters.d3d11_init_ext_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::D3D11_InitProjectId:
+        return g_ngx_counters.d3d11_init_projectid_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::D3D11_Shutdown1:
+        return g_ngx_counters.d3d11_shutdown1_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::D3D11_CreateFeature:
+        return g_ngx_counters.d3d11_createfeature_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::D3D11_ReleaseFeature:
+        return g_ngx_counters.d3d11_releasefeature_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::D3D11_EvaluateFeature:
+        return g_ngx_counters.d3d11_evaluatefeature_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::D3D11_EvaluateFeature_C:
+        return g_ngx_counters.d3d11_evaluatefeature_c_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::D3D12_GetParameters:
+        return g_ngx_counters.d3d12_getparameters_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::D3D12_GetCapabilityParameters:
+        return g_ngx_counters.d3d12_getcapabilityparameters_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::D3D12_AllocateParameters:
+        return g_ngx_counters.d3d12_allocateparameters_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::D3D11_GetParameters:
+        return g_ngx_counters.d3d11_getparameters_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::D3D11_GetCapabilityParameters:
+        return g_ngx_counters.d3d11_getcapabilityparameters_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::D3D11_AllocateParameters:
+        return g_ngx_counters.d3d11_allocateparameters_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::FramegenCreateAttempt:
+        return g_ngx_counters.framegen_create_attempt_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::Total:
+        return g_ngx_counters.total_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::Count_:
+    default:
+        return 0;
+    }
+}
+
+static_assert(static_cast<int>(NGXCounterKind::Count_) == 33,
+              "Update GetNGXCounterKindLabel/GetNGXCounterValue and debug tab loop when NGXCounterKind changes");

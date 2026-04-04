@@ -152,42 +152,42 @@ void LoadAddonsFromPluginsDirectory_IterateAndLoad(const std::filesystem::path& 
 }  // namespace
 
 void OnInitCommandList(reshade::api::command_list* cmd_list) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     if (cmd_list == nullptr) {
         return;
     }
 }
 
 void OnDestroyCommandList(reshade::api::command_list* cmd_list) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     if (cmd_list == nullptr) {
         return;
     }
 }
 
 void OnInitCommandQueue(reshade::api::command_queue* queue) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     if (queue == nullptr) {
         return;
     }
 }
 
 void OnDestroyCommandQueue(reshade::api::command_queue* queue) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     if (queue == nullptr) {
         return;
     }
 }
 
 void OnExecuteCommandList(reshade::api::command_queue* queue, reshade::api::command_list* cmd_list) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     if (queue == nullptr || cmd_list == nullptr) {
         return;
     }
 }
 
 void OnFinishPresent(reshade::api::command_queue* queue, reshade::api::swapchain* swapchain) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     if (queue == nullptr || swapchain == nullptr) {
         return;
     }
@@ -195,7 +195,7 @@ void OnFinishPresent(reshade::api::command_queue* queue, reshade::api::swapchain
 
 void OnReShadeBeginEffects(reshade::api::effect_runtime* runtime, reshade::api::command_list* cmd_list,
                            reshade::api::resource_view rtv, reshade::api::resource_view rtv_srgb) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     if (runtime == nullptr || cmd_list == nullptr) {
         return;
     }
@@ -205,7 +205,7 @@ void OnReShadeBeginEffects(reshade::api::effect_runtime* runtime, reshade::api::
 
 void OnReShadeFinishEffects(reshade::api::effect_runtime* runtime, reshade::api::command_list* cmd_list,
                             reshade::api::resource_view rtv, reshade::api::resource_view rtv_srgb) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     if (runtime == nullptr || cmd_list == nullptr) {
         return;
     }
@@ -217,7 +217,7 @@ void OnReShadePresent(reshade::api::effect_runtime* runtime) { (void)runtime; }
 
 void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
     LogInfo("[OnInitEffectRuntime] entry");
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     if (runtime == nullptr) {
         LogInfo("[OnInitEffectRuntime] runtime is null, returning");
         return;
@@ -236,7 +236,7 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
 }
 
 bool OnReShadeOverlayOpen(reshade::api::effect_runtime* runtime, bool open, reshade::api::input_source source) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     (void)source;
 
     if (open) {

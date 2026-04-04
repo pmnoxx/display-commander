@@ -101,7 +101,7 @@ static NVLL_VK_SET_SLEEP_MODE_PARAMS g_last_nvll_vk_applied_sleep_mode_params = 
 static std::atomic<bool> g_nvll_vk_has_applied_params{false};
 
 static NvLL_VK_Status NvLL_VK_SetLatencyMarker_Detour(void* device, NVLL_VK_LATENCY_MARKER_PARAMS* params) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     g_nvll_hook_call_counts[static_cast<std::size_t>(NvllVkHook::SetLatencyMarker)].fetch_add(1);
     if (params == nullptr) {
         if (NvLL_VK_SetLatencyMarker_Original != nullptr) {
@@ -182,7 +182,7 @@ static NvLL_VK_Status NvLL_VK_SetLatencyMarker_Detour(void* device, NVLL_VK_LATE
 }
 
 static NvLL_VK_Status NvLL_VK_InitLowLatencyDevice_Detour(void* device, void* pSignalSemaphoreHandle) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     g_nvll_hook_call_counts[static_cast<std::size_t>(NvllVkHook::InitLowLatencyDevice)].fetch_add(1);
     if (NvLL_VK_InitLowLatencyDevice_Original == nullptr) {
         return 1;
@@ -191,7 +191,7 @@ static NvLL_VK_Status NvLL_VK_InitLowLatencyDevice_Detour(void* device, void* pS
 }
 
 static NvLL_VK_Status NvLL_VK_SetSleepMode_Detour(void* device, NVLL_VK_SET_SLEEP_MODE_PARAMS* params) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     g_nvll_hook_call_counts[static_cast<std::size_t>(NvllVkHook::SetSleepMode)].fetch_add(1);
     if (NvLL_VK_SetSleepMode_Original == nullptr) {
         return 1;
@@ -232,7 +232,7 @@ static NvLL_VK_Status NvLL_VK_SetSleepMode_Detour(void* device, NVLL_VK_SET_SLEE
 }
 
 static NvLL_VK_Status NvLL_VK_Sleep_Detour(void* device, uint64_t signalValue) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     g_nvll_hook_call_counts[static_cast<std::size_t>(NvllVkHook::Sleep)].fetch_add(1);
     if (NvLL_VK_Sleep_Original == nullptr) {
         return 1;

@@ -60,7 +60,7 @@ const char* GetAudioChannelLabel(unsigned int channel_index, unsigned int channe
 }
 
 void DrawAudioSettingsInternal(display_commander::ui::IImGuiWrapper& imgui) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     g_rendering_ui_section.store("ui:tab:main_new:audio:entry", std::memory_order_release);
     // Default output device format info (channel config, Hz, bits, format, extension, device name)
     g_rendering_ui_section.store("ui:tab:main_new:audio:device_info", std::memory_order_release);
@@ -538,7 +538,7 @@ void DrawTab(display_commander::ui::IImGuiWrapper& imgui, reshade::api::effect_r
 
 
 void DrawOverlayVUBars(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     unsigned int meter_count = 0;
     if (!::GetAudioMeterChannelCount(&meter_count) || meter_count == 0) {
         return;

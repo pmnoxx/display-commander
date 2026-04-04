@@ -326,7 +326,7 @@ IDXGISwapChain_ResizeBuffers1_pfn IDXGISwapChain_ResizeBuffers1_Original = nullp
 
 // Helper function for common Present/Present1 logic after calling original
 void HandlePresentAfter(bool frame_generation_aware) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     if (perf_measurement::IsSuppressionEnabled()
         && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::HandlePresentAfter)) {
         return;
@@ -406,7 +406,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
         IDXGISwapChain* sc_for_monitor = (data.dxgi_swapchain != nullptr) ? data.dxgi_swapchain : This;
         ::dxgi::fps_limiter::SignalRefreshRateMonitor(sc_for_monitor);
     }
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
 
     return res;
 }
@@ -420,7 +420,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
         display_commanderhooks::dxgi::LoadDCDxgiSwapchainData(baseSwapChain, &data);
     }
 
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
 
     // Apply VSync override (Main tab): -1 = no override, 0-4 = force SyncInterval
     const int override_val = VsyncOverrideComboIndexToApiValue(settings::g_mainTabSettings.vsync_override.GetValue());
@@ -481,7 +481,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_CheckColorSpaceSupport_Detour(IDXGISwapChain3* This,
                                                                        DXGI_COLOR_SPACE_TYPE ColorSpace,
                                                                        UINT* pColorSpaceSupport) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
 
     if (IDXGISwapChain_CheckColorSpaceSupport_Original != nullptr) {
         HRESULT hr = IDXGISwapChain_CheckColorSpaceSupport_Original(This, ColorSpace, pColorSpaceSupport);
@@ -520,7 +520,7 @@ std::atomic<int> g_last_set_fullscreen_state{-1};  // -1 for not set, 0 for fals
 std::atomic<IDXGIOutput*> g_last_set_fullscreen_target{nullptr};
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetFullscreenState_Detour(IDXGISwapChain* This, BOOL Fullscreen,
                                                                    IDXGIOutput* pTarget) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
 
     if (Fullscreen == g_last_set_fullscreen_state.load() && pTarget == g_last_set_fullscreen_target.load()) {
         return S_OK;
@@ -542,7 +542,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetFullscreenState_Detour(IDXGISwapChai
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenState_Detour(IDXGISwapChain* This, BOOL* pFullscreen,
                                                                  IDXGIOutput** ppTarget) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     auto hr = IDXGISwapChain_GetFullscreenState_Original(This, pFullscreen, ppTarget);
     {
         static int s_err_count = 0;
@@ -558,7 +558,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenState_Detour(IDXGISwapChai
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeBuffers_Detour(IDXGISwapChain* This, UINT BufferCount, UINT Width,
                                                                 UINT Height, DXGI_FORMAT NewFormat, UINT SwapChainFlags) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
 
     if (Width != 0 && Height != 0) {
         g_game_render_width.store(Width);
@@ -574,7 +574,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeBuffers_Detour(IDXGISwapChain* Th
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeTarget_Detour(IDXGISwapChain* This,
                                                              const DXGI_MODE_DESC* pNewTargetParameters) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
 
     if (pNewTargetParameters != nullptr) {
         if (pNewTargetParameters->Width != 0 && pNewTargetParameters->Height != 0) {
@@ -595,7 +595,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeBuffers1_Detour(IDXGISwapChain3* 
                                                               UINT Height, DXGI_FORMAT Format, UINT SwapChainFlags,
                                                               const UINT* pCreationNodeMask,
                                                               IUnknown* const* ppPresentQueue) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
 
     if (Width != 0 && Height != 0) {
         g_game_render_width.store(Width);

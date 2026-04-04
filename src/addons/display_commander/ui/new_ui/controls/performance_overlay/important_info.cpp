@@ -67,9 +67,9 @@ static void DrawDxgiOverlaySubsection(display_commander::ui::IImGuiWrapper& imgu
             imgui.Spacing();
             if (dxgi_stats.is_valid) {
                 if (dxgi_stats.all_last_20_within_1s && dxgi_stats.samples_below_threshold_last_10s >= 2) {
-                    imgui.TextColored(ui::colors::TEXT_SUCCESS, "DXGI VRR: On");
+                    imgui.TextColored(ui::colors::TEXT_SUCCESS, "VRR: On");
                 } else {
-                    imgui.TextColored(ui::colors::TEXT_DIMMED, "DXGI VRR: Off");
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "VRR: Off");
                 }
                 imgui.SameLine(0.0f, imgui.GetStyle().ItemInnerSpacing.x * 2.0f);
             }

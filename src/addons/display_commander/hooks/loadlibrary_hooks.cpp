@@ -338,7 +338,7 @@ std::wstring ExtractModuleName(const std::wstring& fullPath) {
 
 // Hooked LoadLibraryA function
 HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     const HMODULE load_caller = GetCallingDLL();
     const std::string caller_str = GetCallerModulePathForLog(load_caller);
     std::string timestamp = GetCurrentTimestamp();
@@ -419,7 +419,7 @@ HMODULE WINAPI LoadLibraryW_Direct(LPCWSTR lpLibFileName) {
 
 // Hooked LoadLibraryW function
 HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     const HMODULE load_caller = GetCallingDLL();
     const std::string caller_str = GetCallerModulePathForLog(load_caller);
     std::string timestamp = GetCurrentTimestamp();
@@ -482,7 +482,7 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
 
 // Hooked LoadLibraryExA function
 HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD dwFlags) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     const HMODULE load_caller = GetCallingDLL();
     const std::string caller_str = GetCallerModulePathForLog(load_caller);
     std::string timestamp = GetCurrentTimestamp();
@@ -557,7 +557,7 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
 
 // Hooked LoadLibraryExW function
 HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     const HMODULE load_caller = GetCallingDLL();
     const std::string caller_str = GetCallerModulePathForLog(load_caller);
     std::string timestamp = GetCurrentTimestamp();
@@ -629,10 +629,11 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
     return result;
 }
 
+#if 0
 // Hooked LoadPackagedLibrary (Windows 8+; UWP packaged apps). Same blocking/tracking as LoadLibraryW; no DLSS path
 // override (package full name is not a file path).
 HMODULE WINAPI LoadPackagedLibrary_Detour(LPCWSTR lpwszPackageFullName, DWORD Reserved) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     const HMODULE load_caller = GetCallingDLL();
     const std::string caller_str = GetCallerModulePathForLog(load_caller);
     std::string timestamp = GetCurrentTimestamp();
@@ -668,10 +669,13 @@ HMODULE WINAPI LoadPackagedLibrary_Detour(LPCWSTR lpwszPackageFullName, DWORD Re
     return result;
 }
 
+#endif
 // Hooked LdrLoadDll (ntdll). Catches loads that bypass kernel32 (e.g. direct ntdll calls). Blocking + tracking only
 // (no DLSS path override from this path).
+/*
+causes crashes in ForzaHorizon5
 LONG NTAPI LdrLoadDll_Detour(PWSTR DllPath, PULONG DllCharacteristics, const void* DllName, PVOID* DllHandle) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     const HMODULE load_caller = GetCallingDLL();
     const std::string caller_str = GetCallerModulePathForLog(load_caller);
     const auto* name = static_cast<const UnicodeStringNtdll*>(DllName);
@@ -725,6 +729,7 @@ LONG NTAPI LdrLoadDll_Detour(PWSTR DllPath, PULONG DllCharacteristics, const voi
 
     return status;
 }
+*/
 
 // Hooked GetModuleHandleW: return DLSS override module when we loaded it via redirect (so hooks and version use it)
 HMODULE WINAPI GetModuleHandleW_Detour(LPCWSTR lpModuleName) {
@@ -797,7 +802,7 @@ static bool IsReshadeTryingToFreeDisplayCommander(HMODULE hLibModule, HMODULE ca
 
 // Hooked FreeLibrary function
 BOOL WINAPI FreeLibrary_Detour(HMODULE hLibModule) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
 
     if (IsReshadeTryingToFreeDisplayCommander(hLibModule, GetCallingDLL())) {
         LogInfo("[FreeLibrary] ReShade unloading Display Commander (0x%p) - unregistering addon and overlays first",
@@ -1026,6 +1031,7 @@ bool InstallLoadLibraryHooks() {
         return false;
     }
 
+    /*
     // Hook LoadPackagedLibrary (Windows 8+; optional - skip if not available e.g. Windows 7)
     HMODULE hKernel32 = GetModuleHandleW(L"kernel32.dll");
     if (hKernel32) {
@@ -1066,6 +1072,7 @@ bool InstallLoadLibraryHooks() {
             LogInfo("LdrLoadDll not found in ntdll, skipping hook");
         }
     }
+    */
 
     // Hook GetModuleHandleW / GetModuleHandleA / GetModuleHandleEx (so DLSS override handle is returned for
     // hooks/version)
@@ -1435,7 +1442,7 @@ static std::string GetModulePathUtf8(HMODULE hMod) {
 }
 
 void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     {
         utils::SRWLockExclusive lock(utils::g_module_srwlock);
         if (g_on_module_loaded_seen_handles.find(hModule) != g_on_module_loaded_seen_handles.end()) {

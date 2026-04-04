@@ -11,7 +11,7 @@
 
 void RegisterReShadeEvents(HMODULE h_module) {
     (void)h_module;
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     // Register reshade_overlay event for test code
     reshade::register_event<reshade::addon_event::reshade_overlay>(OnPerformanceOverlay);
 

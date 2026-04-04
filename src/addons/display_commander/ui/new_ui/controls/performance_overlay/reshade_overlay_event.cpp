@@ -71,7 +71,7 @@ void DrawCustomCursor(display_commander::ui::IImGuiWrapper& gui_wrapper) {
 }
 
 void OnPerformanceOverlay_DisplayCommanderWindow(reshade::api::effect_runtime* runtime) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     display_commander::ui::ImGuiWrapperReshade overlay_wrapper;
     const float fixed_width = 1600.0f;
     float saved_x = settings::g_mainTabSettings.display_commander_ui_window_x.GetValue();
@@ -133,7 +133,7 @@ void OnPerformanceOverlay_TestWindow(reshade::api::effect_runtime* runtime, bool
 }  // namespace reshade_overlay_detail
 
 void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     const bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
     const bool show_tooltips = show_display_commander_ui;
 
@@ -166,7 +166,7 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
 }
 
 void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     if (runtime != nullptr) {
         AddReShadeRuntime(runtime);
     }

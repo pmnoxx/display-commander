@@ -56,7 +56,7 @@ static std::atomic<LONGLONG> g_last_continuous_monitoring_loop_real_ns{0};
 std::atomic<const char*> g_continuous_monitoring_section{nullptr};
 
 HWND GetCurrentForeGroundWindow() {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     HWND foreground_window = display_commanderhooks::GetForegroundWindow_Direct();
 
     DWORD window_pid = 0;
@@ -66,7 +66,7 @@ HWND GetCurrentForeGroundWindow() {
 }
 
 void HandleReflexAutoConfigure() {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     // Only run if auto-configure is enabled
     if (!settings::g_advancedTabSettings.reflex_auto_configure.GetValue()) {
         return;
@@ -134,7 +134,7 @@ void TrySetGameWindowFromForeground() {
 }
 
 void check_is_background() {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     HWND hwnd = g_last_swapchain_hwnd.load();
 
     // BACKGROUND DETECTION: Run at least once (no early return) so g_app_in_background and
@@ -368,7 +368,7 @@ static void Every1sVrrStatus() {
 }  // namespace
 
 void every1s_tasks() {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     if (kMonitorScreensaver) {
         Every1sScreensaver();
     }
@@ -384,7 +384,7 @@ void every1s_tasks() {
 }
 
 void HandleKeyboardShortcuts() {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     // Use new hotkey system
     ui::new_ui::ProcessHotkeys();
 }
@@ -440,7 +440,7 @@ NvAPI_Status ResolveDisplayIdByNameWithReinit(const std::string& display_name, N
 namespace nvapi {
 
 bool TryQueryVrrStatusFromDxgiOutputDeviceName(const wchar_t* dxgi_output_device_name, VrrStatus& out_status) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     out_status = nvapi::VrrStatus{};
 
     if (!nvapi::EnsureNvApiInitialized()) {
@@ -618,7 +618,7 @@ void StuckCheckWatchdogThread() {
 
 // Main monitoring thread function
 void ContinuousMonitoringThread() {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
     LogInfo("Continuous monitoring thread started");
 
     auto start_time = utils::get_now_ns();
@@ -633,7 +633,7 @@ void ContinuousMonitoringThread() {
                                                     : (50 * 1000000);  // 50 ms when high-freq disabled
         g_continuous_monitoring_section.store("sleeping", std::memory_order_release);
         std::this_thread::sleep_for(std::chrono::nanoseconds(sleep_ns));
-        CALL_GUARD_NO_TS();;
+        CALL_GUARD_NO_TS();
         LONGLONG loop_time_ns = utils::get_real_time_ns();
         g_last_continuous_monitoring_loop_real_ns.store(loop_time_ns, std::memory_order_release);
         g_continuous_monitoring_section.store("after_sleep", std::memory_order_release);
@@ -646,7 +646,7 @@ void ContinuousMonitoringThread() {
 
         // Periodic display cache refresh off the UI thread
         {
-            CALL_GUARD_NO_TS();;
+            CALL_GUARD_NO_TS();
             LONGLONG now_ns = utils::get_now_ns();
             if (kMonitorDisplayCache) {
                 const int cache_interval_sec = kMonitorDisplayCacheIntervalSec;
@@ -665,7 +665,7 @@ void ContinuousMonitoringThread() {
 
         // Apply CPU affinity mask if configured
         {
-            CALL_GUARD_NO_TS();;
+            CALL_GUARD_NO_TS();
             static int last_cpu_cores = -1;
             int cpu_cores = settings::g_mainTabSettings.cpu_cores.GetValue();
 
@@ -722,7 +722,7 @@ void ContinuousMonitoringThread() {
         LONGLONG now_ns = utils::get_now_ns();
         const LONGLONG high_freq_interval_ns = static_cast<LONGLONG>(kMonitorHighFreqIntervalMs) * utils::NS_TO_MS;
         if (kMonitorHighFreqEnabled && now_ns - last_60fps_update_ns >= high_freq_interval_ns) {
-            CALL_GUARD_NO_TS();;
+            CALL_GUARD_NO_TS();
             g_continuous_monitoring_section.store("60fps_block", std::memory_order_release);
             check_is_background();
             last_60fps_update_ns = now_ns;
@@ -749,21 +749,21 @@ void ContinuousMonitoringThread() {
         const int per_second_interval_sec = kMonitorPerSecondIntervalSec;
         if (kMonitorPerSecondEnabled
             && now_ns - last_1s_update_ns >= static_cast<LONGLONG>(per_second_interval_sec) * utils::SEC_TO_NS) {
-            CALL_GUARD_NO_TS();;
+            CALL_GUARD_NO_TS();
             last_1s_update_ns = now_ns;
             check_is_background();
             g_continuous_monitoring_section.store("every1s_tasks", std::memory_order_release);
             every1s_tasks();
 
             if (kMonitorExclusiveKeyGroups) {
-                CALL_GUARD_NO_TS();;
+                CALL_GUARD_NO_TS();
                 g_continuous_monitoring_section.store("exclusive_key_groups", std::memory_order_release);
                 display_commanderhooks::exclusive_key_groups::UpdateCachedActiveKeys();
             }
 
             // Re-enumerate loaded modules 6 times, every 10s (at 10s, 20s, 30s, 40s, 50s, 60s). Catches modules
             // loaded via paths EnumProcessModules misses at init, e.g. NvLowLatencyVk.dll.
-            CALL_GUARD_NO_TS();;
+            CALL_GUARD_NO_TS();
             g_continuous_monitoring_section.store("enumerate_loaded_modules_10s", std::memory_order_release);
             {
                 static int enumerate_after_10s_count = 0;
@@ -787,13 +787,13 @@ void ContinuousMonitoringThread() {
             }
 
             if (kMonitorReflexAutoConfigure && now_ns - start_time >= 10 * utils::SEC_TO_NS) {
-                CALL_GUARD_NO_TS();;
+                CALL_GUARD_NO_TS();
                 g_continuous_monitoring_section.store("reflex_auto_configure", std::memory_order_release);
                 HandleReflexAutoConfigure();
             }
 
             // Auto-apply resolution on game start
-            CALL_GUARD_NO_TS();;
+            CALL_GUARD_NO_TS();
             static bool auto_apply_on_start_done = false;
             namespace res_widget = display_commander::widgets::resolution_widget;
             g_continuous_monitoring_section.store("auto_apply_on_start", std::memory_order_release);

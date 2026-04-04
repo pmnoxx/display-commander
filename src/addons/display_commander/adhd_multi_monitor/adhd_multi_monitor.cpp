@@ -131,10 +131,10 @@ void AdhdMultiMonitorManager::DestroyBackgroundWindow() {
 void AdhdMultiMonitorManager::MessagePumpThreadFunc() {
     const HANDLE stop = pump_stop_event_;
     if (!stop) return;
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
 
     while (true) {
-        CALL_GUARD_NO_TS();;
+        CALL_GUARD_NO_TS();
 
         // Read position request and apply on this thread so the window is owned here and receives messages.
         bool show = false;

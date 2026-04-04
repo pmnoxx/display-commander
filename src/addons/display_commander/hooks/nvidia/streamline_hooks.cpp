@@ -281,7 +281,7 @@ static void UpdateNGXParamsFromDLSSGOptions(const sl::DLSSGState& state, const s
 // Hook functions
 sl::Result slInit_Detour(const sl::Preferences& pref, uint64_t sdkVersion) {
     (void)pref;
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
 
     // Store the SDK version
     g_last_sdk_version.store(sdkVersion);
@@ -298,7 +298,7 @@ sl::Result slInit_Detour(const sl::Preferences& pref, uint64_t sdkVersion) {
 }
 
 sl::Result slIsFeatureSupported_Detour(sl::Feature feature, const sl::AdapterInfo& adapterInfo) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
 
     static int log_count = 0;
     if (log_count < 30) {
@@ -316,7 +316,7 @@ sl::Result slIsFeatureSupported_Detour(sl::Feature feature, const sl::AdapterInf
 }
 
 sl::Result slGetNativeInterface_Detour(void* proxyInterface, void** baseInterface) {
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
 
     // Log the call
     LogInfo("slGetNativeInterface called");
@@ -333,7 +333,7 @@ sl::Result slGetNativeInterface_Detour(void* proxyInterface, void** baseInterfac
 // original
 static sl::Result slDLSSGetOptimalSettings_Detour(const sl::DLSSOptions& options, sl::DLSSOptimalSettings& settings) {
     static bool first_call = true;
-    CALL_GUARD_NO_TS();;
+    CALL_GUARD_NO_TS();
 
     bool optionsLogged = false;
     if (first_call) {

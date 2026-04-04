@@ -53,6 +53,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     bool show_dlss_render_preset = settings::g_mainTabSettings.show_dlss_render_preset.GetValue();
     bool show_fps_limiter_src = settings::g_mainTabSettings.show_fps_limiter_src.GetValue();
     bool show_overlay_vram = settings::g_mainTabSettings.show_overlay_vram.GetValue();
+    bool show_overlay_ram = settings::g_mainTabSettings.show_overlay_ram.GetValue();
     bool show_dxgi_vrr_status = settings::g_mainTabSettings.show_dxgi_vrr_status.GetValue();
     bool show_dxgi_refresh_rate = settings::g_mainTabSettings.show_dxgi_refresh_rate.GetValue();
 
@@ -301,8 +302,9 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                 imgui.SetTooltipEx("VRAM unavailable (DXGI adapter or budget query failed).");
             }
         }
+    }
 
-        imgui.SameLine();
+    if (show_overlay_ram) {
         MEMORYSTATUSEX mem_status = {};
         mem_status.dwLength = sizeof(mem_status);
         if (GlobalMemoryStatusEx(&mem_status) != 0 && mem_status.ullTotalPhys > 0) {

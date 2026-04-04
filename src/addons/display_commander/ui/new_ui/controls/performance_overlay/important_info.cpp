@@ -737,6 +737,17 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         }
         imgui.NextColumn();
 
+        bool show_overlay_ram = settings::g_mainTabSettings.show_overlay_ram.GetValue();
+        if (imgui.Checkbox("RAM", &show_overlay_ram)) {
+            settings::g_mainTabSettings.show_overlay_ram.SetValue(show_overlay_ram);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "Shows system RAM in use and this process working set (MiB) in the performance overlay "
+                "(GlobalMemoryStatusEx, GetProcessMemoryInfo).");
+        }
+        imgui.NextColumn();
+
         const bool smooth_motion_latency = g_smooth_motion_dll_loaded.load(std::memory_order_relaxed);
         if (smooth_motion_latency) {
             imgui.BeginDisabled();

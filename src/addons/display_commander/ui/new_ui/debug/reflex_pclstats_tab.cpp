@@ -55,6 +55,69 @@ const char* PclStatsMarkerSlotLabel(std::size_t i) {
     return "reserved";
 }
 
+using NvapiLatencyFrame = ReflexProvider::NvapiLatencyFrame;
+
+struct LatencyMilestoneRow {
+    const char* label = nullptr;
+    bool valid = false;
+    /** (stamp_ns - sim_start_ns) / 1e6; sim_start row is 0 when valid. */
+    double delta_ms_from_sim_start = 0.0;
+};
+
+void BuildLatencyMilestonesVsSimStart(const NvapiLatencyFrame& fr, std::vector<LatencyMilestoneRow>& out_rows) {
+    out_rows.clear();
+    const uint64_t sim0 = fr.sim_start_time_ns;
+    static const struct {
+        const char* label;
+        uint64_t NvapiLatencyFrame::* stamp_ns;
+    } kMilestones[] = {
+        {"input_sample", &NvapiLatencyFrame::input_sample_time_ns},
+        {"sim_start", &NvapiLatencyFrame::sim_start_time_ns},
+        {"sim_end", &NvapiLatencyFrame::sim_end_time_ns},
+        {"render_submit_start", &NvapiLatencyFrame::render_submit_start_time_ns},
+        {"render_submit_end", &NvapiLatencyFrame::render_submit_end_time_ns},
+        {"present_start", &NvapiLatencyFrame::present_start_time_ns},
+        {"present_end", &NvapiLatencyFrame::present_end_time_ns},
+        {"driver_start", &NvapiLatencyFrame::driver_start_time_ns},
+        {"driver_end", &NvapiLatencyFrame::driver_end_time_ns},
+        {"os_render_queue_start", &NvapiLatencyFrame::os_render_queue_start_time_ns},
+        {"os_render_queue_end", &NvapiLatencyFrame::os_render_queue_end_time_ns},
+        {"gpu_render_start", &NvapiLatencyFrame::gpu_render_start_time_ns},
+        {"gpu_render_end", &NvapiLatencyFrame::gpu_render_end_time_ns},
+    };
+
+    for (const auto& m : kMilestones) {
+        const uint64_t t = fr.*(m.stamp_ns);
+        LatencyMilestoneRow row{};
+        row.label = m.label;
+        if (sim0 == 0 || t == 0) {
+            row.valid = false;
+            row.delta_ms_from_sim_start = 0.0;
+        } else {
+            row.valid = true;
+            row.delta_ms_from_sim_start = static_cast<double>(t - sim0) / 1e6;
+        }
+        out_rows.push_back(row);
+    }
+}
+
+/** First non-zero timestamp in NVAPI pipeline order (ns); 0 if all zero. */
+uint64_t FirstNonzeroPipelineStampNs(const NvapiLatencyFrame& fr) {
+    const uint64_t stamps[] = {fr.input_sample_time_ns,   fr.sim_start_time_ns,
+                               fr.sim_end_time_ns,        fr.render_submit_start_time_ns,
+                               fr.render_submit_end_time_ns, fr.present_start_time_ns,
+                               fr.present_end_time_ns,    fr.driver_start_time_ns,
+                               fr.driver_end_time_ns,     fr.os_render_queue_start_time_ns,
+                               fr.os_render_queue_end_time_ns, fr.gpu_render_start_time_ns,
+                               fr.gpu_render_end_time_ns};
+    for (const uint64_t t : stamps) {
+        if (t != 0) {
+            return t;
+        }
+    }
+    return 0;
+}
+
 }  // namespace
 
 void DrawReflexPclstatsTab(display_commander::ui::IImGuiWrapper& imgui) {
@@ -163,10 +226,19 @@ void DrawReflexPclstatsTab(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.TextColored(ImVec4{0.85f, 0.85f, 0.85f, 1.0f}, "Recent NVAPI frame reports (up to 10)");
     imgui.Indent();
     static std::vector<ReflexProvider::NvapiLatencyFrame> s_frames;
+    static int s_breakdown_frame_idx = 0;
     if (imgui.Button("Refresh latency frames") && g_reflexProvider) {
         (void)g_reflexProvider->GetRecentLatencyFrames(s_frames, 10);
+        if (s_frames.empty()) {
+            s_breakdown_frame_idx = 0;
+        } else if (s_breakdown_frame_idx >= static_cast<int>(s_frames.size())) {
+            s_breakdown_frame_idx = 0;
+        }
     }
     if (g_reflexProvider && !s_frames.empty()) {
+        if (s_breakdown_frame_idx < 0 || s_breakdown_frame_idx >= static_cast<int>(s_frames.size())) {
+            s_breakdown_frame_idx = 0;
+        }
         if (imgui.BeginTable("reflex_recent_frames", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
             imgui.TableSetupColumn("FrameID");
             imgui.TableSetupColumn("Sim start (ns)");
@@ -185,6 +257,79 @@ void DrawReflexPclstatsTab(display_commander::ui::IImGuiWrapper& imgui) {
                 imgui.Text("%" PRIu64, static_cast<unsigned long long>(fr.gpu_render_end_time_ns));
             }
             imgui.EndTable();
+        }
+
+        imgui.Spacing();
+        const int kBreakdownHeaderOpen = static_cast<int>(ImGuiTreeNodeFlags_DefaultOpen);
+        if (imgui.CollapsingHeader("GetLatency segment breakdown (NvAPI_D3D_GetLatency)", kBreakdownHeaderOpen)) {
+            imgui.TextColored(::ui::colors::TEXT_DIMMED,
+                              "Same data as Refresh above: ReflexManager::GetLatency -> NvAPI_D3D_GetLatency_Direct. "
+                              "One column: each stamp minus sim_start (ms). N/A if sim_start or that stamp is zero.");
+#if defined(_M_AMD64) || defined(__x86_64__)
+            std::vector<LatencyMilestoneRow> milestone_rows;
+            const NvapiLatencyFrame& sel = s_frames[static_cast<std::size_t>(s_breakdown_frame_idx)];
+            BuildLatencyMilestonesVsSimStart(sel, milestone_rows);
+
+            char preview[112];
+            std::snprintf(preview, sizeof(preview), "FrameID %" PRIu64,
+                          static_cast<unsigned long long>(sel.frame_id));
+            imgui.PushID("reflex_latency_br");
+            if (imgui.BeginCombo("Frame", preview, 0)) {
+                for (int i = 0; i < static_cast<int>(s_frames.size()); ++i) {
+                    char lbl[112];
+                    std::snprintf(lbl, sizeof(lbl), "FrameID %" PRIu64 " [%d]",
+                                  static_cast<unsigned long long>(s_frames[static_cast<std::size_t>(i)].frame_id), i);
+                    const bool selected = (i == s_breakdown_frame_idx);
+                    if (imgui.Selectable(lbl, selected)) {
+                        s_breakdown_frame_idx = i;
+                    }
+                    if (selected) {
+                        imgui.SetItemDefaultFocus();
+                    }
+                }
+                imgui.EndCombo();
+            }
+            imgui.PopID();
+
+            if (imgui.BeginTable("reflex_latency_segments", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+                imgui.TableSetupColumn("Stamp");
+                imgui.TableSetupColumn("Delta ms (vs sim_start)");
+                imgui.TableHeadersRow();
+                for (const auto& r : milestone_rows) {
+                    imgui.TableNextRow();
+                    imgui.TableNextColumn();
+                    imgui.TextUnformatted(r.label);
+                    imgui.TableNextColumn();
+                    if (r.valid) {
+                        imgui.Text("%.4f", r.delta_ms_from_sim_start);
+                    } else {
+                        imgui.TextColored(::ui::colors::TEXT_DIMMED, "N/A");
+                    }
+                }
+                imgui.EndTable();
+            }
+
+            imgui.Text("gpuFrameTimeUs (NVAPI): %" PRIu32, sel.gpu_frame_time_us);
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltipEx("Difference between previous and current frame gpuRenderEndTime (microseconds, per "
+                                   "NVAPI).");
+            }
+            imgui.Text("gpuActiveRenderTimeUs (NVAPI): %" PRIu32, sel.gpu_active_render_time_us);
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltipEx("Active GPU time between gpu render start and end, excluding idle in between "
+                                   "(microseconds, per NVAPI).");
+            }
+
+            const uint64_t first_ns = FirstNonzeroPipelineStampNs(sel);
+            const uint64_t gpu_end = sel.gpu_render_end_time_ns;
+            if (first_ns != 0 && gpu_end != 0 && gpu_end >= first_ns) {
+                const double span_ms = static_cast<double>(gpu_end - first_ns) / 1e6;
+                imgui.Text("Span (first non-zero pipeline stamp to gpu_render_end): %.4f ms", span_ms);
+            }
+#else
+            imgui.TextColored(::ui::colors::TEXT_DIMMED,
+                              "Segment breakdown not available on 32-bit builds.");
+#endif
         }
     } else {
         imgui.TextColored(::ui::colors::TEXT_DIMMED, "Press Refresh (requires initialized Reflex provider).");

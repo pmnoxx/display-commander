@@ -48,6 +48,7 @@ class ReflexProvider {
         uint64_t gpu_render_start_time_ns = 0;
         uint64_t gpu_render_end_time_ns = 0;
         uint32_t gpu_frame_time_us = 0;
+        uint32_t gpu_active_render_time_us = 0;
     };
 
     // Query NVAPI Reflex latency metrics (PC latency and GPU frame time) for the most recent frame.

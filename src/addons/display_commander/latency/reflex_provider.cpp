@@ -249,6 +249,7 @@ bool ReflexProvider::GetRecentLatencyFrames(std::vector<NvapiLatencyFrame>& out_
         frame.gpu_render_start_time_ns = static_cast<uint64_t>(fr.gpuRenderStartTime) * us_to_ns;
         frame.gpu_render_end_time_ns = static_cast<uint64_t>(fr.gpuRenderEndTime) * us_to_ns;
         frame.gpu_frame_time_us = static_cast<uint32_t>(fr.gpuFrameTimeUs);
+        frame.gpu_active_render_time_us = static_cast<uint32_t>(fr.gpuActiveRenderTimeUs);
         out_frames.push_back(frame);
     }
 

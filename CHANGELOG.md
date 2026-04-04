@@ -22,7 +22,7 @@ Planned:
 - FG rate counter
 
 ## v0.13.125 (2026-04-03)
-- [removal] [ui] **DLSS Control: WM_SIZE button** - Removed the **Send WM_SIZE (force resize / recreate DLSS)** control from the optional DLSS Control panel; **Resize window to quarter then restore** remains. **Details:** `panel_dlss_control.cpp`.
+- [new feature] [ui] **Debug Reflex / PCLStats: GetLatency segment breakdown** - Added debug tab for showing PCLStats (not in release build)
 - [ui] [compatibility] **DLSS Control (Lite / DC_NO_MODULES)** - The optional DLSS Control panel omits the registry **DLSS indicator**, **DLSS module paths (tracked)**, and **CreateFeature seen (tracked)** sections in Lite builds, consistent with hiding **Features Enabled By Default** on the Advanced tab. **Details:** `#if !defined(DC_NO_MODULES)` in `dlss_info.cpp`.
 - [new feature] [ui] [hooks] **Debug NGX: EvaluateFeature override activity** - You can see whether the game recently hit the code path that applies your frame-generation debug overrides, and how many times that has happened this session. **Details:** `GetDebugDLSSGEvaluateOverrideApplyCount` / `GetDebugDLSSGEvaluateOverrideLastApplyTimeNs`, `ApplyDebugDLSSGParameterOverridesForEvaluate`, `ngx_counters_tab.cpp`.
 

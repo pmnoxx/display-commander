@@ -60,6 +60,9 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
     bool Button(const char* label, const ImVec2& size) override { return ImGui::Button(label, size); }
     bool SmallButton(const char* label) override { return ImGui::SmallButton(label); }
     bool Checkbox(const char* label, bool* v) override { return ImGui::Checkbox(label, v); }
+    bool RadioButton(const char* label, int* v, int v_button_id) override {
+        return ImGui::RadioButton(label, v, v_button_id);
+    }
     bool IsItemHovered() override { return ImGui::IsItemHovered(); }
     bool IsItemActive() override { return ImGui::IsItemActive(); }
     bool IsItemDeactivatedAfterEdit() override { return ImGui::IsItemDeactivatedAfterEdit(); }

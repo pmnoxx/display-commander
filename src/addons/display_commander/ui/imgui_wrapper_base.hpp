@@ -78,6 +78,8 @@ struct IImGuiWrapper {
     virtual bool Button(const char* label, const ImVec2& size) = 0;
     virtual bool SmallButton(const char* label) = 0;
     virtual bool Checkbox(const char* label, bool* v) = 0;
+    /** ImGui-style radio: when activated, sets *v = v_button_id. */
+    virtual bool RadioButton(const char* label, int* v, int v_button_id) = 0;
     virtual bool IsItemHovered() = 0;
     virtual bool IsItemActive() = 0;
     virtual bool IsItemDeactivatedAfterEdit() = 0;

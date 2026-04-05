@@ -506,15 +506,12 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
                 "Shows a performance monitoring widget in the main ReShade overlay with frame time graph, "
                 "FPS counter, and other performance metrics. Demonstrates reshade_overlay event usage.");
         }
-        imgui.SameLine();
 
-        (void)ComboSettingEnumWrapper(settings::g_mainTabSettings.overlay_label_mode, "Overlay labels", imgui, 220.0f,
-                                      nullptr);
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "How metric names appear in the performance overlay: no prefix, short tokens, or full phrases. Values "
-                "use a second column when labels are on.");
-        }
+        (void)RadioSettingEnumWrapper(
+            settings::g_mainTabSettings.overlay_label_mode, "Overlay labels",
+            "How metric names appear in the performance overlay: no prefix, short tokens, or full phrases. Values "
+            "use a second column when labels are on.",
+            imgui, RadioSettingLayout::Horizontal);
 
         imgui.Separator();
 

@@ -455,6 +455,13 @@ bool ComboSettingEnumWrapper(ComboSettingEnum<EnumType>& setting, const char* la
                              display_commander::ui::IImGuiWrapper& imgui, float combo_width = 0.f,
                              const ImVec4* label_text_color = nullptr);
 
+enum class RadioSettingLayout { Horizontal, Vertical };
+
+template <typename EnumType>
+bool RadioSettingEnumWrapper(ComboSettingEnum<EnumType>& setting, const char* group_label,
+                             const char* group_tooltip, display_commander::ui::IImGuiWrapper& imgui,
+                             RadioSettingLayout layout = RadioSettingLayout::Horizontal);
+
 // Utility function to load all settings for a tab
 // Smart logging function that only logs settings changed from default values
 void LoadTabSettingsWithSmartLogging(const std::vector<SettingBase*>& settings, const std::string& tab_name);

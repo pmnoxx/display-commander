@@ -10,6 +10,7 @@
 #include "../forkawesome.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <cmath>
 
 // Windows defines min/max as macros, so we need to undefine them
@@ -732,6 +733,58 @@ bool ComboSettingEnumWrapper(ComboSettingEnum<EnumType>& setting, const char* la
     return changed;
 }
 
+
+template <typename EnumType>
+bool RadioSettingEnumWrapper(ComboSettingEnum<EnumType>& setting, const char* group_label,
+                             const char* group_tooltip, display_commander::ui::IImGuiWrapper& imgui,
+                             RadioSettingLayout layout) {
+    imgui.BeginGroup();
+    const int stack_id = static_cast<int>(reinterpret_cast<uintptr_t>(&setting));
+    imgui.PushID(stack_id);
+    bool changed = false;
+    if (group_label != nullptr && group_label[0] != '\0') {
+        imgui.TextUnformatted(group_label);
+        if (group_tooltip != nullptr && imgui.IsItemHovered()) {
+            imgui.SetTooltipEx("%s", group_tooltip);
+        }
+    }
+    int v = setting.GetValue();
+    const auto& labels = setting.GetLabels();
+    const int count = static_cast<int>(labels.size());
+    for (int i = 0; i < count; ++i) {
+        imgui.PushID(i);
+        if (layout == RadioSettingLayout::Horizontal && i > 0) {
+            imgui.SameLine(0.f, imgui.GetStyleItemSpacingX());
+        }
+        if (imgui.RadioButton(labels[static_cast<size_t>(i)], &v, i)) {
+            changed = true;
+        }
+        imgui.PopID();
+    }
+    if (v != setting.GetValue()) {
+        setting.SetValue(v);
+        changed = true;
+    }
+    const int current = setting.GetValue();
+    const int def = setting.GetDefaultValue();
+    if (current != def) {
+        const char* def_label = (def >= 0 && def < count) ? labels[static_cast<size_t>(def)] : "Default";
+        imgui.SameLine();
+        imgui.PushID(count);
+        if (imgui.SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+            setting.SetValue(def);
+            changed = true;
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx("Reset to default (%s)", def_label);
+        }
+        imgui.PopID();
+    }
+    imgui.PopID();
+    imgui.EndGroup();
+    return changed;
+}
+
 // Explicit template instantiations for ComboSettingEnum and ComboSettingEnumWrapper
 template class ComboSettingEnum<ScreensaverMode>;
 template bool ComboSettingEnumWrapper<ScreensaverMode>(ComboSettingEnum<ScreensaverMode>&, const char*,
@@ -762,6 +815,8 @@ template bool ComboSettingEnumWrapper<FpsLimiterPreset>(ComboSettingEnum<FpsLimi
 template class ComboSettingEnum<OverlayLabelMode>;
 template bool ComboSettingEnumWrapper<OverlayLabelMode>(ComboSettingEnum<OverlayLabelMode>&, const char*,
                                                         display_commander::ui::IImGuiWrapper&, float, const ImVec4*);
+template bool RadioSettingEnumWrapper<OverlayLabelMode>(ComboSettingEnum<OverlayLabelMode>&, const char*, const char*,
+                                                        display_commander::ui::IImGuiWrapper&, RadioSettingLayout);
 
 // Smart logging function that only logs settings changed from default values
 void LoadTabSettingsWithSmartLogging(const std::vector<SettingBase*>& settings, const std::string& tab_name) {

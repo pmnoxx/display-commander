@@ -25,6 +25,10 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.13.145 (2026-04-05)
+- [settings] [cleanup] **`default_settings.toml` template: global ReShade paths** - The file created under Display Commander AppData when missing now includes a commented example for **`ReShadeGlobalShadersTexturesPathsEnabled`** so users can default-on global shader/texture search paths for games that do not yet have the key.
+  **Details:** `config/default_settings_file.cpp` `DEFAULT_SETTINGS_TEMPLATE`.
+
 ## v0.13.144 (2026-04-05)
 - [cleanup] [build] **`DC_NO_MODULES` renamed to `DC_LITE`** - The CMake option and compile-time macro for Display Commander Lite are now **`DC_LITE`** (scripts pass **`-DDC_LITE=ON`** via **`-DcLite`**). **`DC_NO_MODULES`** is no longer defined.
   **Details:** root **`CMakeLists.txt`**, **`src/addons/display_commander/CMakeLists.txt`**, GitHub workflows, **`build_display_commander.ps1`**, **`bd_core.ps1`**, all **`#if defined(DC_LITE)`** / **`!defined(DC_LITE)`** sites.

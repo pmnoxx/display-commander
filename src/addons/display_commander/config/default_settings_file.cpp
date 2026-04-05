@@ -47,6 +47,10 @@ const char* const DEFAULT_SETTINGS_TEMPLATE = R"(# Display Commander — User de
 
 # Enable Hotkeys: master toggle for all Display Commander hotkeys (Hotkeys tab). Default true.
 # EnableHotkeys = true
+
+# ReShade: use Display Commander global shader and texture search paths (same as Add-ons tab toggle).
+# 1 or true = enabled; 0 or false = off. Applies when the game config does not already set this key.
+# ReShadeGlobalShadersTexturesPathsEnabled = 1
 )";
 
 bool EnsureDefaultSettingsFileExists(const std::string& path) {

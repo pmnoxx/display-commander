@@ -5,6 +5,7 @@
 #if !defined(DC_LITE)
 #include "features/nvidia_profile_inspector/nvidia_profile_inspector.hpp"
 #endif
+#include "globals.hpp"
 #include "hooks/nvidia/ngx_hooks.hpp"
 #include "latency/reflex_provider.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
@@ -550,6 +551,11 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         }
 #if !defined(DC_LITE)
         if (show_driver_dlss_sr_preset || show_driver_dlss_rr_preset) {
+            const DLSSGSummary ngx = GetDLSSGSummary();
+            const std::string sr_ngx_letter =
+                GetNgxDlssDefaultSrRenderPresetLetterFromVersionString(ngx.dlss_dll_version);
+            const std::string rr_ngx_letter =
+                GetNgxDlssDefaultRrRenderPresetLetterFromVersionString(ngx.dlssd_dll_version);
             const std::shared_ptr<const display_commander::features::nvidia_profile_inspector::DriverDlssRenderPresetSnapshot>
                 drv = display_commander::features::nvidia_profile_inspector::GetDriverDlssRenderPresetSnapshot(false);
             const display_commander::features::nvidia_profile_inspector::DriverDlssRenderPresetSnapshot* drv_ptr =
@@ -562,15 +568,29 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                 const auto merged = display_commander::features::nvidia_profile_inspector::MergeDriverAndDcRenderPreset(
                     false, drv_ptr, dc_preset_on, dc_sr);
                 const ImVec4 col = merged.warn_color ? ui::colors::TEXT_WARNING : ui::colors::TEXT_DIMMED;
+                std::string sr_line = merged.primary;
+                sr_line += " (";
+                sr_line += sr_ngx_letter;
+                sr_line += ")";
+                std::string sr_tip = merged.tooltip;
+                sr_tip += "\nNGX default preset for loaded nvngx_dlss.dll: ";
+                sr_tip += sr_ngx_letter;
                 OverlayTableRow_TextColored(imgui, label_mode, "SR pr", "SR preset (DRS+DC)", col, show_tooltips,
-                                            merged.tooltip.c_str(), "%s", merged.primary.c_str());
+                                            sr_tip.c_str(), "%s", sr_line.c_str());
             }
             if (show_driver_dlss_rr_preset) {
                 const auto merged = display_commander::features::nvidia_profile_inspector::MergeDriverAndDcRenderPreset(
                     true, drv_ptr, dc_preset_on, dc_rr);
                 const ImVec4 col = merged.warn_color ? ui::colors::TEXT_WARNING : ui::colors::TEXT_DIMMED;
+                std::string rr_line = merged.primary;
+                rr_line += " (";
+                rr_line += rr_ngx_letter;
+                rr_line += ")";
+                std::string rr_tip = merged.tooltip;
+                rr_tip += "\nNGX default preset for loaded nvngx_dlssd.dll: ";
+                rr_tip += rr_ngx_letter;
                 OverlayTableRow_TextColored(imgui, label_mode, "RR pr", "RR preset (DRS+DC)", col, show_tooltips,
-                                            merged.tooltip.c_str(), "%s", merged.primary.c_str());
+                                            rr_tip.c_str(), "%s", rr_line.c_str());
             }
         }
 #endif

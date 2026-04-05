@@ -25,9 +25,11 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.13.148 (2026-04-06)
+- [ui] **SR/RR preset overlay: NGX DLL default hint** - **SR preset (DRS+DC)** and **RR preset (DRS+DC)** lines now append **`(K)`** or **`(UPDATEME)`** from the loaded **`nvngx_dlss.dll`** / **`nvngx_dlssd.dll`** version (NGX stack default for **DLSS Default**). SR maps **310.5.0–310.6.99** to **K**; other SR builds and all RR builds show **UPDATEME** until more ranges are documented. Tooltip adds one line naming the DLL and letter.
+
 ## v0.13.147 (2026-04-06)
-- [bugfix] [ui] **Frame Generation (DLSS-G) detection: fewer false positives** - The overlay **FG Mode** line and related DLSS summary logic now treat frame generation as active only when NGX reports interpolation on **and** a valid **DLSSG.Mode** (when the driver exposes it), instead of inferring FG from loose parameter state. That reduces cases where the UI showed FG as on when it was not really active.
-  **Details:** `globals.cpp` `GetDLSSGSummary` / `GetDLSSGSummaryLite` (`DLSSG.EnableInterp`, `DLSSG.Mode`, `DLSSG.MultiFrameCount`).
+- [bugfix] [ui] **Frame Generation (DLSS-G) detection: fewer false positives** - Fixed logic for detecing whenever Frame Generation is on.
 
 ## v0.13.146 (2026-04-05)
 - [bugfix] [ui] **Driver DLSS preset (DRS) cache no longer expires on a timer** - The NVIDIA driver profile read used for **SR preset (DRS+DC)** / **RR preset (DRS+DC)** in the overlay and DLSS UI was refreshed about every three seconds, which could cause brief stutter.

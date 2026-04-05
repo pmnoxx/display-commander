@@ -4,7 +4,9 @@
 #include <ShlObj.h>
 #include <algorithm>
 #include <cctype>
+#include <climits>
 #include <cstdio>
+#include <cstdlib>
 #include <reshade.hpp>
 #include <sstream>
 #include <string>
@@ -913,6 +915,64 @@ std::string GetSupportedDLSSRRPresetsFromVersionString(const std::string& versio
     }
 
     return GetSupportedDLSSRRPresets(major, minor, patch);
+}
+
+bool TryParseDlssDllVersionTriplet(const std::string& version_string, int& major, int& minor, int& patch) {
+    if (version_string.empty()) {
+        return false;
+    }
+    if (version_string == "N/A" || version_string == "Not loaded" || version_string == "Unknown"
+        || version_string == "Loaded (path unknown)") {
+        return false;
+    }
+    const char* p = version_string.c_str();
+    if (*p == '\0' || !std::isdigit(static_cast<unsigned char>(*p))) {
+        return false;
+    }
+    char* end = nullptr;
+    const long ma = std::strtol(p, &end, 10);
+    if (end == p || *end != '.' || ma < static_cast<long>(INT_MIN) || ma > static_cast<long>(INT_MAX)) {
+        return false;
+    }
+    p = end + 1;
+    if (*p == '\0' || !std::isdigit(static_cast<unsigned char>(*p))) {
+        return false;
+    }
+    const long mi = std::strtol(p, &end, 10);
+    if (end == p || *end != '.' || mi < static_cast<long>(INT_MIN) || mi > static_cast<long>(INT_MAX)) {
+        return false;
+    }
+    p = end + 1;
+    if (*p == '\0' || !std::isdigit(static_cast<unsigned char>(*p))) {
+        return false;
+    }
+    const long pa = std::strtol(p, &end, 10);
+    if (end == p || pa < static_cast<long>(INT_MIN) || pa > static_cast<long>(INT_MAX)) {
+        return false;
+    }
+    major = static_cast<int>(ma);
+    minor = static_cast<int>(mi);
+    patch = static_cast<int>(pa);
+    return true;
+}
+
+std::string GetNgxDlssDefaultSrRenderPresetLetterFromVersionString(const std::string& version_string) {
+    int maj = 0;
+    int min = 0;
+    int pat = 0;
+    if (!TryParseDlssDllVersionTriplet(version_string, maj, min, pat)) {
+        return "UPDATEME";
+    }
+    if (isBetween(maj, min, pat, 310, 5, 0, 310, 6, 99)) {
+        return "K";
+    }
+    return "UPDATEME";
+}
+
+std::string GetNgxDlssDefaultRrRenderPresetLetterFromVersionString(const std::string& version_string) {
+    (void)version_string;
+    // Pending version → letter table for nvngx_dlssd.dll (NGX DLSS Default / driver Latest mapping).
+    return "UPDATEME";
 }
 
 // Generate DLSS preset options based on supported presets

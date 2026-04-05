@@ -61,6 +61,13 @@ std::string GetSupportedDLSSSRPresets(int major, int minor, int patch);
 std::string GetSupportedDLSSSRPresetsFromVersionString(const std::string& versionString);
 std::string GetSupportedDLSSRRPresets(int major, int minor, int patch);
 std::string GetSupportedDLSSRRPresetsFromVersionString(const std::string& versionString);
+/** Parse nvngx DLL file version (major.minor.patch or major.minor.build.revision → patch = build). False if missing or
+ * sentinel strings (N/A, Not loaded, …). */
+bool TryParseDlssDllVersionTriplet(const std::string& version_string, int& major, int& minor, int& patch);
+/** NGX stack-default render preset letter for SR when user picks DLSS Default (0); unknown range → "UPDATEME". */
+std::string GetNgxDlssDefaultSrRenderPresetLetterFromVersionString(const std::string& version_string);
+/** Same for RR / nvngx_dlssd.dll; table not filled yet → always "UPDATEME" for now. */
+std::string GetNgxDlssDefaultRrRenderPresetLetterFromVersionString(const std::string& version_string);
 std::vector<std::string> GetDLSSPresetOptions(const std::string& supportedPresets);
 int GetDLSSPresetValue(const std::string& presetString);
 // DLSS Quality Preset: returns NVSDK_NGX_PerfQuality_Value; (NVSDK_NGX_PerfQuality_Value)-1 = Game Default (no

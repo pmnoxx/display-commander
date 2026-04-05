@@ -343,9 +343,6 @@ enum class ScreensaverMode : std::uint8_t {
     kDisable = 2              // Disable
 };
 
-/** Windows taskbar visibility: 0 = no change, 1 = hide when game in foreground, 2 = always hide. */
-enum class TaskbarHideMode : std::uint8_t { kNoChanges = 0, kInForeground = 1, kAlways = 2 };
-
 // Reflex mode when FPS limiter is OnPresent Sync (main tab combo)
 enum class OnPresentReflexMode : std::uint8_t {
     kLowLatency = 0,       // Low latency (default)

@@ -804,10 +804,6 @@ template bool ComboSettingEnumWrapper<InputBlockingMode>(ComboSettingEnum<InputB
 template class ComboSettingEnum<LogLevel>;
 template bool ComboSettingEnumWrapper<LogLevel>(ComboSettingEnum<LogLevel>&, const char*,
                                                 display_commander::ui::IImGuiWrapper&, float, const ImVec4*);
-template class ComboSettingEnum<TaskbarHideMode>;
-template bool ComboSettingEnumWrapper<TaskbarHideMode>(ComboSettingEnum<TaskbarHideMode>&, const char*,
-                                                       display_commander::ui::IImGuiWrapper&, float, const ImVec4*);
-
 template class ComboSettingEnum<FpsLimiterPreset>;
 template bool ComboSettingEnumWrapper<FpsLimiterPreset>(ComboSettingEnum<FpsLimiterPreset>&, const char*,
                                                         display_commander::ui::IImGuiWrapper&, float, const ImVec4*);
@@ -818,8 +814,6 @@ template bool ComboSettingEnumWrapper<OverlayLabelMode>(ComboSettingEnum<Overlay
 template bool RadioSettingEnumWrapper<OverlayLabelMode>(ComboSettingEnum<OverlayLabelMode>&, const char*, const char*,
                                                         display_commander::ui::IImGuiWrapper&, RadioSettingLayout);
 template bool RadioSettingEnumWrapper<ScreensaverMode>(ComboSettingEnum<ScreensaverMode>&, const char*, const char*,
-                                                       display_commander::ui::IImGuiWrapper&, RadioSettingLayout);
-template bool RadioSettingEnumWrapper<TaskbarHideMode>(ComboSettingEnum<TaskbarHideMode>&, const char*, const char*,
                                                        display_commander::ui::IImGuiWrapper&, RadioSettingLayout);
 
 // Smart logging function that only logs settings changed from default values

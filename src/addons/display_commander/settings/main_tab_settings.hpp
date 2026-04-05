@@ -178,8 +178,6 @@ class MainTabSettings {
 
     // Prevent display sleep & screensaver
     ui::new_ui::ComboSettingEnum<ScreensaverMode> screensaver_mode;
-    /** Windows taskbar: 0 = no change, 1 = hide when in foreground, 2 = always hide. */
-    ui::new_ui::ComboSettingEnum<TaskbarHideMode> taskbar_hide_mode;
 
     // Advanced Settings
     ui::new_ui::BoolSetting advanced_settings_enabled;

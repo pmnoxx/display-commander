@@ -758,19 +758,6 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                     settings::g_mainTabSettings.screensaver_mode.GetValue());
         }
 
-        // Windows taskbar visibility
-        if (RadioSettingEnumWrapper(
-                settings::g_mainTabSettings.taskbar_hide_mode, "Auto-hide Windows taskbar",
-                "Controls Windows taskbar visibility (main and secondary monitors):\n\n"
-                "- Default: Do not hide the taskbar\n"
-                "- In foreground: Hide taskbar while game is in foreground, show when in background\n"
-                "- Always: Always hide the taskbar while the game is running.\n\n"
-                "Taskbar is restored when the addon unloads.",
-                imgui, RadioSettingLayout::Horizontal)) {
-            LogInfo("Auto-hide Windows taskbar mode changed to %d",
-                    settings::g_mainTabSettings.taskbar_hide_mode.GetValue());
-        }
-
         imgui.Unindent();
     }
 

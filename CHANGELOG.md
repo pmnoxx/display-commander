@@ -23,7 +23,8 @@ Planned:
 - FG rate counter
 
 ## v0.13.132 (2026-04-04)
-- [ui] [settings] **Main tab: screensaver and taskbar radios** - Prevent display sleep & screensaver and Auto-hide Windows taskbar use horizontal radio rows instead of combos; first option is **Default** (replacing longer “no change” wording). Same config keys and enum values.
+- [removal] [ui] [settings] **Auto-hide Windows taskbar** - Removed the Main tab control and `taskbar_hide_mode` setting. Details: `TaskbarHideMode` removed from globals; `main_tab_settings`; template inst in `settings_wrapper.cpp`. Legacy `taskbar_hide_mode` in config is ignored.
+- [ui] [settings] **Main tab: screensaver radios** - Prevent display sleep & screensaver uses a horizontal radio row instead of a combo; first option is **Default**.
 - [ui] [settings] **Performance overlay: label mode as radio buttons** - Overlay labels (none / short / full) are chosen with radios on their own row under the main overlay toggle instead of a combo.
 - [ui] **Performance overlay: user-facing names for measured refresh and VRR** - Overlay and main-tab subsection use short **Hz** / full **Measured refresh** and short **VRR** / full **VRR (estimate)** instead of DXGI-prefixed labels; tooltips still describe the data source.
 - [ui] **Performance overlay: clock, playtime, and VRR status in scalar columns** - Local time, playtime, NVAPI VRR, and estimated VRR use the same two-column table layout as other metrics (values line up).

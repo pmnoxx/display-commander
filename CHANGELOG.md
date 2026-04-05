@@ -23,6 +23,7 @@ Planned:
 - Add option (UI or config only), to not conpensave for fps in cutsecnes/UI, when FG disingegaes. (bottleneck, figured out the UI for it) @maxton
 - Improve OSD, instead of (X/Y) frame rate, show text indicating what's bases fps instead.
 - FG rate counter
+- Show override from NPI for DLSS presets. @adap
 
 ## v0.13.134 (2026-04-05)
 - [ui] [settings] **Hotkeys tab visible by default** - New installs and configs without `show_hotkeys_tab` now show the Hotkeys tab without turning on **Show All Tabs** or **Show Hotkeys Tab**. Existing saved `false` stays hidden. **Details:** `main_tab_settings.cpp`.

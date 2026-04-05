@@ -141,7 +141,7 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_dlss_internal_resolution;
     ui::new_ui::BoolSetting show_dlss_status;
     ui::new_ui::BoolSetting show_dlss_quality_preset;  // Quality preset: Performance, Balanced, Quality, etc.
-#if !defined(DC_NO_MODULES)
+#if !defined(DC_LITE)
     /** Overlay: merged DLSS-SR render preset (DRS override vs DC combo). */
     ui::new_ui::BoolSetting show_driver_dlss_sr_preset;
     /** Overlay: merged DLSS-RR render preset (DRS override vs DC combo). */

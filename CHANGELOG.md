@@ -25,6 +25,12 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.13.144 (2026-04-05)
+- [cleanup] [build] **`DC_NO_MODULES` renamed to `DC_LITE`** - The CMake option and compile-time macro for Display Commander Lite are now **`DC_LITE`** (scripts pass **`-DDC_LITE=ON`** via **`-DcLite`**). **`DC_NO_MODULES`** is no longer defined.
+  **Details:** root **`CMakeLists.txt`**, **`src/addons/display_commander/CMakeLists.txt`**, GitHub workflows, **`build_display_commander.ps1`**, **`bd_core.ps1`**, all **`#if defined(DC_LITE)`** / **`!defined(DC_LITE)`** sites.
+- [ui] [hooks] [compatibility] **Lite hides DLSS DLL override** - The optional **DLSS Control** panel no longer shows **Use DLSS override**, per-DLL rows, or **Open DLSS override folder** in **`DC_LITE`** builds. LoadLibrary redirection and **`GetDLSSGSummary`** override logic are disabled the same way, so copied full-build configs do not swap **`nvngx_*.dll`** in Lite.
+  **Details:** **`panel_dlss_control.cpp`**, **`loadlibrary_hooks.cpp`** (`GetDLSSOverridePath`), **`globals.cpp`**, **`dlss_info.cpp`**.
+
 ## v0.13.143 (2026-04-05)
 - [cleanup] [build] **Remove `-NoModules` script switch** - Lite builds use **`-DcLite`** only in **`bd.ps1`**, **`bd_core.ps1`**, and **`build_display_commander.ps1`** (same as **`-DDC_NO_MODULES=ON`**). CMake and the **`DC_NO_MODULES`** preprocessor macro are unchanged.
 

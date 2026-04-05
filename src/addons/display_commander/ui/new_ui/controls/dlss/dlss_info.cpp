@@ -1,7 +1,7 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 // Headers <Display Commander>
 #include "dlss_info.hpp"
-#if !defined(DC_NO_MODULES)
+#if !defined(DC_LITE)
 #include "dlss/dlss_indicator_manager.hpp"
 #endif
 #include "features/nvidia_profile_inspector/nvidia_profile_inspector.hpp"
@@ -19,7 +19,7 @@
 #include <imgui.h>
 
 // Libraries <C++>
-#if !defined(DC_NO_MODULES)
+#if !defined(DC_LITE)
 #include <memory>
 #endif
 #include <sstream>
@@ -33,7 +33,7 @@ namespace ui::new_ui {
 
 namespace {
 
-#if !defined(DC_NO_MODULES)
+#if !defined(DC_LITE)
 // Draw DLSS indicator section (registry toggle + DLSS-FG text level). Shown at top of DLSS Control when active.
 void DrawDLSSInfo_IndicatorSection(display_commander::ui::IImGuiWrapper& imgui) {
     if (imgui.TreeNodeEx("DLSS indicator (Registry)", ImGuiTreeNodeFlags_None)) {
@@ -88,7 +88,7 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
     const bool any_dlss_active =
         dlssg_summary.dlss_active || dlssg_summary.dlss_g_active || dlssg_summary.ray_reconstruction_active;
 
-#if !defined(DC_NO_MODULES)
+#if !defined(DC_LITE)
     DrawDLSSInfo_IndicatorSection(imgui);
 
     // Tracked DLSS modules (from OnModuleLoaded: nvngx_dlss/dlssg/dlssd.dll or .bin identified as such)
@@ -275,7 +275,7 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
 
         if (settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue()) {
             const bool rr_active = dlssg_summary.ray_reconstruction_active;
-#if !defined(DC_NO_MODULES)
+#if !defined(DC_LITE)
             const std::shared_ptr<const display_commander::features::nvidia_profile_inspector::DriverDlssRenderPresetSnapshot>
                 drv_merge =
                     display_commander::features::nvidia_profile_inspector::GetDriverDlssRenderPresetSnapshot(false);
@@ -466,6 +466,7 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
     } else {
         imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS-D DLL: N/A");
     }
+#if !defined(DC_LITE)
     if (settings::g_streamlineTabSettings.dlss_override_enabled.GetValue()) {
         std::string not_applied;
         if (settings::g_streamlineTabSettings.dlss_override_dlss.GetValue() && !dlssg_summary.dlss_override_applied) {
@@ -491,6 +492,7 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
             }
         }
     }
+#endif
 }
 
 }  // namespace ui::new_ui

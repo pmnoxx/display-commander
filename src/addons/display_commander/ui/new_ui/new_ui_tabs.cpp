@@ -11,7 +11,7 @@
 #if defined(DISPLAY_COMMANDER_DEBUG_TABS)
 #include "debug/dxgi_refresh_rate_tab.hpp"
 #include "debug/fps_limiter_debug_tab.hpp"
-#if !defined(DC_NO_MODULES)
+#if !defined(DC_LITE)
 #include "debug/nvidia_profile_inspector_tab.hpp"
 #endif
 #include "debug/ngx_counters_tab.hpp"
@@ -397,7 +397,7 @@ void InitializeNewUI() {
         },
         false);
 
-#if !defined(DC_NO_MODULES)
+#if !defined(DC_LITE)
     g_tab_manager.AddTab(
         "Debug NVIDIA profile", "debug_nvidia_profile",
         [](reshade::api::effect_runtime* runtime) {

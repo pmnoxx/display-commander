@@ -2,7 +2,7 @@
 // Headers <Display Commander>
 #include "performance_overlay_internal.hpp"
 #include "dxgi/vram_info.hpp"
-#if !defined(DC_NO_MODULES)
+#if !defined(DC_LITE)
 #include "features/nvidia_profile_inspector/nvidia_profile_inspector.hpp"
 #endif
 #include "hooks/nvidia/ngx_hooks.hpp"
@@ -22,7 +22,7 @@
 #include <algorithm>
 #include <cstdarg>
 #include <cstdio>
-#if !defined(DC_NO_MODULES)
+#if !defined(DC_LITE)
 #include <memory>
 #endif
 
@@ -137,7 +137,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     bool show_dlss_internal_resolution = settings::g_mainTabSettings.show_dlss_internal_resolution.GetValue();
     bool show_dlss_status = settings::g_mainTabSettings.show_dlss_status.GetValue();
     bool show_dlss_quality_preset = settings::g_mainTabSettings.show_dlss_quality_preset.GetValue();
-#if !defined(DC_NO_MODULES)
+#if !defined(DC_LITE)
     bool show_driver_dlss_sr_preset = settings::g_mainTabSettings.show_driver_dlss_sr_preset.GetValue();
     bool show_driver_dlss_rr_preset = settings::g_mainTabSettings.show_driver_dlss_rr_preset.GetValue();
 #else
@@ -548,7 +548,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                                             show_tooltips, nullptr, "%s", "N/A");
             }
         }
-#if !defined(DC_NO_MODULES)
+#if !defined(DC_LITE)
         if (show_driver_dlss_sr_preset || show_driver_dlss_rr_preset) {
             const std::shared_ptr<const display_commander::features::nvidia_profile_inspector::DriverDlssRenderPresetSnapshot>
                 drv = display_commander::features::nvidia_profile_inspector::GetDriverDlssRenderPresetSnapshot(false);

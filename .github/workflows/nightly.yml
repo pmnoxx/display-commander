@@ -77,7 +77,7 @@ jobs:
           retention-days: 30 # Keep nightly builds for 30 days
 
   nightly-build-lite:
-    name: Nightly Lite DC_NO_MODULES (${{ matrix.arch }})
+    name: Nightly Lite DC_LITE (${{ matrix.arch }})
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -106,10 +106,10 @@ jobs:
         with:
           arch: ${{ matrix.devcmd_arch }}
 
-      - name: Configure (DC_NO_MODULES)
+      - name: Configure (DC_LITE)
         shell: bash
         run: |
-          cmake -S . -B build-nightly-lite -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DGIT_COMMIT_COUNT=${{ github.run_number }} -DDC_NO_MODULES=ON
+          cmake -S . -B build-nightly-lite -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DGIT_COMMIT_COUNT=${{ github.run_number }} -DDC_LITE=ON
 
       - name: Build Lite
         shell: bash
@@ -190,7 +190,7 @@ jobs:
             - `zzz_display_commander.addon64` - 64-bit version
             - `zzz_display_commander.addon32` - 32-bit version
 
-            **Display Commander Lite** (`DC_NO_MODULES`; local scripts: `-DcLite`): no built-in Audio/Controller modules; same rename-proxy exports as full.
+            **Display Commander Lite** (`DC_LITE`; local scripts: `-DcLite`): no built-in Audio/Controller modules; same rename-proxy exports as full.
             - `zzz_display_commander_lite.addon64`
             - `zzz_display_commander_lite.addon32`
 

@@ -77,7 +77,7 @@ jobs:
           if-no-files-found: error
 
   build-lite:
-    name: Build Lite DC_NO_MODULES (${{ matrix.arch }})
+    name: Build Lite DC_LITE (${{ matrix.arch }})
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -106,10 +106,10 @@ jobs:
         with:
           arch: ${{ matrix.devcmd_arch }}
 
-      - name: Configure (DC_NO_MODULES)
+      - name: Configure (DC_LITE)
         shell: bash
         run: |
-          cmake -S . -B build-lite -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DGIT_COMMIT_COUNT=${{ github.run_number }} -DDC_NO_MODULES=ON
+          cmake -S . -B build-lite -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DGIT_COMMIT_COUNT=${{ github.run_number }} -DDC_LITE=ON
 
       - name: Build Lite
         shell: bash
@@ -238,7 +238,7 @@ jobs:
           - \`zzz_display_commander.addon64\` - 64-bit version
           - \`zzz_display_commander.addon32\` - 32-bit version
 
-          **Display Commander Lite** (\`DC_NO_MODULES\`; local scripts: \`-DcLite\`): same API rename proxy exports as full build; built-in **Audio** and **Controller** modules omitted.
+          **Display Commander Lite** (\`DC_LITE\`; local scripts: \`-DcLite\`): same API rename proxy exports as full build; built-in **Audio** and **Controller** modules omitted.
           - \`zzz_display_commander_lite.addon64\` - 64-bit
           - \`zzz_display_commander_lite.addon32\` - 32-bit
 

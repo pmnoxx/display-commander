@@ -542,7 +542,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             imgui.EndDisabled();
         }
 
-#if !defined(DC_NO_MODULES)
+#if !defined(DC_LITE)
         bool show_driver_dlss_sr_preset = settings::g_mainTabSettings.show_driver_dlss_sr_preset.GetValue();
         if (imgui.Checkbox("SR preset (DRS+DC)", &show_driver_dlss_sr_preset)) {
             settings::g_mainTabSettings.show_driver_dlss_sr_preset.SetValue(show_driver_dlss_sr_preset);

@@ -4,7 +4,7 @@
 // Libraries <ReShade> / <imgui>
 #include <reshade.hpp>
 
-// DC_NO_MODULES (Display Commander Lite): full override implementation lives in modules/reshade_addons/ and is
+// DC_LITE (Display Commander Lite): full override implementation lives in modules/reshade_addons/ and is
 // excluded from this build; this TU satisfies the linker only.
 
 void OverrideReShadeSettings(reshade::api::effect_runtime* runtime) {

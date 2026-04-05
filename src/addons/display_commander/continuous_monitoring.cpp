@@ -205,14 +205,14 @@ static void Every1sScreensaver() {
     EXECUTION_STATE desired_state = 0;
 
     switch (screensaver_mode) {
-        case ScreensaverMode::kDisableWhenFocused:
+        case ScreensaverMode::kInForeground:
             if (is_background) {
                 desired_state = ES_CONTINUOUS;
             } else {
                 desired_state = ES_CONTINUOUS | ES_DISPLAY_REQUIRED;
             }
             break;
-        case ScreensaverMode::kDisable: desired_state = ES_CONTINUOUS | ES_DISPLAY_REQUIRED; break;
+        case ScreensaverMode::kAlways: desired_state = ES_CONTINUOUS | ES_DISPLAY_REQUIRED; break;
         case ScreensaverMode::kDefault: desired_state = ES_CONTINUOUS; break;
     }
 

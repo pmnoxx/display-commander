@@ -337,10 +337,11 @@ enum class WindowAlignment : std::uint8_t {
     kBottomRight = 4  // Bottom Right
 };
 
+/** Prevent display sleep / screensaver (Main tab); stored as 0..2 in config. */
 enum class ScreensaverMode : std::uint8_t {
-    kDefault = 0,             // Default
-    kDisableWhenFocused = 1,  // Disable when focused
-    kDisable = 2              // Disable
+    kDefault = 0,       // UI: Default
+    kInForeground = 1,  // UI: In foreground — block sleep while game window focused
+    kAlways = 2         // UI: Always — block sleep for whole session
 };
 
 // Reflex mode when FPS limiter is OnPresent Sync (main tab combo)

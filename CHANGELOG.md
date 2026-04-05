@@ -23,6 +23,8 @@ Planned:
 - FG rate counter
 
 ## v0.13.132 (2026-04-04)
+- [cleanup] **ScreensaverMode enum names** - `kDisableWhenFocused` / `kDisable` renamed to **`kInForeground`** / **`kAlways`** to match UI; config integers 0..2 unchanged.
+- [ui] [settings] **Screensaver / sleep mode labels** - Radio labels are **Default**, **In foreground**, and **Always** (aligned with common three-way Main tab wording; behavior unchanged).
 - [removal] [ui] [settings] **Auto-hide Windows taskbar** - Removed the Main tab control and `taskbar_hide_mode` setting. Details: `TaskbarHideMode` removed from globals; `main_tab_settings`; template inst in `settings_wrapper.cpp`. Legacy `taskbar_hide_mode` in config is ignored.
 - [ui] [settings] **Main tab: screensaver radios** - Prevent display sleep & screensaver uses a horizontal radio row instead of a combo; first option is **Default**.
 - [ui] [settings] **Performance overlay: label mode as radio buttons** - Overlay labels (none / short / full) are chosen with radios on their own row under the main overlay toggle instead of a combo.

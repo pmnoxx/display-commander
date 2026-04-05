@@ -750,8 +750,8 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                 settings::g_mainTabSettings.screensaver_mode, "Prevent display sleep & screensaver",
                 "Controls display sleep and screensaver while the game is running:\n\n"
                 "- Default: Preserves original game behavior\n"
-                "- Disable when Focused: Prevents display sleep & screensaver when game window is focused\n"
-                "- Disable: Always prevents display sleep & screensaver while game is running\n\n"
+                "- In foreground: Prevents display sleep & screensaver while the game window is focused\n"
+                "- Always: Prevents display sleep & screensaver for the whole session\n\n"
                 "Note: Enable \"Prevent display sleep & screensaver\" in the Advanced tab for this to take effect.",
                 imgui, RadioSettingLayout::Horizontal)) {
             LogInfo("Prevent display sleep & screensaver mode changed to %d",

@@ -273,7 +273,7 @@ EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
         static_cast<ScreensaverMode>(settings::g_mainTabSettings.screensaver_mode.GetValue());
 
     // If mode is DisableWhenFocused or Disable, ignore all calls
-    if (screensaver_mode == ScreensaverMode::kDisableWhenFocused || screensaver_mode == ScreensaverMode::kDisable) {
+    if (screensaver_mode == ScreensaverMode::kInForeground || screensaver_mode == ScreensaverMode::kAlways) {
         return 0x0;  // Block game's attempt to control execution state
     }
 

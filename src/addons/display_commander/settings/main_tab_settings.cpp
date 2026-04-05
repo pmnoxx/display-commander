@@ -153,7 +153,7 @@ MainTabSettings::MainTabSettings()
                                                    "DisplayCommander"),
       adhd_multi_monitor_enabled("adhd_multi_monitor_enabled", false, "DisplayCommander"),
       screensaver_mode("screensaver_mode", static_cast<int>(ScreensaverMode::kDefault),
-                       {"Default", "Disable when Focused", "Disable"}, "DisplayCommander"),
+                       {"Default", "In foreground", "Always"}, "DisplayCommander"),
       frame_time_mode("frame_time_mode", static_cast<int>(FrameTimeMode::kPresent),
                       {"Frame Present Time", "Frame Start Time (input)",
                        "Frame Display Time later (Present or GPU Completion whichever comes later)"},

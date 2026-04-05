@@ -159,53 +159,37 @@ struct ParameterValue {
     }
 };
 
-// Unified atomic parameter storage system
+// NGX / UI parameter mirror: SRWLOCK shared for reads, exclusive for writes (no concurrent unordered_map access).
 class UnifiedParameterMap {
    private:
-    std::atomic<std::shared_ptr<std::unordered_map<std::string, ParameterValue>>> data_ =
+    mutable SRWLOCK map_lock_ = SRWLOCK_INIT;
+    std::shared_ptr<std::unordered_map<std::string, ParameterValue>> data_ =
         std::make_shared<std::unordered_map<std::string, ParameterValue>>();
 
    public:
-    UnifiedParameterMap() {}
+    UnifiedParameterMap() = default;
 
-    // Update parameter value (thread-safe)
     void update(const std::string& key, const ParameterValue& value) {
-        // First, try to update existing data without copying
-        {
-            auto current_data = data_.load();
-            if (current_data->find(key) != current_data->end()) {
-                // Key exists, update in place (this is safe because we're only updating values, not structure)
-                (*current_data)[key] = value;
-                return;
-            }
-        }
-
-        // Key doesn't exist, need to copy and update
-        auto current_data = data_.load();
-        auto new_data = std::make_shared<std::unordered_map<std::string, ParameterValue>>(*current_data);
-        (*new_data)[key] = value;
-        data_.store(new_data);
+        utils::SRWLockExclusive lock(map_lock_);
+        (*data_)[key] = value;
     }
 
-    // Convenience update methods
     void update_int(const std::string& key, int value) { update(key, ParameterValue(value)); }
     void update_uint(const std::string& key, unsigned int value) { update(key, ParameterValue(value)); }
     void update_float(const std::string& key, float value) { update(key, ParameterValue(value)); }
     void update_double(const std::string& key, double value) { update(key, ParameterValue(value)); }
     void update_ull(const std::string& key, uint64_t value) { update(key, ParameterValue(value)); }
 
-    // Get parameter value (thread-safe)
     bool get(const std::string& key, ParameterValue& value) const {
-        auto current_data = data_.load();
-        auto it = current_data->find(key);
-        if (it != current_data->end()) {
+        utils::SRWLockShared lock(map_lock_);
+        auto it = data_->find(key);
+        if (it != data_->end()) {
             value = it->second;
             return true;
         }
         return false;
     }
 
-    // Type-specific get methods with conversion
     bool get_as_int(const std::string& key, int& value) const {
         ParameterValue param;
         if (get(key, param)) {
@@ -251,25 +235,25 @@ class UnifiedParameterMap {
         return false;
     }
 
-    // Get all parameters (thread-safe)
-    std::shared_ptr<std::unordered_map<std::string, ParameterValue>> get_all() const { return data_.load(); }
-
-    // Get parameter count (thread-safe)
-    size_t size() const { return data_.load()->size(); }
-
-    // Remove parameter (thread-safe)
-    void remove(const std::string& key) {
-        auto current_data = data_.load();
-        if (current_data->find(key) == current_data->end()) {
-            return;  // Key doesn't exist
-        }
-        auto new_data = std::make_shared<std::unordered_map<std::string, ParameterValue>>(*current_data);
-        new_data->erase(key);
-        data_.store(new_data);
+    std::shared_ptr<std::unordered_map<std::string, ParameterValue>> get_all() const {
+        utils::SRWLockShared lock(map_lock_);
+        return std::make_shared<std::unordered_map<std::string, ParameterValue>>(*data_);
     }
 
-    // Clear all parameters (thread-safe)
-    void clear() { data_.store(std::make_shared<std::unordered_map<std::string, ParameterValue>>()); }
+    size_t size() const {
+        utils::SRWLockShared lock(map_lock_);
+        return data_->size();
+    }
+
+    void remove(const std::string& key) {
+        utils::SRWLockExclusive lock(map_lock_);
+        data_->erase(key);
+    }
+
+    void clear() {
+        utils::SRWLockExclusive lock(map_lock_);
+        data_->clear();
+    }
 };
 
 // DLL initialization state
@@ -1048,7 +1032,7 @@ extern std::atomic<bool> g_streamline_dlssg_fg_enabled;
 // Streamline (Vulkan/sl.dlss): true when slDLSSSetOptions/slDLSSGetOptimalSettings reported DLSS mode != eOff
 extern std::atomic<bool> g_streamline_dlss_enabled;
 
-// NGX Parameter Storage (unified thread-safe atomic shared_ptr hashmap)
+// NGX Parameter Storage (SRWLOCK-protected mirrors for hooks and UI)
 extern UnifiedParameterMap g_ngx_parameters;  // Unified NGX parameters supporting all types
 extern UnifiedParameterMap
     g_ngx_parameter_overrides;  // NGX parameter overrides (user-defined values to replace game values)

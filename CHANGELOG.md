@@ -24,6 +24,9 @@ Planned:
 - Improve OSD, instead of (X/Y) frame rate, show text indicating what's bases fps instead.
 - FG rate counter
 
+## v0.13.133 (2026-04-05)
+- [bugfix] [critical] **Crash fix: NGX parameter map** - SRWLOCK around `UnifiedParameterMap` so UI reads and hook writes no longer race; `get_all()` uses a snapshot. **Details:** `globals.hpp`.
+
 ## v0.13.132 (2026-04-04)
 - [hooks] **Streamline proxy DXGI** - After **`slUpgradeInterface`** returns a DXGI factory or swap chain, Display Commander installs MinHook vtable detours on the Streamline proxy: factory **`CreateSwapChain`**, **`CreateSwapChainForHwnd`**, **`CreateSwapChainForCoreWindow`**, **`CreateSwapChainForComposition`**, then hooks new swap chains for **`Present` / `Present1`** so the FPS limiter can use the Streamline proxy call sites when enabled. Details: `features/streamline/streamline_proxy_dxgi.*`, wiring in `streamline_hooks.cpp`; shares **`g_dxgi_present_nested_depth`** with main DXGI detours.
 - [ui] **Debug NGX: Streamline proxy DXGI detour counts** - **Debug NGX** tab lists per-detour call totals (e.g. **`IDXGIFactory1_CreateSwapChainForCoreWindow_Streamline_Detour`**) and a reset button. Details: `streamline_proxy_dxgi.*`, `ngx_counters_tab.cpp`.

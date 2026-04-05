@@ -12,6 +12,7 @@
 #include "nvapi/nvapi_actual_refresh_rate_monitor.hpp"
 #include "nvapi/gpu_dynamic_utilization.hpp"
 #include "nvapi/vrr_status.hpp"
+#include "settings/swapchain_tab_settings.hpp"
 #include "swapchain_events.hpp"
 #include "utils.hpp"
 
@@ -139,7 +140,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     bool show_dlss_internal_resolution = settings::g_mainTabSettings.show_dlss_internal_resolution.GetValue();
     bool show_dlss_status = settings::g_mainTabSettings.show_dlss_status.GetValue();
     bool show_dlss_quality_preset = settings::g_mainTabSettings.show_dlss_quality_preset.GetValue();
-    bool show_dlss_render_preset = settings::g_mainTabSettings.show_dlss_render_preset.GetValue();
 #if !defined(DC_NO_MODULES)
     bool show_driver_dlss_sr_preset = settings::g_mainTabSettings.show_driver_dlss_sr_preset.GetValue();
     bool show_driver_dlss_rr_preset = settings::g_mainTabSettings.show_driver_dlss_rr_preset.GetValue();
@@ -550,7 +550,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
 
     // ----- DLSS / FG (table) -----
     if (show_fg_mode || show_dlss_internal_resolution || show_dlss_status || show_dlss_quality_preset
-        || show_dlss_render_preset || show_driver_dlss_sr_preset || show_driver_dlss_rr_preset) {
+        || show_driver_dlss_sr_preset || show_driver_dlss_rr_preset) {
         const DLSSGSummaryLite dlss_lite = GetDLSSGSummaryLite();
         const bool any_dlss_active = dlss_lite.any_dlss_active;
         const int fg_mode = show_fg_mode ? dlss_lite.fg_mode : 0;
@@ -570,7 +570,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         }
 
         std::string quality_preset = "N/A";
-        if (show_dlss_quality_preset || show_dlss_render_preset) {
+        if (show_dlss_quality_preset) {
             unsigned int perf_quality;
             if (g_ngx_parameters.get_as_uint("PerfQualityValue", perf_quality)) {
                 switch (static_cast<NVSDK_NGX_PerfQuality_Value>(perf_quality)) {
@@ -631,94 +631,29 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                                             show_tooltips, nullptr, "%s", "N/A");
             }
         }
-        if (show_dlss_render_preset) {
-            if (any_dlss_active) {
-                DLSSModelProfile model_profile = GetDLSSModelProfile();
-                if (model_profile.is_valid) {
-                    std::string current_quality = quality_preset;
-                    int render_preset_value = 0;
-                    if (dlss_lite.ray_reconstruction_active) {
-                        if (current_quality == "Quality") {
-                            render_preset_value = model_profile.rr_quality_preset;
-                        } else if (current_quality == "Balanced") {
-                            render_preset_value = model_profile.rr_balanced_preset;
-                        } else if (current_quality == "Performance") {
-                            render_preset_value = model_profile.rr_performance_preset;
-                        } else if (current_quality == "Ultra Performance") {
-                            render_preset_value = model_profile.rr_ultra_performance_preset;
-                        } else if (current_quality == "Ultra Quality") {
-                            render_preset_value = model_profile.rr_ultra_quality_preset;
-                        } else {
-                            render_preset_value = model_profile.rr_quality_preset;
-                        }
-                    } else {
-                        if (current_quality == "Quality") {
-                            render_preset_value = model_profile.sr_quality_preset;
-                        } else if (current_quality == "Balanced") {
-                            render_preset_value = model_profile.sr_balanced_preset;
-                        } else if (current_quality == "Performance") {
-                            render_preset_value = model_profile.sr_performance_preset;
-                        } else if (current_quality == "Ultra Performance") {
-                            render_preset_value = model_profile.sr_ultra_performance_preset;
-                        } else if (current_quality == "Ultra Quality") {
-                            render_preset_value = model_profile.sr_ultra_quality_preset;
-                        } else if (current_quality == "DLAA") {
-                            render_preset_value = model_profile.sr_dlaa_preset;
-                        } else {
-                            render_preset_value = model_profile.sr_quality_preset;
-                        }
-                    }
-                    std::string render_preset_letter = ConvertRenderPresetToLetter(render_preset_value);
-                    OverlayTableRow_TextUnformatted(imgui, label_mode, "DLSS R", "DLSS render",
-                                                    render_preset_letter.c_str());
-                } else {
-                    OverlayTableRow_TextColored(imgui, label_mode, "DLSS R", "DLSS render", ui::colors::TEXT_DIMMED,
-                                                show_tooltips, nullptr, "%s", "N/A");
-                }
-            } else {
-                OverlayTableRow_TextColored(imgui, label_mode, "DLSS R", "DLSS render", ui::colors::TEXT_DIMMED,
-                                            show_tooltips, nullptr, "%s", "N/A");
-            }
-        }
 #if !defined(DC_NO_MODULES)
         if (show_driver_dlss_sr_preset || show_driver_dlss_rr_preset) {
             const std::shared_ptr<const display_commander::features::nvidia_profile_inspector::DriverDlssRenderPresetSnapshot>
                 drv = display_commander::features::nvidia_profile_inspector::GetDriverDlssRenderPresetSnapshot(false);
+            const display_commander::features::nvidia_profile_inspector::DriverDlssRenderPresetSnapshot* drv_ptr =
+                drv.get();
+            const bool dc_preset_on =
+                settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue();
+            const std::string& dc_sr = settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue();
+            const std::string& dc_rr = settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue();
             if (show_driver_dlss_sr_preset) {
-                if (drv != nullptr && drv->query_succeeded) {
-                    if (drv->sr_is_non_default_override) {
-                        OverlayTableRow_TextColored(imgui, label_mode, "Drv SR", "Driver SR preset",
-                                                    ui::colors::TEXT_WARNING, show_tooltips,
-                                                    "NVIDIA driver profile (DRS): Override DLSS-SR presets.", "%s",
-                                                    drv->sr_display.c_str());
-                    } else {
-                        OverlayTableRow_TextUnformatted(imgui, label_mode, "Drv SR", "Driver SR preset",
-                                                          drv->sr_display.c_str(), show_tooltips,
-                                                          "NVIDIA driver profile (DRS): DLSS-SR render preset (global "
-                                                          "default or Off in profile).");
-                    }
-                } else {
-                    OverlayTableRow_TextColored(imgui, label_mode, "Drv SR", "Driver SR preset", ui::colors::TEXT_DIMMED,
-                                                show_tooltips, nullptr, "%s", "N/A");
-                }
+                const auto merged = display_commander::features::nvidia_profile_inspector::MergeDriverAndDcRenderPreset(
+                    false, drv_ptr, dc_preset_on, dc_sr);
+                const ImVec4 col = merged.warn_color ? ui::colors::TEXT_WARNING : ui::colors::TEXT_DIMMED;
+                OverlayTableRow_TextColored(imgui, label_mode, "SR pr", "SR preset (DRS+DC)", col, show_tooltips,
+                                            merged.tooltip.c_str(), "%s", merged.primary.c_str());
             }
             if (show_driver_dlss_rr_preset) {
-                if (drv != nullptr && drv->query_succeeded) {
-                    if (drv->rr_is_non_default_override) {
-                        OverlayTableRow_TextColored(imgui, label_mode, "Drv RR", "Driver RR preset",
-                                                    ui::colors::TEXT_WARNING, show_tooltips,
-                                                    "NVIDIA driver profile (DRS): Override DLSS-RR preset.", "%s",
-                                                    drv->rr_display.c_str());
-                    } else {
-                        OverlayTableRow_TextUnformatted(imgui, label_mode, "Drv RR", "Driver RR preset",
-                                                          drv->rr_display.c_str(), show_tooltips,
-                                                          "NVIDIA driver profile (DRS): DLSS-RR render preset (global "
-                                                          "default or Off in profile).");
-                    }
-                } else {
-                    OverlayTableRow_TextColored(imgui, label_mode, "Drv RR", "Driver RR preset", ui::colors::TEXT_DIMMED,
-                                                show_tooltips, nullptr, "%s", "N/A");
-                }
+                const auto merged = display_commander::features::nvidia_profile_inspector::MergeDriverAndDcRenderPreset(
+                    true, drv_ptr, dc_preset_on, dc_rr);
+                const ImVec4 col = merged.warn_color ? ui::colors::TEXT_WARNING : ui::colors::TEXT_DIMMED;
+                OverlayTableRow_TextColored(imgui, label_mode, "RR pr", "RR preset (DRS+DC)", col, show_tooltips,
+                                            merged.tooltip.c_str(), "%s", merged.primary.c_str());
             }
         }
 #endif

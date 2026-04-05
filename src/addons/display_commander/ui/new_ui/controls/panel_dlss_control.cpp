@@ -122,20 +122,42 @@ void DrawMainTabOptionalPanelDlssControl(display_commander::ui::GraphicsApi api,
         }
         const std::shared_ptr<const display_commander::features::nvidia_profile_inspector::DriverDlssRenderPresetSnapshot>
             drv = display_commander::features::nvidia_profile_inspector::GetDriverDlssRenderPresetSnapshot(false);
+        const bool any_dlss_active_panel =
+            dlss_summary.dlss_active || dlss_summary.dlss_g_active || dlss_summary.ray_reconstruction_active;
+        const bool preset_override_on_panel =
+            settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue();
+        const bool show_merged_presets_in_panel = !(any_dlss_active_panel && preset_override_on_panel);
+
         if (!drv || !drv->query_succeeded) {
             imgui.TextColored(ui::colors::TEXT_DIMMED, "Driver preset query: %s",
                               drv && !drv->error_message.empty() ? drv->error_message.c_str() : "unavailable");
         } else if (!drv->has_profile) {
             imgui.TextColored(ui::colors::TEXT_DIMMED, "No NVIDIA profile contains this exe; SR/RR use global defaults.");
         } else {
-            const ImVec4 warn_col(1.0f, 0.72f, 0.28f, 1.0f);
             imgui.Text("Profile: %s", drv->profile_name.empty() ? "(unnamed)" : drv->profile_name.c_str());
-            imgui.TextColored(drv->sr_is_non_default_override ? warn_col : ui::colors::TEXT_DIMMED,
-                              "Driver SR preset: %s%s", drv->sr_display.c_str(),
-                              drv->sr_is_non_default_override ? "  (override)" : "");
-            imgui.TextColored(drv->rr_is_non_default_override ? warn_col : ui::colors::TEXT_DIMMED,
-                              "Driver RR preset: %s%s", drv->rr_display.c_str(),
-                              drv->rr_is_non_default_override ? "  (override)" : "");
+        }
+
+        if (show_merged_presets_in_panel) {
+            const display_commander::features::nvidia_profile_inspector::DriverDlssRenderPresetSnapshot* drv_ptr =
+                drv.get();
+            const auto merged_sr =
+                display_commander::features::nvidia_profile_inspector::MergeDriverAndDcRenderPreset(
+                    false, drv_ptr, preset_override_on_panel,
+                    settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue());
+            imgui.TextColored(merged_sr.warn_color ? ui::colors::TEXT_WARNING : ui::colors::TEXT_DIMMED,
+                              "SR preset (DRS+DC): %s", merged_sr.primary.c_str());
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltipEx("%s", merged_sr.tooltip.c_str());
+            }
+            const auto merged_rr =
+                display_commander::features::nvidia_profile_inspector::MergeDriverAndDcRenderPreset(
+                    true, drv_ptr, preset_override_on_panel,
+                    settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue());
+            imgui.TextColored(merged_rr.warn_color ? ui::colors::TEXT_WARNING : ui::colors::TEXT_DIMMED,
+                              "RR preset (DRS+DC): %s", merged_rr.primary.c_str());
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltipEx("%s", merged_rr.tooltip.c_str());
+            }
         }
     }
 #endif

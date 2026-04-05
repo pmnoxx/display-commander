@@ -147,11 +147,10 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_dlss_internal_resolution;
     ui::new_ui::BoolSetting show_dlss_status;
     ui::new_ui::BoolSetting show_dlss_quality_preset;  // Quality preset: Performance, Balanced, Quality, etc.
-    ui::new_ui::BoolSetting show_dlss_render_preset;   // Render preset: A, B, C, D, E, etc. (letter presets)
 #if !defined(DC_NO_MODULES)
-    /** Driver profile DLSS-SR render preset (NVIDIA Profile Inspector / DRS), not NGX runtime. */
+    /** Overlay: merged DLSS-SR render preset (DRS override vs DC combo). */
     ui::new_ui::BoolSetting show_driver_dlss_sr_preset;
-    /** Driver profile DLSS-RR render preset (NVIDIA Profile Inspector / DRS), not NGX runtime. */
+    /** Overlay: merged DLSS-RR render preset (DRS override vs DC combo). */
     ui::new_ui::BoolSetting show_driver_dlss_rr_preset;
 #endif
     /** Show FPS limiter source (e.g. reflex_marker, dxgi_swapchain) in performance overlay. */

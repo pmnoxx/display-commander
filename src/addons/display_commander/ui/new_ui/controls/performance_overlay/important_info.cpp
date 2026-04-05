@@ -704,43 +704,31 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         }
         imgui.NextColumn();
 
-        bool show_dlss_render_preset = settings::g_mainTabSettings.show_dlss_render_preset.GetValue();
-        imgui.SetNextItemWidth(300.0f);
-        if (imgui.Checkbox("DLSS Render Preset", &show_dlss_render_preset)) {
-            settings::g_mainTabSettings.show_dlss_render_preset.SetValue(show_dlss_render_preset);
-            ResetNGXPresetInitialization();
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Shows DLSS render preset (A, B, C, D, E, etc.) for the current quality mode in the performance "
-                "overlay.");
-        }
-        imgui.NextColumn();
-
         if (!dlss_ngx_seen) {
             imgui.EndDisabled();
         }
 
 #if !defined(DC_NO_MODULES)
         bool show_driver_dlss_sr_preset = settings::g_mainTabSettings.show_driver_dlss_sr_preset.GetValue();
-        if (imgui.Checkbox("Drv SR preset", &show_driver_dlss_sr_preset)) {
+        if (imgui.Checkbox("SR preset (DRS+DC)", &show_driver_dlss_sr_preset)) {
             settings::g_mainTabSettings.show_driver_dlss_sr_preset.SetValue(show_driver_dlss_sr_preset);
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
-                "Shows DLSS-SR **render preset** from the NVIDIA **driver profile** (DRS / Profile Inspector), not NGX "
-                "runtime. Queries are cached briefly.");
+                "One overlay line for **DLSS-SR render preset**: NVIDIA **driver profile** (DRS) when it overrides the "
+                "default, otherwise your **Display Commander** combo value (or **Preset override off**). Tooltip lists "
+                "both. Cached briefly.");
         }
         imgui.NextColumn();
 
         bool show_driver_dlss_rr_preset = settings::g_mainTabSettings.show_driver_dlss_rr_preset.GetValue();
-        if (imgui.Checkbox("Drv RR preset", &show_driver_dlss_rr_preset)) {
+        if (imgui.Checkbox("RR preset (DRS+DC)", &show_driver_dlss_rr_preset)) {
             settings::g_mainTabSettings.show_driver_dlss_rr_preset.SetValue(show_driver_dlss_rr_preset);
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
-                "Shows DLSS-RR **render preset** from the NVIDIA **driver profile** (DRS / Profile Inspector), not NGX "
-                "runtime. Queries are cached briefly.");
+                "One overlay line for **DLSS-RR render preset**: driver profile (DRS) when it overrides, else your DC "
+                "combo (or **Preset override off**). Tooltip lists both. Cached briefly.");
         }
         imgui.NextColumn();
 #endif

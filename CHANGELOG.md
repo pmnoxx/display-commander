@@ -25,6 +25,12 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.13.137 (2026-04-05)
+- [removal] [ui] [settings] **Performance overlay: DLSS Render Preset show now SR/RR presets including driver overrides (DC full only)** -
+
+## v0.13.136 (2026-04-05)
+- [ui] [settings] **DLSS SR/RR: one line for driver + Display Commander** - OSD improvements
+
 ## v0.13.135 (2026-04-05)
 - [new feature] [ui] **NVIDIA driver DLSS render presets (read-only)** - You can see whether the NVIDIA driver profile (same database as **NVIDIA Profile Inspector**) overrides **DLSS-SR** and **DLSS-RR** render presets for this game. Shown on **Debug NVIDIA profile** (DebugTabs builds), under **DLSS Control** on the Main tab, and optionally in the performance overlay (**Drv SR preset** / **Drv RR preset**). Queries are cached briefly so the overlay does not hammer DRS every frame. Omitted in **DC_NO_MODULES** / Lite builds (no UI, no DRS helper TU).
   **Details:** `features/nvidia_profile_inspector/*`, `debug/nvidia_profile_inspector_tab.*`, `panel_dlss_control.cpp`, `overlay_content.cpp`, `important_info.cpp`, `main_tab_settings`, `CMakeLists.txt` (`DC_NO_MODULES` source filter).

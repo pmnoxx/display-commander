@@ -4,6 +4,7 @@
 #if !defined(DC_NO_MODULES)
 #include "dlss/dlss_indicator_manager.hpp"
 #endif
+#include "features/nvidia_profile_inspector/nvidia_profile_inspector.hpp"
 #include "globals.hpp"
 #include "hooks/nvidia/ngx_hooks.hpp"
 #include "settings/streamline_tab_settings.hpp"
@@ -18,6 +19,9 @@
 #include <imgui.h>
 
 // Libraries <C++>
+#if !defined(DC_NO_MODULES)
+#include <memory>
+#endif
 #include <sstream>
 #include <string>
 #include <vector>
@@ -271,6 +275,16 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
 
         if (settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue()) {
             const bool rr_active = dlssg_summary.ray_reconstruction_active;
+#if !defined(DC_NO_MODULES)
+            const std::shared_ptr<const display_commander::features::nvidia_profile_inspector::DriverDlssRenderPresetSnapshot>
+                drv_merge =
+                    display_commander::features::nvidia_profile_inspector::GetDriverDlssRenderPresetSnapshot(false);
+            const display_commander::features::nvidia_profile_inspector::DriverDlssRenderPresetSnapshot* drv_merge_ptr =
+                drv_merge.get();
+#else
+            const display_commander::features::nvidia_profile_inspector::DriverDlssRenderPresetSnapshot* drv_merge_ptr =
+                nullptr;
+#endif
 
             std::vector<std::string> sr_preset_options = GetDLSSPresetOptions(dlssg_summary.supported_dlss_presets);
             std::vector<const char*> sr_preset_cstrs;
@@ -296,6 +310,15 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltipEx("Preset: Game Default = no override, DLSS Default = 0, Preset A/B/C... = 1/2/3...");
             }
+            {
+                const auto merged = display_commander::features::nvidia_profile_inspector::MergeDriverAndDcRenderPreset(
+                    false, drv_merge_ptr, true, sr_current_value);
+                imgui.TextColored(merged.warn_color ? ui::colors::TEXT_WARNING : ui::colors::TEXT_DIMMED,
+                                  "SR preset (DRS+DC): %s", merged.primary.c_str());
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltipEx("%s", merged.tooltip.c_str());
+                }
+            }
 
             std::vector<std::string> rr_preset_options = GetDLSSPresetOptions(dlssg_summary.supported_dlss_rr_presets);
             std::vector<const char*> rr_preset_cstrs;
@@ -320,6 +343,15 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
             }
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltipEx("Preset: Game Default = no override, DLSS Default = 0, Preset A/B/C... = 1/2/3...");
+            }
+            {
+                const auto merged = display_commander::features::nvidia_profile_inspector::MergeDriverAndDcRenderPreset(
+                    true, drv_merge_ptr, true, rr_current_value);
+                imgui.TextColored(merged.warn_color ? ui::colors::TEXT_WARNING : ui::colors::TEXT_DIMMED,
+                                  "RR preset (DRS+DC): %s", merged.primary.c_str());
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltipEx("%s", merged.tooltip.c_str());
+                }
             }
         }
     }
@@ -395,7 +427,7 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
         } else if (ae_current == "Force On") {
             ae_idx = 2;
         }
-        imgui.SetNextItemWidth(imgui.CalcTextSize("Force On").x + (imgui.GetStyle().FramePadding.x * 2.0f) + 20.0f);
+        imgui.SetNextItemWidth(250.0f);
         if (imgui.Combo("Auto Exposure Override##DLSS", &ae_idx, ae_items, 3)) {
             settings::g_swapchainTabSettings.dlss_forced_auto_exposure.SetValue(ae_items[ae_idx]);
         }

@@ -131,7 +131,6 @@ MainTabSettings::MainTabSettings()
       show_dlss_internal_resolution("show_dlss_internal_resolution", false, "DisplayCommander"),
       show_dlss_status("show_dlss_status", false, "DisplayCommander"),
       show_dlss_quality_preset("show_dlss_quality_preset", false, "DisplayCommander"),
-      show_dlss_render_preset("show_dlss_render_preset", false, "DisplayCommander"),
 #if !defined(DC_NO_MODULES)
       show_driver_dlss_sr_preset("show_driver_dlss_sr_preset", false, "DisplayCommander"),
       show_driver_dlss_rr_preset("show_driver_dlss_rr_preset", false, "DisplayCommander"),
@@ -270,7 +269,6 @@ MainTabSettings::MainTabSettings()
         &show_dlss_internal_resolution,
         &show_dlss_status,
         &show_dlss_quality_preset,
-        &show_dlss_render_preset,
 #if !defined(DC_NO_MODULES)
         &show_driver_dlss_sr_preset,
         &show_driver_dlss_rr_preset,

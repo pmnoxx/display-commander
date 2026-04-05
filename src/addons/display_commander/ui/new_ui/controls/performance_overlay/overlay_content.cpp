@@ -132,7 +132,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     bool show_frame_time_graph = settings::g_mainTabSettings.show_frame_time_graph.GetValue();
     bool show_native_frame_time_graph = settings::g_mainTabSettings.show_native_frame_time_graph.GetValue();
     bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
-    bool show_cpu_fps = settings::g_mainTabSettings.show_cpu_fps.GetValue();
     bool show_overlay_nvapi_gpu_util = settings::g_mainTabSettings.show_overlay_nvapi_gpu_util.GetValue();
     bool show_fg_mode = settings::g_mainTabSettings.show_fg_mode.GetValue();
     bool show_dlss_internal_resolution = settings::g_mainTabSettings.show_dlss_internal_resolution.GetValue();
@@ -180,21 +179,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     if (show_fps_limiter_src) {
         table1_any = true;
     }
-    if (show_cpu_fps) {
-        const uint32_t head = ::g_perf_ring.GetHead();
-        const uint32_t count = ::g_perf_ring.GetCountFromHead(head);
-        double total_time = 0.0;
-        uint32_t sample_count = 0;
-        for (uint32_t i = 0; i < count && i < ::kPerfRingCapacity; ++i) {
-            const ::PerfSample sample = ::g_perf_ring.GetSampleWithHead(i, head);
-            if (sample.dt == 0.0f || total_time >= 1.0) break;
-            sample_count++;
-            total_time += sample.dt;
-        }
-        if (sample_count > 0 && total_time >= 1.0) {
-            table1_any = true;
-        }
-    }
 
     if (table1_any) {
         OverlayScalarTableBegin(imgui);
@@ -237,52 +221,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                     OverlayTableRow_TextUnformatted(
                         imgui, label_mode, "Native", "Native FPS", buf, show_tooltips,
                         "Estimated display-side FPS from native Reflex sleep smoothing (requires active native Reflex).");
-                }
-            }
-        }
-
-        if (show_cpu_fps) {
-            LONGLONG cpu_time_ns =
-                ::g_frame_time_ns.load() - fps_sleep_after_on_present_ns.load() - fps_sleep_before_on_present_ns.load();
-            LONGLONG frame_time_ns = ::g_frame_time_ns.load();
-            double current_fps = 0.0;
-            const uint32_t head = ::g_perf_ring.GetHead();
-            const uint32_t count = ::g_perf_ring.GetCountFromHead(head);
-            double total_time = 0.0;
-            uint32_t sample_count = 0;
-            for (uint32_t i = 0; i < count && i < ::kPerfRingCapacity; ++i) {
-                const ::PerfSample sample = ::g_perf_ring.GetSampleWithHead(i, head);
-                if (sample.dt == 0.0f || total_time >= 1.0) break;
-                sample_count++;
-                total_time += sample.dt;
-            }
-            if (sample_count > 0 && total_time >= 1.0) {
-                current_fps = sample_count / total_time;
-            }
-            if (current_fps > 0.0 && cpu_time_ns > 0 && frame_time_ns > 0) {
-                double cpu_busy_percent = (static_cast<double>(cpu_time_ns) / static_cast<double>(frame_time_ns)) * 100.0;
-                if (cpu_busy_percent < 0.0) cpu_busy_percent = 0.0;
-                if (cpu_busy_percent > 100.0) cpu_busy_percent = 100.0;
-                if (cpu_busy_percent > 0.0) {
-                    double cpu_fps_raw = current_fps / (cpu_busy_percent / 100.0);
-                    if (cpu_fps_raw > 9999.0) cpu_fps_raw = 9999.0;
-                    static double s_smoothed_cpu_fps = 0.0;
-                    static double s_displayed_cpu_fps = 0.0;
-                    static LONGLONG s_cpu_fps_last_display_ns = 0;
-                    constexpr double k_cpu_fps_alpha = 0.01;
-                    s_smoothed_cpu_fps = k_cpu_fps_alpha * cpu_fps_raw + (1.0 - k_cpu_fps_alpha) * s_smoothed_cpu_fps;
-                    LONGLONG now_ns = utils::get_now_ns();
-                    const LONGLONG k_cpu_fps_display_interval_ns =
-                        static_cast<LONGLONG>(0.2 * static_cast<double>(utils::SEC_TO_NS));
-                    if (now_ns - s_cpu_fps_last_display_ns >= k_cpu_fps_display_interval_ns) {
-                        s_cpu_fps_last_display_ns = now_ns;
-                        s_displayed_cpu_fps = s_smoothed_cpu_fps;
-                    }
-                    char buf[64];
-                    (void)snprintf(buf, sizeof(buf), "%.1f fps", s_displayed_cpu_fps);
-                    OverlayTableRow_TextUnformatted(
-                        imgui, label_mode, "CPU", "CPU FPS", buf, show_tooltips,
-                        "Theoretical FPS if the CPU were 100% busy: current FPS / (CPU busy %).");
                 }
             }
         }

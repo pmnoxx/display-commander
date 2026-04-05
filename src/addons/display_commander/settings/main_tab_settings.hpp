@@ -117,7 +117,6 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_refresh_rate;
     ui::new_ui::BoolSetting show_vrr_status;
     ui::new_ui::BoolSetting vrr_debug_mode;
-    ui::new_ui::BoolSetting show_flip_status;
     ui::new_ui::BoolSetting show_display_commander_ui;
     ui::new_ui::FloatSetting display_commander_ui_window_x;
     ui::new_ui::FloatSetting display_commander_ui_window_y;
@@ -134,7 +133,6 @@ class MainTabSettings {
      * refresh rate / VRR detection enabled (Debug DXGI refresh tab in -DebugTabs builds, or config). */
     ui::new_ui::BoolSetting show_dxgi_refresh_rate;
     ui::new_ui::BoolSetting show_cpu_usage;
-    ui::new_ui::BoolSetting show_cpu_fps;
     /** NVIDIA GPU engine busy %% in performance overlay (NvAPI_GPU_GetDynamicPstatesInfoEx; first physical GPU). */
     ui::new_ui::BoolSetting show_overlay_nvapi_gpu_util;
     /** Show NVAPI Reflex latency stats (PC latency + GPU frame time) in the performance overlay. */

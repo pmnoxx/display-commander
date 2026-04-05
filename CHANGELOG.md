@@ -25,6 +25,12 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.13.140 (2026-04-05)
+- [removal] [settings] **`show_flip_status` removed** - The unused PresentMon / flip-status placeholder setting and its dead Important Info UI (`#if 0`) are gone. There was no live overlay behavior tied to this key.
+
+## v0.13.139 (2026-04-05)
+- [removal] [ui] [settings] **Performance overlay: remove CPU FPS row** - The optional “CPU FPS” line (theoretical FPS from present FPS and limiter-derived “CPU busy %”) and its `show_cpu_fps` setting are removed. **Cpu busy** (`show_cpu_usage`) is unchanged.
+
 ## v0.13.138 (2026-04-05)
 - [removal] [ui] [settings] **NVAPI actual refresh rate monitor removed** - The performance overlay no longer offers “actual” Hz from **NvAPI_DISP_GetAdaptiveSyncData**, the related time graph/stats, or the Important Info refresh-rate monitor section. **DXGI** measured refresh and VRR heuristics are unchanged; **NVAPI VRR status** (GetVRRInfo) in the overlay is unchanged. Saved keys for the removed toggles are ignored. **Details:** deleted `nvapi_actual_refresh_rate_monitor.*`, `refresh_rate_graph.cpp`; `nvapi_loader` no longer resolves `DISP_GetAdaptiveSyncData`.
 

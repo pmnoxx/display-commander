@@ -411,19 +411,6 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         if (!native_reflex_active) {
             imgui.EndDisabled();
         }
-#if 0
-        imgui.NextColumn();
-
-        bool show_flip_status = settings::g_mainTabSettings.show_flip_status.GetValue();
-        if (imgui.Checkbox("Flip Status", &show_flip_status)) {
-            settings::g_mainTabSettings.show_flip_status.SetValue(show_flip_status);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Reserved for overlay integration with the optional PresentMon private module (external-private "
-                "display-commander2-modules, DC_EXTERNAL_MODULES build).");
-        }
-        #endif
         imgui.NextColumn();
 
         imgui.Columns(1);
@@ -439,17 +426,6 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             imgui.SetTooltipEx(
                 "100%% minus the %% of frame time the FPS limiter spends sleeping. "
                 "Not actual CPU usage: measures how much headroom the game has. 100%% = CPU limited.");
-        }
-        imgui.NextColumn();
-
-        bool show_cpu_fps = settings::g_mainTabSettings.show_cpu_fps.GetValue();
-        if (imgui.Checkbox("Cpu FPS", &show_cpu_fps)) {
-            settings::g_mainTabSettings.show_cpu_fps.SetValue(show_cpu_fps);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Current FPS / (cpu busy %%). Theoretical FPS if CPU were 100%% busy. "
-                "E.g. 100 fps at 50%% busy = 200 cpu fps.");
         }
         imgui.NextColumn();
         bool show_fps_limiter_src = settings::g_mainTabSettings.show_fps_limiter_src.GetValue();

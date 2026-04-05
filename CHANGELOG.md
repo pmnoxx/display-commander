@@ -25,6 +25,10 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.13.147 (2026-04-06)
+- [bugfix] [ui] **Frame Generation (DLSS-G) detection: fewer false positives** - The overlay **FG Mode** line and related DLSS summary logic now treat frame generation as active only when NGX reports interpolation on **and** a valid **DLSSG.Mode** (when the driver exposes it), instead of inferring FG from loose parameter state. That reduces cases where the UI showed FG as on when it was not really active.
+  **Details:** `globals.cpp` `GetDLSSGSummary` / `GetDLSSGSummaryLite` (`DLSSG.EnableInterp`, `DLSSG.Mode`, `DLSSG.MultiFrameCount`).
+
 ## v0.13.146 (2026-04-05)
 - [bugfix] [ui] **Driver DLSS preset (DRS) cache no longer expires on a timer** - The NVIDIA driver profile read used for **SR preset (DRS+DC)** / **RR preset (DRS+DC)** in the overlay and DLSS UI was refreshed about every three seconds, which could cause brief stutter.
 

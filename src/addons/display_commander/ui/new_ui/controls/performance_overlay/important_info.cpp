@@ -413,6 +413,18 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         }
         imgui.NextColumn();
 
+        bool show_overlay_resolution = settings::g_mainTabSettings.show_overlay_resolution.GetValue();
+        if (imgui.Checkbox("Resolution", &show_overlay_resolution)) {
+            settings::g_mainTabSettings.show_overlay_resolution.SetValue(show_overlay_resolution);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "Shows render resolution in the performance overlay. When DLSS is active, shows internal render size "
+                "and swapchain/backbuffer (e.g. 1920x1080->3840x2160). When DLSS is off, shows the tracked "
+                "backbuffer size only.");
+        }
+        imgui.NextColumn();
+
         imgui.Columns(1);
         imgui.Separator();
         #if 0
@@ -504,16 +516,6 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx("Shows DLSS Frame Generation mode (OFF / 2x / 3x / 4x) in the performance overlay.%s",
                                dlss_ngx_seen ? "" : " Requires a game that uses DLSS/NGX.");
-        }
-        imgui.NextColumn();
-
-        bool show_dlss_internal_resolution = settings::g_mainTabSettings.show_dlss_internal_resolution.GetValue();
-        if (imgui.Checkbox("DLSS resolution", &show_dlss_internal_resolution)) {
-            settings::g_mainTabSettings.show_dlss_internal_resolution.SetValue(show_dlss_internal_resolution);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Shows DLSS internal/output resolution pair (e.g., 1920x1080->3840x2160) in the performance overlay.");
         }
         imgui.NextColumn();
 

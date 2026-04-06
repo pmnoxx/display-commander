@@ -125,7 +125,7 @@ MainTabSettings::MainTabSettings()
       show_overlay_nvapi_gpu_active_ms("show_overlay_nvapi_gpu_active_ms", false, "DisplayCommander"),
       show_overlay_nvapi_latency_jitter_abs("show_overlay_nvapi_latency_jitter_abs", false, "DisplayCommander"),
       show_fg_mode("show_fg_mode", false, "DisplayCommander"),
-      show_dlss_internal_resolution("show_dlss_internal_resolution", false, "DisplayCommander"),
+      show_overlay_resolution("show_dlss_internal_resolution", false, "DisplayCommander"),
       show_dlss_status("show_dlss_status", false, "DisplayCommander"),
       show_dlss_quality_preset("show_dlss_quality_preset", false, "DisplayCommander"),
 #if !defined(DC_LITE)
@@ -260,7 +260,7 @@ MainTabSettings::MainTabSettings()
         &show_overlay_nvapi_gpu_active_ms,
         &show_overlay_nvapi_latency_jitter_abs,
         &show_fg_mode,
-        &show_dlss_internal_resolution,
+        &show_overlay_resolution,
         &show_dlss_status,
         &show_dlss_quality_preset,
 #if !defined(DC_LITE)

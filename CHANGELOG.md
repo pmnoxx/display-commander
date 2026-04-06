@@ -27,6 +27,9 @@ Planned:
 
 
 
+## v0.13.151 (2026-04-05)
+- [ui] **Performance overlay: add show Resolution** - Removed "show DLSS Resolution" in favor of **Resolution** (internal→backbuffer when DLSS is on, backbuffer-only otherwise). Important Info places the toggle under **FPS & core display**, not **DLSS / NGX**.
+
 ## v0.13.150 (2026-04-05)
 - [ui] [settings] **Animation error on main Performance Overlay** -Added showing animation error, next to latency error on performance overlay.
 - [ui] [features] **Enabled showing latency stats on 32-bit as well**

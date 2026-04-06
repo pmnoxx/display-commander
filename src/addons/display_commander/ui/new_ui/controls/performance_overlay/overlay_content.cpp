@@ -136,7 +136,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
     bool show_overlay_nvapi_gpu_util = settings::g_mainTabSettings.show_overlay_nvapi_gpu_util.GetValue();
     bool show_fg_mode = settings::g_mainTabSettings.show_fg_mode.GetValue();
-    bool show_dlss_internal_resolution = settings::g_mainTabSettings.show_dlss_internal_resolution.GetValue();
+    bool show_overlay_resolution = settings::g_mainTabSettings.show_overlay_resolution.GetValue();
     bool show_dlss_status = settings::g_mainTabSettings.show_dlss_status.GetValue();
     bool show_dlss_quality_preset = settings::g_mainTabSettings.show_dlss_quality_preset.GetValue();
 #if !defined(DC_LITE)
@@ -472,20 +472,18 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     }
 
     // ----- DLSS / FG (table) -----
-    if (show_fg_mode || show_dlss_internal_resolution || show_dlss_status || show_dlss_quality_preset
+    if (show_fg_mode || show_overlay_resolution || show_dlss_status || show_dlss_quality_preset
         || show_driver_dlss_sr_preset || show_driver_dlss_rr_preset) {
         const DLSSGSummaryLite dlss_lite = GetDLSSGSummaryLite();
         const bool any_dlss_active = dlss_lite.any_dlss_active;
         const int fg_mode = show_fg_mode ? dlss_lite.fg_mode : 0;
 
         std::string internal_resolution = "N/A";
-        if (show_dlss_internal_resolution) {
-            unsigned int internal_width, internal_height, output_width, output_height;
+        if (show_overlay_resolution) {
+            unsigned int internal_width, internal_height;
             bool has_internal_width = g_ngx_parameters.get_as_uint("DLSS.Render.Subrect.Dimensions.Width", internal_width);
             bool has_internal_height =
                 g_ngx_parameters.get_as_uint("DLSS.Render.Subrect.Dimensions.Height", internal_height);
-            (void)g_ngx_parameters.get_as_uint("Width", output_width);
-            (void)g_ngx_parameters.get_as_uint("Height", output_height);
 
             if (has_internal_width && has_internal_height && internal_width > 0 && internal_height > 0) {
                 internal_resolution = std::to_string(internal_width) + "x" + std::to_string(internal_height);
@@ -517,18 +515,24 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                                             nullptr, "%s", "OFF");
             }
         }
-        if (show_dlss_internal_resolution) {
+        if (show_overlay_resolution) {
+            const int bb_w = g_game_render_width.load();
+            const int bb_h = g_game_render_height.load();
+            const bool have_bb = (bb_w > 0 && bb_h > 0);
             if (any_dlss_active && internal_resolution != "N/A") {
                 std::string res_text = internal_resolution;
-                const int bb_w = g_game_render_width.load();
-                const int bb_h = g_game_render_height.load();
-                if (bb_w > 0 && bb_h > 0) {
+                if (have_bb) {
                     res_text += " -> " + std::to_string(bb_w) + "x" + std::to_string(bb_h);
                 }
-                OverlayTableRow_TextUnformatted(imgui, label_mode, "DLSS Res", "DLSS resolution", res_text.c_str());
+                OverlayTableRow_TextUnformatted(imgui, label_mode, "Res", "Resolution", res_text.c_str());
+            } else if (have_bb) {
+                const std::string res_text = std::to_string(bb_w) + "x" + std::to_string(bb_h);
+                OverlayTableRow_TextUnformatted(imgui, label_mode, "Res", "Resolution", res_text.c_str());
             } else {
-                OverlayTableRow_TextColored(imgui, label_mode, "DLSS Res", "DLSS resolution", ui::colors::TEXT_DIMMED,
-                                            show_tooltips, nullptr, "%s", "N/A");
+                OverlayTableRow_TextColored(
+                    imgui, label_mode, "Res", "Resolution", ui::colors::TEXT_DIMMED, show_tooltips,
+                    "Resolution unavailable (no DLSS internal size yet and swapchain/backbuffer size not tracked).",
+                    "%s", "N/A");
             }
         }
         if (show_dlss_status) {

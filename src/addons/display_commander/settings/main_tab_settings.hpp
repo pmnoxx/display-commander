@@ -144,7 +144,9 @@ class MainTabSettings {
     /** Overlay: rolling avg |Δlatency| between consecutive OSD latency estimates (NVAPI newest frame). Debug PresentMon tab. */
     ui::new_ui::BoolSetting show_overlay_nvapi_latency_jitter_abs;
     ui::new_ui::BoolSetting show_fg_mode;
-    ui::new_ui::BoolSetting show_dlss_internal_resolution;
+    /** Overlay: render resolution; DLSS on shows internal->backbuffer, else tracked swapchain/backbuffer size. Ini:
+     * show_dlss_internal_resolution. */
+    ui::new_ui::BoolSetting show_overlay_resolution;
     ui::new_ui::BoolSetting show_dlss_status;
     ui::new_ui::BoolSetting show_dlss_quality_preset;  // Quality preset: Performance, Balanced, Quality, etc.
 #if !defined(DC_LITE)

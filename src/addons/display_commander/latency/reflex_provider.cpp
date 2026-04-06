@@ -273,6 +273,25 @@ bool ReflexProvider::FillNewestFrameDerivedForOverlay(const NV_LATENCY_RESULT_PA
         out.sim_duration_valid = true;
         out.sim_duration_ms = static_cast<double>(fr.simEndTime - fr.simStartTime) / 1000.0;
     }
+    if (fr.simEndTime > 0 && fr.renderSubmitStartTime >= fr.simEndTime) {
+        out.sim_end_to_render_submit_start_valid = true;
+        out.sim_end_to_render_submit_start_ms =
+            static_cast<double>(fr.renderSubmitStartTime - fr.simEndTime) / 1000.0;
+    }
+    if (fr.renderSubmitStartTime > 0 && fr.renderSubmitEndTime >= fr.renderSubmitStartTime) {
+        out.render_submit_phase_valid = true;
+        out.render_submit_phase_ms =
+            static_cast<double>(fr.renderSubmitEndTime - fr.renderSubmitStartTime) / 1000.0;
+    }
+    if (fr.renderSubmitEndTime > 0 && fr.presentStartTime >= fr.renderSubmitEndTime) {
+        out.rs_end_to_present_start_valid = true;
+        out.rs_end_to_present_start_ms =
+            static_cast<double>(fr.presentStartTime - fr.renderSubmitEndTime) / 1000.0;
+    }
+    if (fr.presentStartTime > 0 && fr.presentEndTime >= fr.presentStartTime) {
+        out.present_phase_valid = true;
+        out.present_phase_ms = static_cast<double>(fr.presentEndTime - fr.presentStartTime) / 1000.0;
+    }
     if (fr.gpuActiveRenderTimeUs > 0) {
         out.gpu_active_valid = true;
         out.gpu_active_render_ms = static_cast<double>(fr.gpuActiveRenderTimeUs) / 1000.0;

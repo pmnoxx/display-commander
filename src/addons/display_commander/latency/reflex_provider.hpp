@@ -65,6 +65,18 @@ class ReflexProvider {
         uint64_t frame_id = 0;
         bool sim_duration_valid = false;
         double sim_duration_ms = 0.0;
+        /** renderSubmitStartTime − simEndTime on newest frame (µs domain → ms). */
+        bool sim_end_to_render_submit_start_valid = false;
+        double sim_end_to_render_submit_start_ms = 0.0;
+        /** renderSubmitEndTime − renderSubmitStartTime (µs → ms). */
+        bool render_submit_phase_valid = false;
+        double render_submit_phase_ms = 0.0;
+        /** presentStartTime − renderSubmitEndTime (µs → ms). */
+        bool rs_end_to_present_start_valid = false;
+        double rs_end_to_present_start_ms = 0.0;
+        /** presentEndTime − presentStartTime (µs → ms). */
+        bool present_phase_valid = false;
+        double present_phase_ms = 0.0;
         bool gpu_active_valid = false;
         double gpu_active_render_ms = 0.0;
         bool osd_latency_valid = false;

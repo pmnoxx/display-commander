@@ -34,6 +34,47 @@ void DrawPresentMonDebugTab(display_commander::ui::IImGuiWrapper& imgui) {
             "NvAPI_D3D_GetLatency. Reflex latency reporting required.");
     }
 
+    bool sim_to_rs = settings::g_mainTabSettings.show_overlay_nvapi_sim_end_to_rs_start.GetValue();
+    if (imgui.Checkbox("Overlay: sim end → render submit start (rolling avg)", &sim_to_rs)) {
+        settings::g_mainTabSettings.show_overlay_nvapi_sim_end_to_rs_start.SetValue(sim_to_rs);
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltipEx(
+            "Rolling average of (renderSubmitStartTime − simulationEndTime) on the newest completed frame in "
+            "NvAPI_D3D_GetLatency. Time from end of simulation to start of render submit. Reflex latency reporting "
+            "required.");
+    }
+
+    bool rs_phase = settings::g_mainTabSettings.show_overlay_nvapi_rs_submit_duration.GetValue();
+    if (imgui.Checkbox("Overlay: render submit start → end (rolling avg)", &rs_phase)) {
+        settings::g_mainTabSettings.show_overlay_nvapi_rs_submit_duration.SetValue(rs_phase);
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltipEx(
+            "Rolling average of (renderSubmitEndTime − renderSubmitStartTime) on the newest completed frame. Reflex "
+            "latency reporting required.");
+    }
+
+    bool rs_to_pr = settings::g_mainTabSettings.show_overlay_nvapi_rs_end_to_present_start.GetValue();
+    if (imgui.Checkbox("Overlay: render submit end → present start (rolling avg)", &rs_to_pr)) {
+        settings::g_mainTabSettings.show_overlay_nvapi_rs_end_to_present_start.SetValue(rs_to_pr);
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltipEx(
+            "Rolling average of (presentStartTime − renderSubmitEndTime) on the newest completed frame. Reflex latency "
+            "reporting required.");
+    }
+
+    bool pr_phase = settings::g_mainTabSettings.show_overlay_nvapi_present_phase_duration.GetValue();
+    if (imgui.Checkbox("Overlay: present start → present end (rolling avg)", &pr_phase)) {
+        settings::g_mainTabSettings.show_overlay_nvapi_present_phase_duration.SetValue(pr_phase);
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltipEx(
+            "Rolling average of (presentEndTime − presentStartTime) on the newest completed frame. Reflex latency "
+            "reporting required.");
+    }
+
     bool gpu_on = settings::g_mainTabSettings.show_overlay_nvapi_gpu_active_ms.GetValue();
     if (imgui.Checkbox("Overlay: Reflex GPU active time (rolling avg)", &gpu_on)) {
         settings::g_mainTabSettings.show_overlay_nvapi_gpu_active_ms.SetValue(gpu_on);

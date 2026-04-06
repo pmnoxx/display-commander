@@ -139,6 +139,14 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_nvapi_latency_stats;
     /** Overlay: rolling avg simulation phase (NVAPI sim_end − sim_start, newest frame). Debug PresentMon tab. */
     ui::new_ui::BoolSetting show_overlay_nvapi_sim_duration;
+    /** Overlay: rolling avg sim end → render submit start (NVAPI newest frame). Debug PresentMon tab only. */
+    ui::new_ui::BoolSetting show_overlay_nvapi_sim_end_to_rs_start;
+    /** Overlay: rolling avg render submit start → end (NVAPI newest frame). Debug PresentMon tab. */
+    ui::new_ui::BoolSetting show_overlay_nvapi_rs_submit_duration;
+    /** Overlay: rolling avg render submit end → present start (NVAPI newest frame). Debug PresentMon tab. */
+    ui::new_ui::BoolSetting show_overlay_nvapi_rs_end_to_present_start;
+    /** Overlay: rolling avg present start → present end (NVAPI newest frame). Debug PresentMon tab. */
+    ui::new_ui::BoolSetting show_overlay_nvapi_present_phase_duration;
     /** Overlay: rolling avg GPU active render time (NVAPI gpuActiveRenderTimeUs, newest frame). Debug PresentMon tab. */
     ui::new_ui::BoolSetting show_overlay_nvapi_gpu_active_ms;
     /** Overlay: rolling avg |Δlatency| between consecutive OSD latency estimates (NVAPI newest frame). Debug PresentMon tab. */

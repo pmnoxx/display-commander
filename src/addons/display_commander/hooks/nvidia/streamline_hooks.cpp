@@ -592,7 +592,8 @@ static sl::Result slDLSSGGetState_Detour(const sl::ViewportHandle& viewport, sl:
     }
     const sl::Result result = slDLSSGGetState_Original(viewport, state, options);
     if (result == sl::Result::eOk) {
-        UpdateNGXParamsFromDLSSGOptions(state, options);
+        // Disabled for now, revisit
+      //  UpdateNGXParamsFromDLSSGOptions(state, options);
     }
     return result;
 }

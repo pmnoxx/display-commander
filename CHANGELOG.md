@@ -25,8 +25,11 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.13.149 (2026-04-06)
+- [hooks] **Vulkan support** - improved Vulkan support for DLSS/Frame generation features.
+
 ## v0.13.148 (2026-04-06)
-- [ui] **SR/RR preset overlay: NGX DLL default hint** - **SR preset (DRS+DC)** and **RR preset (DRS+DC)** lines now append **`(K)`** or **`(UPDATEME)`** from the loaded **`nvngx_dlss.dll`** / **`nvngx_dlssd.dll`** version (NGX stack default for **DLSS Default**). SR maps **310.5.0–310.6.99** to **K**; other SR builds and all RR builds show **UPDATEME** until more ranges are documented. Tooltip adds one line naming the DLL and letter.
+- [ui] **SR/RR preset overlay: show version used based on data stored** - Older versions that need to be updated have (UPDATEME).
 
 ## v0.13.147 (2026-04-06)
 - [bugfix] [ui] **Frame Generation (DLSS-G) detection: fewer false positives** - Fixed logic for detecing whenever Frame Generation is on.

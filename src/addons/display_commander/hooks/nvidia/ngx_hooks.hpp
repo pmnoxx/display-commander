@@ -37,19 +37,19 @@ bool AreNGXParameterVTableHooksInstalled();
 const char* GetNGXCounterKindLabel(NGXCounterKind kind);
 uint32_t GetNGXCounterValue(NGXCounterKind kind);
 
-/** Debug-only frame-gen multiplier override on D3D11/D3D12 EvaluateFeature: -1 = game default, 0–5 → 1x–6x. */
+/** Debug-only frame-gen multiplier override on D3D11/D3D12/Vulkan EvaluateFeature: -1 = game default, 0–5 → 1x–6x. */
 int GetDebugDLSSGMultiFrameCountOverride();
 void SetDebugDLSSGMultiFrameCountOverride(int multiframe_count);
 
-/** Debug-only frame-gen operating mode on the same EvaluateFeature path: -1 = game default, 0 = off, 1 = on, 2 = auto. */
+/** Debug-only frame-gen operating mode on the same EvaluateFeature path (D3D11/D3D12/Vulkan): -1 = game default, 0 = off, 1 = on, 2 = auto. */
 int GetDebugDLSSGModeOverride();
 void SetDebugDLSSGModeOverride(int mode);
 
-/** Debug-only generated-frame interpolation flag on the same path: -1 = game default, 0 = off, 1 = on. */
+/** Debug-only generated-frame interpolation flag on the same EvaluateFeature path (D3D11/D3D12/Vulkan): -1 = game default, 0 = off, 1 = on. */
 int GetDebugDLSSGEnableInterpOverride();
 void SetDebugDLSSGEnableInterpOverride(int enable_interp);
 
-/** How many times FG debug overrides were pushed on EvaluateFeature (at least one of multiplier/mode/interpolation). */
+/** How many times FG debug overrides were pushed on EvaluateFeature (D3D11/D3D12/Vulkan; at least one of multiplier/mode/interpolation). */
 uint64_t GetDebugDLSSGEvaluateOverrideApplyCount();
 /** Monotonic ns timestamp of last such push; 0 if never. */
 uint64_t GetDebugDLSSGEvaluateOverrideLastApplyTimeNs();

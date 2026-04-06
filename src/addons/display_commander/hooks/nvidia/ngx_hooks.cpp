@@ -31,6 +31,20 @@ struct ID3D12GraphicsCommandList;
 struct ID3D11Device;
 struct ID3D11DeviceContext;
 
+// Forward declarations for Vulkan NGX (opaque handles; nvsdk_ngx_vk.h)
+struct VkInstance_T;
+typedef VkInstance_T* VkInstance;
+struct VkPhysicalDevice_T;
+typedef VkPhysicalDevice_T* VkPhysicalDevice;
+struct VkDevice_T;
+typedef VkDevice_T* VkDevice;
+struct VkCommandBuffer_T;
+typedef VkCommandBuffer_T* VkCommandBuffer;
+
+// Loader proc types for NVSDK_NGX_VULKAN_Init / Init_with_ProjectID (x64 same as PFN_vk* in Vulkan)
+typedef void* (*PFN_vkGetInstanceProcAddr)(VkInstance instance, const char* pName);
+typedef void* (*PFN_vkGetDeviceProcAddr)(VkDevice device, const char* pName);
+
 // NGX types
 typedef struct NVSDK_NGX_Parameter NVSDK_NGX_Parameter;
 typedef struct NVSDK_NGX_Handle NVSDK_NGX_Handle;
@@ -83,7 +97,7 @@ typedef void(NVSDK_CONV* PFN_NVSDK_NGX_ProgressCallback)(float InCurrentProgress
 static std::map<NVSDK_NGX_Handle*, NVSDK_NGX_Feature> g_ngx_handle_map;
 
 namespace {
-// Debug tab: session-only overrides for frame generation on D3D11/D3D12 EvaluateFeature (-1 = use game values).
+// Debug tab: session-only overrides for frame generation on D3D11/D3D12/Vulkan EvaluateFeature (-1 = use game values).
 std::atomic<int> s_debug_dlssg_multiframe_mfc{-1};
 std::atomic<int> s_debug_dlssg_mode{-1};
 std::atomic<int> s_debug_dlssg_enable_interp{-1};
@@ -356,6 +370,36 @@ using NVSDK_NGX_D3D12_EvaluateFeature_C_pfn =
     NVSDK_NGX_Result(NVSDK_CONV*)(ID3D12GraphicsCommandList* InCmdList, const NVSDK_NGX_Handle* InFeatureHandle,
                                   const NVSDK_NGX_Parameter* InParameters, PFN_NVSDK_NGX_ProgressCallback_C InCallback);
 
+using NVSDK_NGX_VULKAN_EvaluateFeature_pfn =
+    NVSDK_NGX_Result(NVSDK_CONV*)(VkCommandBuffer InCmdList, const NVSDK_NGX_Handle* InFeatureHandle,
+                                  const NVSDK_NGX_Parameter* InParameters, PFN_NVSDK_NGX_ProgressCallback InCallback);
+using NVSDK_NGX_VULKAN_EvaluateFeature_C_pfn =
+    NVSDK_NGX_Result(NVSDK_CONV*)(VkCommandBuffer InCmdList, const NVSDK_NGX_Handle* InFeatureHandle,
+                                  const NVSDK_NGX_Parameter* InParameters, PFN_NVSDK_NGX_ProgressCallback_C InCallback);
+
+// Public SDK #else nvsdk_ngx_vk.h — 9-arg Init, 10-arg Init_with_ProjectID (not NGX_SNIPPET_BUILD).
+using NVSDK_NGX_VULKAN_Init_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(
+    unsigned long long InApplicationId, const wchar_t* InApplicationDataPath, VkInstance InInstance,
+    VkPhysicalDevice InPD, VkDevice InDevice, PFN_vkGetInstanceProcAddr InGIPA, PFN_vkGetDeviceProcAddr InGDPA,
+    const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo, NVSDK_NGX_Version InSDKVersion);
+using NVSDK_NGX_VULKAN_Init_with_ProjectID_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(
+    const char* InProjectId, NVSDK_NGX_EngineType InEngineType, const char* InEngineVersion,
+    const wchar_t* InApplicationDataPath, VkInstance InInstance, VkPhysicalDevice InPD, VkDevice InDevice,
+    PFN_vkGetInstanceProcAddr InGIPA, PFN_vkGetDeviceProcAddr InGDPA,
+    const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo, NVSDK_NGX_Version InSDKVersion);
+using NVSDK_NGX_VULKAN_Shutdown1_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(VkDevice InDevice);
+using NVSDK_NGX_VULKAN_GetParameters_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter** OutParameters);
+using NVSDK_NGX_VULKAN_GetCapabilityParameters_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter** OutParameters);
+using NVSDK_NGX_VULKAN_AllocateParameters_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter** OutParameters);
+using NVSDK_NGX_VULKAN_CreateFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(VkCommandBuffer InCmdList,
+                                                                        NVSDK_NGX_Feature InFeatureID,
+                                                                        const NVSDK_NGX_Parameter* InParameters,
+                                                                        NVSDK_NGX_Handle** OutHandle);
+using NVSDK_NGX_VULKAN_CreateFeature1_pfn =
+    NVSDK_NGX_Result(NVSDK_CONV*)(VkDevice InDevice, VkCommandBuffer InCmdList, NVSDK_NGX_Feature InFeatureID,
+                                  const NVSDK_NGX_Parameter* InParameters, NVSDK_NGX_Handle** OutHandle);
+using NVSDK_NGX_VULKAN_ReleaseFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Handle* InHandle);
+
 // 2 args; nvsdk_ngx.h declares UpdateFeature only when NGX_SNIPPET_BUILD is undefined — see ABI block above.
 using NVSDK_NGX_UpdateFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(const NVSDK_NGX_Application_Identifier* ApplicationId,
                                                                   const NVSDK_NGX_Feature FeatureID);
@@ -430,6 +474,18 @@ NVSDK_NGX_D3D11_ReleaseFeature_pfn NVSDK_NGX_D3D11_ReleaseFeature_Original = nul
 NVSDK_NGX_D3D11_EvaluateFeature_pfn NVSDK_NGX_D3D11_EvaluateFeature_Original = nullptr;
 NVSDK_NGX_D3D11_Shutdown1_pfn NVSDK_NGX_D3D11_Shutdown1_Original = nullptr;
 NVSDK_NGX_D3D11_EvaluateFeature_C_pfn NVSDK_NGX_D3D11_EvaluateFeature_C_Original = nullptr;
+
+NVSDK_NGX_VULKAN_Init_pfn NVSDK_NGX_VULKAN_Init_Original = nullptr;
+NVSDK_NGX_VULKAN_Init_with_ProjectID_pfn NVSDK_NGX_VULKAN_Init_with_ProjectID_Original = nullptr;
+NVSDK_NGX_VULKAN_Shutdown1_pfn NVSDK_NGX_VULKAN_Shutdown1_Original = nullptr;
+NVSDK_NGX_VULKAN_GetParameters_pfn NVSDK_NGX_VULKAN_GetParameters_Original = nullptr;
+NVSDK_NGX_VULKAN_GetCapabilityParameters_pfn NVSDK_NGX_VULKAN_GetCapabilityParameters_Original = nullptr;
+NVSDK_NGX_VULKAN_AllocateParameters_pfn NVSDK_NGX_VULKAN_AllocateParameters_Original = nullptr;
+NVSDK_NGX_VULKAN_CreateFeature_pfn NVSDK_NGX_VULKAN_CreateFeature_Original = nullptr;
+NVSDK_NGX_VULKAN_CreateFeature1_pfn NVSDK_NGX_VULKAN_CreateFeature1_Original = nullptr;
+NVSDK_NGX_VULKAN_ReleaseFeature_pfn NVSDK_NGX_VULKAN_ReleaseFeature_Original = nullptr;
+NVSDK_NGX_VULKAN_EvaluateFeature_pfn NVSDK_NGX_VULKAN_EvaluateFeature_Original = nullptr;
+NVSDK_NGX_VULKAN_EvaluateFeature_C_pfn NVSDK_NGX_VULKAN_EvaluateFeature_C_Original = nullptr;
 
 // UpdateFeature original function pointer
 NVSDK_NGX_UpdateFeature_pfn NVSDK_NGX_UpdateFeature_Original = nullptr;
@@ -1537,6 +1593,236 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_EvaluateFeature_C_Detour(ID3D11Devic
     return NVSDK_NGX_Result_Fail;
 }
 
+// Vulkan Init detour — 9-arg public SDK (nvsdk_ngx_vk.h #else)
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_VULKAN_Init_Detour(unsigned long long InApplicationId,
+                                                          const wchar_t* InApplicationDataPath, VkInstance InInstance,
+                                                          VkPhysicalDevice InPD, VkDevice InDevice,
+                                                          PFN_vkGetInstanceProcAddr InGIPA, PFN_vkGetDeviceProcAddr InGDPA,
+                                                          const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
+                                                          NVSDK_NGX_Version InSDKVersion) {
+    CALL_GUARD_NO_TS();
+    g_ngx_counters.vulkan_init_count.fetch_add(1);
+    g_ngx_counters.total_count.fetch_add(1);
+    LogInfo("NGX Vulkan Init called - AppId: %llu", InApplicationId);
+    if (NVSDK_NGX_VULKAN_Init_Original != nullptr) {
+        return NVSDK_NGX_VULKAN_Init_Original(InApplicationId, InApplicationDataPath, InInstance, InPD, InDevice,
+                                              InGIPA, InGDPA, InFeatureInfo, InSDKVersion);
+    }
+    return NVSDK_NGX_Result_Fail;
+}
+
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_VULKAN_Init_with_ProjectID_Detour(
+    const char* InProjectId, NVSDK_NGX_EngineType InEngineType, const char* InEngineVersion,
+    const wchar_t* InApplicationDataPath, VkInstance InInstance, VkPhysicalDevice InPD, VkDevice InDevice,
+    PFN_vkGetInstanceProcAddr InGIPA, PFN_vkGetDeviceProcAddr InGDPA,
+    const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo, NVSDK_NGX_Version InSDKVersion) {
+    CALL_GUARD_NO_TS();
+    g_ngx_counters.vulkan_init_projectid_count.fetch_add(1);
+    g_ngx_counters.total_count.fetch_add(1);
+    LogInfo("NGX Vulkan Init ProjectID called - ProjectId: %s", InProjectId ? InProjectId : "null");
+    if (NVSDK_NGX_VULKAN_Init_with_ProjectID_Original != nullptr) {
+        return NVSDK_NGX_VULKAN_Init_with_ProjectID_Original(InProjectId, InEngineType, InEngineVersion,
+                                                           InApplicationDataPath, InInstance, InPD, InDevice, InGIPA,
+                                                           InGDPA, InFeatureInfo, InSDKVersion);
+    }
+    return NVSDK_NGX_Result_Fail;
+}
+
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_VULKAN_Shutdown1_Detour(VkDevice InDevice) {
+    CALL_GUARD_NO_TS();
+    g_ngx_counters.vulkan_shutdown1_count.fetch_add(1);
+    g_ngx_counters.total_count.fetch_add(1);
+    if (NVSDK_NGX_VULKAN_Shutdown1_Original != nullptr) {
+        return NVSDK_NGX_VULKAN_Shutdown1_Original(InDevice);
+    }
+    return NVSDK_NGX_Result_Fail;
+}
+
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_VULKAN_GetParameters_Detour(NVSDK_NGX_Parameter** OutParameters) {
+    CALL_GUARD_NO_TS();
+    g_ngx_counters.vulkan_getparameters_count.fetch_add(1);
+    g_ngx_counters.total_count.fetch_add(1);
+    NVSDK_NGX_Result ret = NVSDK_NGX_Result_Fail;
+    if (NVSDK_NGX_VULKAN_GetParameters_Original != nullptr) {
+        ret = NVSDK_NGX_VULKAN_GetParameters_Original(OutParameters);
+    }
+    if (ret == NVSDK_NGX_Result_Success && OutParameters != nullptr && *OutParameters != nullptr) {
+        HookNGXParameterVTable(*OutParameters, "Vulkan_GetParameters");
+        g_last_ngx_parameter.store(*OutParameters);
+        ApplyDLSSPresetParameters(*OutParameters);
+    }
+    return ret;
+}
+
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_VULKAN_GetCapabilityParameters_Detour(NVSDK_NGX_Parameter** OutParameters) {
+    CALL_GUARD_NO_TS();
+    g_ngx_counters.vulkan_getcapabilityparameters_count.fetch_add(1);
+    g_ngx_counters.total_count.fetch_add(1);
+    NVSDK_NGX_Result ret = NVSDK_NGX_Result_Fail;
+    if (NVSDK_NGX_VULKAN_GetCapabilityParameters_Original != nullptr) {
+        ret = NVSDK_NGX_VULKAN_GetCapabilityParameters_Original(OutParameters);
+    }
+    if (ret == NVSDK_NGX_Result_Success && OutParameters != nullptr && *OutParameters != nullptr) {
+        HookNGXParameterVTable(*OutParameters, "Vulkan_GetCapabilityParameters");
+        g_last_ngx_parameter.store(*OutParameters);
+        ApplyDLSSPresetParameters(*OutParameters);
+    }
+    return ret;
+}
+
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_VULKAN_AllocateParameters_Detour(NVSDK_NGX_Parameter** OutParameters) {
+    CALL_GUARD_NO_TS();
+    g_ngx_counters.vulkan_allocateparameters_count.fetch_add(1);
+    g_ngx_counters.total_count.fetch_add(1);
+    NVSDK_NGX_Result ret = NVSDK_NGX_Result_Fail;
+    if (NVSDK_NGX_VULKAN_AllocateParameters_Original != nullptr) {
+        ret = NVSDK_NGX_VULKAN_AllocateParameters_Original(OutParameters);
+    }
+    if (ret == NVSDK_NGX_Result_Success && OutParameters != nullptr && *OutParameters != nullptr) {
+        HookNGXParameterVTable(*OutParameters, "Vulkan_AllocateParameters");
+        g_last_ngx_parameter.store(*OutParameters);
+        ApplyDLSSPresetParameters(*OutParameters);
+    }
+    return ret;
+}
+
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_VULKAN_CreateFeature_Detour(VkCommandBuffer InCmdList,
+                                                                   NVSDK_NGX_Feature InFeatureID,
+                                                                   const NVSDK_NGX_Parameter* InParameters,
+                                                                   NVSDK_NGX_Handle** OutHandle) {
+    CALL_GUARD_NO_TS();
+    g_ngx_counters.vulkan_createfeature_count.fetch_add(1);
+    g_ngx_counters.total_count.fetch_add(1);
+    LogInfo("NGX Vulkan CreateFeature called - FeatureID: %d", InFeatureID);
+    if (InFeatureID == NVSDK_NGX_Feature_FrameGeneration) {
+        g_ngx_counters.framegen_create_attempt_count.fetch_add(1);
+    }
+    if (InParameters != nullptr) {
+        NVSDK_NGX_Parameter* params_mut = const_cast<NVSDK_NGX_Parameter*>(InParameters);
+        HookNGXParameterVTable(params_mut, "Vulkan_CreateFeature");
+        LogNGXCreateFeatureParameters(params_mut);
+        if (InFeatureID == NVSDK_NGX_Feature_SuperSampling && NVSDK_NGX_Parameter_SetI_Original != nullptr) {
+            const NVSDK_NGX_PerfQuality_Value override_preset =
+                GetDLSSQualityPresetValue(settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue());
+            const int override_preset_int = static_cast<int>(override_preset);
+            if (override_preset_int >= 0) {
+                NVSDK_NGX_Parameter_SetI_Original(params_mut, NVSDK_NGX_Parameter_PerfQualityValue,
+                                                  override_preset_int);
+                g_ngx_parameters.update_int(NVSDK_NGX_Parameter_PerfQualityValue, override_preset_int);
+                LogInfo("  NGX Vulkan CreateFeature: overrode PerfQualityValue -> %d", override_preset_int);
+            }
+        }
+    }
+    if (NVSDK_NGX_VULKAN_CreateFeature_Original != nullptr) {
+        auto res = NVSDK_NGX_VULKAN_CreateFeature_Original(InCmdList, InFeatureID, InParameters, OutHandle);
+        if (res == NVSDK_NGX_Result_Success && OutHandle != nullptr && *OutHandle != nullptr) {
+            TrackNGXHandle(*OutHandle, InFeatureID);
+        }
+        return res;
+    }
+    return NVSDK_NGX_Result_Fail;
+}
+
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_VULKAN_CreateFeature1_Detour(VkDevice InDevice, VkCommandBuffer InCmdList,
+                                                                     NVSDK_NGX_Feature InFeatureID,
+                                                                     const NVSDK_NGX_Parameter* InParameters,
+                                                                     NVSDK_NGX_Handle** OutHandle) {
+    CALL_GUARD_NO_TS();
+    g_ngx_counters.vulkan_createfeature1_count.fetch_add(1);
+    g_ngx_counters.total_count.fetch_add(1);
+    LogInfo("NGX Vulkan CreateFeature1 called - FeatureID: %d", InFeatureID);
+    if (InFeatureID == NVSDK_NGX_Feature_FrameGeneration) {
+        g_ngx_counters.framegen_create_attempt_count.fetch_add(1);
+    }
+    if (InParameters != nullptr) {
+        NVSDK_NGX_Parameter* params_mut = const_cast<NVSDK_NGX_Parameter*>(InParameters);
+        HookNGXParameterVTable(params_mut, "Vulkan_CreateFeature1");
+        LogNGXCreateFeatureParameters(params_mut);
+        if (InFeatureID == NVSDK_NGX_Feature_SuperSampling && NVSDK_NGX_Parameter_SetI_Original != nullptr) {
+            const NVSDK_NGX_PerfQuality_Value override_preset =
+                GetDLSSQualityPresetValue(settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue());
+            const int override_preset_int = static_cast<int>(override_preset);
+            if (override_preset_int >= 0) {
+                NVSDK_NGX_Parameter_SetI_Original(params_mut, NVSDK_NGX_Parameter_PerfQualityValue,
+                                                  override_preset_int);
+                g_ngx_parameters.update_int(NVSDK_NGX_Parameter_PerfQualityValue, override_preset_int);
+                LogInfo("  NGX Vulkan CreateFeature1: overrode PerfQualityValue -> %d", override_preset_int);
+            }
+        }
+    }
+    if (NVSDK_NGX_VULKAN_CreateFeature1_Original != nullptr) {
+        auto res = NVSDK_NGX_VULKAN_CreateFeature1_Original(InDevice, InCmdList, InFeatureID, InParameters, OutHandle);
+        if (res == NVSDK_NGX_Result_Success && OutHandle != nullptr && *OutHandle != nullptr) {
+            TrackNGXHandle(*OutHandle, InFeatureID);
+        }
+        return res;
+    }
+    return NVSDK_NGX_Result_Fail;
+}
+
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_VULKAN_ReleaseFeature_Detour(NVSDK_NGX_Handle* InHandle) {
+    CALL_GUARD_NO_TS();
+    g_ngx_counters.vulkan_releasefeature_count.fetch_add(1);
+    g_ngx_counters.total_count.fetch_add(1);
+    NVSDK_NGX_Feature feature = GetFeatureFromHandle(InHandle);
+    if (feature != static_cast<NVSDK_NGX_Feature>(-1)) {
+        const char* featureName = "Unknown";
+        switch (feature) {
+            case NVSDK_NGX_Feature_SuperSampling:     featureName = "DLSS Super Resolution"; break;
+            case NVSDK_NGX_Feature_FrameGeneration:   featureName = "DLSS Frame Generation"; break;
+            case NVSDK_NGX_Feature_RayReconstruction: featureName = "Ray Reconstruction"; break;
+        }
+        LogInfo("NGX Vulkan ReleaseFeature called - Releasing %s", featureName);
+    } else {
+        LogInfo("NGX Vulkan ReleaseFeature called - Unknown feature handle");
+    }
+    if (NVSDK_NGX_VULKAN_ReleaseFeature_Original != nullptr) {
+        auto result = NVSDK_NGX_VULKAN_ReleaseFeature_Original(InHandle);
+        if (result == NVSDK_NGX_Result_Success) {
+            UntrackNGXHandle(InHandle);
+        }
+        return result;
+    }
+    return NVSDK_NGX_Result_Fail;
+}
+
+// Vulkan EvaluateFeature detour (nvsdk_ngx_vk.h)
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_VULKAN_EvaluateFeature_Detour(VkCommandBuffer InCmdList,
+                                                                    const NVSDK_NGX_Handle* InFeatureHandle,
+                                                                    const NVSDK_NGX_Parameter* InParameters,
+                                                                    PFN_NVSDK_NGX_ProgressCallback InCallback) {
+    CALL_GUARD_NO_TS();
+    g_ngx_counters.vulkan_evaluatefeature_count.fetch_add(1);
+    g_ngx_counters.total_count.fetch_add(1);
+    if (InParameters != nullptr) {
+        HookNGXParameterVTable((NVSDK_NGX_Parameter*)InParameters, "Vulkan_EvaluateFeature");
+        UpdateDLSSGEnableInterpFromEvaluate(InFeatureHandle, InParameters);
+        ApplyDebugDLSSGParameterOverridesForEvaluate((NVSDK_NGX_Parameter*)InParameters, InFeatureHandle);
+    }
+    if (NVSDK_NGX_VULKAN_EvaluateFeature_Original != nullptr) {
+        return NVSDK_NGX_VULKAN_EvaluateFeature_Original(InCmdList, InFeatureHandle, InParameters, InCallback);
+    }
+    return NVSDK_NGX_Result_Fail;
+}
+
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_VULKAN_EvaluateFeature_C_Detour(VkCommandBuffer InCmdList,
+                                                                      const NVSDK_NGX_Handle* InFeatureHandle,
+                                                                      const NVSDK_NGX_Parameter* InParameters,
+                                                                      PFN_NVSDK_NGX_ProgressCallback_C InCallback) {
+    CALL_GUARD_NO_TS();
+    g_ngx_counters.vulkan_evaluatefeature_c_count.fetch_add(1);
+    g_ngx_counters.total_count.fetch_add(1);
+    if (InParameters != nullptr) {
+        HookNGXParameterVTable((NVSDK_NGX_Parameter*)InParameters, "Vulkan_EvaluateFeature_C");
+        UpdateDLSSGEnableInterpFromEvaluate(InFeatureHandle, InParameters);
+        ApplyDebugDLSSGParameterOverridesForEvaluate((NVSDK_NGX_Parameter*)InParameters, InFeatureHandle);
+    }
+    if (NVSDK_NGX_VULKAN_EvaluateFeature_C_Original != nullptr) {
+        return NVSDK_NGX_VULKAN_EvaluateFeature_C_Original(InCmdList, InFeatureHandle, InParameters, InCallback);
+    }
+    return NVSDK_NGX_Result_Fail;
+}
+
 #if defined(DISPLAY_COMMANDER_NGX_INIT_SNIPPET_ABI) && DISPLAY_COMMANDER_NGX_INIT_SNIPPET_ABI
 // D3D11 Init detour — 4-arg snippet/Core ABI (CMake DISPLAY_COMMANDER_NGX_INIT_SNIPPET_ABI).
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_Detour(unsigned long long InApplicationId,
@@ -2149,7 +2435,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_AllocateParameters_Detour(NVSDK_NGX_
     return ret;
 }
 
-static constexpr std::size_t kNGXHookCount = 22;
+static constexpr std::size_t kNGXHookCount = 33;
 // Detour signatures follow bundled nvsdk_ngx.h; Init and related variants differ by NGX_SNIPPET_BUILD — see ABI block.
 static const NGXHookEntry kNGXHooks[kNGXHookCount] = {
     {.name = "NVSDK_NGX_D3D12_Init",
@@ -2215,6 +2501,39 @@ static const NGXHookEntry kNGXHooks[kNGXHookCount] = {
     {.name = "NVSDK_NGX_D3D11_AllocateParameters",
      .detour = reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D11_AllocateParameters_Detour),
      .original = reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_AllocateParameters_Original)},
+    {.name = "NVSDK_NGX_VULKAN_Init",
+     .detour = reinterpret_cast<LPVOID>(&NVSDK_NGX_VULKAN_Init_Detour),
+     .original = reinterpret_cast<LPVOID*>(&NVSDK_NGX_VULKAN_Init_Original)},
+    {.name = "NVSDK_NGX_VULKAN_Init_with_ProjectID",
+     .detour = reinterpret_cast<LPVOID>(&NVSDK_NGX_VULKAN_Init_with_ProjectID_Detour),
+     .original = reinterpret_cast<LPVOID*>(&NVSDK_NGX_VULKAN_Init_with_ProjectID_Original)},
+    {.name = "NVSDK_NGX_VULKAN_Shutdown1",
+     .detour = reinterpret_cast<LPVOID>(&NVSDK_NGX_VULKAN_Shutdown1_Detour),
+     .original = reinterpret_cast<LPVOID*>(&NVSDK_NGX_VULKAN_Shutdown1_Original)},
+    {.name = "NVSDK_NGX_VULKAN_GetParameters",
+     .detour = reinterpret_cast<LPVOID>(&NVSDK_NGX_VULKAN_GetParameters_Detour),
+     .original = reinterpret_cast<LPVOID*>(&NVSDK_NGX_VULKAN_GetParameters_Original)},
+    {.name = "NVSDK_NGX_VULKAN_GetCapabilityParameters",
+     .detour = reinterpret_cast<LPVOID>(&NVSDK_NGX_VULKAN_GetCapabilityParameters_Detour),
+     .original = reinterpret_cast<LPVOID*>(&NVSDK_NGX_VULKAN_GetCapabilityParameters_Original)},
+    {.name = "NVSDK_NGX_VULKAN_AllocateParameters",
+     .detour = reinterpret_cast<LPVOID>(&NVSDK_NGX_VULKAN_AllocateParameters_Detour),
+     .original = reinterpret_cast<LPVOID*>(&NVSDK_NGX_VULKAN_AllocateParameters_Original)},
+    {.name = "NVSDK_NGX_VULKAN_CreateFeature",
+     .detour = reinterpret_cast<LPVOID>(&NVSDK_NGX_VULKAN_CreateFeature_Detour),
+     .original = reinterpret_cast<LPVOID*>(&NVSDK_NGX_VULKAN_CreateFeature_Original)},
+    {.name = "NVSDK_NGX_VULKAN_CreateFeature1",
+     .detour = reinterpret_cast<LPVOID>(&NVSDK_NGX_VULKAN_CreateFeature1_Detour),
+     .original = reinterpret_cast<LPVOID*>(&NVSDK_NGX_VULKAN_CreateFeature1_Original)},
+    {.name = "NVSDK_NGX_VULKAN_ReleaseFeature",
+     .detour = reinterpret_cast<LPVOID>(&NVSDK_NGX_VULKAN_ReleaseFeature_Detour),
+     .original = reinterpret_cast<LPVOID*>(&NVSDK_NGX_VULKAN_ReleaseFeature_Original)},
+    {.name = "NVSDK_NGX_VULKAN_EvaluateFeature",
+     .detour = reinterpret_cast<LPVOID>(&NVSDK_NGX_VULKAN_EvaluateFeature_Detour),
+     .original = reinterpret_cast<LPVOID*>(&NVSDK_NGX_VULKAN_EvaluateFeature_Original)},
+    {.name = "NVSDK_NGX_VULKAN_EvaluateFeature_C",
+     .detour = reinterpret_cast<LPVOID>(&NVSDK_NGX_VULKAN_EvaluateFeature_C_Detour),
+     .original = reinterpret_cast<LPVOID*>(&NVSDK_NGX_VULKAN_EvaluateFeature_C_Original)},
     {.name = "NVSDK_NGX_UpdateFeature",
      .detour = reinterpret_cast<LPVOID>(&NVSDK_NGX_UpdateFeature_Detour),
      .original = reinterpret_cast<LPVOID*>(&NVSDK_NGX_UpdateFeature_Original)},
@@ -2415,6 +2734,28 @@ const char* GetNGXCounterKindLabel(NGXCounterKind kind) {
         return "NVSDK_NGX_D3D11_EvaluateFeature";
     case NGXCounterKind::D3D11_EvaluateFeature_C:
         return "NVSDK_NGX_D3D11_EvaluateFeature_C";
+    case NGXCounterKind::Vulkan_EvaluateFeature:
+        return "NVSDK_NGX_VULKAN_EvaluateFeature";
+    case NGXCounterKind::Vulkan_EvaluateFeature_C:
+        return "NVSDK_NGX_VULKAN_EvaluateFeature_C";
+    case NGXCounterKind::Vulkan_Init:
+        return "NVSDK_NGX_VULKAN_Init";
+    case NGXCounterKind::Vulkan_InitProjectId:
+        return "NVSDK_NGX_VULKAN_Init_with_ProjectID";
+    case NGXCounterKind::Vulkan_Shutdown1:
+        return "NVSDK_NGX_VULKAN_Shutdown1";
+    case NGXCounterKind::Vulkan_CreateFeature:
+        return "NVSDK_NGX_VULKAN_CreateFeature";
+    case NGXCounterKind::Vulkan_CreateFeature1:
+        return "NVSDK_NGX_VULKAN_CreateFeature1";
+    case NGXCounterKind::Vulkan_ReleaseFeature:
+        return "NVSDK_NGX_VULKAN_ReleaseFeature";
+    case NGXCounterKind::Vulkan_GetParameters:
+        return "NVSDK_NGX_VULKAN_GetParameters";
+    case NGXCounterKind::Vulkan_GetCapabilityParameters:
+        return "NVSDK_NGX_VULKAN_GetCapabilityParameters";
+    case NGXCounterKind::Vulkan_AllocateParameters:
+        return "NVSDK_NGX_VULKAN_AllocateParameters";
     case NGXCounterKind::D3D12_GetParameters:
         return "NVSDK_NGX_D3D12_GetParameters";
     case NGXCounterKind::D3D12_GetCapabilityParameters:
@@ -2489,6 +2830,28 @@ uint32_t GetNGXCounterValue(NGXCounterKind kind) {
         return g_ngx_counters.d3d11_evaluatefeature_count.load(std::memory_order_relaxed);
     case NGXCounterKind::D3D11_EvaluateFeature_C:
         return g_ngx_counters.d3d11_evaluatefeature_c_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::Vulkan_EvaluateFeature:
+        return g_ngx_counters.vulkan_evaluatefeature_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::Vulkan_EvaluateFeature_C:
+        return g_ngx_counters.vulkan_evaluatefeature_c_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::Vulkan_Init:
+        return g_ngx_counters.vulkan_init_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::Vulkan_InitProjectId:
+        return g_ngx_counters.vulkan_init_projectid_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::Vulkan_Shutdown1:
+        return g_ngx_counters.vulkan_shutdown1_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::Vulkan_CreateFeature:
+        return g_ngx_counters.vulkan_createfeature_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::Vulkan_CreateFeature1:
+        return g_ngx_counters.vulkan_createfeature1_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::Vulkan_ReleaseFeature:
+        return g_ngx_counters.vulkan_releasefeature_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::Vulkan_GetParameters:
+        return g_ngx_counters.vulkan_getparameters_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::Vulkan_GetCapabilityParameters:
+        return g_ngx_counters.vulkan_getcapabilityparameters_count.load(std::memory_order_relaxed);
+    case NGXCounterKind::Vulkan_AllocateParameters:
+        return g_ngx_counters.vulkan_allocateparameters_count.load(std::memory_order_relaxed);
     case NGXCounterKind::D3D12_GetParameters:
         return g_ngx_counters.d3d12_getparameters_count.load(std::memory_order_relaxed);
     case NGXCounterKind::D3D12_GetCapabilityParameters:
@@ -2511,5 +2874,5 @@ uint32_t GetNGXCounterValue(NGXCounterKind kind) {
     }
 }
 
-static_assert(static_cast<int>(NGXCounterKind::Count_) == 33,
+static_assert(static_cast<int>(NGXCounterKind::Count_) == 44,
               "Update GetNGXCounterKindLabel/GetNGXCounterValue and debug tab loop when NGXCounterKind changes");

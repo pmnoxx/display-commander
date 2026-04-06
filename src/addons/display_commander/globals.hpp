@@ -1065,6 +1065,17 @@ enum class NGXCounterKind : int {
     D3D11_ReleaseFeature,
     D3D11_EvaluateFeature,
     D3D11_EvaluateFeature_C,
+    Vulkan_EvaluateFeature,
+    Vulkan_EvaluateFeature_C,
+    Vulkan_Init,
+    Vulkan_InitProjectId,
+    Vulkan_Shutdown1,
+    Vulkan_CreateFeature,
+    Vulkan_CreateFeature1,
+    Vulkan_ReleaseFeature,
+    Vulkan_GetParameters,
+    Vulkan_GetCapabilityParameters,
+    Vulkan_AllocateParameters,
     D3D12_GetParameters,
     D3D12_GetCapabilityParameters,
     D3D12_AllocateParameters,
@@ -1111,6 +1122,17 @@ struct NGXCounters {
     std::atomic<uint32_t> d3d11_releasefeature_count;
     std::atomic<uint32_t> d3d11_evaluatefeature_count;
     std::atomic<uint32_t> d3d11_evaluatefeature_c_count;
+    std::atomic<uint32_t> vulkan_evaluatefeature_count;
+    std::atomic<uint32_t> vulkan_evaluatefeature_c_count;
+    std::atomic<uint32_t> vulkan_init_count;
+    std::atomic<uint32_t> vulkan_init_projectid_count;
+    std::atomic<uint32_t> vulkan_shutdown1_count;
+    std::atomic<uint32_t> vulkan_createfeature_count;
+    std::atomic<uint32_t> vulkan_createfeature1_count;
+    std::atomic<uint32_t> vulkan_releasefeature_count;
+    std::atomic<uint32_t> vulkan_getparameters_count;
+    std::atomic<uint32_t> vulkan_getcapabilityparameters_count;
+    std::atomic<uint32_t> vulkan_allocateparameters_count;
     std::atomic<uint32_t> d3d11_getparameters_count;
     std::atomic<uint32_t> d3d11_getcapabilityparameters_count;
     std::atomic<uint32_t> d3d11_allocateparameters_count;
@@ -1151,6 +1173,17 @@ struct NGXCounters {
           d3d11_releasefeature_count(0),
           d3d11_evaluatefeature_count(0),
           d3d11_evaluatefeature_c_count(0),
+          vulkan_evaluatefeature_count(0),
+          vulkan_evaluatefeature_c_count(0),
+          vulkan_init_count(0),
+          vulkan_init_projectid_count(0),
+          vulkan_shutdown1_count(0),
+          vulkan_createfeature_count(0),
+          vulkan_createfeature1_count(0),
+          vulkan_releasefeature_count(0),
+          vulkan_getparameters_count(0),
+          vulkan_getcapabilityparameters_count(0),
+          vulkan_allocateparameters_count(0),
           d3d11_getparameters_count(0),
           d3d11_getcapabilityparameters_count(0),
           d3d11_allocateparameters_count(0),
@@ -1187,6 +1220,17 @@ struct NGXCounters {
         d3d11_releasefeature_count.store(0);
         d3d11_evaluatefeature_count.store(0);
         d3d11_evaluatefeature_c_count.store(0);
+        vulkan_evaluatefeature_count.store(0);
+        vulkan_evaluatefeature_c_count.store(0);
+        vulkan_init_count.store(0);
+        vulkan_init_projectid_count.store(0);
+        vulkan_shutdown1_count.store(0);
+        vulkan_createfeature_count.store(0);
+        vulkan_createfeature1_count.store(0);
+        vulkan_releasefeature_count.store(0);
+        vulkan_getparameters_count.store(0);
+        vulkan_getcapabilityparameters_count.store(0);
+        vulkan_allocateparameters_count.store(0);
         d3d11_getparameters_count.store(0);
         d3d11_getcapabilityparameters_count.store(0);
         d3d11_allocateparameters_count.store(0);

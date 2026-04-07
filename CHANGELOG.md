@@ -27,6 +27,13 @@ Planned:
 
 
 
+## v0.13.155 (2026-04-07)
+- [new feature] [ui] **Auto-create missing NVIDIA DRS profile (first query per session)** - When DLSS driver-preset info is queried and no NVIDIA profile exists for the running executable, Display Commander now attempts a one-time auto-create of a profile with app binding, then refreshes the snapshot so the profile can be detected immediately.
+  **Details:** App-binding only (no SR/RR preset values written), one attempt per session, status shown in DLSS Control `-> debug` (DebugTabs builds).
+
+## v0.13.154 (2026-04-07)
+- [ui] [experimental] **DLSS Control debug subsection for DRS path/profile** - In DebugTabs builds, the **DLSS Control** panel now includes a `-> debug` section that shows whether a DRS profile was found for the running executable and which executable path was used for the query.
+
 ## v0.13.153 (2026-04-06)
 - [ui] **Performance overlay SR/RR preset line** - When the NGX stack-default letter is not known for the loaded DLL version, the overlay no longer shows **(UPDATEME)**; the hover tooltip explains that the letter is not mapped yet.
 - [ui] **Performance overlay DLSS status** - **DLSS Status** line now shows only **On** or **Off** (no RR / DLSS-G suffix; use **FG Mode**, **DLSS Quality**, or driver preset lines for detail).

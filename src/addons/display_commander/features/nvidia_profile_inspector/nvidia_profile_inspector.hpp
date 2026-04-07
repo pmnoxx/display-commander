@@ -25,6 +25,13 @@ struct DriverDlssRenderPresetSnapshot {
     bool rr_is_non_default_override = false;
 };
 
+struct DriverDlssProfileAutoCreateStatus {
+    bool attempted = false;
+    bool succeeded = false;
+    bool created_profile = false;
+    std::string message;
+};
+
 /** Single-line summary for overlay / DLSS Control: driver (DRS) override vs Display Commander combo. */
 struct MergedDlssRenderPresetText {
     std::string primary;
@@ -94,5 +101,6 @@ inline MergedDlssRenderPresetText MergeDriverAndDcRenderPreset(bool is_rr,
 std::shared_ptr<const DriverDlssRenderPresetSnapshot> GetDriverDlssRenderPresetSnapshot(bool force_refresh = false);
 
 void InvalidateDriverDlssRenderPresetCache();
+DriverDlssProfileAutoCreateStatus GetDriverDlssProfileAutoCreateStatus();
 
 }  // namespace display_commander::features::nvidia_profile_inspector

@@ -23,8 +23,13 @@ namespace display_commander::features::nvidia_profile_inspector {
 namespace {
 
 SRWLOCK g_refresh_lock = SRWLOCK_INIT;
+SRWLOCK g_autocreate_status_lock = SRWLOCK_INIT;
 std::atomic<unsigned long long> g_last_refresh_ms{0};
 std::atomic<std::shared_ptr<const DriverDlssRenderPresetSnapshot>> g_snapshot{};
+std::atomic<bool> g_auto_create_attempted{false};
+std::atomic<bool> g_auto_create_succeeded{false};
+std::atomic<bool> g_auto_create_created_profile{false};
+std::string g_auto_create_message;
 
 inline const nvapi_loader::NvApiPtrs* NvPtrs() { return nvapi_loader::Ptrs(); }
 
@@ -39,6 +44,27 @@ std::wstring NormalizePath(const std::wstring& s) {
         }
     }
     return r;
+}
+
+std::wstring GetProfileNameFromExePath(const std::wstring& exe_path) {
+    if (exe_path.empty()) {
+        return L"Display Commander Auto";
+    }
+    size_t name_pos = exe_path.find_last_of(L"\\/");
+    if (name_pos == std::wstring::npos) {
+        name_pos = 0;
+    } else {
+        name_pos += 1;
+    }
+    std::wstring file_name = exe_path.substr(name_pos);
+    if (file_name.empty()) {
+        return L"Display Commander Auto";
+    }
+    const size_t dot_pos = file_name.find_last_of(L'.');
+    if (dot_pos != std::wstring::npos && dot_pos > 0) {
+        file_name.resize(dot_pos);
+    }
+    return file_name.empty() ? L"Display Commander Auto" : file_name;
 }
 
 void WideToNvApiUnicode(const std::wstring& src, NvAPI_UnicodeString& dest) {
@@ -127,6 +153,110 @@ bool FindApplicationByPathForCurrentExe(NvDRSSessionHandle hSession, NvDRSProfil
     WideToNvApiUnicode(NormalizePath(exePath), fullPathBuf);
     NvAPI_Status st = p->DRS_FindApplicationByName(hSession, fullPathBuf, phProfile, pApp);
     return (st == NVAPI_OK && *phProfile != nullptr);
+}
+
+void SetAutoCreateStatus(bool succeeded, bool created_profile, const std::string& message) {
+    g_auto_create_succeeded.store(succeeded, std::memory_order_release);
+    g_auto_create_created_profile.store(created_profile, std::memory_order_release);
+    {
+        ::utils::SRWLockExclusive lock(g_autocreate_status_lock);
+        g_auto_create_message = message;
+    }
+}
+
+bool TryAutoCreateProfileForCurrentExe(std::string* out_message, bool* out_created_profile) {
+    if (out_message == nullptr || out_created_profile == nullptr) {
+        return false;
+    }
+    *out_message = "Unknown error";
+    *out_created_profile = false;
+
+    std::wstring exePath = GetCurrentProcessPathW();
+    if (exePath.empty()) {
+        *out_message = "GetModuleFileName failed";
+        return false;
+    }
+    const std::wstring normalizedExePath = NormalizePath(exePath);
+
+    if (!nvapi::EnsureNvApiInitialized()) {
+        *out_message = "NVAPI not initialized";
+        return false;
+    }
+    const nvapi_loader::NvApiPtrs* p = NvPtrs();
+    if (p == nullptr || !nvapi_loader::IsLoaded()) {
+        *out_message = "NVAPI not loaded";
+        return false;
+    }
+    if (p->DRS_CreateSession == nullptr || p->DRS_DestroySession == nullptr || p->DRS_LoadSettings == nullptr
+        || p->DRS_FindApplicationByName == nullptr || p->DRS_CreateProfile == nullptr
+        || p->DRS_CreateApplication == nullptr || p->DRS_SaveSettings == nullptr) {
+        *out_message = "NVAPI DRS create entry points missing";
+        return false;
+    }
+
+    NvDRSSessionHandle hSession = nullptr;
+    NvAPI_Status st = p->DRS_CreateSession(&hSession);
+    if (st != NVAPI_OK) {
+        *out_message = FormatNvapiError(p, "DRS_CreateSession", st);
+        return false;
+    }
+
+    auto destroy_session = [&]() {
+        if (hSession != nullptr) {
+            p->DRS_DestroySession(hSession);
+            hSession = nullptr;
+        }
+    };
+
+    st = p->DRS_LoadSettings(hSession);
+    if (st != NVAPI_OK) {
+        *out_message = FormatNvapiError(p, "DRS_LoadSettings", st);
+        destroy_session();
+        return false;
+    }
+
+    NvDRSProfileHandle hExistingProfile = nullptr;
+    NVDRS_APPLICATION existingApp{};
+    if (FindApplicationByPathForCurrentExe(hSession, &hExistingProfile, &existingApp, p)) {
+        *out_message = "Profile already exists for this executable";
+        destroy_session();
+        return true;
+    }
+
+    NVDRS_PROFILE profileInfo{};
+    profileInfo.version = NVDRS_PROFILE_VER;
+    const std::wstring profile_name = GetProfileNameFromExePath(exePath);
+    WideToNvApiUnicode(profile_name, profileInfo.profileName);
+
+    NvDRSProfileHandle hProfile = nullptr;
+    st = p->DRS_CreateProfile(hSession, &profileInfo, &hProfile);
+    if (st != NVAPI_OK || hProfile == nullptr) {
+        *out_message = FormatNvapiError(p, "DRS_CreateProfile", st);
+        destroy_session();
+        return false;
+    }
+
+    NVDRS_APPLICATION app{};
+    app.version = NVDRS_APPLICATION_VER;
+    WideToNvApiUnicode(normalizedExePath, app.appName);
+    st = p->DRS_CreateApplication(hSession, hProfile, &app);
+    if (st != NVAPI_OK) {
+        *out_message = FormatNvapiError(p, "DRS_CreateApplication", st);
+        destroy_session();
+        return false;
+    }
+
+    st = p->DRS_SaveSettings(hSession);
+    if (st != NVAPI_OK) {
+        *out_message = FormatNvapiError(p, "DRS_SaveSettings", st);
+        destroy_session();
+        return false;
+    }
+
+    destroy_session();
+    *out_created_profile = true;
+    *out_message = "Created DRS profile and app binding for current executable";
+    return true;
 }
 
 std::shared_ptr<const DriverDlssRenderPresetSnapshot> BuildSnapshot() {
@@ -251,11 +381,53 @@ std::shared_ptr<const DriverDlssRenderPresetSnapshot> GetDriverDlssRenderPresetS
     }
 
     std::shared_ptr<const DriverDlssRenderPresetSnapshot> fresh = BuildSnapshot();
+    if (fresh && fresh->query_succeeded && fresh->has_profile) {
+        LogInfo("[DRS] Profile found [Path] %s [Profile] %s",
+                fresh->current_exe_path_utf8.empty() ? "(unknown)" : fresh->current_exe_path_utf8.c_str(),
+                fresh->profile_name.empty() ? "(unnamed)" : fresh->profile_name.c_str());
+    }
+    if (fresh && fresh->query_succeeded && !fresh->has_profile) {
+        bool expected = false;
+        if (g_auto_create_attempted.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) {
+            std::string status_message;
+            bool created_profile = false;
+            const bool success = TryAutoCreateProfileForCurrentExe(&status_message, &created_profile);
+            SetAutoCreateStatus(success, created_profile, status_message);
+            if (success && created_profile) {
+                LogInfo("[DRS] Auto-create succeeded [Path] %s [Status] %s",
+                        fresh->current_exe_path_utf8.empty() ? "(unknown)" : fresh->current_exe_path_utf8.c_str(),
+                        status_message.c_str());
+                fresh = BuildSnapshot();
+                if (fresh && fresh->query_succeeded && fresh->has_profile) {
+                    LogInfo("[DRS] Profile found after auto-create [Path] %s [Profile] %s",
+                            fresh->current_exe_path_utf8.empty() ? "(unknown)"
+                                                                  : fresh->current_exe_path_utf8.c_str(),
+                            fresh->profile_name.empty() ? "(unnamed)" : fresh->profile_name.c_str());
+                }
+            } else if (!success) {
+                LogError("[DRS] Auto-create failed [Path] %s [Status] %s",
+                         fresh->current_exe_path_utf8.empty() ? "(unknown)" : fresh->current_exe_path_utf8.c_str(),
+                         status_message.c_str());
+            }
+        }
+    }
     g_snapshot.store(fresh, std::memory_order_release);
     g_last_refresh_ms.store(GetTickCount64(), std::memory_order_relaxed);
     return fresh;
 }
 
 void InvalidateDriverDlssRenderPresetCache() { g_last_refresh_ms.store(0ULL, std::memory_order_relaxed); }
+
+DriverDlssProfileAutoCreateStatus GetDriverDlssProfileAutoCreateStatus() {
+    DriverDlssProfileAutoCreateStatus out{};
+    out.attempted = g_auto_create_attempted.load(std::memory_order_acquire);
+    out.succeeded = g_auto_create_succeeded.load(std::memory_order_acquire);
+    out.created_profile = g_auto_create_created_profile.load(std::memory_order_acquire);
+    {
+        ::utils::SRWLockShared lock(g_autocreate_status_lock);
+        out.message = g_auto_create_message;
+    }
+    return out;
+}
 
 }  // namespace display_commander::features::nvidia_profile_inspector

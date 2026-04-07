@@ -160,6 +160,37 @@ void DrawMainTabOptionalPanelDlssControl(display_commander::ui::GraphicsApi api,
                 imgui.SetTooltipEx("%s", merged_rr.tooltip.c_str());
             }
         }
+
+#if defined(DISPLAY_COMMANDER_DEBUG_TABS)
+        if (imgui.TreeNode("-> debug")) {
+            const auto auto_create_status =
+                display_commander::features::nvidia_profile_inspector::GetDriverDlssProfileAutoCreateStatus();
+            if (!drv) {
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "No DRS snapshot.");
+            } else if (!drv->query_succeeded) {
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "DRS query failed: %s",
+                                  drv->error_message.empty() ? "unknown error" : drv->error_message.c_str());
+                imgui.Text("DRS profile for exe: not found");
+            } else {
+                imgui.Text("DRS profile for exe: %s", drv->has_profile ? "found" : "not found");
+            }
+            if (drv && !drv->current_exe_path_utf8.empty()) {
+                imgui.TextWrapped("Path used: %s", drv->current_exe_path_utf8.c_str());
+            }
+            if (auto_create_status.attempted) {
+                imgui.Text("Auto-create missing profile: %s",
+                           auto_create_status.succeeded
+                               ? (auto_create_status.created_profile ? "success (created)" : "success (already exists)")
+                               : "failed");
+            } else {
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "Auto-create missing profile: not attempted");
+            }
+            if (!auto_create_status.message.empty()) {
+                imgui.TextWrapped("Auto-create status: %s", auto_create_status.message.c_str());
+            }
+            imgui.TreePop();
+        }
+#endif
     }
 #endif
 

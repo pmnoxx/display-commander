@@ -27,6 +27,9 @@ Planned:
 
 
 
+## v0.13.156 (2026-04-07)
+- [ui] [settings] **Shaders tab: all-games toggle for global config marker** - Added a new checkbox in the Shaders section to enable or disable the all-games config mode directly from that tab, so users do not have to switch sections to manage it.
+
 ## v0.13.155 (2026-04-07)
 - [new feature] [ui] **Auto-create missing NVIDIA DRS profile (first query per session)** - When DLSS driver-preset info is queried and no NVIDIA profile exists for the running executable, Display Commander now attempts a one-time auto-create of a profile with app binding, then refreshes the snapshot so the profile can be detected immediately.
   **Details:** App-binding only (no SR/RR preset values written), one attempt per session, status shown in DLSS Control `-> debug` (DebugTabs builds).

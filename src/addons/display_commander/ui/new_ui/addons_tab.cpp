@@ -1175,6 +1175,25 @@ void DrawShadersHeader(display_commander::ui::IImGuiWrapper& imgui) {
                 kDisplayCommanderSection, kConfigKeyGlobalShadersPathsEnabled);
         }
 
+        bool all_games_enabled = IsPerGameFoldersEnabled();
+        if (imgui.Checkbox("Enable for all games (global config marker)", &all_games_enabled)) {
+            if (!SetPerGameFoldersEnabled(all_games_enabled)) {
+                all_games_enabled = IsPerGameFoldersEnabled();
+            }
+        }
+        if (imgui.IsItemHovered()) {
+            std::filesystem::path marker_path = GetDcConfigGlobalMarkerPathNoCreate();
+            if (marker_path.empty()) {
+                marker_path = std::filesystem::path(L"%localappdata%") / L"Programs" / L"Display_Commander"
+                              / L".DC_CONFIG_GLOBAL";
+            }
+            imgui.SetTooltipEx(
+                "Applies Display Commander config routing to all games by toggling marker file:\n"
+                "%s\n"
+                "This is the same marker used by the Per game folders section.",
+                GetPathRelativeToDocuments(marker_path).c_str());
+        }
+
         imgui.Spacing();
 
         // Open Shaders Folder button

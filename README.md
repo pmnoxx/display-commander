@@ -89,6 +89,7 @@ Note: Applying window operations from the main thread can crash some apps. This 
   **In the addon (DLL) folder or `%LocalAppData%\Programs\Display_Commander\`:**
   - `.DC_CONFIG_GLOBAL` — store config and ReShade data in `%LocalAppData%\Programs\Display_Commander\Games\<game_name>\` (global per-game folder; `game_name` skips generic exe path segments like `Client` / `Binaries` / `Win64`). The empty flag file can live next to the addon **or** in the Display_Commander app data root (one place is enough).
   - `.DC_CONFIG_IN_DLL` — store config and ReShade data in the addon folder instead of the game folder
+  - `.DC_GLOBAL_SHADERS` — force-add Display Commander global ReShade shader/texture search paths for all games (`%LocalAppData%\Programs\Display_Commander\Reshade\Shaders` and `...\Textures`) regardless of per-game checkbox/config.
   See [Expert: Flag files in the game directory](docs/EXPERT_FLAG_FILES.md).
 - **Addon directory DLL loading**: From the same folder as the addon, **.dc64 / .dc32 / .dc / .asi** are loaded before ReShade; **.dc64r / .dc32r / .dcr** are loaded after ReShade (for addons that need the ReShade API). All of these DLLs are loaded in place; Windows keeps them locked while the game is running, so you may need to exit the game before overwriting them with newer builds.
 - **NVIDIA Profile (Inspector)**: View and edit driver profile for the current game; apply as administrator

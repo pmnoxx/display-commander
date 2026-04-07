@@ -143,12 +143,25 @@ void OverrideReShadeSettings_ScreenshotPaths(reshade::api::effect_runtime* runti
 constexpr const char* kDisplayCommanderSection = "DisplayCommander";
 constexpr const char* kConfigKeyGlobalShadersPathsEnabled = "ReShadeGlobalShadersTexturesPathsEnabled";
 constexpr const char* kConfigKeyScreenshotPathEnabled = "ReShadeScreenshotPathEnabled";
+constexpr wchar_t kGlobalShadersMarkerFileName[] = L".DC_GLOBAL_SHADERS";
+
+bool IsGlobalShadersMarkerEnabled() {
+    std::filesystem::path dc_root = GetDisplayCommanderAppDataRootPathNoCreate();
+    if (dc_root.empty()) {
+        return false;
+    }
+    std::error_code ec;
+    return std::filesystem::is_regular_file(dc_root / kGlobalShadersMarkerFileName, ec) && !ec;
+}
 
 bool IsGlobalShadersPathsConfigEnabled() {
     bool enabled = false;
     display_commander::config::get_config_value_ensure_exists(kDisplayCommanderSection, kConfigKeyGlobalShadersPathsEnabled,
                                                                enabled, false);
-    return enabled;
+    if (enabled) {
+        return true;
+    }
+    return IsGlobalShadersMarkerEnabled();
 }
 
 bool IsScreenshotPathConfigEnabled() {

@@ -27,6 +27,10 @@ Planned:
 
 
 
+## v0.13.157 (2026-04-07)
+- [new feature] [settings] **Global shaders marker `.DC_GLOBAL_SHADERS`** - Added marker-based global enable for ReShade shader/texture search path injection, so users can turn it on for all games without relying on per-game config checkboxes.
+  **Details:** `modules/reshade_addons/override_reshade_settings.cpp` now treats `%LocalAppData%\Programs\Display_Commander\.DC_GLOBAL_SHADERS` as a force-enable signal for `EffectSearchPaths` / `TextureSearchPaths`; README flag list updated.
+
 ## v0.13.156 (2026-04-07)
 - [ui] [settings] **Shaders tab: all-games toggle for global config marker** - Added a new checkbox in the Shaders section to enable or disable the all-games config mode directly from that tab, so users do not have to switch sections to manage it.
 

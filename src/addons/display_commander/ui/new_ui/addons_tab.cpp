@@ -1171,7 +1171,8 @@ void DrawShadersHeader(display_commander::ui::IImGuiWrapper& imgui) {
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
                 "When enabled, Display Commander adds global Shaders/Textures paths to ReShade.\n"
-                "Stored as local config key: [%s] %s",
+                "Stored as local config key: [%s] %s\n"
+                "Global override marker: %%localappdata%%\\Programs\\Display_Commander\\.DC_GLOBAL_SHADERS",
                 kDisplayCommanderSection, kConfigKeyGlobalShadersPathsEnabled);
         }
 

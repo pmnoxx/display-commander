@@ -51,7 +51,7 @@ MainTabSettings::MainTabSettings()
       use_reflex_markers_as_fps_limiter("use_reflex_markers_as_fps_limiter", true, "DisplayCommander"),
       reflex_fps_limiter_max_queued_frames("reflex_fps_limiter_max_queued_frames", 2,
                                            {"Game default", "1", "2", "3", "4", "5", "6"}, "DisplayCommander"),
-      native_reflex_fps_preset("native_reflex_fps_preset", static_cast<int>(FpsLimiterPreset::kDCPaceLockQ2),
+      native_reflex_fps_preset("native_reflex_fps_preset", static_cast<int>(FpsLimiterPreset::kLowLatencyNativePacing),
                                {"Low latency mode - pace game simulation thread only (bad frame pacing)",
                                 "DCPaceLock(q=1) (recommended, low latency, good frame pacing)",
                                 "DCPaceLock(q=2) (default, +1 frame time latency penalty, use if q=1 is not good enough)",

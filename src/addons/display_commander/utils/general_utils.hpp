@@ -64,9 +64,9 @@ std::string GetSupportedDLSSRRPresetsFromVersionString(const std::string& versio
 /** Parse nvngx DLL file version (major.minor.patch or major.minor.build.revision → patch = build). False if missing or
  * sentinel strings (N/A, Not loaded, …). */
 bool TryParseDlssDllVersionTriplet(const std::string& version_string, int& major, int& minor, int& patch);
-/** NGX stack-default render preset letter for SR when user picks DLSS Default (0); unknown range → "UPDATEME". */
+/** NGX stack-default render preset letter for SR when user picks DLSS Default (0); unknown range → empty. */
 std::string GetNgxDlssDefaultSrRenderPresetLetterFromVersionString(const std::string& version_string);
-/** Same for RR / nvngx_dlssd.dll; table not filled yet → always "UPDATEME" for now. */
+/** Same for RR / nvngx_dlssd.dll; table not filled yet → empty until mapped. */
 std::string GetNgxDlssDefaultRrRenderPresetLetterFromVersionString(const std::string& version_string);
 std::vector<std::string> GetDLSSPresetOptions(const std::string& supportedPresets);
 int GetDLSSPresetValue(const std::string& presetString);

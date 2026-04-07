@@ -961,18 +961,18 @@ std::string GetNgxDlssDefaultSrRenderPresetLetterFromVersionString(const std::st
     int min = 0;
     int pat = 0;
     if (!TryParseDlssDllVersionTriplet(version_string, maj, min, pat)) {
-        return "UPDATEME";
+        return {};
     }
     if (isBetween(maj, min, pat, 310, 5, 0, 310, 6, 99)) {
         return "K";
     }
-    return "UPDATEME";
+    return {};
 }
 
 std::string GetNgxDlssDefaultRrRenderPresetLetterFromVersionString(const std::string& version_string) {
     (void)version_string;
     // Pending version → letter table for nvngx_dlssd.dll (NGX DLSS Default / driver Latest mapping).
-    return "UPDATEME";
+    return {};
 }
 
 // Generate DLSS preset options based on supported presets

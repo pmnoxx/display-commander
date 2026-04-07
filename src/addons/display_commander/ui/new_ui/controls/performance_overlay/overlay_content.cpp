@@ -580,12 +580,18 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                     false, drv_ptr, dc_preset_on, dc_sr);
                 const ImVec4 col = merged.warn_color ? ui::colors::TEXT_WARNING : ui::colors::TEXT_DIMMED;
                 std::string sr_line = merged.primary;
-                sr_line += " (";
-                sr_line += sr_ngx_letter;
-                sr_line += ")";
+                if (!sr_ngx_letter.empty()) {
+                    sr_line += " (";
+                    sr_line += sr_ngx_letter;
+                    sr_line += ")";
+                }
                 std::string sr_tip = merged.tooltip;
-                sr_tip += "\nNGX default preset for loaded nvngx_dlss.dll: ";
-                sr_tip += sr_ngx_letter;
+                if (!sr_ngx_letter.empty()) {
+                    sr_tip += "\nNGX default preset for loaded nvngx_dlss.dll: ";
+                    sr_tip += sr_ngx_letter;
+                } else {
+                    sr_tip += "\nNGX stack-default preset letter for nvngx_dlss.dll is not mapped for this DLL version.";
+                }
                 OverlayTableRow_TextColored(imgui, label_mode, "SR pr", "SR preset", col, show_tooltips,
                                             sr_tip.c_str(), "%s", sr_line.c_str());
             }
@@ -594,12 +600,18 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                     true, drv_ptr, dc_preset_on, dc_rr);
                 const ImVec4 col = merged.warn_color ? ui::colors::TEXT_WARNING : ui::colors::TEXT_DIMMED;
                 std::string rr_line = merged.primary;
-                rr_line += " (";
-                rr_line += rr_ngx_letter;
-                rr_line += ")";
+                if (!rr_ngx_letter.empty()) {
+                    rr_line += " (";
+                    rr_line += rr_ngx_letter;
+                    rr_line += ")";
+                }
                 std::string rr_tip = merged.tooltip;
-                rr_tip += "\nNGX default preset for loaded nvngx_dlssd.dll: ";
-                rr_tip += rr_ngx_letter;
+                if (!rr_ngx_letter.empty()) {
+                    rr_tip += "\nNGX default preset for loaded nvngx_dlssd.dll: ";
+                    rr_tip += rr_ngx_letter;
+                } else {
+                    rr_tip += "\nNGX stack-default preset letter for nvngx_dlssd.dll is not mapped for this DLL version.";
+                }
                 OverlayTableRow_TextColored(imgui, label_mode, "RR pr", "RR preset", col, show_tooltips,
                                             rr_tip.c_str(), "%s", rr_line.c_str());
             }

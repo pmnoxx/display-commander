@@ -28,6 +28,7 @@ Planned:
 
 
 ## v0.13.153 (2026-04-06)
+- [ui] **Performance overlay SR/RR preset line** - When the NGX stack-default letter is not known for the loaded DLL version, the overlay no longer shows **(UPDATEME)**; the hover tooltip explains that the letter is not mapped yet.
 - [ui] **Performance overlay DLSS status** - **DLSS Status** line now shows only **On** or **Off** (no RR / DLSS-G suffix; use **FG Mode**, **DLSS Quality**, or driver preset lines for detail).
 
 ## v0.13.152 (2026-04-05)

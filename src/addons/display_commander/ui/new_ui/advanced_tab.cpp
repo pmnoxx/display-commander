@@ -42,13 +42,6 @@ void DrawAdvancedTab(display_commander::ui::GraphicsApi api, display_commander::
         DrawGlobalSettingsSection(imgui);
     }
 
-    // Don't show Features Enabled By Default section in Lite builds
-    #if (!defined(DC_LITE))
-    if (imgui.CollapsingHeader("Features Enabled By Default", wrapper_flags::TreeNodeFlags_None)) {
-        DrawFeaturesEnabledByDefault(imgui);
-    }
-    #endif
-
     // Advanced Settings Section
     if (imgui.CollapsingHeader("Advanced Settings", wrapper_flags::TreeNodeFlags_None)) {
         DrawAdvancedTabSettingsSection(api, imgui);
@@ -57,37 +50,6 @@ void DrawAdvancedTab(display_commander::ui::GraphicsApi api, display_commander::
     // NVAPI Settings Section - only show if game is in NVAPI game list
     DrawNvapiSettings(api, imgui);
 
-}
-
-void DrawFeaturesEnabledByDefault(display_commander::ui::IImGuiWrapper& imgui) {
-    imgui.Indent();
-
-    CheckboxSetting(settings::g_advancedTabSettings.flush_command_queue_before_sleep,
-                    "Flush command queue before FPS limiter sleep", imgui);
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "When enabled (default), DX11/DX12 present path flushes the command queue before any FPS limiter sleep.\n"
-            "Reduces input-to-display latency when the limiter is active. Disable only if you observe issues.");
-    }
-
-    CheckboxSetting(settings::g_advancedTabSettings.enqueue_gpu_completion,
-                    "Enqueue GPU completion (from present-update)", imgui);
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "When enabled (default), enqueues GPU completion measurement from the last present-update state "
-            "(DX11/DX12).\n"
-            "Used for latency and GPU timing. Disable only if you observe issues or want to reduce overhead.");
-    }
-    if (::g_smooth_motion_dll_loaded.load(std::memory_order_relaxed)) {
-        imgui.SameLine();
-        imgui.TextColored(::ui::colors::TEXT_WARNING, "(Disabled due to Smooth Motion)");
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "nvpresent DLL is loaded; GPU completion measurement is suppressed while Smooth Motion is active.");
-        }
-    }
-
-    imgui.Unindent();
 }
 
 void DrawDcServiceStatusIndicators(display_commander::ui::IImGuiWrapper& imgui, bool include_version_in_tooltip) {
@@ -530,44 +492,6 @@ void DrawNvapiSettings(display_commander::ui::GraphicsApi api, display_commander
         imgui.Unindent();
     }
 
-    // Fake NVAPI Settings
-    if (imgui.CollapsingHeader("AntiLag 2 / XeLL support (fakenvapi / custom nvapi64.dll)",
-                               wrapper_flags::TreeNodeFlags_None)) {
-        imgui.Indent();
-        imgui.TextColored(::ui::colors::TEXT_WARNING, "Load AL2/AL+/XeLL through nvapi64.dll");
-
-        bool fake_nvapi_enabled = settings::g_advancedTabSettings.fake_nvapi_enabled.GetValue();
-        if (imgui.Checkbox("Enable (requires restart)", &fake_nvapi_enabled)) {
-            settings::g_advancedTabSettings.fake_nvapi_enabled.SetValue(fake_nvapi_enabled);
-            settings::g_advancedTabSettings.fake_nvapi_enabled.Save();
-            s_restart_needed_nvapi.store(true);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "AntiLag 2, Vulkan AntiLag+ or XeLL are automatically selected when available.\n"
-                "Add nvapi64.dll to the addon directory (rename fakenvapi.dll if needed).\n\n"
-                "Downlaod from here: https://github.com/emoose/fakenvapi\n");
-        }
-        if (s_restart_needed_nvapi.load()) {
-            imgui.Spacing();
-            imgui.TextColored(::ui::colors::TEXT_ERROR, "Game restart required to apply NVAPI changes.");
-        }
-
-        imgui.Unindent();  // Unindent nested header section
-
-        // Warning about experimental nature
-        imgui.Spacing();
-        imgui.TextColored(::ui::colors::TEXT_WARNING, ICON_FK_WARNING " Experimental Feature");
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Fake NVAPI is experimental and may cause:\n"
-                "- Game crashes or instability\n"
-                "- Performance issues\n"
-                "- Incompatibility with some games\n\n"
-                "Use at your own risk!");
-        }
-        imgui.Unindent();
-    }
 }
 
 }  // namespace ui::new_ui

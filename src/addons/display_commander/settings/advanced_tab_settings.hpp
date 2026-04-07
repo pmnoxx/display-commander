@@ -65,9 +65,6 @@ class AdvancedTabSettings {
     BoolSetting reflex_logging;
     //   BoolSetting reflex_supress_native;
 
-    // Fake NVAPI setting
-    BoolSetting fake_nvapi_enabled;
-
     /** Global WGI suppression (global_overrides.toml). When true, WGI suppression is on for all games. Default false.
      */
     OverrideBoolSetting suppress_wgi_globally;

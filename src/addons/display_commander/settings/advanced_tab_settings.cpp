@@ -46,7 +46,6 @@ AdvancedTabSettings::AdvancedTabSettings()
       enable_input_blocking_shortcut("EnableInputBlockingShortcut", false, "DisplayCommander"),
       enable_display_commander_ui_shortcut("EnableDisplayCommanderUiShortcut", true, "DisplayCommander"),
       enable_performance_overlay_shortcut("EnablePerformanceOverlayShortcut", true, "DisplayCommander"),
-      fake_nvapi_enabled("FakeNvapiEnabled", false, "DisplayCommander"),
       suppress_wgi_globally("SuppressWgiEnabled", false, "DisplayCommander"),
       suppress_wgi_enabled("SuppressWgiEnabled", false, "DisplayCommander"),
       suppress_wgi_for_unity("SuppressWgiForUnity", false, "DisplayCommander"),
@@ -67,6 +66,8 @@ void AdvancedTabSettings::LoadAll() {
     // Win+Up grace period is fixed to 1s to keep behavior deterministic.
     // (The Advanced tab UI no longer exposes this knob.)
     win_up_grace_seconds.SetValue(1);
+
+    // Fake NVAPI is always treated as enabled.
 }
 
 void AdvancedTabSettings::SaveAll() {
@@ -88,7 +89,6 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
             &enable_timeslowdown_shortcut, &enable_adhd_toggle_shortcut,
             &enable_input_blocking_shortcut, &enable_display_commander_ui_shortcut,
             &enable_performance_overlay_shortcut,
-            &fake_nvapi_enabled,
             &suppress_wgi_globally, &suppress_wgi_enabled, &suppress_wgi_for_unity, &suppress_wgi_for_non_unity_games,
             &debug_break_on_severity, &suppress_window_changes,
             &enable_dxgi_refresh_rate_vrr_detection, &win_up_grace_seconds, &disable_dpi_scaling};
@@ -101,7 +101,6 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetSettingsToSave() {
             &enable_flip_chain,
             &auto_colorspace,
             &enable_hotkeys,
-            &fake_nvapi_enabled,
             &suppress_wgi_globally,
             &suppress_wgi_enabled,
             &suppress_wgi_for_unity,

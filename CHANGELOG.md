@@ -27,7 +27,15 @@ Planned:
 
 
 
+## v0.13.159 (2026-04-07)
+- [bugfix] [settings] **Resident Evil 2 (`re2.exe`) and ReShade input blocking** - Default overrides no longer turn on **Continue rendering in background** for `re2.exe`, so the game does not keep receiving input when ReShade would block it (overlay / click-through behavior matches expectations).
+  **Details:** `config/default_overrides.cpp` — `ContinueRendering` default removed for `re2.exe` only; `re3.exe` / other titles unchanged.
+
 ## v0.13.158 (2026-04-07)
+- [hooks] [compatibility] **ReShade input block uses `reshade_present` runtime** - `block_input_next_frame()` now runs in `OnReShadePresent` with the `effect_runtime*` for that window instead of `GetSelectedReShadeRuntime()` on the generic `present` event (fixes wrong runtime when multiple swap chains / runtimes exist).
+  **Details:** `reshade_addon_handlers.cpp` / `swapchain_events.cpp`.
+- [ui] **Debug window info tab (DebugTabs builds)** - New **Debug window info** tab shows game/foreground HWNDs, background flag, input-blocking settings, `ShouldBlockMouseInput` / `ShouldBlockKeyboardInput` / gamepad, and whether `OnReShadePresent` would call ReShade `block_input_next_frame` (mouse **or** keyboard).
+  **Details:** `ui/new_ui/debug/window_info_debug_tab.*`, registered from `new_ui_tabs.cpp` when `DISPLAY_COMMANDER_DEBUG_TABS` is on.
 - [bugfix] [ui] [settings] **Shaders tab all-games checkbox now controls `.DC_GLOBAL_SHADERS`** - The all-games checkbox in the Shaders section now toggles the dedicated global shaders marker instead of the unrelated `.DC_CONFIG_GLOBAL` per-game-folder marker.
   **Details:** `ui/new_ui/addons_tab.cpp` now reads/writes `%LocalAppData%\Programs\Display_Commander\.DC_GLOBAL_SHADERS`, updates tooltip text, and reapplies ReShade settings immediately when toggled.
 

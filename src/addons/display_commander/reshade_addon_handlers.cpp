@@ -4,6 +4,7 @@
 #include "config/display_commander_config.hpp"
 #include "config/override_reshade_settings.hpp"
 #include "globals.hpp"
+#include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "swapchain_events.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/logging.hpp"
@@ -204,7 +205,22 @@ void OnReShadeFinishEffects(reshade::api::effect_runtime* runtime, reshade::api:
     (void)rtv_srgb;
 }
 
-void OnReShadePresent(reshade::api::effect_runtime* runtime) { (void)runtime; }
+void OnReShadePresent(reshade::api::effect_runtime* runtime) {
+    CALL_GUARD_NO_TS();
+    if (runtime == nullptr) {
+        return;
+    }
+    const HWND hwnd = static_cast<HWND>(runtime->get_hwnd());
+    if (hwnd == g_proxy_hwnd) {
+        return;
+    }
+    // ReShade invokes this after the overlay for this runtime; block_input_next_frame() targets the next frame.
+    const bool should_block_mouse_or_keyboard = display_commanderhooks::ShouldBlockMouseInput()
+                                                || display_commanderhooks::ShouldBlockKeyboardInput();
+    if (should_block_mouse_or_keyboard) {
+        runtime->block_input_next_frame();
+    }
+}
 
 void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
     LogInfo("[OnInitEffectRuntime] entry");

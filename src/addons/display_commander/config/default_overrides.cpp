@@ -35,7 +35,7 @@ struct OverrideRow {
 // Flat table: linear scan (tiny row count — avoids nested std::map codegen in this TU).
 static const OverrideRow k_override_rows[] = {
     {"re2.exe", "DisplayCommander", "AutoColorspace", "1"},
-    {"re2.exe", "DisplayCommander", "ContinueRendering", "1"},
+//    {"re2.exe", "DisplayCommander", "ContinueRendering", "1"}, causes mouse input to not be blocked TODO investigate
     {"re2.exe", "DisplayCommander", "WindowMode", "1"},
     {"re3.exe", "DisplayCommander", "AutoColorspace", "1"},
     {"re3.exe", "DisplayCommander", "ContinueRendering", "1"},

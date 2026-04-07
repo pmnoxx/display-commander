@@ -1736,16 +1736,8 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     // ReShade present-before: notify enabled modules (e.g. Controller screenshot trigger)
     modules::NotifyEnabledModulesReshadePresentBefore();
 
-    auto should_block_mouse_and_keyboard_input =
-        display_commanderhooks::ShouldBlockMouseInput() && display_commanderhooks::ShouldBlockKeyboardInput();
-
-    // Check if app is in background and block input for next frame if so
-    if (should_block_mouse_and_keyboard_input) {
-        reshade::api::effect_runtime* runtime = GetSelectedReShadeRuntime();
-        if (runtime != nullptr) {
-            runtime->block_input_next_frame();
-        }
-    }
+    // ReShade block_input_next_frame() is called from OnReShadePresent (addon_event::reshade_present) with the
+    // matching effect_runtime* instead of GetSelectedReShadeRuntime().
 
     perf_timer.pause();
     // vulkan fps limiter

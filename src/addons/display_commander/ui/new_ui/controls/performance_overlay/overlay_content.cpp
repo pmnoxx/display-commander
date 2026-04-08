@@ -127,7 +127,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
 
     const OverlayLabelMode label_mode = settings::g_mainTabSettings.overlay_label_mode.GetEnumValue();
 
-    bool show_fps_counter = settings::g_mainTabSettings.show_fps_counter.GetValue();
+    bool show_present_fps = settings::g_mainTabSettings.show_fps_counter.GetValue();
     bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
     bool show_volume = settings::g_experimentalTabSettings.show_volume.GetValue();
     bool show_gpu_measurement = (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0);
@@ -170,10 +170,10 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     const bool playtime_row_valid = show_playtime_setting && game_start_time_ns_for_playtime > 0;
 
     // ----- Table: frame rate + limiter (optional clock/playtime rows first) -----
-    bool table1_any = show_clock_setting || playtime_row_valid;
+    bool table1_any = show_clock_setting || playtime_row_valid || settings::g_mainTabSettings.show_native_fps.GetValue();
     bool fps_samples_ok = false;
     double average_fps = 0.0;
-    if (show_fps_counter) {
+    if (show_present_fps || settings::g_mainTabSettings.show_native_fps.GetValue()) {
         const uint32_t head = ::g_perf_ring.GetHead();
         const uint32_t count = ::g_perf_ring.GetCountFromHead(head);
         double total_time = 0.0;
@@ -214,28 +214,28 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
             OverlayTableRow_Text(imgui, label_mode, "Play", "Playtime", show_tooltips,
                                  "Playtime: Time elapsed since game start", "%02d:%02d:%02d", hours, minutes, seconds);
         }
-        if (fps_samples_ok) {
+        if (fps_samples_ok && show_present_fps) {
             char buf[64];
             (void)snprintf(buf, sizeof(buf), "%.1f fps", average_fps);
             OverlayTableRow_TextUnformatted(imgui, label_mode, "Present", "Present FPS", buf, show_tooltips,
                                             "FPS measured on the present path (ReShade overlay sampling).");
-
-            if (settings::g_mainTabSettings.show_native_fps.GetValue()) {
-                uint64_t last_sleep_timestamp = ::g_nvapi_last_sleep_timestamp_ns.load();
-                uint64_t current_time = utils::get_now_ns();
-                bool is_recent =
-                    (last_sleep_timestamp > 0) && (current_time - last_sleep_timestamp) < (5 * utils::SEC_TO_NS);
-                LONGLONG native_sleep_ns_smooth = ::g_sleep_reflex_native_ns_smooth.load();
-                double native_fps = 0.0;
-                if (is_recent && native_sleep_ns_smooth > 0 && native_sleep_ns_smooth < 1 * utils::SEC_TO_NS) {
-                    native_fps = static_cast<double>(utils::SEC_TO_NS) / static_cast<double>(native_sleep_ns_smooth);
-                }
-                if (native_fps > 0.0) {
-                    (void)snprintf(buf, sizeof(buf), "%.1f fps", native_fps);
-                    OverlayTableRow_TextUnformatted(
-                        imgui, label_mode, "Native", "Native FPS", buf, show_tooltips,
-                        "Estimated display-side FPS from native Reflex sleep smoothing (requires active native Reflex).");
-                }
+        }
+        if (settings::g_mainTabSettings.show_native_fps.GetValue()) {
+            char buf[64];
+            uint64_t last_sleep_timestamp = ::g_nvapi_last_sleep_timestamp_ns.load();
+            uint64_t current_time = utils::get_now_ns();
+            bool is_recent =
+                (last_sleep_timestamp > 0) && (current_time - last_sleep_timestamp) < (5 * utils::SEC_TO_NS);
+            LONGLONG native_sleep_ns_smooth = ::g_sleep_reflex_native_ns_smooth.load();
+            double native_fps = 0.0;
+            if (is_recent && native_sleep_ns_smooth > 0 && native_sleep_ns_smooth < 1 * utils::SEC_TO_NS) {
+                native_fps = static_cast<double>(utils::SEC_TO_NS) / static_cast<double>(native_sleep_ns_smooth);
+            }
+            if (native_fps > 0.0) {
+                (void)snprintf(buf, sizeof(buf), "%.1f fps", native_fps);
+                OverlayTableRow_TextUnformatted(
+                    imgui, label_mode, "Native", "Native FPS", buf, show_tooltips,
+                    "Estimated display-side FPS from native Reflex sleep smoothing (requires active native Reflex).");
             }
         }
 

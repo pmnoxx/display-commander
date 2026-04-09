@@ -119,6 +119,7 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_fps_counter;
     ui::new_ui::BoolSetting show_native_fps;
     ui::new_ui::BoolSetting show_refresh_rate;
+    ui::new_ui::BoolSetting show_flip_status;
     ui::new_ui::BoolSetting show_vrr_status;
     ui::new_ui::BoolSetting vrr_debug_mode;
     ui::new_ui::BoolSetting show_display_commander_ui;
@@ -211,7 +212,6 @@ class MainTabSettings {
     ui::new_ui::ComboSettingEnum<LogLevel> log_level;
 
     // Individual Tab Visibility Settings
-    ui::new_ui::BoolSetting show_games_tab;
     ui::new_ui::BoolSetting show_hotkeys_tab;
     ui::new_ui::BoolSetting show_advanced_tab;
     ui::new_ui::BoolSetting show_important_info_tab;

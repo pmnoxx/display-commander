@@ -425,6 +425,17 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         }
         imgui.NextColumn();
 
+        bool show_flip_status = settings::g_mainTabSettings.show_flip_status.GetValue();
+        if (imgui.Checkbox("Presentation model", &show_flip_status)) {
+            settings::g_mainTabSettings.show_flip_status.SetValue(show_flip_status);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "Shows current swapchain presentation model in the performance overlay "
+                "(Flip/BitBlt for DXGI, FLIPEX for D3D9, Vulkan/OpenGL present mode where available).");
+        }
+        imgui.NextColumn();
+
         imgui.Columns(1);
         imgui.Separator();
         #if 0

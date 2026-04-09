@@ -25,8 +25,10 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.13.166 (2026-04-09)
+- [ui] [settings] **In Vsync & Tearing show presentation model** - Bring back showing presentation model in VSync & Tearing section.
 
-I added warning. ## v0.13.165 (2026-04-09)
+## v0.13.165 (2026-04-09)
 - [ui] [hooks] [compatibility] **Vulkan init timing warning** - The main UI now warns when `vulkan-1.dll` was not present during `DLL_PROCESS_ATTACH` init but appears by the first UI draw, helping to explain that Display Commander is misconfigured.
 
 ## v0.13.164 (2026-04-07)

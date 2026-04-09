@@ -188,6 +188,42 @@ void DrawOverlayGpuMemoryTable(display_commander::ui::IImGuiWrapper& imgui, Over
     imgui.EndTable();
 }
 
+const char* GetPresentationModelLabel(const reshade::api::device_api api, const uint32_t present_mode) {
+    if (api == reshade::api::device_api::d3d9) {
+        switch (present_mode) {
+            case 5: return "FLIPEX (flip model)";
+            case 1: return "DISCARD (bitblt)";
+            case 2: return "FLIP (bitblt)";
+            case 3: return "COPY (bitblt)";
+            case 4: return "OVERLAY";
+            default: return "Unknown (D3D9)";
+        }
+    }
+    if (api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11
+        || api == reshade::api::device_api::d3d12) {
+        switch (present_mode) {
+            case DXGI_SWAP_EFFECT_FLIP_DISCARD: return "FLIP_DISCARD (flip model)";
+            case DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL: return "FLIP_SEQUENTIAL (flip model)";
+            case DXGI_SWAP_EFFECT_DISCARD: return "DISCARD (bitblt)";
+            case DXGI_SWAP_EFFECT_SEQUENTIAL: return "SEQUENTIAL (bitblt)";
+            default: return "Unknown (DXGI)";
+        }
+    }
+    if (api == reshade::api::device_api::vulkan) {
+        switch (present_mode) {
+            case 0: return "IMMEDIATE (Vulkan)";
+            case 1: return "MAILBOX (Vulkan)";
+            case 2: return "FIFO (Vulkan)";
+            case 3: return "FIFO_RELAXED (Vulkan)";
+            default: return "VkPresentMode (Vulkan)";
+        }
+    }
+    if (api == reshade::api::device_api::opengl) {
+        return "OpenGL";
+    }
+    return "Unknown";
+}
+
 }  // namespace
 
 void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
@@ -208,6 +244,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     const OverlayLabelMode label_mode = settings::g_mainTabSettings.overlay_label_mode.GetEnumValue();
 
     bool show_present_fps = settings::g_mainTabSettings.show_fps_counter.GetValue();
+    bool show_flip_status = settings::g_mainTabSettings.show_flip_status.GetValue();
     bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
     bool show_volume = settings::g_experimentalTabSettings.show_volume.GetValue();
     bool show_gpu_measurement = (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0);
@@ -279,6 +316,9 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     if (show_fps_limiter_src) {
         table1_any = true;
     }
+    if (show_flip_status) {
+        table1_any = true;
+    }
 
     if (table1_any) {
         OverlayScalarTableBegin(imgui);
@@ -329,6 +369,20 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
             const char* src_name = GetChosenFpsLimiterSiteName();
             OverlayTableRow_TextUnformatted(imgui, label_mode, "Lim src", "FPS limiter source", src_name, show_tooltips,
                                             "Which hook site is applying the FPS limiter.");
+        }
+        if (show_flip_status) {
+            auto desc_ptr = g_last_swapchain_desc_post.load();
+            if (desc_ptr != nullptr) {
+                const char* present_model = GetPresentationModelLabel(current_api, desc_ptr->present_mode);
+                OverlayTableRow_TextUnformatted(
+                    imgui, label_mode, "Model", "Presentation model", present_model, show_tooltips,
+                    "Current swapchain present model from the latest swapchain descriptor captured by ReShade.");
+            } else {
+                OverlayTableRow_TextColored(imgui, label_mode, "Model", "Presentation model", ui::colors::TEXT_DIMMED,
+                                            show_tooltips,
+                                            "No swapchain descriptor has been captured yet for this process.", "%s",
+                                            "N/A");
+            }
         }
         imgui.EndTable();
     }

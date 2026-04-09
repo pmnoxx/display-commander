@@ -422,9 +422,11 @@ void DrawDisplaySettings_VSyncAndTearing(display_commander::ui::IImGuiWrapper& i
         bool status_hovered = DrawDisplaySettings_VSyncAndTearing_PresentModeLine(imgui, &tooltip_ctx);
         g_rendering_ui_section.store("ui:tab:main_new:vsync_tearing:present_mode_line", std::memory_order_release);
         if (status_hovered && tooltip_ctx.desc != nullptr) {
+            #if !defined(DC_LITE)
             imgui.BeginTooltip();
             DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(imgui, tooltip_ctx);
             imgui.EndTooltip();
+            #endif
         }
         g_rendering_ui_section.store("ui:tab:main_new:vsync_tearing:swapchain_tooltip", std::memory_order_release);
 

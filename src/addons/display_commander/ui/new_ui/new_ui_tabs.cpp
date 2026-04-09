@@ -147,9 +147,7 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime, display_commander::
             const std::string& tab_id = (*current_tabs)[i].id;
 
             // Check individual tab setting or fall back to "Show All Tabs"
-            if (tab_id == "games") {
-                tab_enabled = settings::g_mainTabSettings.show_games_tab.GetValue();
-            } else if (tab_id == "hotkeys") {
+            if (tab_id == "hotkeys") {
                 tab_enabled = settings::g_mainTabSettings.show_hotkeys_tab.GetValue();
             } else if (tab_id == "advanced") {
                 tab_enabled = settings::g_mainTabSettings.show_advanced_tab.GetValue();
@@ -203,9 +201,7 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime, display_commander::
                     const std::string& tab_id = (*current_tabs)[i].id;
 
                     // Check individual tab setting or fall back to "Show All Tabs"
-                    if (tab_id == "games") {
-                        tab_enabled = settings::g_mainTabSettings.show_games_tab.GetValue();
-                    } else if (tab_id == "hotkeys") {
+                    if (tab_id == "hotkeys") {
                         tab_enabled = settings::g_mainTabSettings.show_hotkeys_tab.GetValue();
                     } else if (tab_id == "advanced") {
                         tab_enabled = settings::g_mainTabSettings.show_advanced_tab.GetValue();

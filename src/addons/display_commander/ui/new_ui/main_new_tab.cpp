@@ -350,16 +350,6 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Text("Show Individual Tabs:");
     imgui.Indent();
 
-    if (ui::new_ui::g_tab_manager.HasTab("games")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_games_tab, "Show Games Tab", imgui)) {
-            LogInfo("Show Games tab %s",
-                    settings::g_mainTabSettings.show_games_tab.GetValue() ? "enabled" : "disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Show the Games tab (per-game display and profile settings).");
-        }
-    }
-
     if (ui::new_ui::g_tab_manager.HasTab("hotkeys")) {
         if (CheckboxSetting(settings::g_mainTabSettings.show_hotkeys_tab, "Show Hotkeys Tab", imgui)) {
             LogInfo("Show Hotkeys tab %s",

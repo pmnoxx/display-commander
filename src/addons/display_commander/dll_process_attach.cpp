@@ -543,6 +543,8 @@ void OnProcessAttach(HMODULE h_module) {
         return;
     }
     LogBootDllMainStage("PROCESS_ATTACH: after ProcessAttach_EarlyChecksAndInit (continue)");
+    g_vulkan1_loaded_during_process_attach_init.store(GetModuleHandleW(L"vulkan-1.dll") != nullptr,
+                                                      std::memory_order_release);
     ProcessAttach_DetectReShadeInModules();
     ProcessAttach_LoadLocalAddonDlls(h_module);
     LogBootDllMainStage("PROCESS_ATTACH: after ReShade module detect and local addon DLL load");

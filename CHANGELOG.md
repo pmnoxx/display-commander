@@ -26,6 +26,9 @@ Planned:
 - Show override from NPI for DLSS presets. @adap
 
 
+## v0.13.165 (2026-04-09)
+- [ui] [hooks] [compatibility] **Vulkan init timing warning in DLSS Control** - The Vulkan DLSS Control section now warns when `vulkan-1.dll` was not present during `DLL_PROCESS_ATTACH` init but appears by the first UI draw, helping to explain that Display Commander is misconfigured.
+
 ## v0.13.164 (2026-04-07)
 - [ui] **Added experimental fps limiter** -- Added "low latency mode - experimental", seems to work well in Death Stranding 2, Wuthering Waves, Crimson Desert
 

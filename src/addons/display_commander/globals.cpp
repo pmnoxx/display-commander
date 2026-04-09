@@ -689,6 +689,7 @@ LatencyMarkerFrameRecord g_latency_marker_buffer[kFrameDataBufferSize] = {};
 
 // Smooth Motion (nvpresent64/nvpresent32.dll) - set from OnModuleLoaded
 std::atomic<bool> g_smooth_motion_dll_loaded{false};
+std::atomic<bool> g_vulkan1_loaded_during_process_attach_init{false};
 
 // DLSS-G (DLSS Frame Generation) status
 std::atomic<bool> g_dlss_g_loaded{false};

@@ -1029,6 +1029,8 @@ extern std::atomic<LONGLONG> g_gpu_late_time_ns;  // GPU late time (0 if GPU fin
 
 // Set from OnModuleLoaded when nvpresent64.dll or nvpresent32.dll is loaded (NVIDIA Smooth Motion).
 extern std::atomic<bool> g_smooth_motion_dll_loaded;
+// Snapshot from DLL_PROCESS_ATTACH init path: true if vulkan-1.dll was already loaded during startup/init.
+extern std::atomic<bool> g_vulkan1_loaded_during_process_attach_init;
 
 // DLSS-G (DLSS Frame Generation) status
 extern std::atomic<bool> g_dlss_g_loaded;                                 // DLSS-G loaded status

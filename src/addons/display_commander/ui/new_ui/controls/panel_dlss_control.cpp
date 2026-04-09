@@ -52,6 +52,13 @@ void DrawMainTabOptionalPanelDlssControl(display_commander::ui::GraphicsApi api,
         imgui.Unindent();
         return;
     }
+    static bool vulkan1loaded = (GetModuleHandleW(L"vulkan-1.dll") != nullptr);
+    if (!g_vulkan1_loaded_during_process_attach_init.load(std::memory_order_acquire) && vulkan1loaded) {
+        imgui.TextColored(ui::colors::TEXT_WARNING,
+                          ICON_FK_WARNING
+                          " Display Commander was loaded before Vulkan Layer got initialized, "
+                          "consider loading Display Commander as vulkan-1.dll or .addon64");
+    }
     const DLSSGSummary dlss_summary = GetDLSSGSummary();
     if (is_dxgi) {
         if (!AreNGXParameterVTableHooksInstalled()) {

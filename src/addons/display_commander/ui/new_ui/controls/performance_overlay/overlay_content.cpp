@@ -108,6 +108,86 @@ void OverlayTableRow_TextColored(display_commander::ui::IImGuiWrapper& imgui, Ov
     va_end(ap);
 }
 
+void DrawOverlayGpuMemoryTable(display_commander::ui::IImGuiWrapper& imgui, OverlayLabelMode label_mode,
+                               bool show_tooltips, bool show_overlay_nvapi_gpu_util, bool show_overlay_vram,
+                               bool show_overlay_ram) {
+    const bool table_any = show_overlay_nvapi_gpu_util || show_overlay_vram || show_overlay_ram;
+    if (!table_any) {
+        return;
+    }
+    OverlayScalarTableBegin(imgui);
+    if (show_overlay_nvapi_gpu_util) {
+        nvapi::RequestGpuDynamicUtilizationFromOverlay(true);
+        unsigned gpu_pct = 0;
+        if (nvapi::GetCachedGpuDynamicUtilizationPercent(gpu_pct)) {
+            const double raw = static_cast<double>(gpu_pct);
+            static double smoothed_nv_gpu_util = 0.0;
+            static double displayed_nv_gpu_util = 0.0;
+            static LONGLONG s_nv_gpu_util_last_display_ns = 0;
+            constexpr double k_nv_gpu_alpha = 0.1;
+            smoothed_nv_gpu_util = (1.0 - k_nv_gpu_alpha) * smoothed_nv_gpu_util + k_nv_gpu_alpha * raw;
+            const LONGLONG now_ns_nv = utils::get_now_ns();
+            constexpr LONGLONG k_nv_gpu_display_interval_ns =
+                static_cast<LONGLONG>(0.2 * static_cast<double>(utils::SEC_TO_NS));
+            if (now_ns_nv - s_nv_gpu_util_last_display_ns >= k_nv_gpu_display_interval_ns) {
+                s_nv_gpu_util_last_display_ns = now_ns_nv;
+                displayed_nv_gpu_util = smoothed_nv_gpu_util;
+            }
+            OverlayTableRow_Text(
+                imgui, label_mode, "GPU", "GPU usage", show_tooltips,
+                "NVIDIA GPU engine utilization from NvAPI_GPU_GetDynamicPstatesInfoEx (~1 s rolling average, "
+                "first physical GPU).",
+                "%.1f%%", displayed_nv_gpu_util);
+        }
+    }
+    if (show_overlay_vram) {
+        uint64_t vram_used = 0;
+        uint64_t vram_total = 0;
+        if (display_commander::dxgi::GetVramInfo(&vram_used, &vram_total) && vram_total > 0) {
+            const uint64_t used_mib = vram_used / (1024ULL * 1024ULL);
+            const uint64_t total_mib = vram_total / (1024ULL * 1024ULL);
+            char buf[96];
+            (void)snprintf(buf, sizeof(buf), "%llu / %llu MiB", static_cast<unsigned long long>(used_mib),
+                           static_cast<unsigned long long>(total_mib));
+            OverlayTableRow_TextUnformatted(imgui, label_mode, "VRAM", "VRAM", buf, show_tooltips,
+                                            "GPU video memory used / budget (DXGI adapter memory budget).");
+        } else {
+            OverlayTableRow_TextColored(imgui, label_mode, "VRAM", "VRAM", ui::colors::TEXT_DIMMED, show_tooltips,
+                                        "VRAM unavailable (DXGI adapter or budget query failed).", "%s", "N/A");
+        }
+    }
+    if (show_overlay_ram) {
+        MEMORYSTATUSEX mem_status = {};
+        mem_status.dwLength = sizeof(mem_status);
+        if (GlobalMemoryStatusEx(&mem_status) != 0 && mem_status.ullTotalPhys > 0) {
+            const uint64_t ram_used = mem_status.ullTotalPhys - mem_status.ullAvailPhys;
+            const uint64_t ram_used_mib = ram_used / (1024ULL * 1024ULL);
+            const uint64_t ram_total_mib = mem_status.ullTotalPhys / (1024ULL * 1024ULL);
+            PROCESS_MEMORY_COUNTERS pmc = {};
+            pmc.cb = sizeof(pmc);
+            const bool have_process = (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)) != 0);
+            const uint64_t process_mib = have_process ? (pmc.WorkingSetSize / (1024ULL * 1024ULL)) : 0;
+            char buf[128];
+            if (have_process) {
+                (void)snprintf(buf, sizeof(buf), "%llu (%llu) / %llu MiB",
+                               static_cast<unsigned long long>(ram_used_mib),
+                               static_cast<unsigned long long>(process_mib),
+                               static_cast<unsigned long long>(ram_total_mib));
+            } else {
+                (void)snprintf(buf, sizeof(buf), "%llu / %llu MiB", static_cast<unsigned long long>(ram_used_mib),
+                               static_cast<unsigned long long>(ram_total_mib));
+            }
+            OverlayTableRow_TextUnformatted(
+                imgui, label_mode, "RAM", "RAM", buf, show_tooltips,
+                "System RAM in use (this app working set) / total (GlobalMemoryStatusEx, GetProcessMemoryInfo).");
+        } else {
+            OverlayTableRow_TextColored(imgui, label_mode, "RAM", "RAM", ui::colors::TEXT_DIMMED, show_tooltips,
+                                        "System memory info unavailable.", "%s", "N/A");
+        }
+    }
+    imgui.EndTable();
+}
+
 }  // namespace
 
 void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
@@ -404,80 +484,8 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     }
 
     // ----- Table: GPU + memory -----
-    bool table3_any = show_overlay_nvapi_gpu_util || show_overlay_vram || show_overlay_ram;
-    if (table3_any) {
-        OverlayScalarTableBegin(imgui);
-        if (show_overlay_nvapi_gpu_util) {
-            nvapi::RequestGpuDynamicUtilizationFromOverlay(true);
-            unsigned gpu_pct = 0;
-            if (nvapi::GetCachedGpuDynamicUtilizationPercent(gpu_pct)) {
-                const double raw = static_cast<double>(gpu_pct);
-                static double smoothed_nv_gpu_util = 0.0;
-                static double displayed_nv_gpu_util = 0.0;
-                static LONGLONG s_nv_gpu_util_last_display_ns = 0;
-                constexpr double k_nv_gpu_alpha = 0.1;
-                smoothed_nv_gpu_util = (1.0 - k_nv_gpu_alpha) * smoothed_nv_gpu_util + k_nv_gpu_alpha * raw;
-                const LONGLONG now_ns_nv = utils::get_now_ns();
-                constexpr LONGLONG k_nv_gpu_display_interval_ns =
-                    static_cast<LONGLONG>(0.2 * static_cast<double>(utils::SEC_TO_NS));
-                if (now_ns_nv - s_nv_gpu_util_last_display_ns >= k_nv_gpu_display_interval_ns) {
-                    s_nv_gpu_util_last_display_ns = now_ns_nv;
-                    displayed_nv_gpu_util = smoothed_nv_gpu_util;
-                }
-                OverlayTableRow_Text(
-                    imgui, label_mode, "GPU", "GPU usage", show_tooltips,
-                    "NVIDIA GPU engine utilization from NvAPI_GPU_GetDynamicPstatesInfoEx (~1 s rolling average, "
-                    "first physical GPU).",
-                    "%.1f%%", displayed_nv_gpu_util);
-            }
-        }
-        if (show_overlay_vram) {
-            uint64_t vram_used = 0;
-            uint64_t vram_total = 0;
-            if (display_commander::dxgi::GetVramInfo(&vram_used, &vram_total) && vram_total > 0) {
-                const uint64_t used_mib = vram_used / (1024ULL * 1024ULL);
-                const uint64_t total_mib = vram_total / (1024ULL * 1024ULL);
-                char buf[96];
-                (void)snprintf(buf, sizeof(buf), "%llu / %llu MiB", static_cast<unsigned long long>(used_mib),
-                               static_cast<unsigned long long>(total_mib));
-                OverlayTableRow_TextUnformatted(imgui, label_mode, "VRAM", "VRAM", buf, show_tooltips,
-                                                "GPU video memory used / budget (DXGI adapter memory budget).");
-            } else {
-                OverlayTableRow_TextColored(imgui, label_mode, "VRAM", "VRAM", ui::colors::TEXT_DIMMED, show_tooltips,
-                                            "VRAM unavailable (DXGI adapter or budget query failed).", "%s", "N/A");
-            }
-        }
-        if (show_overlay_ram) {
-            MEMORYSTATUSEX mem_status = {};
-            mem_status.dwLength = sizeof(mem_status);
-            if (GlobalMemoryStatusEx(&mem_status) != 0 && mem_status.ullTotalPhys > 0) {
-                const uint64_t ram_used = mem_status.ullTotalPhys - mem_status.ullAvailPhys;
-                const uint64_t ram_used_mib = ram_used / (1024ULL * 1024ULL);
-                const uint64_t ram_total_mib = mem_status.ullTotalPhys / (1024ULL * 1024ULL);
-                PROCESS_MEMORY_COUNTERS pmc = {};
-                pmc.cb = sizeof(pmc);
-                const bool have_process = (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)) != 0);
-                const uint64_t process_mib = have_process ? (pmc.WorkingSetSize / (1024ULL * 1024ULL)) : 0;
-                char buf[128];
-                if (have_process) {
-                    (void)snprintf(buf, sizeof(buf), "%llu (%llu) / %llu MiB",
-                                   static_cast<unsigned long long>(ram_used_mib),
-                                   static_cast<unsigned long long>(process_mib),
-                                   static_cast<unsigned long long>(ram_total_mib));
-                } else {
-                    (void)snprintf(buf, sizeof(buf), "%llu / %llu MiB", static_cast<unsigned long long>(ram_used_mib),
-                                   static_cast<unsigned long long>(ram_total_mib));
-                }
-                OverlayTableRow_TextUnformatted(
-                    imgui, label_mode, "RAM", "RAM", buf, show_tooltips,
-                    "System RAM in use (this app working set) / total (GlobalMemoryStatusEx, GetProcessMemoryInfo).");
-            } else {
-                OverlayTableRow_TextColored(imgui, label_mode, "RAM", "RAM", ui::colors::TEXT_DIMMED, show_tooltips,
-                                            "System memory info unavailable.", "%s", "N/A");
-            }
-        }
-        imgui.EndTable();
-    }
+    DrawOverlayGpuMemoryTable(imgui, label_mode, show_tooltips, show_overlay_nvapi_gpu_util, show_overlay_vram,
+                             show_overlay_ram);
 
     // ----- DLSS / FG (table) -----
     if (show_fg_mode || show_overlay_resolution || show_dlss_status || show_dlss_quality_preset

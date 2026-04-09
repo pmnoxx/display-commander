@@ -21,7 +21,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
 static void DrawDxgiOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Columns(1);
     imgui.Separator();
-    imgui.TextUnformatted("Measured refresh");
+    imgui.TextUnformatted("Refresh Rate");
     imgui.Columns(4, "overlay_checkboxes", false);
 
     const bool dxgi_detection_enabled =
@@ -454,51 +454,6 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         imgui.Columns(1);
         imgui.Separator();
         #endif
-        imgui.TextUnformatted("Frame timing & graphs");
-        imgui.Columns(4, "overlay_checkboxes", false);
-
-        bool show_frame_time_graph = settings::g_mainTabSettings.show_frame_time_graph.GetValue();
-        if (imgui.Checkbox("Show frame time graph", &show_frame_time_graph)) {
-            settings::g_mainTabSettings.show_frame_time_graph.SetValue(show_frame_time_graph);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Shows a graph of frame times in the overlay.");
-        }
-        imgui.NextColumn();
-
-        bool show_frame_time_stats = settings::g_mainTabSettings.show_frame_time_stats.GetValue();
-        if (imgui.Checkbox("Show frame time stats", &show_frame_time_stats)) {
-            settings::g_mainTabSettings.show_frame_time_stats.SetValue(show_frame_time_stats);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Shows frame time statistics (avg, deviation, min, max) in the overlay.");
-        }
-        imgui.NextColumn();
-
-        bool show_native_frame_time_graph = settings::g_mainTabSettings.show_native_frame_time_graph.GetValue();
-        if (imgui.Checkbox("Show native frame time graph", &show_native_frame_time_graph)) {
-            settings::g_mainTabSettings.show_native_frame_time_graph.SetValue(show_native_frame_time_graph);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Shows a graph of native frame times (frames shown to display via native swapchain Present) in the "
-                "overlay.\nOnly available when limit real frames is enabled.");
-        }
-        imgui.NextColumn();
-
-        bool show_frame_timeline_bar = settings::g_mainTabSettings.show_frame_timeline_bar.GetValue();
-        if (imgui.Checkbox("Show frame timeline bar", &show_frame_timeline_bar)) {
-            settings::g_mainTabSettings.show_frame_timeline_bar.SetValue(show_frame_timeline_bar);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Shows a compact frame timeline in the overlay (Simulation, Render Submit, Present, etc. as bars). "
-                "Updates every 1 s.");
-        }
-        imgui.NextColumn();
-
-        imgui.Columns(1);
-        imgui.Separator();
         imgui.TextUnformatted("DLSS / NGX");
         imgui.Columns(4, "overlay_checkboxes", false);
 
@@ -709,6 +664,52 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
                 "Useful to prevent overlap with stream overlay text. "
                 "Positive values move the overlay to the right, negative values move it to the left.");
         }
+
+        imgui.Separator();
+        imgui.TextUnformatted("Frame timing & graphs");
+        imgui.Columns(4, "overlay_checkboxes", false);
+
+        bool show_frame_time_graph = settings::g_mainTabSettings.show_frame_time_graph.GetValue();
+        if (imgui.Checkbox("Show frame time graph", &show_frame_time_graph)) {
+            settings::g_mainTabSettings.show_frame_time_graph.SetValue(show_frame_time_graph);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx("Shows a graph of frame times in the overlay.");
+        }
+        imgui.NextColumn();
+
+        bool show_frame_time_stats = settings::g_mainTabSettings.show_frame_time_stats.GetValue();
+        if (imgui.Checkbox("Show frame time stats", &show_frame_time_stats)) {
+            settings::g_mainTabSettings.show_frame_time_stats.SetValue(show_frame_time_stats);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx("Shows frame time statistics (avg, deviation, min, max) in the overlay.");
+        }
+        imgui.NextColumn();
+
+        bool show_native_frame_time_graph = settings::g_mainTabSettings.show_native_frame_time_graph.GetValue();
+        if (imgui.Checkbox("Show native frame time graph", &show_native_frame_time_graph)) {
+            settings::g_mainTabSettings.show_native_frame_time_graph.SetValue(show_native_frame_time_graph);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "Shows a graph of native frame times (frames shown to display via native swapchain Present) in the "
+                "overlay.\nOnly available when limit real frames is enabled.");
+        }
+        imgui.NextColumn();
+
+        bool show_frame_timeline_bar = settings::g_mainTabSettings.show_frame_timeline_bar.GetValue();
+        if (imgui.Checkbox("Show frame timeline bar", &show_frame_timeline_bar)) {
+            settings::g_mainTabSettings.show_frame_timeline_bar.SetValue(show_frame_timeline_bar);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "Shows a compact frame timeline in the overlay (Simulation, Render Submit, Present, etc. as bars). "
+                "Updates every 1 s.");
+        }
+        imgui.NextColumn();
+
+        imgui.Columns(1);
     }
 }
 

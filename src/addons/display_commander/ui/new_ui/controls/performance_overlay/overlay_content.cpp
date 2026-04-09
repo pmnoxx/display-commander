@@ -333,16 +333,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         imgui.EndTable();
     }
 
-    // ----- Frame timing visuals -----
-    if (show_frame_time_graph) {
-        ui::new_ui::DrawFrameTimeGraphOverlay(imgui, show_tooltips);
-    }
-    if (show_native_frame_time_graph) {
-        ui::new_ui::DrawNativeFrameTimeGraphOverlay(imgui, show_tooltips);
-    }
-    if (settings::g_mainTabSettings.show_frame_timeline_bar.GetValue()) {
-        ui::new_ui::DrawFrameTimelineBarOverlay(imgui, show_tooltips);
-    }
     // ----- Refresh / VRR: shared cache for NVAPI table row + debug overlay -----
     static dxgi::fps_limiter::RefreshRateStats cached_vrr_stats{};
     static LONGLONG last_valid_vrr_sample_ns = 0;
@@ -379,13 +369,13 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         if (show_dxgi_refresh_rate) {
             if (dxgi_hz_live > 0.0) {
                 OverlayTableRow_Text(
-                    imgui, label_mode, "Hz", "Measured refresh", show_tooltips,
+                    imgui, label_mode, "Hz", "Refresh Rate", show_tooltips,
                     "From swap chain GetFrameStatistics (RefreshRateMonitor). Enable DXGI refresh rate / VRR detection "
                     "in the Debug DXGI refresh tab (-DebugTabs build) or via addon config.",
                     "%.1f Hz", dxgi_hz_live);
             } else {
                 OverlayTableRow_TextColored(
-                    imgui, label_mode, "Hz", "Measured refresh", ui::colors::TEXT_DIMMED, show_tooltips,
+                    imgui, label_mode, "Hz", "Refresh Rate", ui::colors::TEXT_DIMMED, show_tooltips,
                     "From swap chain GetFrameStatistics (RefreshRateMonitor). Enable DXGI refresh rate / VRR detection "
                     "in the Debug DXGI refresh tab (-DebugTabs build) or via addon config.",
                     "%s", "-- Hz");
@@ -421,7 +411,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         if (show_dxgi_vrr_status) {
             if (dxgi_stats.is_valid && dxgi_stats.all_last_20_within_1s
                 && dxgi_stats.samples_below_threshold_last_10s >= 2) {
-                OverlayTableRow_TextColored(imgui, label_mode, "VRR", "VRR (estimate)", ui::colors::TEXT_SUCCESS,
+                OverlayTableRow_TextColored(imgui, label_mode, "VRR", "VRR", ui::colors::TEXT_SUCCESS,
                                             show_tooltips,
                                             "Heuristic from present timing (RefreshRateMonitor / DXGI). Enable DXGI "
                                             "refresh rate / VRR detection in the Debug DXGI refresh tab (-DebugTabs "
@@ -429,13 +419,13 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                                             "%s", "On");
             } else if (dxgi_stats.is_valid) {
                 OverlayTableRow_TextColored(
-                    imgui, label_mode, "VRR", "VRR (estimate)", ui::colors::TEXT_DIMMED, show_tooltips,
+                    imgui, label_mode, "VRR", "VRR", ui::colors::TEXT_DIMMED, show_tooltips,
                     "Heuristic from present timing (RefreshRateMonitor / DXGI). Enable DXGI refresh rate / VRR "
                     "detection in the Debug DXGI refresh tab (-DebugTabs build) or via addon config.",
                     "%s", "Off");
             } else {
                 OverlayTableRow_TextColored(
-                    imgui, label_mode, "VRR", "VRR (estimate)", ui::colors::TEXT_DIMMED, show_tooltips,
+                    imgui, label_mode, "VRR", "VRR", ui::colors::TEXT_DIMMED, show_tooltips,
                     "Heuristic from present timing (RefreshRateMonitor / DXGI). Enable DXGI refresh rate / VRR "
                     "detection in the Debug DXGI refresh tab (-DebugTabs build) or via addon config.",
                     "%s", "--");
@@ -963,6 +953,17 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
             }
         }
         imgui.EndTable();
+    }
+
+    // ----- Frame timing visuals (bottom of overlay) -----
+    if (show_frame_time_graph) {
+        ui::new_ui::DrawFrameTimeGraphOverlay(imgui, show_tooltips);
+    }
+    if (show_native_frame_time_graph) {
+        ui::new_ui::DrawNativeFrameTimeGraphOverlay(imgui, show_tooltips);
+    }
+    if (settings::g_mainTabSettings.show_frame_timeline_bar.GetValue()) {
+        ui::new_ui::DrawFrameTimelineBarOverlay(imgui, show_tooltips);
     }
 }
 

@@ -893,7 +893,16 @@ std::vector<std::string> get_available_keyboard_keys() {
             "Next Track",
             "Previous Track",
             "Stop Media",
-            "Play/Pause Media"};
+            "Play/Pause Media",
+            "Print Screen",
+            "Scroll Lock",
+            "Pause",
+            "Insert",
+            "Home",
+            "Page Up",
+            "Delete",
+            "End",
+            "Page Down"};
 }
 
 void InputRemapper::increment_trigger_count(WORD gamepad_button) {

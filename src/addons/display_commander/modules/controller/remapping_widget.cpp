@@ -687,6 +687,15 @@ int RemappingWidget::GetKeyboardVkFromIndex(int index) const {
         case 62: return VK_MEDIA_PREV_TRACK;
         case 63: return VK_MEDIA_STOP;
         case 64: return VK_MEDIA_PLAY_PAUSE;
+        case 65: return VK_SNAPSHOT;
+        case 66: return VK_SCROLL;
+        case 67: return VK_PAUSE;
+        case 68: return VK_INSERT;
+        case 69: return VK_HOME;
+        case 70: return VK_PRIOR;
+        case 71: return VK_DELETE;
+        case 72: return VK_END;
+        case 73: return VK_NEXT;
         default: return 0;
     }
 }

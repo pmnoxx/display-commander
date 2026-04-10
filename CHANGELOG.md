@@ -25,6 +25,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.13.170 (2026-04-10)
+- [ui] **Audio per-channel layout and VU smoothing** - Per-channel volume uses two columns (VU and labels on the left, aligned sliders on the right). The small VU bar and its percentage use wall-clock exponential smoothing; volume sliders follow session values without extra filtering.
+
 ## v0.13.169 (2026-04-10)
 - [bugfix] [ui] **Smoother Audio control and VU overlay** - Device info, level meters, and per-channel volume readouts are updated on a background thread instead of hammering Windows audio APIs every overlay frame, which reduces stutter when the Audio section or VU bars are open.
 

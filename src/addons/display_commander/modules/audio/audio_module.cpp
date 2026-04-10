@@ -173,6 +173,7 @@ void DrawAudioSettingsInternal(display_commander::ui::IImGuiWrapper& imgui) {
 
     g_rendering_ui_section.store("ui:tab:main_new:audio:game_volume", std::memory_order_release);
     float volume = s_game_volume_percent.load(std::memory_order_relaxed);
+    imgui.SetNextItemWidth(400.0f);
     if (imgui.SliderFloat("Game Volume (%)", &volume, 0.0f, 100.0f, "%.0f%%")) {
         s_game_volume_percent.store(volume);
         if (::SetVolumeForCurrentProcess(volume)) {
@@ -192,6 +193,7 @@ void DrawAudioSettingsInternal(display_commander::ui::IImGuiWrapper& imgui) {
     }
     g_rendering_ui_section.store("ui:tab:main_new:audio:system_volume", std::memory_order_release);
     float system_volume = s_system_volume_percent.load(std::memory_order_relaxed);
+    imgui.SetNextItemWidth(400.0f);
     if (imgui.SliderFloat("System Volume (%)", &system_volume, 0.0f, 100.0f, "%.0f%%")) {
         s_system_volume_percent.store(system_volume);
         if (!::SetSystemVolume(system_volume)) {
@@ -254,13 +256,60 @@ void DrawAudioSettingsInternal(display_commander::ui::IImGuiWrapper& imgui) {
             channel_count = snap->session_channel_count;
             const std::vector<float>& channel_vols = snap->session_channel_volumes_0_1;
             if (imgui.TreeNodeEx("Per-channel volume", ImGuiTreeNodeFlags_DefaultOpen)) {
+                static std::vector<float> s_perch_vu_display_smoothed;
+                static unsigned int s_perch_vu_display_count_stored = 0;
+                static uint64_t s_perch_vu_display_last_ns = 0;
+
+                if (channel_count != s_perch_vu_display_count_stored) {
+                    s_perch_vu_display_smoothed.assign(channel_count, 0.0f);
+                    for (unsigned int i = 0; i < channel_count; ++i) {
+                        if (i < effective_meter_count && i < s_vu_smoothed.size()) {
+                            s_perch_vu_display_smoothed[i] = (std::min)(1.0f, s_vu_smoothed[i]);
+                        }
+                    }
+                    s_perch_vu_display_count_stored = channel_count;
+                    s_perch_vu_display_last_ns = 0;
+                }
+
+                const uint64_t now_perch_vu_ns = utils::get_now_ns();
+                float dt_perch_vu_sec = (1.0f / 60.0f);
+                if (s_perch_vu_display_last_ns != 0ULL) {
+                    dt_perch_vu_sec =
+                        static_cast<float>(static_cast<double>(now_perch_vu_ns - s_perch_vu_display_last_ns) * 1e-9);
+                    dt_perch_vu_sec = (std::min)((std::max)(dt_perch_vu_sec, 1.0e-4f), 0.25f);
+                }
+                s_perch_vu_display_last_ns = now_perch_vu_ns;
+                const float k_perch_vu_display_tau_sec = utils::first_order_tau_for_step_alpha(0.03f, 60.0f);
+
                 const float row_vu_width = 14.0f;
                 const float row_vu_height = 32.0f;
+                const float vu_level_text_w = imgui.CalcTextSize("100.0%").x;
+
+                float left_col_w = 0.0f;
+                for (unsigned int i = 0; i < channel_count; ++i) {
+                    const char* lab = GetAudioChannelLabel(i, channel_count);
+                    float row_w = imgui.CalcTextSize(lab).x;
+                    if (i < effective_meter_count && i < s_vu_smoothed.size()) {
+                        row_w += row_vu_width + 4.0f + 6.0f + vu_level_text_w + 6.0f;
+                    }
+                    left_col_w = (std::max)(left_col_w, row_w);
+                }
+
+                imgui.Columns(2, "dc_audio_perch", false);
+                if (left_col_w > 1.0f) {
+                    imgui.SetColumnWidth(0, left_col_w);
+                }
+
                 for (unsigned int ch = 0; ch < channel_count; ++ch) {
-                    float pct = channel_vols[ch] * 100.0f;
                     const char* label = GetAudioChannelLabel(ch, channel_count);
-                    if (ch < effective_meter_count && ch < s_vu_smoothed.size()) {
-                        const float level = (std::min)(1.0f, s_vu_smoothed[ch]);
+                    float pct = channel_vols[ch] * 100.0f;
+
+                    if (ch < effective_meter_count && ch < s_vu_smoothed.size()
+                        && ch < s_perch_vu_display_smoothed.size()) {
+                        const float vu_target = (std::min)(1.0f, s_vu_smoothed[ch]);
+                        s_perch_vu_display_smoothed[ch] = utils::exponential_smooth_toward(
+                            s_perch_vu_display_smoothed[ch], vu_target, dt_perch_vu_sec, k_perch_vu_display_tau_sec);
+                        const float level = (std::min)(1.0f, s_perch_vu_display_smoothed[ch]);
                         auto draw_list = imgui.GetWindowDrawList();
                         const ImVec2 pos = imgui.GetCursorScreenPos();
                         const ImVec2 bg_min(pos.x, pos.y);
@@ -274,11 +323,23 @@ void DrawAudioSettingsInternal(display_commander::ui::IImGuiWrapper& imgui) {
                         }
                         imgui.Dummy(ImVec2(row_vu_width + 4.0f, row_vu_height));
                         imgui.SameLine(0.0f, 0.0f);
-                        imgui.TextColored(ui::colors::TEXT_DIMMED, "%.1f%%", level * 100.0f);
+                        imgui.TextColored(ui::colors::TEXT_DIMMED, "%s", label);
                         imgui.SameLine(0.0f, 6.0f);
+                        imgui.TextColored(ui::colors::TEXT_DIMMED, "%.1f%%", level * 100.0f);
+                    } else {
+                        imgui.TextColored(ui::colors::TEXT_DIMMED, "%s", label);
                     }
+
+                    imgui.NextColumn();
+
                     char slider_id[32];
-                    (void)std::snprintf(slider_id, sizeof(slider_id), "%s (%%)##ch%u", label, ch);
+                    (void)std::snprintf(slider_id, sizeof(slider_id), "##ch%u", ch);
+                    const float slider_w = imgui.GetContentRegionAvail().x;
+                //    if (slider_w > 1.0f) {
+                 //       imgui.SetNextItemWidth(slider_w);
+                 //   }
+
+                    imgui.SetNextItemWidth(400.0f);
                     if (imgui.SliderFloat(slider_id, &pct, 0.0f, 100.0f, "%.0f%%")) {
                         if (::SetChannelVolumeForCurrentProcess(ch, pct / 100.0f)) {
                             LogInfo("Channel %u volume set", ch);
@@ -287,7 +348,13 @@ void DrawAudioSettingsInternal(display_commander::ui::IImGuiWrapper& imgui) {
                     if (imgui.IsItemHovered()) {
                         imgui.SetTooltipEx("Volume for channel %u (%s), game audio session.", ch, label);
                     }
+
+                    if (ch + 1u < channel_count) {
+                        imgui.NextColumn();
+                    }
                 }
+
+                imgui.Columns(1);
                 imgui.TreePop();
             }
         } else if (device_info_ptr != nullptr && device_info_ptr->channel_count >= 6) {
@@ -678,7 +745,7 @@ void DrawMainTabInline(display_commander::ui::IImGuiWrapper& imgui, reshade::api
     imgui.Spacing();
     g_rendering_ui_section.store("ui:tab:main_new:audio", std::memory_order_release);
     ui::colors::PushHeaderColors(&imgui);
-    const bool audio_control_open = imgui.CollapsingHeader("Audio control", ImGuiTreeNodeFlags_None);
+    const bool audio_control_open = imgui.CollapsingHeader("Audio Control", ImGuiTreeNodeFlags_None);
     ui::colors::PopCollapsingHeaderColors(&imgui);
     if (audio_control_open) {
         imgui.Indent();

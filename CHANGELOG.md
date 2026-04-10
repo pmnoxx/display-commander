@@ -25,8 +25,11 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.13.168 (2026-04-10)
+- [cleanup] [ui] **Debug tabs merged under one Debug tab** - When built with debug tabs enabled, the overlay shows a single **Debug** top-level tab; former debug panels are inner tabs so the tab bar stays shorter.
+
 ## v0.13.167 (2026-04-10)
-- [bugfix] [ui] **Controller remapping now includes navigation/system keys** - Added missing keyboard targets to the remapping picker so you can map controller buttons to Print Screen, Scroll Lock, Pause, Insert, Home, Page Up, Delete, End, and Page Down.
+- [feature] [ui] **Controller remapping now includes navigation/system keys** - Added missing keyboard targets to the remapping picker so you can map controller buttons to Print Screen, Scroll Lock, Pause, Insert, Home, Page Up, Delete, End, and Page Down.
 
 ## v0.13.166 (2026-04-09)
 - [ui] [settings] **In Vsync & Tearing show presentation model** - Bring back showing presentation model in VSync & Tearing section.

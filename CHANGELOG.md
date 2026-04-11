@@ -25,6 +25,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.13.174 (2026-04-10)
+- [settings] **Auto Enable Windows HDR earlier** - DC now turns on the during DLL load, fixing issue in Death Stranding 2.
+
 ## v0.13.173 (2026-04-10)
 - [bugfix] [settings] **Auto Windows HDR setting key** - Rewrote the implementation to work properly.
 - [cleanup] **Auto Windows HDR module** - Logic lives under `features/auto_windows_hdr`. If the game exits without destroying the swapchain, Windows HDR is still turned off when Display Commander had auto-enabled it for that session.

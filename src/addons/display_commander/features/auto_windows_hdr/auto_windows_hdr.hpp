@@ -1,10 +1,14 @@
 // Source Code <Display Commander> // Auto Windows HDR feature slice; see features/auto_windows_hdr/
+// Behavior: docs/spec/features/auto_enable_windows_hdr.md
 #pragma once
 
 // Libraries <Windows.h>
 #include <Windows.h>
 
 namespace display_commander::features::auto_windows_hdr {
+
+// After settings load during DLL init (no-HWND path): best-effort HDR enable; see spec.
+void OnEarlyInitTryAutoEnableWindowsHdr();
 
 // When Main tab "Auto enable Windows HDR" is on: enable Windows HDR for the game's monitor and record state for revert.
 void OnSwapchainInitTryAutoEnableWindowsHdr(HWND hwnd);

@@ -1,4 +1,5 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
+// Feature behavior is specified in docs/spec/features/auto_enable_windows_hdr.md
 #include "auto_windows_hdr.hpp"
 #include "display/hdr_control.hpp"
 #include "settings/main_tab_settings.hpp"
@@ -15,25 +16,59 @@ namespace display_commander::features::auto_windows_hdr {
 namespace {
 std::atomic<HMONITOR> s_hdr_auto_enabled_monitor{nullptr};
 std::atomic<bool> s_we_auto_enabled_hdr{false};
-}  // namespace
 
-void OnSwapchainInitTryAutoEnableWindowsHdr(HWND hwnd) {
-    if (settings::g_mainTabSettings.auto_enable_windows_hdr.GetValue()) {
-        HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-        if (monitor) {
-            bool supported = false;
-            bool enabled = false;
-            if (display_commander::display::hdr_control::GetHdrStateForMonitor(monitor, &supported, &enabled)) {
-                LogInfo("[Auto Enable Windows HDR] Display is HDR capable: %s, enabled: %s", supported ? "YES" : "NO",
-                        enabled ? "YES" : "NO");
-                if (display_commander::display::hdr_control::SetHdrForMonitor(monitor, true)) {
-                    LogInfo("[Auto Enable Windows HDR] Successfully enabled Windows HDR for display");
-                    s_hdr_auto_enabled_monitor.store(monitor);
-                    s_we_auto_enabled_hdr.store(true);
-                }
-            }
+// Shared enable path: logs state, turns on Windows HDR for `monitor`, records atomics on success.
+void TryAutoEnableWindowsHdrForMonitor(HMONITOR monitor) {
+    if (!settings::g_mainTabSettings.auto_enable_windows_hdr.GetValue()) {
+        return;
+    }
+    if (!monitor) {
+        return;
+    }
+    bool supported = false;
+    bool enabled = false;
+    if (display_commander::display::hdr_control::GetHdrStateForMonitor(monitor, &supported, &enabled)) {
+        LogInfo("[Auto Enable Windows HDR] Display is HDR capable: %s, enabled: %s", supported ? "YES" : "NO",
+                enabled ? "YES" : "NO");
+        if (display_commander::display::hdr_control::SetHdrForMonitor(monitor, true)) {
+            LogInfo("[Auto Enable Windows HDR] Successfully enabled Windows HDR for display");
+            s_hdr_auto_enabled_monitor.store(monitor);
+            s_we_auto_enabled_hdr.store(true);
         }
     }
+}
+}  // namespace
+
+void OnEarlyInitTryAutoEnableWindowsHdr() {
+    const HWND foreground = GetForegroundWindow();
+    const HMONITOR monitor =
+        foreground ? MonitorFromWindow(foreground, MONITOR_DEFAULTTONEAREST)
+                   : MonitorFromWindow(nullptr, MONITOR_DEFAULTTOPRIMARY);
+    TryAutoEnableWindowsHdrForMonitor(monitor);
+}
+
+void OnSwapchainInitTryAutoEnableWindowsHdr(HWND hwnd) {
+    if (!settings::g_mainTabSettings.auto_enable_windows_hdr.GetValue()) {
+        return;
+    }
+    if (!hwnd) {
+        return;
+    }
+    const HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+    if (!monitor) {
+        return;
+    }
+    const HMONITOR stored = s_hdr_auto_enabled_monitor.load();
+    if (s_we_auto_enabled_hdr.load() && stored != nullptr && stored != monitor) {
+        LogInfo(
+            "[Auto Enable Windows HDR] Swapchain monitor differs from early guess; reverting HDR on previous monitor "
+            "%p",
+            stored);
+        display_commander::display::hdr_control::SetHdrForMonitor(stored, false);
+        s_we_auto_enabled_hdr.store(false);
+        s_hdr_auto_enabled_monitor.store(nullptr);
+    }
+    TryAutoEnableWindowsHdrForMonitor(monitor);
 }
 
 void OnSwapchainDestroyMaybeRevertAutoHdr(HWND hwnd) {

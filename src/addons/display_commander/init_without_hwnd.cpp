@@ -4,6 +4,7 @@
 #include "config/display_commander_config.hpp"
 #include "config/override_reshade_settings.hpp"
 #include "display/display_initial_state.hpp"
+#include "features/auto_windows_hdr/auto_windows_hdr.hpp"
 #include "features/dpi/dpi_management.hpp"
 #include "dll_boot_logging.hpp"
 #include "globals.hpp"
@@ -38,6 +39,8 @@ void DoInitializationWithoutHwndSafe_Early(HMODULE h_module) {
     LogInfo("DLLMain (DisplayCommander) %lld h_module: 0x%p", utils::get_now_ns(),
             reinterpret_cast<uintptr_t>(h_module));
     settings::LoadAllSettingsAtStartup();
+    // docs/spec/features/auto_enable_windows_hdr.md — early DLL init (DllMain stack)
+    display_commander::features::auto_windows_hdr::OnEarlyInitTryAutoEnableWindowsHdr();
     LogBootInitWithoutHwndStage("Early after LoadAllSettingsAtStartup");
     display_commanderhooks::InstallLoadLibraryHooks();
     LogBootInitWithoutHwndStage("Early after InstallLoadLibraryHooks");

@@ -1196,9 +1196,20 @@ void ResolutionWidget::DrawAutoRestoreCheckbox(display_commander::ui::IImGuiWrap
 }
 
 void ResolutionWidget::DrawHdrSection(display_commander::ui::IImGuiWrapper& imgui) {
-    bool auto_hdr = settings::g_mainTabSettings.auto_enable_disable_hdr.GetValue();
-    if (imgui.Checkbox("Auto enable/disable HDR", &auto_hdr)) {
-        settings::g_mainTabSettings.auto_enable_disable_hdr.SetValue(auto_hdr);
+    bool auto_hdr = settings::g_mainTabSettings.auto_enable_windows_hdr.GetValue();
+    int actual_display = GetActualDisplayIndex();
+    bool hdr_supported = false;
+    bool hdr_enabled = false;
+    bool got_state = display_commander::display::hdr_control::GetHdrStateForDisplayIndex(actual_display, &hdr_supported,
+                                                                                         &hdr_enabled);
+    if (imgui.Checkbox("Auto enable Windows HDR", &auto_hdr)) {
+        settings::g_mainTabSettings.auto_enable_windows_hdr.SetValue(auto_hdr);
+
+
+        if (display_commander::display::hdr_control::SetHdrForDisplayIndex(actual_display, auto_hdr)) {
+            display_cache::g_displayCache.Refresh();
+            needs_refresh_ = true;
+        }
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
@@ -1206,11 +1217,6 @@ void ResolutionWidget::DrawHdrSection(display_commander::ui::IImGuiWrapper& imgu
             "and turn it off when the game exits.");
     }
 
-    int actual_display = GetActualDisplayIndex();
-    bool hdr_supported = false;
-    bool hdr_enabled = false;
-    bool got_state = display_commander::display::hdr_control::GetHdrStateForDisplayIndex(actual_display, &hdr_supported,
-                                                                                         &hdr_enabled);
 
     if (got_state) {
         imgui.SameLine();

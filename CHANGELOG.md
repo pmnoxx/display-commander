@@ -25,11 +25,15 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.13.173 (2026-04-10)
+- [bugfix] [settings] **Auto Windows HDR setting key** - Rewrote the implementation to work properly.
+- [cleanup] **Auto Windows HDR module** - Logic lives under `features/auto_windows_hdr`. If the game exits without destroying the swapchain, Windows HDR is still turned off when Display Commander had auto-enabled it for that session.
+
 ## v0.13.172 (2026-04-10)
-- [ui] [settings] **Module Tab checkbox; Audio tab off by default** - Under **Features** → **Module Features**, each module with a tab now has a **Tab** checkbox next to **Enable** (before **Overlay**). The **Audio** tab stays hidden until you turn **Tab** on (default off for Audio). ReShade and Controller still default to on. If **Audio** no longer appears in the tab bar after updating, enable **Tab** beside **Enable Audio**.
+- [ui] **Debug: DisplayConfig sub-tab** - More debugging tools
 
 ## v0.13.171 (2026-04-10)
-- [bugfix] [ui] **Main tab Audio Control respects Show Audio Control** - With **Show Audio Control** off, the Audio Control block no longer appears under Features (Module Features) or duplicated at the bottom of the Main tab. When on, a single **Audio Control** section appears in the optional panels area only.
+- [bugfix] [ui] **Main tab Audio Control respects Show Audio Control** - Cleaned features UI.
 
 ## v0.13.170 (2026-04-10)
 - [ui] **Audio per-channel layout and VU smoothing** - Per-channel volume uses two columns (VU and labels on the left, aligned sliders on the right). The small VU bar and its percentage use wall-clock exponential smoothing; volume sliders follow session values without extra filtering.

@@ -1,6 +1,6 @@
 
 #include "display/display_initial_state.hpp"
-#include "display/hdr_control.hpp"
+#include "features/auto_windows_hdr/auto_windows_hdr.hpp"
 #include "globals.hpp"
 #include "hooks/dxgi/dxgi_gpu_completion.hpp"
 #include "hooks/dxgi/dxgi_present_hooks.hpp"
@@ -859,27 +859,13 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
     return res;
 }
 
-namespace {
-HMONITOR s_hdr_auto_enabled_monitor = nullptr;
-std::atomic<bool> s_we_auto_enabled_hdr{false};
-}  // namespace
-
 void OnDestroySwapchain(reshade::api::swapchain* swapchain, bool resize) {
     CALL_GUARD_NO_TS();
     if (swapchain == nullptr) {
         return;
     }
     HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
-    if (s_we_auto_enabled_hdr.load() && s_hdr_auto_enabled_monitor != nullptr) {
-        if (hwnd) {
-            HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-            if (monitor == s_hdr_auto_enabled_monitor) {
-                display_commander::display::hdr_control::SetHdrForMonitor(monitor, false);
-                s_we_auto_enabled_hdr.store(false);
-                s_hdr_auto_enabled_monitor = nullptr;
-            }
-        }
-    }
+    display_commander::features::auto_windows_hdr::OnSwapchainDestroyMaybeRevertAutoHdr(hwnd);
 }
 
 namespace {
@@ -988,19 +974,7 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
     CalculateWindowState(hwnd, "OnInitSwapchain");
 
     // Auto enable Windows HDR for the game display when enabled in settings (only on first init, not resize)
-    if (!resize && settings::g_mainTabSettings.auto_enable_disable_hdr.GetValue()) {
-        HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-        if (monitor) {
-            bool supported = false, enabled = false;
-            if (display_commander::display::hdr_control::GetHdrStateForMonitor(monitor, &supported, &enabled)
-                && supported && !enabled) {
-                if (display_commander::display::hdr_control::SetHdrForMonitor(monitor, true)) {
-                    s_hdr_auto_enabled_monitor = monitor;
-                    s_we_auto_enabled_hdr.store(true);
-                }
-            }
-        }
-    }
+    display_commander::features::auto_windows_hdr::OnSwapchainInitTryAutoEnableWindowsHdr(hwnd);
 
     // Auto-apply MaxMDL 1000 HDR metadata when enabled (inject HDR10 metadata on swapchain init)
     if (!resize && settings::g_mainTabSettings.auto_apply_maxmdl_1000_hdr_metadata.GetValue()) {

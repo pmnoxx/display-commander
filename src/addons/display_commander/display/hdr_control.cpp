@@ -78,17 +78,12 @@ bool FindPathForMonitor(HMONITOR monitor, LUID* path_adapter_id, UINT32* path_ta
 }  // namespace
 
 bool GetHdrStateForMonitor(HMONITOR monitor, bool* out_supported, bool* out_enabled) {
-    if (!monitor || !out_supported || !out_enabled) {
+    *out_supported = false;
+    *out_enabled = false;
+    if (!monitor) {
         return false;
     }
 
-    // Return cached value if we recently set HDR for this monitor (Windows can return stale data).
-    ULONGLONG now = GetTickCount64();
-    if (g_last_set_monitor == monitor && (now - g_last_set_ticks) < kHdrSetCacheMs) {
-        *out_supported = true;  // We only set when supported
-        *out_enabled = g_last_set_enabled;
-        return true;
-    }
 
     LUID adapter_id = {};
     UINT32 target_id = 0;
@@ -107,7 +102,7 @@ bool GetHdrStateForMonitor(HMONITOR monitor, bool* out_supported, bool* out_enab
     }
 
     *out_supported = (getColorInfo.advancedColorSupported != 0);
-    *out_enabled = (getColorInfo.advancedColorEnabled != 0);
+    *out_enabled = (getColorInfo.advancedColorEnabled != 0 && getColorInfo.wideColorEnforced == 0);
     return true;
 }
 
@@ -157,10 +152,6 @@ bool SetHdrForMonitor(HMONITOR monitor, bool enable) {
 }
 
 bool GetHdrStateForDisplayIndex(int display_index, bool* out_supported, bool* out_enabled) {
-    if (!out_supported || !out_enabled) {
-        return false;
-    }
-
     const auto* display = display_cache::g_displayCache.GetDisplay(display_index);
     if (!display) {
         return false;

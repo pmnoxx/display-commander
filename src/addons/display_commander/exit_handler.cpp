@@ -6,6 +6,7 @@
 #include <sstream>
 #include <vector>
 #include "display/display_restore.hpp"
+#include "features/auto_windows_hdr/auto_windows_hdr.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "utils/general_utils.hpp"
 #include "hooks/loadlibrary_hooks.hpp"
@@ -66,6 +67,7 @@ void OnHandleExit(ExitSource source, const std::string& message) {
     // Best-effort display restoration on any exit
     display_restore::RestoreAllIfEnabled();
 
+    display_commander::features::auto_windows_hdr::OnProcessExitRevertAutoHdrIfNeeded();
 
     // ReShade config backup on exit when enabled (per-game Main tab setting)
     if (settings::g_mainTabSettings.auto_reshade_config_backup.GetValue()) {

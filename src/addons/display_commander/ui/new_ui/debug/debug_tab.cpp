@@ -1,6 +1,7 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "debug_tab.hpp"
 #include "../../../globals.hpp"
+#include "display_config_debug_tab.hpp"
 #include "dxgi_refresh_rate_tab.hpp"
 #include "fps_limiter_debug_tab.hpp"
 #include "ngx_counters_tab.hpp"
@@ -42,6 +43,11 @@ void DrawDebugTab(display_commander::ui::IImGuiWrapper& imgui) {
     if (imgui.BeginTabItem("Vulkan", nullptr, 0)) {
         g_rendering_ui_section.store("ui:tab:debug_vulkan", std::memory_order_release);
         DrawVulkanTab(imgui);
+        imgui.EndTabItem();
+    }
+    if (imgui.BeginTabItem("DisplayConfig", nullptr, 0)) {
+        g_rendering_ui_section.store("ui:tab:debug_display_config", std::memory_order_release);
+        DrawDisplayConfigDebugTab(imgui);
         imgui.EndTabItem();
     }
     if (imgui.BeginTabItem("DXGI refresh", nullptr, 0)) {

@@ -198,7 +198,7 @@ MainTabSettings::MainTabSettings()
       max_anisotropy("max_anisotropy", 0, 0, 16, "DisplayCommander"),
       force_mipmap_lod_bias("force_mipmap_lod_bias", 0.0f, -5.0f, 5.0f, "DisplayCommander"),
       auto_reshade_config_backup("auto_reshade_config_backup", false, "DisplayCommander"),
-      auto_enable_disable_hdr("auto_enable_disable_hdr", false, "DisplayCommander"),
+      auto_enable_windows_hdr("auto_enable_windows_hdr", false, "DisplayCommander"),
       auto_apply_maxmdl_1000_hdr_metadata("auto_apply_maxmdl_1000_hdr_metadata", false, "DisplayCommander") {
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -335,7 +335,7 @@ MainTabSettings::MainTabSettings()
         &max_anisotropy,
         &force_mipmap_lod_bias,
         &auto_reshade_config_backup,
-        &auto_enable_disable_hdr,
+        &auto_enable_windows_hdr,
         &auto_apply_maxmdl_1000_hdr_metadata,
     };
 }

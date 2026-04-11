@@ -247,8 +247,8 @@ class MainTabSettings {
     /** When true, backup all .ini files from the game folder to Display_Commander\\Reshade\\Configs\\<GameName>
      * when the option is enabled (only if not already present). Does not set ReShade config path. Default off. */
     ui::new_ui::BoolSetting auto_reshade_config_backup;
-    // HDR Control (Resolution Control / auto enable-disable Windows HDR)
-    ui::new_ui::BoolSetting auto_enable_disable_hdr;
+    // HDR Control (Resolution Control / auto enable Windows HDR)
+    ui::new_ui::BoolSetting auto_enable_windows_hdr;
     // Override HDR static metadata (ignore source MaxCLL/MaxFALL): inject MaxMDL 1000 on swapchain init (DXGI
     // SetHDRMetaData). Sony/display fix.
     ui::new_ui::BoolSetting auto_apply_maxmdl_1000_hdr_metadata;

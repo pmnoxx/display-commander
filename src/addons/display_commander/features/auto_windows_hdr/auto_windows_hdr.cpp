@@ -27,6 +27,7 @@ void OnSwapchainInitTryAutoEnableWindowsHdr(HWND hwnd) {
                 LogInfo("[Auto Enable Windows HDR] Display is HDR capable: %s, enabled: %s", supported ? "YES" : "NO",
                         enabled ? "YES" : "NO");
                 if (display_commander::display::hdr_control::SetHdrForMonitor(monitor, true)) {
+                    LogInfo("[Auto Enable Windows HDR] Successfully enabled Windows HDR for display");
                     s_hdr_auto_enabled_monitor.store(monitor);
                     s_we_auto_enabled_hdr.store(true);
                 }
@@ -40,6 +41,7 @@ void OnSwapchainDestroyMaybeRevertAutoHdr(HWND hwnd) {
         return;
     }
     const HMONITOR stored = s_hdr_auto_enabled_monitor.load();
+    LogInfo("[Auto Enable Windows HDR] OnSwapchainDestroyMaybeRevertAutoHdr: stored monitor: %p", stored);
     if (stored == nullptr) {
         return;
     }
@@ -48,6 +50,7 @@ void OnSwapchainDestroyMaybeRevertAutoHdr(HWND hwnd) {
     }
     const HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
     if (monitor == stored) {
+        LogInfo("[Auto Enable Windows HDR] OnSwapchainDestroyMaybeRevertAutoHdr: monitor matches stored, disabling HDR");
         display_commander::display::hdr_control::SetHdrForMonitor(monitor, false);
         s_we_auto_enabled_hdr.store(false);
         s_hdr_auto_enabled_monitor.store(nullptr);
@@ -59,6 +62,7 @@ void OnProcessExitRevertAutoHdrIfNeeded() {
         return;
     }
     const HMONITOR stored = s_hdr_auto_enabled_monitor.load();
+    LogInfo("[Auto Enable Windows HDR] OnProcessExitRevertAutoHdrIfNeeded: stored monitor: %p", stored);
     if (stored == nullptr) {
         return;
     }

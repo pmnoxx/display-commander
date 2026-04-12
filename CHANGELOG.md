@@ -25,8 +25,11 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.13.178 (2026-04-12)
+- [ui] **Performance overlay labels** - Renamed overlay background and frame chart sliders from “Transparency” to “Opacity” so the label matches the value (higher = more opaque).
+
 ## v0.13.177 (2026-04-12)
-- [bugfix] [hooks] **DLSS-G mirror on ReleaseFeature** - When the game releases an NGX DLSS Frame Generation feature, the mirrored `DLSSG.Mode` and `DLSSG.EnableInterp` values used for the UI are reset to off so they do not stay stuck after teardown; the same reset runs when NGX handle tracking is cleaned up.
+- [bugfix] [hooks] **Fixed fps limit in Borderlands 4 in menus while using FG**
 
 ## v0.13.176 (2026-04-12)
 - [bugfix] [compatibility] **DC_LITE link** - Lite builds omit the full audio module but the Main tab still referenced its inline panel; a small stub satisfies the linker so Display Commander Lite builds again.

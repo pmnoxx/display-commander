@@ -625,20 +625,20 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         DrawDxgiOverlaySubsection(imgui);
 
         imgui.Spacing();
-        if (SliderFloatSetting(settings::g_mainTabSettings.overlay_background_alpha, "Overlay Background Transparency",
+        if (SliderFloatSetting(settings::g_mainTabSettings.overlay_background_alpha, "Overlay Background Opacity",
                                "%.2f", imgui)) {
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
-                "Controls the transparency of the overlay background. 0.0 = fully transparent, 1.0 = fully opaque.");
+                "Controls the overlay background opacity. 0.0 = fully transparent, 1.0 = fully opaque.");
         }
-        if (SliderFloatSetting(settings::g_mainTabSettings.overlay_chart_alpha, "Frame Chart Transparency", "%.2f",
+        if (SliderFloatSetting(settings::g_mainTabSettings.overlay_chart_alpha, "Frame Chart Opacity", "%.2f",
                                imgui)) {
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
-                "Controls the transparency of the frame time and refresh rate chart backgrounds. 0.0 = fully "
-                "transparent, 1.0 = fully opaque. Chart lines remain fully visible.");
+                "Controls opacity of the frame time and refresh rate chart backgrounds. 0.0 = fully transparent, "
+                "1.0 = fully opaque. Chart lines remain fully visible.");
         }
         if (SliderFloatSetting(settings::g_mainTabSettings.overlay_graph_scale, "Graph Size Scale", "%.1fx", imgui)) {
         }

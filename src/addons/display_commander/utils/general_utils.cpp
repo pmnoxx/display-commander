@@ -984,7 +984,7 @@ std::string GetNgxDlssDefaultSrRenderPresetLetterFromVersionString(const std::st
     if (!TryParseDlssDllVersionTriplet(version_string, maj, min, pat)) {
         return {};
     }
-    if (isBetween(maj, min, pat, 310, 4, 0, 310, 6, 99)) {
+    if (isBetween(maj, min, pat, 310, 2, 0, 310, 6, 99)) {
         return "K";
     }
     return {};

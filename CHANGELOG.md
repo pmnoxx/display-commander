@@ -25,6 +25,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.13.176 (2026-04-12)
+- [bugfix] [compatibility] **DC_LITE link** - Lite builds omit the full audio module but the Main tab still referenced its inline panel; a small stub satisfies the linker so Display Commander Lite builds again.
+
 ## v0.13.175 (2026-04-12)
 - [cleanup] **Auto Windows HDR lifecycle** - Fixed Windows HDR not turning off on app exit.
 

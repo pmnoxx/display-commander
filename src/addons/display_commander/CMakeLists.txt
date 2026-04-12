@@ -1,7 +1,7 @@
 # Version (single source of truth for addon; used by compile definitions and version.rc)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 13)
-set(DISPLAY_COMMANDER_VERSION_PATCH 175)
+set(DISPLAY_COMMANDER_VERSION_PATCH 176)
 
 # Repository root (this file: src/addons/display_commander/CMakeLists.txt → ../../..).
 set(_dc_repo_root "${CMAKE_CURRENT_LIST_DIR}/../../..")
@@ -29,6 +29,7 @@ if(DC_LITE)
   list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/debug/nvidia_profile_inspector_tab\\.cpp$")
 else()
   list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/config/override_reshade_settings_stub\\.cpp$")
+  list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/config/audio_draw_main_tab_inline_lite_stub\\.cpp$")
 endif()
 
 if(DC_EXTERNAL_MODULES)

@@ -662,18 +662,18 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
-                "Adds vertical spacing to the performance overlay position. "
-                "Useful to prevent overlap with stream overlay text. "
-                "Positive values move the overlay down, negative values move it up.");
+                "Vertical offset of the performance overlay in the ReShade overlay (pixels from the top). "
+                "0 aligns the window top edge with the top of the overlay area. "
+                "Positive moves down, negative moves up (e.g. to clear other on-screen text).");
         }
         if (SliderFloatSetting(settings::g_mainTabSettings.overlay_horizontal_spacing, "Overlay Horizontal Spacing",
                                "%.0f px", imgui)) {
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
-                "Adds horizontal spacing to the performance overlay position. "
-                "Useful to prevent overlap with stream overlay text. "
-                "Positive values move the overlay to the right, negative values move it to the left.");
+                "Horizontal offset of the performance overlay in the ReShade overlay (pixels from the left). "
+                "0 aligns the window left edge with the left of the overlay area. "
+                "Positive moves right, negative moves left.");
         }
 
         imgui.Separator();

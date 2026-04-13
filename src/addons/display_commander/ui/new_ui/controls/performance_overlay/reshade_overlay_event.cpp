@@ -114,8 +114,9 @@ void OnPerformanceOverlay_TestWindow(reshade::api::effect_runtime* runtime, bool
     display_commander::ui::ImGuiWrapperReshade overlay_wrapper;
     float vertical_spacing = settings::g_mainTabSettings.overlay_vertical_spacing.GetValue();
     float horizontal_spacing = settings::g_mainTabSettings.overlay_horizontal_spacing.GetValue();
-    overlay_wrapper.SetNextWindowPos(ImVec2(10.0f + horizontal_spacing, 10.0f + vertical_spacing), ImGuiCond_Always,
-                                     ImVec2(0.f, 0.f));
+    // Spacing values are the window position in overlay space (0,0 = top-left). Do not add a hidden margin — users
+    // expect 0 px to align with the overlay corner.
+    overlay_wrapper.SetNextWindowPos(ImVec2(horizontal_spacing, vertical_spacing), ImGuiCond_Always, ImVec2(0.f, 0.f));
     float bg_alpha = settings::g_mainTabSettings.overlay_background_alpha.GetValue();
     overlay_wrapper.SetNextWindowBgAlpha(bg_alpha);
     overlay_wrapper.SetNextWindowSize(ImVec2(450, 65), ImGuiCond_FirstUseEver);

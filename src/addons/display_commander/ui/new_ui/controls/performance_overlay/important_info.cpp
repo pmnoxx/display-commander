@@ -381,16 +381,16 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             settings::g_mainTabSettings.show_playtime.SetValue(show_playtime);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Shows total playtime (time from game start) in the performance overlay.");
+            imgui.SetTooltipEx("Shows total playtime (time from game start).");
         }
         imgui.NextColumn();
 
         bool show_fps_counter = settings::g_mainTabSettings.show_fps_counter.GetValue();
-        if (imgui.Checkbox("FPS Counter", &show_fps_counter)) {
+        if (imgui.Checkbox("Present FPS", &show_fps_counter)) {
             settings::g_mainTabSettings.show_fps_counter.SetValue(show_fps_counter);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Shows the current FPS counter in the main ReShade overlay.");
+            imgui.SetTooltipEx("Shows the FPS counter representing frames actually displayed on the screen.");
         }
         imgui.NextColumn();
 
@@ -404,9 +404,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
-                "Shows native FPS on its own line (estimated from native Reflex sleep smoothing), below present FPS. "
-                "Requires a game with native Reflex.%s",
-                native_reflex_active ? "" : " Disabled when native Reflex is not active.");
+                "Shows the fps counter representing frames rendered by the game.");
         }
         if (!native_reflex_active) {
             imgui.EndDisabled();

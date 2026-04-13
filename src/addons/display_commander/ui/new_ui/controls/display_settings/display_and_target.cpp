@@ -22,44 +22,28 @@ void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& 
                 break;
             }
         }
+        CALL_GUARD_NO_TS();
 
         // Backbuffer size: from runtime when available, else from game render size
         uint32_t backbuffer_w = 0;
         uint32_t backbuffer_h = 0;
         reshade::api::format backbuffer_format = reshade::api::format::unknown;
-        if (runtime != nullptr) {
-            runtime->get_screenshot_width_and_height(&backbuffer_w, &backbuffer_h);
-            reshade::api::device* device = runtime->get_device();
-            if (device != nullptr) {
-                reshade::api::resource bb = runtime->get_back_buffer(0);
-                if (bb != 0) {
-                    backbuffer_format = device->get_resource_desc(bb).texture.format;
-                }
-            }
-            if (backbuffer_format == reshade::api::format::unknown) {
-                auto desc_ptr = g_last_swapchain_desc_post.load();
-                if (desc_ptr != nullptr) {
-                    backbuffer_format = desc_ptr->back_buffer.texture.format;
-                }
-            }
-        }
+        backbuffer_w = static_cast<uint32_t>(g_game_render_width.load());
+        backbuffer_h = static_cast<uint32_t>(g_game_render_height.load());
         if (backbuffer_w == 0 || backbuffer_h == 0) {
-            backbuffer_w = static_cast<uint32_t>(g_game_render_width.load());
-            backbuffer_h = static_cast<uint32_t>(g_game_render_height.load());
-            if (backbuffer_w == 0 || backbuffer_h == 0) {
-                auto desc_ptr = g_last_swapchain_desc_post.load();
-                if (desc_ptr != nullptr) {
-                    backbuffer_w = desc_ptr->back_buffer.texture.width;
-                    backbuffer_h = desc_ptr->back_buffer.texture.height;
-                    backbuffer_format = desc_ptr->back_buffer.texture.format;
-                }
-            } else {
-                auto desc_ptr = g_last_swapchain_desc_post.load();
-                if (desc_ptr != nullptr) {
-                    backbuffer_format = desc_ptr->back_buffer.texture.format;
-                }
+            auto desc_ptr = g_last_swapchain_desc_post.load();
+            if (desc_ptr != nullptr) {
+                backbuffer_w = desc_ptr->back_buffer.texture.width;
+                backbuffer_h = desc_ptr->back_buffer.texture.height;
+                backbuffer_format = desc_ptr->back_buffer.texture.format;
+            }
+        } else {
+            auto desc_ptr = g_last_swapchain_desc_post.load();
+            if (desc_ptr != nullptr) {
+                backbuffer_format = desc_ptr->back_buffer.texture.format;
             }
         }
+        CALL_GUARD_NO_TS();
 
         if (backbuffer_w > 0 && backbuffer_h > 0) {
             imgui.TextColored(ui::colors::TEXT_LABEL, "Render resolution:");
@@ -168,6 +152,7 @@ void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& 
                 }
             }
         }
+        CALL_GUARD_NO_TS();
 
         // Target Display dropdown (left-aligned with Render resolution / VRAM; flat frame — similar to DC folder buttons)
         std::vector<const char*> monitor_c_labels;
@@ -175,6 +160,7 @@ void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& 
         for (const auto& info : display_info) {
             monitor_c_labels.push_back(info.display_label.c_str());
         }
+        CALL_GUARD_NO_TS();
 
         float preview_text_w = imgui.CalcTextSize("—").x;
         for (const char* lbl : monitor_c_labels) {
@@ -184,6 +170,7 @@ void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& 
         const float combo_ctrl_w =
             preview_text_w + (st.FramePadding.x * 2.f) + st.ItemInnerSpacing.x + imgui.GetTextLineHeight() + 4.f;
 
+            CALL_GUARD_NO_TS();
         ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.5f, 0.5f));
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.f);
         const ImVec4 frame_bg_clear(0.f, 0.f, 0.f, 0.f);
@@ -195,6 +182,7 @@ void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& 
         imgui.BeginGroup();
         imgui.SetNextItemWidth(600.f);  // combo_ctrl_w);
 
+        CALL_GUARD_NO_TS();
         static bool s_target_display_changed = false;
         if (imgui.Combo("##TargetDisplay", &selected_index, monitor_c_labels.data(),
                         static_cast<int>(monitor_c_labels.size()))) {
@@ -208,12 +196,14 @@ void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& 
                 LogInfo("Target monitor changed to device ID: %s", new_device_id.c_str());
             }
         }
+        CALL_GUARD_NO_TS();
         const bool target_display_combo_hovered = imgui.IsItemHovered();
         imgui.SameLine(0.f, st.ItemInnerSpacing.x);
         imgui.TextColored(ui::colors::TEXT_LABEL, "Target Display");
         const bool target_display_label_hovered = imgui.IsItemHovered();
         imgui.EndGroup();
 
+        CALL_GUARD_NO_TS();
         imgui.PopStyleColor(3);
         ImGui::PopStyleVar(2);
         if (target_display_combo_hovered || target_display_label_hovered) {
@@ -228,6 +218,7 @@ void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& 
             }
             imgui.SetTooltipEx("%s", tooltip_text.c_str());
         }
+        CALL_GUARD_NO_TS();
         // Warn if mode does not resize; moving to another display isn't implemented in those modes
         const WindowMode mode = GetCurrentWindowMode();
         if (s_target_display_changed

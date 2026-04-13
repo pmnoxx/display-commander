@@ -25,9 +25,12 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.13.184
+- [bugfix] [ui] **Fixed crash in DC's UI** - Draw Display Settings
+
 ## v0.13.183
 - [new feature] [ui] [experimental] **PresentMon ETW/flip state in VSync & Tearing** - Added back showing flip state.
-- [new feature] [ui] **PresentMon flip in performance overlay** - Optional overlay line shows the same Win32k composition/flip classification as the VSync & Tearing flip state when PresentMon ETW is enabled; full builds only, separate from **Presentation model**.
+- [new feature] [ui] **PresentMon flip in performance overlay** - Added showing flip state in to the Performance Overlay.
 
 ## v0.13.182 (2026-04-12)
 - [bugfix] [ui] **Reset-to-default control** - The undo icon next to sliders and other settings used a small button that could clip the ForkAwesome glyph at the top; it now uses a square button matching normal frame height so the icon stays fully visible.

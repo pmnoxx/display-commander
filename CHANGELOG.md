@@ -26,6 +26,7 @@ Planned:
 - Show override from NPI for DLSS presets. @adap
 
 ## v0.13.186
+- [compatibility] [settings] **ReShade overlay clock** - Display Commander no longer sets ReShade `OVERLAY.ShowClock` when applying config overrides, so the built-in ReShade clock follows the user’s ini or defaults.
 - [ui] [removal] **DLSS info panel cleanup** - Removed the `Create.Flags` and `Auto Exposure` rows from the DLSS info UI to keep the panel focused on core status and preset controls.
 - [ui] [removal] **DLSS version line simplification** - Removed the bracketed supported-preset list (`[...]`) next to `DLSS DLL: X.Y.Z` in the DLSS info panel.
 - [ui] **DLSS DLL version alignment** - DLSS/DLSS-G/DLSS-D labels and version values now render in separate columns so all three rows line up cleanly.

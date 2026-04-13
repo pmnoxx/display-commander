@@ -76,7 +76,6 @@ void OverrideReShadeSettings_WindowConfig(reshade::api::effect_runtime* runtime)
 void OverrideReShadeSettings_TutorialAndUpdates(reshade::api::effect_runtime* runtime) {
     reshade::set_config_value(runtime, "OVERLAY", "TutorialProgress", 4);
     reshade::set_config_value(runtime, "GENERAL", "CheckForUpdates", 0);
-    reshade::set_config_value(runtime, "OVERLAY", "ShowClock", 0);
 }
 
 // ReShade defaults SCREENSHOT SavePath and PostSaveCommandWorkingDirectory to ".\" (game folder).

@@ -177,6 +177,8 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_driver_dlss_sr_preset;
     /** Overlay: merged DLSS-RR render preset (DRS override vs DC combo). */
     ui::new_ui::BoolSetting show_driver_dlss_rr_preset;
+    /** Overlay: Win32k ETW PresentMon-style flip/composition line. Requires present_mon_etw_enabled. Full build only. */
+    ui::new_ui::BoolSetting show_overlay_presentmon_flip;
 #endif
     /** Show FPS limiter source (e.g. reflex_marker, dxgi_swapchain) in performance overlay. */
     ui::new_ui::BoolSetting show_fps_limiter_src;

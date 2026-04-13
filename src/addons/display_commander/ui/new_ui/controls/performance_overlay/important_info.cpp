@@ -434,6 +434,27 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         }
         imgui.NextColumn();
 
+#if !defined(DC_LITE)
+        const bool present_mon_etw_on = settings::g_mainTabSettings.present_mon_etw_enabled.GetValue();
+        if (!present_mon_etw_on) {
+            imgui.BeginDisabled();
+        }
+        bool show_overlay_presentmon_flip = settings::g_mainTabSettings.show_overlay_presentmon_flip.GetValue();
+        if (imgui.Checkbox("Flip state (ETW)", &show_overlay_presentmon_flip)) {
+            settings::g_mainTabSettings.show_overlay_presentmon_flip.SetValue(show_overlay_presentmon_flip);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "Shows Win32k ETW composition/flip classification in the performance overlay (same source as Flip state "
+                "under VSync & Tearing). This is not the same as Presentation model, which reads the swapchain API. "
+                "Enable PresentMon ETW (flip state) under Display Settings → VSync & Tearing for live data.");
+        }
+        if (!present_mon_etw_on) {
+            imgui.EndDisabled();
+        }
+        imgui.NextColumn();
+#endif
+
         imgui.Columns(1);
         imgui.Separator();
         #if 0

@@ -27,10 +27,7 @@ Planned:
 
 ## v0.13.183
 - [new feature] [ui] [experimental] **PresentMon ETW/flip state in VSync & Tearing** - Added back showing flip state.
-- [ui] **PresentMon ETW row** - **Flip state:** (status in parentheses) and the **Enabled** checkbox are on one line under VSync & Tearing.
-- [settings] [hooks] [compatibility] **PresentMon ETW opt-in** - Win32k ETW for the flip-state line is off by default; enable it with the **Enabled** checkbox next to **Flip state:** under VSync & Tearing. Full builds only; **DC Lite** omits the ETW implementation (stub only, no UI checkbox).
-- [bugfix] [hooks] **PresentMon ETW thread creation** - If starting the trace thread throws (e.g. resource limits), the error is caught so the game process is not terminated and the feature is marked unavailable instead.
-
+- [new feature] [ui] **PresentMon flip in performance overlay** - Optional overlay line shows the same Win32k composition/flip classification as the VSync & Tearing flip state when PresentMon ETW is enabled; full builds only, separate from **Presentation model**.
 
 ## v0.13.182 (2026-04-12)
 - [bugfix] [ui] **Reset-to-default control** - The undo icon next to sliders and other settings used a small button that could clip the ForkAwesome glyph at the top; it now uses a square button matching normal frame height so the icon stays fully visible.

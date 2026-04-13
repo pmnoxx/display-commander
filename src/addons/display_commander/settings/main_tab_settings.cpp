@@ -149,6 +149,7 @@ MainTabSettings::MainTabSettings()
 #if !defined(DC_LITE)
       show_driver_dlss_sr_preset("show_driver_dlss_sr_preset", false, "DisplayCommander"),
       show_driver_dlss_rr_preset("show_driver_dlss_rr_preset", false, "DisplayCommander"),
+      show_overlay_presentmon_flip("show_overlay_presentmon_flip", false, "DisplayCommander"),
 #endif
       show_fps_limiter_src("show_fps_limiter_src", false, "DisplayCommander"),
       show_playtime("show_playtime", false, "DisplayCommander"),
@@ -296,6 +297,7 @@ MainTabSettings::MainTabSettings()
 #if !defined(DC_LITE)
         &show_driver_dlss_sr_preset,
         &show_driver_dlss_rr_preset,
+        &show_overlay_presentmon_flip,
 #endif
         &show_fps_limiter_src,
         &show_playtime,

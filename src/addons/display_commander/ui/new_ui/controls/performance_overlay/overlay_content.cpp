@@ -4,6 +4,7 @@
 #include "dxgi/vram_info.hpp"
 #if !defined(DC_LITE)
 #include "features/nvidia_profile_inspector/nvidia_profile_inspector.hpp"
+#include "features/presentmon/presentmon_minimal_etw.hpp"
 #endif
 #include "globals.hpp"
 #include "hooks/nvidia/ngx_hooks.hpp"
@@ -253,6 +254,11 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
     bool show_overlay_nvapi_gpu_util = settings::g_mainTabSettings.show_overlay_nvapi_gpu_util.GetValue();
     bool show_fg_mode = settings::g_mainTabSettings.show_fg_mode.GetValue();
+#if !defined(DC_LITE)
+    bool show_overlay_presentmon_flip = settings::g_mainTabSettings.show_overlay_presentmon_flip.GetValue();
+#else
+    const bool show_overlay_presentmon_flip = false;
+#endif
     bool show_overlay_resolution = settings::g_mainTabSettings.show_overlay_resolution.GetValue();
     bool show_dlss_status = settings::g_mainTabSettings.show_dlss_status.GetValue();
     bool show_dlss_quality_preset = settings::g_mainTabSettings.show_dlss_quality_preset.GetValue();
@@ -317,6 +323,9 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         table1_any = true;
     }
     if (show_flip_status) {
+        table1_any = true;
+    }
+    if (show_overlay_presentmon_flip) {
         table1_any = true;
     }
 
@@ -384,6 +393,51 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                                             "N/A");
             }
         }
+#if !defined(DC_LITE)
+        if (show_overlay_presentmon_flip) {
+            const bool etw_on = settings::g_mainTabSettings.present_mon_etw_enabled.GetValue();
+            if (!etw_on) {
+                OverlayTableRow_TextColored(
+                    imgui, label_mode, "PM", "PresentMon flip", ui::colors::TEXT_DIMMED, show_tooltips,
+                    "Enable PresentMon ETW (flip state) under Display Settings → VSync & Tearing to collect Win32k "
+                    "composition events for this process.",
+                    "%s", "Off");
+            } else {
+                display_commander::features::presentmon::EnsurePresentMonEtwStarted();
+                const display_commander::features::presentmon::PresentMonStateSnapshot snapshot =
+                    display_commander::features::presentmon::GetPresentMonStateSnapshot();
+                if (snapshot.session_failed) {
+                    OverlayTableRow_TextColored(imgui, label_mode, "PM", "PresentMon flip", ui::colors::TEXT_ERROR,
+                                                show_tooltips,
+                                                "PresentMon ETW session failed or provider access was denied.", "%s",
+                                                "ETW unavailable");
+                } else if (snapshot.has_data) {
+                    const char* mode_str =
+                        display_commander::features::presentmon::PresentMonModeToString(snapshot.mode);
+                    const char* suffix = snapshot.is_live ? "" : " (stale)";
+                    char value_buf[96];
+                    (void)snprintf(value_buf, sizeof(value_buf), "%s%s", mode_str, suffix);
+                    char tooltip_buf[320];
+                    (void)snprintf(tooltip_buf, sizeof(tooltip_buf),
+                                   "Last update age: %llu ms.\n"
+                                   "Win32k composition state for this process (PresentMon minimal ETW). "
+                                   "Not the same as Presentation model (swapchain API).",
+                                   static_cast<unsigned long long>(snapshot.age_ms));
+                    const ImVec4 row_color =
+                        snapshot.is_live ? ui::colors::TEXT_SUCCESS : ui::colors::TEXT_WARNING;
+                    OverlayTableRow_TextColored(imgui, label_mode, "PM", "PresentMon flip", row_color, show_tooltips,
+                                                tooltip_buf, "%s", value_buf);
+                } else if (snapshot.session_running) {
+                    OverlayTableRow_TextColored(
+                        imgui, label_mode, "PM", "PresentMon flip", ui::colors::TEXT_DIMMED, show_tooltips,
+                        "Waiting for current-process Win32k composition events.", "%s", "Waiting");
+                } else {
+                    OverlayTableRow_TextColored(imgui, label_mode, "PM", "PresentMon flip", ui::colors::TEXT_DIMMED,
+                                                show_tooltips, nullptr, "%s", "Unknown");
+                }
+            }
+        }
+#endif
         imgui.EndTable();
     }
 

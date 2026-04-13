@@ -26,7 +26,6 @@ Planned:
 - Show override from NPI for DLSS presets. @adap
 
 ## v0.13.183
-- [cleanup] [docs] **PresentMon minimal ETW UI** - Flip-state row lives in `presentmon_minimal_flip_state_row.*`; [docs/spec/presentmon-minimal-etw.md](docs/spec/presentmon-minimal-etw.md) documents the Main tab UI (layout, setting, tooltips, DC Lite).
 - [new feature] [ui] [experimental] **PresentMon ETW/flip state in VSync & Tearing** - Added back showing flip state.
 - [ui] **PresentMon ETW row** - **Flip state:** (status in parentheses) and the **Enabled** checkbox are on one line under VSync & Tearing.
 - [settings] [hooks] [compatibility] **PresentMon ETW opt-in** - Win32k ETW for the flip-state line is off by default; enable it with the **Enabled** checkbox next to **Flip state:** under VSync & Tearing. Full builds only; **DC Lite** omits the ETW implementation (stub only, no UI checkbox).

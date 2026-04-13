@@ -19,6 +19,17 @@
 #include <vector>
 
 namespace {
+constexpr wchar_t kNoReshadeClockMarkerFileName[] = L".NO_RESHADE_CLOCK";
+
+bool IsNoReshadeClockMarkerEnabled() {
+    std::filesystem::path dc_root = GetDisplayCommanderAppDataRootPathNoCreate();
+    if (dc_root.empty()) {
+        return false;
+    }
+    std::error_code ec;
+    return std::filesystem::is_regular_file(dc_root / kNoReshadeClockMarkerFileName, ec) && !ec;
+}
+
 // Helpers for OverrideReShadeSettings - each handles one logical block.
 // When runtime is non-null, config is read/written for that runtime's .ini (e.g. ReShade2.ini); otherwise
 // global/current.
@@ -76,6 +87,11 @@ void OverrideReShadeSettings_WindowConfig(reshade::api::effect_runtime* runtime)
 void OverrideReShadeSettings_TutorialAndUpdates(reshade::api::effect_runtime* runtime) {
     reshade::set_config_value(runtime, "OVERLAY", "TutorialProgress", 4);
     reshade::set_config_value(runtime, "GENERAL", "CheckForUpdates", 0);
+
+    if (IsNoReshadeClockMarkerEnabled()) {
+        reshade::set_config_value(runtime, "OVERLAY", "ShowClock", 0);
+        LogInfo("ReShade settings override - OVERLAY ShowClock -> 0 (.NO_RESHADE_CLOCK marker)");
+    }
 }
 
 // ReShade defaults SCREENSHOT SavePath and PostSaveCommandWorkingDirectory to ".\" (game folder).

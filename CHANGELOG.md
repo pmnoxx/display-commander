@@ -27,6 +27,7 @@ Planned:
 
 ## v0.13.184
 - [bugfix] [ui] **Fixed crash in DC's UI** - Draw Display Settings
+- [bugfix] [hooks] **DLSS `.bin` tracking keeps newest loaded model** - When multiple NGX `.bin` modules map to the same DLSS kind, tracking now prefers the highest NVIDIA Deep Learn version (numeric dotted compare, e.g. `2.3.4.0 < 310.1.0.0`), with `versions/<N>` path fallback when version metadata is unavailable.
 
 ## v0.13.183
 - [new feature] [ui] [experimental] **PresentMon ETW/flip state in VSync & Tearing** - Added back showing flip state.

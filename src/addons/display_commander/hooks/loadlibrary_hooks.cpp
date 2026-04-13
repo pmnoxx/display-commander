@@ -3,7 +3,9 @@
 #include <psapi.h>
 #include <tlhelp32.h>
 #include <algorithm>
+#include <array>
 #include <atomic>
+#include <cctype>
 #include <chrono>
 #include <cstring>
 #include <filesystem>
@@ -1420,6 +1422,166 @@ static std::string GetModulePathUtf8(HMODULE hMod) {
     return result;
 }
 
+static bool TryUtf8ToWide(const std::string& input, std::wstring& out) {
+    out.clear();
+    if (input.empty()) {
+        return false;
+    }
+    const int wide_len = MultiByteToWideChar(CP_UTF8, 0, input.c_str(), -1, nullptr, 0);
+    if (wide_len <= 1) {
+        return false;
+    }
+    std::wstring wide(static_cast<size_t>(wide_len - 1), L'\0');
+    if (MultiByteToWideChar(CP_UTF8, 0, input.c_str(), -1, wide.data(), wide_len) <= 0) {
+        return false;
+    }
+    out = std::move(wide);
+    return true;
+}
+
+static bool TryParseDottedVersionQuad(const std::string& version, int out_parts[4]) {
+    if (version.empty()) {
+        return false;
+    }
+    std::array<int, 4> parsed = {0, 0, 0, 0};
+    std::stringstream ss(version);
+    std::string token;
+    int index = 0;
+    while (std::getline(ss, token, '.')) {
+        if (index >= 4 || token.empty()) {
+            return false;
+        }
+        for (char ch : token) {
+            if (ch < '0' || ch > '9') {
+                return false;
+            }
+        }
+        try {
+            parsed[static_cast<size_t>(index)] = std::stoi(token);
+        } catch (...) {
+            return false;
+        }
+        ++index;
+    }
+    if (index < 3) {
+        return false;
+    }
+    for (int i = 0; i < 4; ++i) {
+        out_parts[i] = parsed[static_cast<size_t>(i)];
+    }
+    return true;
+}
+
+static int CompareVersionQuad(const int lhs[4], const int rhs[4]) {
+    for (int i = 0; i < 4; ++i) {
+        if (lhs[i] < rhs[i]) return -1;
+        if (lhs[i] > rhs[i]) return 1;
+    }
+    return 0;
+}
+
+static bool TryParseNgxPathVersionNumber(const std::string& path_utf8, unsigned long long& out_version_n) {
+    std::string normalized = path_utf8;
+    std::transform(normalized.begin(), normalized.end(), normalized.begin(), [](unsigned char c) -> char {
+        if (c == '\\') return '/';
+        return static_cast<char>(std::tolower(c));
+    });
+    const std::string needle = "/versions/";
+    const size_t pos = normalized.find(needle);
+    if (pos == std::string::npos) {
+        return false;
+    }
+    size_t i = pos + needle.size();
+    if (i >= normalized.size() || normalized[i] < '0' || normalized[i] > '9') {
+        return false;
+    }
+    unsigned long long value = 0;
+    while (i < normalized.size() && normalized[i] >= '0' && normalized[i] <= '9') {
+        const unsigned long long digit = static_cast<unsigned long long>(normalized[i] - '0');
+        const unsigned long long next = value * 10ull + digit;
+        if (next < value) {
+            return false;
+        }
+        value = next;
+        ++i;
+    }
+    out_version_n = value;
+    return true;
+}
+
+static bool ShouldReplaceTrackedDlssBin(const std::string& current_path_utf8, const std::string& candidate_path_utf8,
+                                        std::string& out_reason) {
+    out_reason = "kept existing tracked module";
+    if (current_path_utf8.empty()) {
+        out_reason = "no current tracked module";
+        return true;
+    }
+    if (current_path_utf8 == candidate_path_utf8) {
+        out_reason = "same module path";
+        return false;
+    }
+
+    std::wstring current_wpath;
+    std::wstring candidate_wpath;
+    const bool current_wpath_ok = TryUtf8ToWide(current_path_utf8, current_wpath);
+    const bool candidate_wpath_ok = TryUtf8ToWide(candidate_path_utf8, candidate_wpath);
+    const std::string current_ver = current_wpath_ok ? GetDLLVersionString(current_wpath) : std::string();
+    const std::string candidate_ver = candidate_wpath_ok ? GetDLLVersionString(candidate_wpath) : std::string();
+
+    int current_parts[4] = {};
+    int candidate_parts[4] = {};
+    const bool current_ver_ok = TryParseDottedVersionQuad(current_ver, current_parts);
+    const bool candidate_ver_ok = TryParseDottedVersionQuad(candidate_ver, candidate_parts);
+    if (current_ver_ok && candidate_ver_ok) {
+        const int cmp = CompareVersionQuad(candidate_parts, current_parts);
+        if (cmp > 0) {
+            out_reason = "higher Deep Learn version";
+            return true;
+        }
+        if (cmp < 0) {
+            out_reason = "lower Deep Learn version";
+            return false;
+        }
+        out_reason = "same Deep Learn version";
+        return false;
+    }
+    if (!current_ver_ok && candidate_ver_ok) {
+        out_reason = "candidate has parseable Deep Learn version";
+        return true;
+    }
+    if (current_ver_ok && !candidate_ver_ok) {
+        out_reason = "current has parseable Deep Learn version";
+        return false;
+    }
+
+    unsigned long long current_n = 0;
+    unsigned long long candidate_n = 0;
+    const bool current_n_ok = TryParseNgxPathVersionNumber(current_path_utf8, current_n);
+    const bool candidate_n_ok = TryParseNgxPathVersionNumber(candidate_path_utf8, candidate_n);
+    if (current_n_ok && candidate_n_ok) {
+        if (candidate_n > current_n) {
+            out_reason = "higher versions/<N> path segment";
+            return true;
+        }
+        if (candidate_n < current_n) {
+            out_reason = "lower versions/<N> path segment";
+            return false;
+        }
+        out_reason = "same versions/<N> path segment";
+        return false;
+    }
+    if (!current_n_ok && candidate_n_ok) {
+        out_reason = "candidate has parseable versions/<N>";
+        return true;
+    }
+    if (current_n_ok && !candidate_n_ok) {
+        out_reason = "current has parseable versions/<N>";
+        return false;
+    }
+    out_reason = "no parseable version information";
+    return false;
+}
+
 void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     CALL_GUARD_NO_TS();
     {
@@ -1485,12 +1647,24 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
             std::optional<DlssTrackedKind> kind = IdentifyDlssBinKind(hModule);
             if (kind.has_value()) {
                 g_dlss_from_nvidia_app_bin.store(true);
-                SetDlssTracked(*kind, hModule, true);
+                const std::string candidate_path = GetModulePathUtf8(hModule);
+                const std::optional<std::string> current_path = GetDlssTrackedPath(*kind);
+                std::string decision_reason;
+                const bool replace_tracked =
+                    !current_path.has_value() || ShouldReplaceTrackedDlssBin(*current_path, candidate_path, decision_reason);
+                if (replace_tracked) {
+                    SetDlssTracked(*kind, hModule, true);
+                }
                 const char* name = (*kind == DlssTrackedKind::DLSS)    ? "nvngx_dlss"
                                    : (*kind == DlssTrackedKind::DLSSG) ? "nvngx_dlssg"
                                                                        : "nvngx_dlssd";
-                LogInfo("[OnModuleLoaded] DLSS tracked: .bin identified as %s (0x%p) %s", name, hModule,
-                        GetModulePathUtf8(hModule).c_str());
+                if (replace_tracked) {
+                    LogInfo("[OnModuleLoaded] DLSS tracked: .bin identified as %s (0x%p) %s [%s]", name, hModule,
+                            candidate_path.c_str(), decision_reason.c_str());
+                } else {
+                    LogInfo("[OnModuleLoaded] DLSS tracked: .bin identified as %s but kept existing [%s] candidate=%s",
+                            name, decision_reason.c_str(), candidate_path.c_str());
+                }
             }
         }
     }

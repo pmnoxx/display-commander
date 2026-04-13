@@ -25,10 +25,17 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
-## v0.13.184
-- [bugfix] [ui] **Fixed crash in DC's UI** - Draw Display Settings
+## v0.13.186
+- [ui] [removal] **DLSS info panel cleanup** - Removed the `Create.Flags` and `Auto Exposure` rows from the DLSS info UI to keep the panel focused on core status and preset controls.
+- [ui] [removal] **DLSS version line simplification** - Removed the bracketed supported-preset list (`[...]`) next to `DLSS DLL: X.Y.Z` in the DLSS info panel.
+- [ui] **DLSS DLL version alignment** - DLSS/DLSS-G/DLSS-D labels and version values now render in separate columns so all three rows line up cleanly.
+- [ui] [removal] **DLSS control resize trigger removed** - Removed the “Resize window to quarter then restore” button from DLSS Control to avoid exposing an intrusive debug-style window resize action in normal UI.
+
+## v0.13.185
 - [bugfix] [hooks] **DLSS `.bin` tracking keeps newest loaded model** - When multiple NGX `.bin` modules map to the same DLSS kind, tracking now prefers the highest NVIDIA Deep Learn version (numeric dotted compare, e.g. `2.3.4.0 < 310.1.0.0`), with `versions/<N>` path fallback when version metadata is unavailable.
 
+## v0.13.184
+- [bugfix] [ui] **Fixed crash in DC's UI** - Draw Display Settings
 ## v0.13.183
 - [new feature] [ui] [experimental] **PresentMon ETW/flip state in VSync & Tearing** - Added back showing flip state.
 - [new feature] [ui] **PresentMon flip in performance overlay** - Added showing flip state in to the Performance Overlay.

@@ -197,39 +197,6 @@ void DrawMainTabOptionalPanelDlssControl(display_commander::ui::GraphicsApi api,
     DrawDLSSInfo(imgui, dlss_summary);
 
     {
-        HWND hwnd = g_last_swapchain_hwnd.load();
-
-        if (imgui.Button("Resize window to quarter then restore")) {
-            RECT window_rect = {};
-            if (GetWindowRect(hwnd, &window_rect)) {
-                const int x = window_rect.left;
-                const int y = window_rect.top;
-                const int ww = window_rect.right - window_rect.left;
-                const int wh = window_rect.bottom - window_rect.top;
-                if (ww > 0 && wh > 0) {
-                    std::thread([hwnd, x, y, ww, wh]() {
-                        if (!IsWindow(hwnd)) {
-                            return;
-                        }
-                        SetWindowPos(hwnd, nullptr, x, y, ww - 1, wh - 1, SWP_NOZORDER);
-                        Sleep(100);
-                        if (IsWindow(hwnd)) {
-                            SetWindowPos(hwnd, nullptr, x, y, ww, wh, SWP_NOZORDER);
-                            LogInfo("Resize window: quarter then restored to %dx%d", ww, wh);
-                        }
-                    }).detach();
-                }
-            }
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Actually resizes the game window to quarter size (half width, half height), waits 150 ms, "
-                "then restores the previous size. The system sends real WM_SIZE messages, which can force "
-                "the game to recreate the swap chain and DLSS feature.");
-        }
-    }
-
-    {
         static float s_dlss_scale_ui = -1.f;
         if (s_dlss_scale_ui < 0.f) {
             s_dlss_scale_ui = settings::g_swapchainTabSettings.dlss_internal_resolution_scale.GetValue();

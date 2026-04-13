@@ -22,7 +22,6 @@
 #if !defined(DC_LITE)
 #include <memory>
 #endif
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -356,115 +355,43 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
         }
     }
 
-    // DLSS.Feature.Create.Flags (own field)
-    if (any_dlss_active) {
-        int create_flags_val = 0;
-        bool has_create_flags = ::g_ngx_parameters.get_as_int("DLSS.Feature.Create.Flags", create_flags_val);
-        std::string create_flags_list;
-        if (has_create_flags) {
-            static const struct {
-                unsigned int mask;
-                const char* name;
-            } k_dlss_feature_bits[] = {
-                {1u << 0, "IsHDR"},         {1u << 1, "MVLowRes"},       {1u << 2, "MVJittered"},
-                {1u << 3, "DepthInverted"}, {1u << 4, "Reserved_0"},     {1u << 5, "DoSharpening"},
-                {1u << 6, "AutoExposure"},  {1u << 7, "AlphaUpscaling"}, {1u << 31, "IsInvalid"},
-            };
-            unsigned int uflags = static_cast<unsigned int>(create_flags_val);
-            unsigned int known_mask = 0;
-            for (const auto& b : k_dlss_feature_bits) {
-                known_mask |= b.mask;
-                if ((uflags & b.mask) != 0u) {
-                    if (!create_flags_list.empty()) create_flags_list += ", ";
-                    create_flags_list += b.name;
-                }
-            }
-            unsigned int unknown_bits = uflags & ~known_mask;
-            if (unknown_bits != 0) {
-                if (!create_flags_list.empty()) create_flags_list += ", ";
-                create_flags_list += "+0x";
-                std::ostringstream oss;
-                oss << std::hex << unknown_bits;
-                create_flags_list += oss.str();
-                create_flags_list += " (other)";
-            }
-            if (create_flags_list.empty()) create_flags_list = "None";
-        }
-        if (has_create_flags) {
-            imgui.Text("Create.Flags: %d (%s)", create_flags_val, create_flags_list.c_str());
-        } else {
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "Create.Flags: N/A");
-        }
-    } else {
-        imgui.TextColored(ui::colors::TEXT_DIMMED, "Create.Flags: N/A");
-    }
-    std::string ae_current = settings::g_swapchainTabSettings.dlss_forced_auto_exposure.GetValue();
-
-    static auto original_auto_exposure_setting = ae_current;
-    // Auto Exposure (info + override combo, same as Special-K). Shown only when Create.Flags has
-    // the AutoExposure bit and we have a resolved state (ae_idx != 0, i.e. not N/A).
-    bool show_auto_exposure = false;
-    if (any_dlss_active) {
-        int create_flags_ae = 0;
-        const bool has_create_flags_ae = ::g_ngx_parameters.get_as_int("DLSS.Feature.Create.Flags", create_flags_ae);
-        constexpr unsigned int k_auto_exposure_bit = 1u << 6;
-        const bool flags_have_auto_exposure =
-            has_create_flags_ae && ((static_cast<unsigned int>(create_flags_ae) & k_auto_exposure_bit) != 0u);
-        int ae_idx = 0;  // 0 = N/A, 1 = Off, 2 = On (game state)
-        if (dlssg_summary.auto_exposure == "Off") {
-            ae_idx = 1;
-        } else if (dlssg_summary.auto_exposure == "On") {
-            ae_idx = 2;
-        }
-        show_auto_exposure = (ae_idx != 0 || original_auto_exposure_setting != ae_current) && flags_have_auto_exposure;
-    }
-    if (show_auto_exposure) {
-        imgui.Text("Auto Exposure: %s", dlssg_summary.auto_exposure.c_str());
-        const char* ae_items[] = {"Game Default", "Force Off", "Force On"};
-        int ae_idx = 0;
-        if (ae_current == "Force Off") {
-            ae_idx = 1;
-        } else if (ae_current == "Force On") {
-            ae_idx = 2;
-        }
-        imgui.SetNextItemWidth(250.0f);
-        if (imgui.Combo("Auto Exposure Override##DLSS", &ae_idx, ae_items, 3)) {
-            settings::g_swapchainTabSettings.dlss_forced_auto_exposure.SetValue(ae_items[ae_idx]);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Override DLSS auto-exposure. Takes effect when DLSS feature is (re)created.\n"
-                "See Create.Flags field for current DLSS.Feature.Create.Flags value and decoded bits.");
-        }
-        if (original_auto_exposure_setting != ae_current) {
-            imgui.TextColored(ui::colors::TEXT_WARNING, "Restart required for change to take effect.");
-        }
-    } else {
-        imgui.TextColored(ui::colors::TEXT_DIMMED, "Auto Exposure: N/A");
-    }
-
     // DLSS DLL Versions
     imgui.Spacing();
-    if (dlssg_summary.dlss_dll_version != "N/A") {
-        imgui.TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "DLSS DLL: %s", dlssg_summary.dlss_dll_version.c_str());
-        if (dlssg_summary.supported_dlss_presets != "N/A") {
-            imgui.SameLine();
-            imgui.TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), " [%s]", dlssg_summary.supported_dlss_presets.c_str());
+    constexpr float k_dlss_dll_label_column_width = 160.0f;
+    if (imgui.BeginTable("dlss_dll_versions", 2, ImGuiTableFlags_SizingFixedFit)) {
+        imgui.TableSetupColumn("DLL", ImGuiTableColumnFlags_WidthFixed, k_dlss_dll_label_column_width);
+        imgui.TableSetupColumn("Version", ImGuiTableColumnFlags_WidthStretch);
+
+        imgui.TableNextRow();
+        imgui.TableNextColumn();
+        imgui.TextUnformatted("DLSS DLL:");
+        imgui.TableNextColumn();
+        if (dlssg_summary.dlss_dll_version != "N/A") {
+            imgui.TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "%s", dlssg_summary.dlss_dll_version.c_str());
+        } else {
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "N/A");
         }
-    } else {
-        imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS DLL: N/A");
-    }
 
-    if (dlssg_summary.dlssg_dll_version != "N/A") {
-        imgui.TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "DLSS-G DLL: %s", dlssg_summary.dlssg_dll_version.c_str());
-    } else {
-        imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS-G DLL: N/A");
-    }
+        imgui.TableNextRow();
+        imgui.TableNextColumn();
+        imgui.TextUnformatted("DLSS-G DLL:");
+        imgui.TableNextColumn();
+        if (dlssg_summary.dlssg_dll_version != "N/A") {
+            imgui.TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "%s", dlssg_summary.dlssg_dll_version.c_str());
+        } else {
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "N/A");
+        }
 
-    if (dlssg_summary.dlssd_dll_version != "N/A" && dlssg_summary.dlssd_dll_version != "Not loaded") {
-        imgui.TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "DLSS-D DLL: %s", dlssg_summary.dlssd_dll_version.c_str());
-    } else {
-        imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS-D DLL: N/A");
+        imgui.TableNextRow();
+        imgui.TableNextColumn();
+        imgui.TextUnformatted("DLSS-D DLL:");
+        imgui.TableNextColumn();
+        if (dlssg_summary.dlssd_dll_version != "N/A" && dlssg_summary.dlssd_dll_version != "Not loaded") {
+            imgui.TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "%s", dlssg_summary.dlssd_dll_version.c_str());
+        } else {
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "N/A");
+        }
+        imgui.EndTable();
     }
 #if !defined(DC_LITE)
     if (settings::g_streamlineTabSettings.dlss_override_enabled.GetValue()) {

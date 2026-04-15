@@ -85,6 +85,24 @@ struct QueryEtwSessionProps {
     wchar_t log_file_name[2]{};
 };
 
+ULONG StopEtwSessionByNameUtf8(const std::string_view session_name_utf8) {
+    if (session_name_utf8.empty()) {
+        return ERROR_INVALID_PARAMETER;
+    }
+
+    const std::wstring session_name_wide = display_commander::utils::Utf8ToWide(session_name_utf8);
+    if (session_name_wide.empty()) {
+        return ERROR_INVALID_PARAMETER;
+    }
+
+    QueryEtwSessionProps stop_props{};
+    stop_props.props.Wnode.BufferSize = sizeof(stop_props);
+    stop_props.props.LoggerNameOffset = static_cast<ULONG>(offsetof(QueryEtwSessionProps, logger_name));
+    stop_props.props.LogFileNameOffset = static_cast<ULONG>(offsetof(QueryEtwSessionProps, log_file_name));
+    std::wcsncpy(stop_props.logger_name, session_name_wide.c_str(), _countof(stop_props.logger_name) - 1);
+    return ControlTraceW(0, stop_props.logger_name, &stop_props.props, EVENT_TRACE_CONTROL_STOP);
+}
+
 EtwSessionSnapshot QueryEtwSessionsContainingDcPrefix() {
     EtwSessionSnapshot out{};
 
@@ -188,6 +206,9 @@ uint64_t FirstNonzeroPipelineStampNs(const NvapiLatencyFrame& fr) {
 
 void DrawReflexPclstatsTab(display_commander::ui::IImGuiWrapper& imgui) {
     static EtwSessionSnapshot s_etw_session_snapshot{};
+    static ULONG s_last_kill_status = ERROR_SUCCESS;
+    static std::string s_last_killed_session_name{};
+    static bool s_last_kill_attempted = false;
 
     imgui.TextColored(::ui::colors::TEXT_DIMMED,
                       "Build with DEBUG_TABS / bd.ps1 -DebugTabs. PCLStats ETW counts include ping + injected markers "
@@ -283,12 +304,21 @@ void DrawReflexPclstatsTab(display_commander::ui::IImGuiWrapper& imgui) {
     } else {
         imgui.Text("Active ETW sessions: %lu", s_etw_session_snapshot.total_sessions);
         imgui.Text("Sessions containing \"DC_\": %lu", s_etw_session_snapshot.dc_sessions_count);
+        if (s_last_kill_attempted) {
+            if (s_last_kill_status == ERROR_SUCCESS) {
+                imgui.Text("Last kill: stopped \"%s\".", s_last_killed_session_name.c_str());
+            } else {
+                imgui.TextColored(::ui::colors::TEXT_DIMMED, "Last kill failed for \"%s\" (status=%lu).",
+                                  s_last_killed_session_name.c_str(), s_last_kill_status);
+            }
+        }
         if (s_etw_session_snapshot.all_sessions.empty()) {
             imgui.TextColored(::ui::colors::TEXT_DIMMED, "No active ETW sessions reported.");
-        } else if (imgui.BeginTable("dc_etw_sessions", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+        } else if (imgui.BeginTable("dc_etw_sessions", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
             imgui.TableSetupColumn("Index");
             imgui.TableSetupColumn("DC_");
             imgui.TableSetupColumn("Session name");
+            imgui.TableSetupColumn("Action");
             imgui.TableHeadersRow();
             for (std::size_t i = 0; i < s_etw_session_snapshot.all_sessions.size(); ++i) {
                 const bool is_dc = s_etw_session_snapshot.all_sessions[i].find("DC_") != std::string::npos;
@@ -299,6 +329,15 @@ void DrawReflexPclstatsTab(display_commander::ui::IImGuiWrapper& imgui) {
                 imgui.TextUnformatted(is_dc ? "yes" : "no");
                 imgui.TableNextColumn();
                 imgui.TextUnformatted(s_etw_session_snapshot.all_sessions[i].c_str());
+                imgui.TableNextColumn();
+                imgui.PushID(static_cast<int>(i));
+                if (imgui.Button("Kill")) {
+                    s_last_killed_session_name = s_etw_session_snapshot.all_sessions[i];
+                    s_last_kill_status = StopEtwSessionByNameUtf8(s_last_killed_session_name);
+                    s_last_kill_attempted = true;
+                    s_etw_session_snapshot = QueryEtwSessionsContainingDcPrefix();
+                }
+                imgui.PopID();
             }
             imgui.EndTable();
         }

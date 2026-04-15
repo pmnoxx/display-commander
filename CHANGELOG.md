@@ -27,6 +27,7 @@ Planned:
 
 ## v0.13.189 (2026-04-14)
 - [bugfix] [experimental] **Startup cleanup for stale `DC_` ETW sessions** - On startup, Display Commander now stops leftover `DC_` ETW sessions from older runs to reduce conflicts and keep debug tracing state clean.
+- [ui] [experimental] **Per-session ETW kill action in Reflex/PCLStats debug tab (dev build only)** - Added a `Kill` button for each active ETW session row so you can stop conflicting sessions directly from the debug list and quickly recover PCLStats ETW behavior.
 - [new feature] [ui] **Overlay FPS limiter late-frames percentage** - Added an optional performance overlay stat that shows how often the FPS limiter is late in recent gameplay, making frame pacing instability easier to spot without opening debug views.
 
 ## v0.13.188

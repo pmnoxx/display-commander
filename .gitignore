@@ -146,6 +146,7 @@ private_docs
 !src/addons/display_commander/docs/specs/settings_wrapper.md
 !src/addons/display_commander/docs/specs/pclstats_debug_dc_etw_sessions.md
 !src/addons/display_commander/docs/specs/fps_limiter_late_percentage_overlay.md
+!src/addons/display_commander/docs/specs/installer_marker.md
 
 
 #  git ls-files -ic --exclude-standard

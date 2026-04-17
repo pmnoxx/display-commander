@@ -451,7 +451,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             imgui.BeginDisabled();
         }
         bool show_overlay_presentmon_flip = settings::g_mainTabSettings.show_overlay_presentmon_flip.GetValue();
-        if (imgui.Checkbox("Flip state (ETW)", &show_overlay_presentmon_flip)) {
+        if (imgui.Checkbox("Flip state", &show_overlay_presentmon_flip)) {
             settings::g_mainTabSettings.show_overlay_presentmon_flip.SetValue(show_overlay_presentmon_flip);
         }
         if (imgui.IsItemHovered()) {

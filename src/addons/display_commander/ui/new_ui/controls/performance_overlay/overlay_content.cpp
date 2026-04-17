@@ -416,7 +416,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
             const bool etw_on = settings::g_mainTabSettings.present_mon_etw_enabled.GetValue();
             if (!etw_on) {
                 OverlayTableRow_TextColored(
-                    imgui, label_mode, "PM", "PresentMon flip", ui::colors::TEXT_DIMMED, show_tooltips,
+                    imgui, label_mode, "Flip", "PresentMon flip", ui::colors::TEXT_DIMMED, show_tooltips,
                     "Enable PresentMon ETW (flip state) under Display Settings → VSync & Tearing to collect Win32k "
                     "composition events for this process.",
                     "%s", "Off");
@@ -425,7 +425,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                 const display_commander::features::presentmon::PresentMonStateSnapshot snapshot =
                     display_commander::features::presentmon::GetPresentMonStateSnapshot();
                 if (snapshot.session_failed) {
-                    OverlayTableRow_TextColored(imgui, label_mode, "PM", "PresentMon flip", ui::colors::TEXT_ERROR,
+                    OverlayTableRow_TextColored(imgui, label_mode, "Flip", "PresentMon flip", ui::colors::TEXT_ERROR,
                                                 show_tooltips,
                                                 "PresentMon ETW session failed or provider access was denied.", "%s",
                                                 "ETW unavailable");

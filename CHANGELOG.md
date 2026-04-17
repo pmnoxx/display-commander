@@ -25,6 +25,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.14.1
+- [cleanup] [settings] [compatibility] **Cleanup** - removed `.display_commander_installer_marker.json`, which is no longer needed.
+
 ## v0.13.189 (2026-04-14)
 - [bugfix] [experimental] **Startup cleanup for stale `DC_` ETW sessions** - On startup, Display Commander now stops leftover `DC_` ETW sessions from older runs to reduce conflicts and keep debug tracing state clean.
 - [ui] [experimental] **Per-session ETW kill action in Reflex/PCLStats debug tab (dev build only)** - Added a `Kill` button for each active ETW session row so you can stop conflicting sessions directly from the debug list and quickly recover PCLStats ETW behavior.

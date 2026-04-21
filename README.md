@@ -8,7 +8,7 @@ Note: Applying window operations from the main thread can crash some apps. This 
 
 **Latest stable release**: [Latest Release](https://github.com/pmnoxx/display-commander/releases) - Compatible with ReShade 6.6.2
 
-**Community**: [Display Commander Discord](https://discord.gg/mHMaF6nZ) — help, updates, and discussion.
+**Community**: [Display Commander Discord](https://discord.gg/bzXAdDqtyY) — help, updates, and discussion.
 
 
 ## 📥 Latest Builds
@@ -111,12 +111,11 @@ GitHub Actions builds x64 and x86 on pushes and PRs and uploads the resulting `.
 Need help? Check out our [Support Guide](SUPPORT.md) for detailed information on getting assistance.
 
 **Quick Support Links:**
-- **Display Commander Discord**: [discord.gg/mHMaF6nZ](https://discord.gg/mHMaF6nZ) — primary community for Display Commander (help, updates, feature discussion).
-- **RenoDX Discord**: [Join our community](https://discord.com/invite/jz6ujVpgFB)
+- **Display Commander Discord**: [discord.gg/bzXAdDqtyY](https://discord.gg/bzXAdDqtyY) — primary community for Display Commander (help, updates, feature discussion).
 - **Support Thread**: [Display Commander Support](https://discord.com/channels/1487722129284665544/1488835719995723897)
 - **GitHub Issues**: [Report bugs or request features](https://github.com/pmnoxx/display-commander/issues)
 
-The Display Commander Discord is the main hub for this addon. The RenoDX Discord also hosts a support thread and broader HDR/ReShade discussion.
+The Display Commander Discord is the main hub for this addon.
 
 ## License
 

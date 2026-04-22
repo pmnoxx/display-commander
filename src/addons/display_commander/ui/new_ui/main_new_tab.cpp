@@ -394,6 +394,8 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
         }
     }
 
+    imgui.Unindent();
+
     const std::vector<modules::ModuleDescriptor> modules_list = modules::GetModules();
     if (!modules_list.empty()) {
         imgui.Spacing();
@@ -436,8 +438,6 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
         }
         imgui.Unindent();
     }
-
-    imgui.Unindent();
 
     imgui.Spacing();
 

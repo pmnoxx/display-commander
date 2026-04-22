@@ -114,6 +114,8 @@ bool SetModuleOverlayEnabled(std::string_view module_id, bool enabled);
 bool IsModuleTabShown(std::string_view module_id);
 bool SetModuleTabShown(std::string_view module_id, bool shown);
 bool IsModuleTabVisible(std::string_view tab_id);
+/** True if `tab_id` matches a registered module overlay tab (see `has_tab` / `tab_id` on the descriptor). */
+bool IsRegisteredModuleTabId(std::string_view tab_id);
 void TickEnabledModules();
 /** For each enabled module with `reshade_present_before_fn`, invoke it (ReShade present-before path). */
 void NotifyEnabledModulesReshadePresentBefore();

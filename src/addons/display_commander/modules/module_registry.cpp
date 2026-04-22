@@ -440,6 +440,20 @@ bool IsModuleTabVisible(std::string_view tab_id) {
     return true;
 }
 
+bool IsRegisteredModuleTabId(std::string_view tab_id) {
+    InitializeModuleRegistry();
+    utils::SRWLockShared lock(g_modules_lock);
+    for (const ModuleEntry& entry : g_modules) {
+        if (!entry.descriptor.has_tab) {
+            continue;
+        }
+        if (entry.descriptor.tab_id == tab_id) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void TickEnabledModules() {
     InitializeModuleRegistry();
     utils::SRWLockShared lock(g_modules_lock);

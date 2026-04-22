@@ -147,9 +147,14 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime, display_commander::
                 tab_enabled = settings::g_mainTabSettings.show_reshade_tab.GetValue();
             }
 
-            // Show tab if individual setting is enabled OR "Show All Tabs" is enabled
-            should_show =
-                should_show && (settings::g_mainTabSettings.advanced_settings_enabled.GetValue() || tab_enabled);
+            // Module "Tab" checkbox (show_tab) should surface the tab even when "Show All Tabs" is off.
+            const bool module_tab_requested = modules::IsRegisteredModuleTabId(tab_id) &&
+                                                modules::IsModuleTabVisible(tab_id);
+
+            // Show tab if individual setting is enabled OR "Show All Tabs" is enabled OR module requests it
+            should_show = should_show &&
+                          (settings::g_mainTabSettings.advanced_settings_enabled.GetValue() || tab_enabled ||
+                           module_tab_requested);
         }
         should_show = should_show && modules::IsModuleTabVisible((*current_tabs)[i].id);
 
@@ -201,9 +206,12 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime, display_commander::
                         tab_enabled = settings::g_mainTabSettings.show_reshade_tab.GetValue();
                     }
 
-                    // Show tab if individual setting is enabled OR "Show All Tabs" is enabled
-                    should_show =
-                        should_show && (settings::g_mainTabSettings.advanced_settings_enabled.GetValue() || tab_enabled);
+                    const bool module_tab_requested = modules::IsRegisteredModuleTabId(tab_id) &&
+                                                        modules::IsModuleTabVisible(tab_id);
+
+                    should_show = should_show &&
+                                  (settings::g_mainTabSettings.advanced_settings_enabled.GetValue() || tab_enabled ||
+                                   module_tab_requested);
                 }
                 should_show = should_show && modules::IsModuleTabVisible((*current_tabs)[i].id);
 

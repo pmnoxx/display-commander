@@ -55,10 +55,6 @@ static void OnRenoDxAddonLoaded() {
 
 // Helper function to check if a DLL should be overridden and get the override path (per-DLL checkbox + subfolder)
 std::wstring GetDLSSOverridePath(const std::wstring& dll_path) {
-#if defined(DC_LITE)
-    (void)dll_path;
-    return L"";
-#else
     if (!settings::g_streamlineTabSettings.dlss_override_enabled.GetValue()) {
         return L"";
     }
@@ -96,7 +92,6 @@ std::wstring GetDLSSOverridePath(const std::wstring& dll_path) {
         return primary_file.wstring();
     }
     return primary_file.wstring();
-#endif
 }
 
 // Original function pointers

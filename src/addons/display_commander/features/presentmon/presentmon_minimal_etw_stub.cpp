@@ -1,5 +1,5 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
-// DC_LITE: full ETW implementation is excluded; these no-ops satisfy links from swapchain/exit paths.
+// Unused in normal builds (CMake excludes this TU); no-op symbols for hypothetical minimal link sets.
 
 #include "presentmon_minimal_etw.hpp"
 

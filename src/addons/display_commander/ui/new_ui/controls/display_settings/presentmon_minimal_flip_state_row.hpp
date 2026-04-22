@@ -7,7 +7,7 @@ struct IImGuiWrapper;
 
 namespace ui::new_ui {
 
-/** PresentMon minimal ETW flip-state row under VSync & Tearing (no-op when DC_LITE). */
+/** PresentMon minimal ETW flip-state row under VSync & Tearing. */
 void DrawPresentMonMinimalFlipStateRow(display_commander::ui::IImGuiWrapper& imgui);
 
 }  // namespace ui::new_ui

@@ -18,10 +18,10 @@ Note: Applying window operations from the main thread can crash some apps. This 
 | **x64 (64-bit)** | [zzz_display_commander.addon64](https://github.com/pmnoxx/display-commander/releases/latest/download/zzz_display_commander.addon64) |
 | **x86 (32-bit)** | [zzz_display_commander.addon32](https://github.com/pmnoxx/display-commander/releases/latest/download/zzz_display_commander.addon32) |
 
-**🔄 Latest Build (bleeding edge)**: Build from the latest main branch, updated on every push: [Latest Build](https://github.com/pmnoxx/display-commander/releases/tag/latest_build). Includes **Display Commander Lite** (`zzz_display_commander_lite.addon64` / `.addon32`): built with **`DC_LITE`** (no built-in Audio or Controller modules) but the same rename-as-system-DLL proxy exports as the full build.
+**🔄 Latest Build (bleeding edge)**: Build from the latest main branch, updated on every push: [Latest Build](https://github.com/pmnoxx/display-commander/releases/tag/latest_build). That release also attaches **legacy lite filenames** (byte-identical copies of the main addon) for old links and scripts:
 
-| Lite (`-DcLite` in scripts) | Download |
-|------------------|----------|
+| Arch | Legacy name on `latest_build` |
+|------|--------------------------------|
 | **x64** | [zzz_display_commander_lite.addon64](https://github.com/pmnoxx/display-commander/releases/download/latest_build/zzz_display_commander_lite.addon64) |
 | **x86** | [zzz_display_commander_lite.addon32](https://github.com/pmnoxx/display-commander/releases/download/latest_build/zzz_display_commander_lite.addon32) |
 

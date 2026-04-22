@@ -1,9 +1,7 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "panels_internal.hpp"
 #include "dlss/dlss_info.hpp"
-#if !defined(DC_LITE)
 #include "../../../features/nvidia_profile_inspector/nvidia_profile_inspector.hpp"
-#endif
 #include "../../../globals.hpp"
 #include "../../../hooks/nvidia/ngx_hooks.hpp"
 #include "../../../hooks/vulkan/nvlowlatencyvk_hooks.hpp"
@@ -18,9 +16,7 @@
 #include "../settings_wrapper.hpp"
 
 #include <filesystem>
-#if !defined(DC_LITE)
 #include <memory>
-#endif
 #include <string>
 #include <system_error>
 #include <thread>
@@ -108,7 +104,6 @@ void DrawMainTabOptionalPanelDlssControl(display_commander::ui::GraphicsApi api,
         imgui.Text("FPS limiter source: %s", src_name);
     }
 
-#if !defined(DC_LITE)
     {
         imgui.Spacing();
         imgui.TextUnformatted("NVIDIA driver profile (DLSS render presets)");
@@ -192,7 +187,6 @@ void DrawMainTabOptionalPanelDlssControl(display_commander::ui::GraphicsApi api,
         }
 #endif
     }
-#endif
 
     DrawDLSSInfo(imgui, dlss_summary);
 
@@ -241,7 +235,6 @@ void DrawMainTabOptionalPanelDlssControl(display_commander::ui::GraphicsApi api,
         }
     }
 
-#if !defined(DC_LITE)
     bool dlss_override_enabled = settings::g_streamlineTabSettings.dlss_override_enabled.GetValue();
     if (imgui.Checkbox("Use DLSS override", &dlss_override_enabled)) {
         settings::g_streamlineTabSettings.dlss_override_enabled.SetValue(dlss_override_enabled);
@@ -356,7 +349,6 @@ void DrawMainTabOptionalPanelDlssControl(display_commander::ui::GraphicsApi api,
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx("Open the folder where you can place custom DLSS DLLs (created if missing).");
     }
-#endif
 
     imgui.Unindent();
 }

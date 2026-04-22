@@ -2,10 +2,8 @@
 // Headers <Display Commander>
 #include "performance_overlay_internal.hpp"
 #include "dxgi/vram_info.hpp"
-#if !defined(DC_LITE)
 #include "features/nvidia_profile_inspector/nvidia_profile_inspector.hpp"
 #include "features/presentmon/presentmon_minimal_etw.hpp"
-#endif
 #include "feature/cpu_telemetry/cpu_telemetry.hpp"
 #include "globals.hpp"
 #include "hooks/nvidia/ngx_hooks.hpp"
@@ -27,9 +25,7 @@
 #include <cmath>
 #include <cstdarg>
 #include <cstdio>
-#if !defined(DC_LITE)
 #include <memory>
-#endif
 
 // Libraries <Windows.h>
 #include <Windows.h>
@@ -274,21 +270,12 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     bool show_overlay_nvapi_gpu_util = settings::g_mainTabSettings.show_overlay_nvapi_gpu_util.GetValue();
     bool show_overlay_nvapi_gpu_temp = settings::g_mainTabSettings.show_overlay_nvapi_gpu_temp.GetValue();
     bool show_fg_mode = settings::g_mainTabSettings.show_fg_mode.GetValue();
-#if !defined(DC_LITE)
     bool show_overlay_presentmon_flip = settings::g_mainTabSettings.show_overlay_presentmon_flip.GetValue();
-#else
-    const bool show_overlay_presentmon_flip = false;
-#endif
     bool show_overlay_resolution = settings::g_mainTabSettings.show_overlay_resolution.GetValue();
     bool show_dlss_status = settings::g_mainTabSettings.show_dlss_status.GetValue();
     bool show_dlss_quality_preset = settings::g_mainTabSettings.show_dlss_quality_preset.GetValue();
-#if !defined(DC_LITE)
     bool show_driver_dlss_sr_preset = settings::g_mainTabSettings.show_driver_dlss_sr_preset.GetValue();
     bool show_driver_dlss_rr_preset = settings::g_mainTabSettings.show_driver_dlss_rr_preset.GetValue();
-#else
-    const bool show_driver_dlss_sr_preset = false;
-    const bool show_driver_dlss_rr_preset = false;
-#endif
     bool show_fps_limiter_src = settings::g_mainTabSettings.show_fps_limiter_src.GetValue();
     bool show_fps_limiter_late_frames_pct = settings::g_mainTabSettings.show_fps_limiter_late_frames_pct.GetValue();
     bool show_overlay_vram = settings::g_mainTabSettings.show_overlay_vram.GetValue();
@@ -431,7 +418,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                                             "N/A");
             }
         }
-#if !defined(DC_LITE)
         if (show_overlay_presentmon_flip) {
             const bool etw_on = settings::g_mainTabSettings.present_mon_etw_enabled.GetValue();
             if (!etw_on) {
@@ -475,7 +461,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                 }
             }
         }
-#endif
         imgui.EndTable();
     }
 
@@ -711,7 +696,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                                             show_tooltips, nullptr, "%s", "N/A");
             }
         }
-#if !defined(DC_LITE)
         if (show_driver_dlss_sr_preset || show_driver_dlss_rr_preset) {
             const DLSSGSummary ngx = GetDLSSGSummary();
             const std::string sr_ngx_letter =
@@ -767,7 +751,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                                             rr_tip.c_str(), "%s", rr_line.c_str());
             }
         }
-#endif
         imgui.EndTable();
     }
 

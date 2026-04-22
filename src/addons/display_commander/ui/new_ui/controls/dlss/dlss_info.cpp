@@ -1,9 +1,7 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 // Headers <Display Commander>
 #include "dlss_info.hpp"
-#if !defined(DC_LITE)
 #include "dlss/dlss_indicator_manager.hpp"
-#endif
 #include "features/nvidia_profile_inspector/nvidia_profile_inspector.hpp"
 #include "globals.hpp"
 #include "hooks/nvidia/ngx_hooks.hpp"
@@ -19,9 +17,7 @@
 #include <imgui.h>
 
 // Libraries <C++>
-#if !defined(DC_LITE)
 #include <memory>
-#endif
 #include <string>
 #include <vector>
 
@@ -32,7 +28,6 @@ namespace ui::new_ui {
 
 namespace {
 
-#if !defined(DC_LITE)
 // Draw DLSS indicator section (registry toggle + DLSS-FG text level). Shown at top of DLSS Control when active.
 void DrawDLSSInfo_IndicatorSection(display_commander::ui::IImGuiWrapper& imgui) {
     if (imgui.TreeNodeEx("DLSS indicator (Registry)", ImGuiTreeNodeFlags_None)) {
@@ -76,18 +71,15 @@ void DrawDLSSInfo_IndicatorSection(display_commander::ui::IImGuiWrapper& imgui) 
         imgui.TreePop();
     }
 }
-#endif
 
 }  // namespace
 
 // Draw DLSS information (same format as OSD). Caller must pass pre-fetched summary.
 void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummary& dlssg_summary) {
-    (void)imgui;
     CALL_GUARD_NO_TS();
     const bool any_dlss_active =
         dlssg_summary.dlss_active || dlssg_summary.dlss_g_active || dlssg_summary.ray_reconstruction_active;
 
-#if !defined(DC_LITE)
     DrawDLSSInfo_IndicatorSection(imgui);
 
     // Tracked DLSS modules (from OnModuleLoaded: nvngx_dlss/dlssg/dlssd.dll or .bin identified as such)
@@ -156,7 +148,6 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
         }
         imgui.TreePop();
     }
-#endif
 
     // FG Mode (integer N from GetDLSSGSummaryLite: 2 => 2x, 3 => 3x, …)
     {
@@ -274,16 +265,11 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
 
         if (settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue()) {
             const bool rr_active = dlssg_summary.ray_reconstruction_active;
-#if !defined(DC_LITE)
             const std::shared_ptr<const display_commander::features::nvidia_profile_inspector::DriverDlssRenderPresetSnapshot>
                 drv_merge =
                     display_commander::features::nvidia_profile_inspector::GetDriverDlssRenderPresetSnapshot(false);
             const display_commander::features::nvidia_profile_inspector::DriverDlssRenderPresetSnapshot* drv_merge_ptr =
                 drv_merge.get();
-#else
-            const display_commander::features::nvidia_profile_inspector::DriverDlssRenderPresetSnapshot* drv_merge_ptr =
-                nullptr;
-#endif
 
             std::vector<std::string> sr_preset_options = GetDLSSPresetOptions(dlssg_summary.supported_dlss_presets);
             std::vector<const char*> sr_preset_cstrs;
@@ -393,7 +379,6 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
         }
         imgui.EndTable();
     }
-#if !defined(DC_LITE)
     if (settings::g_streamlineTabSettings.dlss_override_enabled.GetValue()) {
         std::string not_applied;
         if (settings::g_streamlineTabSettings.dlss_override_dlss.GetValue() && !dlssg_summary.dlss_override_applied) {
@@ -419,7 +404,6 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
             }
         }
     }
-#endif
 }
 
 }  // namespace ui::new_ui

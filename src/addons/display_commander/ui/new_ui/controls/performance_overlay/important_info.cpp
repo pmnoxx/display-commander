@@ -454,7 +454,6 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         }
         imgui.NextColumn();
 
-#if !defined(DC_LITE)
         const bool present_mon_etw_on = settings::g_mainTabSettings.present_mon_etw_enabled.GetValue();
         if (!present_mon_etw_on) {
             imgui.BeginDisabled();
@@ -473,7 +472,6 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             imgui.EndDisabled();
         }
         imgui.NextColumn();
-#endif
 
         imgui.Columns(1);
         imgui.Separator();
@@ -545,7 +543,6 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             imgui.EndDisabled();
         }
 
-#if !defined(DC_LITE)
         bool show_driver_dlss_sr_preset = settings::g_mainTabSettings.show_driver_dlss_sr_preset.GetValue();
         if (imgui.Checkbox("SR preset", &show_driver_dlss_sr_preset)) {
             settings::g_mainTabSettings.show_driver_dlss_sr_preset.SetValue(show_driver_dlss_sr_preset);
@@ -570,7 +567,6 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
                 "Control or restart.");
         }
         imgui.NextColumn();
-#endif
 
         imgui.Columns(1);
         imgui.Separator();

@@ -86,9 +86,7 @@ MainTabSettings::MainTabSettings()
                                 "DisplayCommander"),
       force_flip_discard_upgrade("ForceFlipDiscardUpgrade", false, "DisplayCommander"),
       allow_nvapi_d3d12_setflipconfig("allow_nvapi_d3d12_setflipconfig", true, "DisplayCommander"),
-#if !defined(DC_LITE)
       present_mon_etw_enabled("present_mon_etw_enabled", false, "DisplayCommander"),
-#endif
       audio_mute("audio_mute", false, "DisplayCommander"),
       mute_in_background("mute_in_background", false, "DisplayCommander"),
       mute_in_background_if_other_audio("mute_in_background_if_other_audio", false, "DisplayCommander"),
@@ -149,11 +147,9 @@ MainTabSettings::MainTabSettings()
       show_overlay_resolution("show_dlss_internal_resolution", false, "DisplayCommander"),
       show_dlss_status("show_dlss_status", false, "DisplayCommander"),
       show_dlss_quality_preset("show_dlss_quality_preset", false, "DisplayCommander"),
-#if !defined(DC_LITE)
       show_driver_dlss_sr_preset("show_driver_dlss_sr_preset", false, "DisplayCommander"),
       show_driver_dlss_rr_preset("show_driver_dlss_rr_preset", false, "DisplayCommander"),
       show_overlay_presentmon_flip("show_overlay_presentmon_flip", false, "DisplayCommander"),
-#endif
       show_fps_limiter_src("show_fps_limiter_src", false, "DisplayCommander"),
       show_fps_limiter_late_frames_pct("show_fps_limiter_late_frames_pct", false, "DisplayCommander"),
       show_playtime("show_playtime", false, "DisplayCommander"),
@@ -248,9 +244,7 @@ MainTabSettings::MainTabSettings()
         &buffer_count_override,
         &force_flip_discard_upgrade,
         &allow_nvapi_d3d12_setflipconfig,
-#if !defined(DC_LITE)
         &present_mon_etw_enabled,
-#endif
         &audio_mute,
         &mute_in_background,
         &mute_in_background_if_other_audio,
@@ -301,11 +295,9 @@ MainTabSettings::MainTabSettings()
         &show_overlay_resolution,
         &show_dlss_status,
         &show_dlss_quality_preset,
-#if !defined(DC_LITE)
         &show_driver_dlss_sr_preset,
         &show_driver_dlss_rr_preset,
         &show_overlay_presentmon_flip,
-#endif
         &show_fps_limiter_src,
         &show_fps_limiter_late_frames_pct,
         &show_playtime,

@@ -2,9 +2,7 @@
 #include "presentmon_minimal_flip_state_row.hpp"
 
 #include "display_settings_internal.hpp"
-#if !defined(DC_LITE)
 #include "../../../../features/presentmon/presentmon_minimal_etw.hpp"
-#endif
 
 // Libraries <ReShade / ImGui>
 #include <imgui.h>
@@ -15,9 +13,6 @@
 namespace ui::new_ui {
 
 void DrawPresentMonMinimalFlipStateRow(display_commander::ui::IImGuiWrapper& imgui) {
-#if defined(DC_LITE)
-    (void)imgui;
-#else
     bool etw_on = settings::g_mainTabSettings.present_mon_etw_enabled.GetValue();
 
     display_commander::features::presentmon::PresentMonStateSnapshot snapshot{};
@@ -90,7 +85,6 @@ void DrawPresentMonMinimalFlipStateRow(display_commander::ui::IImGuiWrapper& img
             "Off by default; some games or policies block tracing. Disable if you see access-denied ETW events or "
             "instability.");
     }
-#endif
 }
 
 }  // namespace ui::new_ui

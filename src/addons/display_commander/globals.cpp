@@ -1195,11 +1195,7 @@ DLSSGSummary GetDLSSGSummary() {
                                   || (summary.dlssd_dll_version != "Not loaded");
 
     // Per-DLL override: set _override_applied and prefer override folder version for display
-#if defined(DC_LITE)
-    const bool master_override = false;
-#else
     const bool master_override = settings::g_streamlineTabSettings.dlss_override_enabled.GetValue();
-#endif
     auto path_under_folder = [](const std::string& p, const std::string& folder) {
         if (p.empty() || folder.empty()) return false;
         std::string fn = folder;

@@ -5,9 +5,7 @@
 #include "dxgi_refresh_rate_tab.hpp"
 #include "fps_limiter_debug_tab.hpp"
 #include "ngx_counters_tab.hpp"
-#if !defined(DC_LITE)
 #include "nvidia_profile_inspector_tab.hpp"
-#endif
 #include "presentmon_debug_tab.hpp"
 #include "reflex_pclstats_tab.hpp"
 #include "vulkan_tab.hpp"
@@ -75,13 +73,11 @@ void DrawDebugTab(display_commander::ui::IImGuiWrapper& imgui) {
         DrawNGXCountersTab(imgui);
         imgui.EndTabItem();
     }
-#if !defined(DC_LITE)
     if (imgui.BeginTabItem("NVIDIA profile", nullptr, 0)) {
         g_rendering_ui_section.store("ui:tab:debug_nvidia_profile", std::memory_order_release);
         DrawNvidiaProfileInspectorTab(imgui);
         imgui.EndTabItem();
     }
-#endif
 
     imgui.EndTabBar();
 }

@@ -42,8 +42,7 @@ struct MergedDlssRenderPresetText {
 /**
  * Primary text: driver non-default DRS value when present, else DC combo (or "Preset override off").
  * Tooltip lists both DRS and DC. warn_color when DRS has a non-default override.
- * `drv` may be null (treat as DRS unavailable). Inline so DC_LITE builds can use this without linking
- * `nvidia_profile_inspector.cpp`.
+ * `drv` may be null (treat as DRS unavailable). Header-only so callers can merge text without extra linkage.
  */
 inline MergedDlssRenderPresetText MergeDriverAndDcRenderPreset(bool is_rr,
                                                                const DriverDlssRenderPresetSnapshot* drv,

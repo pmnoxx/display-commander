@@ -3,9 +3,7 @@
 #include "features/auto_windows_hdr/auto_windows_hdr.hpp"
 #include "features/smooth_motion/smooth_motion.hpp"
 #include "display/hdr_control.hpp"
-#if !defined(DC_LITE)
 #include "features/presentmon/presentmon_minimal_etw.hpp"
-#endif
 #include "globals.hpp"
 #include "hooks/dxgi/dxgi_gpu_completion.hpp"
 #include "hooks/dxgi/dxgi_present_hooks.hpp"
@@ -1753,11 +1751,9 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
                          first_runtime, hwnd);
         return;
     }
-#if !defined(DC_LITE)
     if (settings::g_mainTabSettings.present_mon_etw_enabled.GetValue()) {
         display_commander::features::presentmon::EnsurePresentMonEtwStarted();
     }
-#endif
 
     hookToSwapChain(swapchain);
 

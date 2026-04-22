@@ -1,7 +1,7 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "../modules/audio/audio_module.hpp"
 
-// DC_LITE: modules/audio/*.cpp is omitted; Main tab optional panel still links this symbol.
+// Unused in normal builds (CMake excludes this TU); satisfies Main tab optional panel symbol when audio module is omitted.
 
 namespace modules::audio {
 

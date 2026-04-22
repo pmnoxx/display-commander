@@ -21,10 +21,12 @@ jobs:
             devcmd_arch: x64
             artifact_suffix: addon64
             artifact_name: zzz_display_commander.addon64
+            lite_artifact_name: zzz_display_commander_lite.addon64
           - arch: x86
             devcmd_arch: x86
             artifact_suffix: addon32
             artifact_name: zzz_display_commander.addon32
+            lite_artifact_name: zzz_display_commander_lite.addon32
 
     steps:
       - name: Checkout
@@ -63,8 +65,8 @@ jobs:
             ls -la build || true
             exit 1
           fi
-          # Copy the display_commander addon with the correct name
           cp "$display_commander_file" "artifacts/${{ matrix.artifact_name }}"
+          cp "$display_commander_file" "artifacts/${{ matrix.lite_artifact_name }}"
 
           echo "artifact_dir=artifacts" >> $GITHUB_OUTPUT
 
@@ -76,72 +78,9 @@ jobs:
           if-no-files-found: error
           retention-days: 30 # Keep nightly builds for 30 days
 
-  nightly-build-lite:
-    name: Nightly Lite (${{ matrix.arch }})
-    runs-on: windows-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: x64
-            devcmd_arch: x64
-            artifact_suffix: addon64
-            artifact_name: zzz_display_commander_lite.addon64
-          - arch: x86
-            devcmd_arch: x86
-            artifact_suffix: addon32
-            artifact_name: zzz_display_commander_lite.addon32
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Setup Ninja
-        uses: seanmiddleditch/gha-setup-ninja@v5
-
-      - name: Setup MSVC (${{ matrix.devcmd_arch }})
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: ${{ matrix.devcmd_arch }}
-
-      - name: Configure (Lite)
-        shell: bash
-        run: |
-          cmake -S . -B build-nightly-lite -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DGIT_COMMIT_COUNT=${{ github.run_number }} -DDC_BUILD_LITE=ON
-
-      - name: Build (Lite)
-        shell: bash
-        run: |
-          cmake --build build-nightly-lite --config MinSizeRel --parallel
-
-      - name: Collect Lite artifacts
-        id: collect_lite
-        shell: bash
-        run: |
-          mkdir -p artifacts-lite
-          display_commander_file=$(find build-nightly-lite -type f -name "zzz_display_commander.${{ matrix.artifact_suffix }}" | head -1)
-          if [ -z "$display_commander_file" ]; then
-            echo "Display Commander Lite addon file not found; listing build-nightly-lite dir:" >&2
-            find build-nightly-lite -type f -name "*.${{ matrix.artifact_suffix }}" || true
-            ls -la build-nightly-lite || true
-            exit 1
-          fi
-          cp "$display_commander_file" "artifacts-lite/${{ matrix.artifact_name }}"
-          echo "artifact_dir=artifacts-lite" >> $GITHUB_OUTPUT
-
-      - name: Upload Lite artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: nightly-zzz-display-commander-lite-${{ matrix.artifact_suffix }}
-          path: ${{ steps.collect_lite.outputs.artifact_dir }}/*
-          if-no-files-found: error
-          retention-days: 30
-
   nightly-release:
     name: Nightly Release
-    needs: [ nightly-build, nightly-build-lite ]
+    needs: [ nightly-build ]
     runs-on: windows-latest
     steps:
       - name: Download build artifacts (x64)
@@ -154,18 +93,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: nightly-zzz-display-commander-addon32
-          path: artifacts
-
-      - name: Download Lite build artifacts (x64)
-        uses: actions/download-artifact@v4
-        with:
-          name: nightly-zzz-display-commander-lite-addon64
-          path: artifacts
-
-      - name: Download Lite build artifacts (x86)
-        uses: actions/download-artifact@v4
-        with:
-          name: nightly-zzz-display-commander-lite-addon32
           path: artifacts
 
       - name: Create/Update Nightly Release
@@ -190,7 +117,6 @@ jobs:
             **Files**:
             - `zzz_display_commander.addon64` - 64-bit version
             - `zzz_display_commander.addon32` - 32-bit version
-            - `zzz_display_commander_lite.addon64` - 64-bit Lite
-            - `zzz_display_commander_lite.addon32` - 32-bit Lite
+            - `zzz_display_commander_lite.addon64` / `zzz_display_commander_lite.addon32` - same binaries (legacy filenames)
 
             **Note**: These are development builds. For stable releases, use the main releases.

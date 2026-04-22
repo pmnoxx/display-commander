@@ -113,7 +113,7 @@ void RegisterPublicModules() {
         spec.descriptor.tab_name = "ReShade";
         spec.descriptor.tab_id = "reshade";
         spec.descriptor.is_advanced_tab = true;
-        spec.default_enabled = true;
+        spec.default_enabled = false;
         spec.default_show_in_overlay = false;
         spec.initialize_fn = &reshade_addons::Initialize;
         spec.draw_tab_fn = &reshade_addons::DrawTab;
@@ -148,7 +148,7 @@ void RegisterPublicModules() {
         spec.descriptor.tab_name = "Audio";
         spec.descriptor.tab_id = "audio";
         spec.descriptor.is_advanced_tab = false;
-        spec.default_enabled = true;
+        spec.default_enabled = false;
         spec.default_show_in_overlay = false;
         spec.default_show_tab = false;
         spec.initialize_fn = &audio::Initialize;
@@ -189,7 +189,7 @@ void RegisterPublicModules() {
         spec.descriptor.tab_name = "Controller";
         spec.descriptor.tab_id = "controller";
         spec.descriptor.is_advanced_tab = true;
-        spec.default_enabled = true;
+        spec.default_enabled = false;
         spec.default_show_in_overlay = false;
         spec.initialize_fn = &controller::Initialize;
         spec.on_enabled_fn = &controller::OnEnabled;

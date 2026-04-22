@@ -118,7 +118,7 @@ class MainTabSettings {
     // CPU Settings
     ui::new_ui::IntSetting cpu_cores;
 
-    // Performance overlay (main ReShade overlay widget)
+    // OSD (main ReShade overlay widget)
     ui::new_ui::BoolSetting show_performance_overlay;
     ui::new_ui::BoolSetting show_fps_counter;
     ui::new_ui::BoolSetting show_native_fps;
@@ -135,22 +135,22 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_frame_time_stats;
     ui::new_ui::BoolSetting show_native_frame_time_graph;
     ui::new_ui::BoolSetting show_frame_timeline_bar;
-    /** Show DXGI-based VRR status in performance overlay (RefreshRateMonitor heuristic). Requires DXGI refresh rate /
+    /** Show DXGI-based VRR status on the OSD (RefreshRateMonitor heuristic). Requires DXGI refresh rate /
      * VRR detection enabled (Debug DXGI refresh tab in -DebugTabs builds, or config). */
     ui::new_ui::BoolSetting show_dxgi_vrr_status;
-    /** Show DXGI refresh rate (Hz) in performance overlay (from RefreshRateMonitor / GetFrameStatistics). Requires DXGI
+    /** Show DXGI refresh rate (Hz) on the OSD (from RefreshRateMonitor / GetFrameStatistics). Requires DXGI
      * refresh rate / VRR detection enabled (Debug DXGI refresh tab in -DebugTabs builds, or config). */
     ui::new_ui::BoolSetting show_dxgi_refresh_rate;
     ui::new_ui::BoolSetting show_cpu_usage;
-    /** Process CPU load (%) in performance overlay (GetProcessTimes + GetSystemTimes; cached by cpu_telemetry). */
+    /** Process CPU load (%) on the OSD (GetProcessTimes + GetSystemTimes; cached by cpu_telemetry). */
     ui::new_ui::BoolSetting show_overlay_cpu_process_load;
-    /** System CPU load (%) in performance overlay (GetSystemTimes; cached by cpu_telemetry). */
+    /** System CPU load (%) on the OSD (GetSystemTimes; cached by cpu_telemetry). */
     ui::new_ui::BoolSetting show_overlay_cpu_system_load;
-    /** NVIDIA GPU engine busy %% in performance overlay (NvAPI_GPU_GetDynamicPstatesInfoEx; first physical GPU). */
+    /** NVIDIA GPU engine busy %% on the OSD (NvAPI_GPU_GetDynamicPstatesInfoEx; first physical GPU). */
     ui::new_ui::BoolSetting show_overlay_nvapi_gpu_util;
-    /** NVIDIA GPU temperature in Celsius in performance overlay (NvAPI_GPU_GetThermalSettings; first physical GPU). */
+    /** NVIDIA GPU temperature in Celsius on the OSD (NvAPI_GPU_GetThermalSettings; first physical GPU). */
     ui::new_ui::BoolSetting show_overlay_nvapi_gpu_temp;
-    /** Show NVAPI Reflex latency stats (PC latency + GPU frame time) in the performance overlay. */
+    /** Show NVAPI Reflex latency stats (PC latency + GPU frame time) on the OSD. */
     ui::new_ui::BoolSetting show_nvapi_latency_stats;
     /** Overlay: rolling avg simulation phase (NVAPI sim_end − sim_start, newest frame). Debug PresentMon tab. */
     ui::new_ui::BoolSetting show_overlay_nvapi_sim_duration;
@@ -186,15 +186,15 @@ class MainTabSettings {
     /** Overlay: Win32k ETW PresentMon-style flip/composition line. Requires present_mon_etw_enabled. Full build only. */
     ui::new_ui::BoolSetting show_overlay_presentmon_flip;
 #endif
-    /** Show FPS limiter source (e.g. reflex_marker, dxgi_swapchain) in performance overlay. */
+    /** Show FPS limiter source (e.g. reflex_marker, dxgi_swapchain) on the OSD. */
     ui::new_ui::BoolSetting show_fps_limiter_src;
     /** Show percentage of recent frames where OnPresentSync FPS limiter started late. */
     ui::new_ui::BoolSetting show_fps_limiter_late_frames_pct;
     ui::new_ui::BoolSetting show_playtime;
     ui::new_ui::BoolSetting show_overlay_vu_bars;
-    /** DXGI GPU video memory used / budget in performance overlay. */
+    /** DXGI GPU video memory used / budget on the OSD. */
     ui::new_ui::BoolSetting show_overlay_vram;
-    /** System RAM in use (and process working set when available) in performance overlay. */
+    /** System RAM in use (and process working set when available) on the OSD. */
     ui::new_ui::BoolSetting show_overlay_ram;
     ui::new_ui::FloatSetting overlay_background_alpha;
     ui::new_ui::FloatSetting overlay_chart_alpha;

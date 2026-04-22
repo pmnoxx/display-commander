@@ -16,7 +16,7 @@ namespace ui::new_ui::debug {
 void DrawPresentMonDebugTab(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.TextColored(::ui::colors::TEXT_DIMMED,
                       "Build with DEBUG_TABS / bd.ps1 -DebugTabs. These toggles add NVAPI Reflex-derived lines to the "
-                      "performance overlay. They are not Intel PresentMon CSV metrics (no ETW display timing).\n"
+                      "OSD. They are not Intel PresentMon CSV metrics (no ETW display timing).\n"
                       "The |Δlatency| / animation-error-style line is also toggled from the main tab: Performance "
                       "Overlay → GPU & memory → Animation error (NVAPI) (same setting).");
 
@@ -97,7 +97,7 @@ void DrawPresentMonDebugTab(display_commander::ui::IImGuiWrapper& imgui) {
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
-            "When frame_id advances: |change| vs previous Lat. row estimate. Main tab: Performance overlay → GPU & "
+            "When frame_id advances: |change| vs previous Lat. row estimate. Main tab: OSD → GPU & "
             "memory → Animation error (NVAPI).");
     }
 

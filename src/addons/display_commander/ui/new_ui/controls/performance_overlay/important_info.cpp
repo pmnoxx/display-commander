@@ -37,7 +37,7 @@ static void DrawDxgiOverlaySubsection(display_commander::ui::IImGuiWrapper& imgu
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
-            "Shows DXGI-based VRR status in the performance overlay (RefreshRateMonitor heuristic: rate spread / "
+            "Shows DXGI-based VRR status on the OSD (RefreshRateMonitor heuristic: rate spread / "
             "samples below threshold). Enable \"DXGI refresh rate / VRR detection\" in the Debug DXGI refresh tab "
             "(-DebugTabs build) or via addon config for data.");
     }
@@ -49,7 +49,7 @@ static void DrawDxgiOverlaySubsection(display_commander::ui::IImGuiWrapper& imgu
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
-            "Shows DXGI refresh rate (Hz) in the performance overlay from swap chain GetFrameStatistics. "
+            "Shows DXGI refresh rate (Hz) on the OSD from swap chain GetFrameStatistics. "
             "Enable \"DXGI refresh rate / VRR detection\" in the Debug DXGI refresh tab (-DebugTabs build) or via addon "
             "config for data.");
     }
@@ -111,7 +111,7 @@ static void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
-            "Shows whether Variable Refresh Rate (VRR) is active in the performance overlay. "
+            "Shows whether Variable Refresh Rate (VRR) is active on the OSD. "
             "Uses NVAPI (NVIDIA only; may cause occasional hiccups).");
     }
     imgui.NextColumn();
@@ -122,7 +122,7 @@ static void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
-            "Shows detailed VRR debugging in the performance overlay: Fixed Hz, Threshold, Samples, and NVAPI "
+            "Shows detailed VRR debugging on the OSD: Fixed Hz, Threshold, Samples, and NVAPI "
             "fields from NvAPI_Disp_GetVRRInfo (NV_GET_VRR_INFO):\n"
             "  enabled: VRR is enabled for the display (driver/app has enabled it).\n"
             "  req: VRR has been requested (e.g. by the application or swap chain).\n"
@@ -159,7 +159,7 @@ static void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
-            "Shows NVIDIA Reflex NVAPI latency stats (PC latency and GPU frame time) in the performance overlay.\n"
+            "Shows NVIDIA Reflex NVAPI latency stats (PC latency and GPU frame time) on the OSD.\n"
             "Requires a D3D11/D3D12 device with Reflex latency reporting available. Uses NvAPI_D3D_GetLatency, "
             "which may add minor overhead when enabled.");
     }*/
@@ -364,9 +364,9 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
     // Test Overlay Control
     {
         bool show_performance_overlay = settings::g_mainTabSettings.show_performance_overlay.GetValue();
-        if (imgui.Checkbox(ICON_FK_SEARCH " Show performance overlay", &show_performance_overlay)) {
+        if (imgui.Checkbox(ICON_FK_SEARCH " Show OSD", &show_performance_overlay)) {
             settings::g_mainTabSettings.show_performance_overlay.SetValue(show_performance_overlay);
-            LogInfo("Performance overlay %s", show_performance_overlay ? "enabled" : "disabled");
+            LogInfo("OSD %s", show_performance_overlay ? "enabled" : "disabled");
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
@@ -376,7 +376,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
 
         (void)RadioSettingEnumWrapper(
             settings::g_mainTabSettings.overlay_label_mode, "Overlay labels",
-            "How metric names appear in the performance overlay: no prefix, short tokens, or full phrases. Values "
+            "How metric names appear on the OSD: no prefix, short tokens, or full phrases. Values "
             "use a second column when labels are on.",
             imgui, RadioSettingLayout::Horizontal);
 
@@ -437,7 +437,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
-                "Shows render resolution in the performance overlay. When DLSS is active, shows internal render size "
+                "Shows render resolution on the OSD. When DLSS is active, shows internal render size "
                 "and swapchain/backbuffer (e.g. 1920x1080->3840x2160). When DLSS is off, shows the tracked "
                 "backbuffer size only.");
         }
@@ -449,7 +449,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
-                "Shows current swapchain presentation model in the performance overlay "
+                "Shows current swapchain presentation model on the OSD "
                 "(Flip/BitBlt for DXGI, FLIPEX for D3D9, Vulkan/OpenGL present mode where available).");
         }
         imgui.NextColumn();
@@ -465,7 +465,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
-                "Shows Win32k ETW composition/flip classification in the performance overlay (same source as Flip state "
+                "Shows Win32k ETW composition/flip classification on the OSD (same source as Flip state "
                 "under VSync & Tearing). This is not the same as Presentation model, which reads the swapchain API. "
                 "Enable PresentMon ETW (flip state) under Display Settings → VSync & Tearing for live data.");
         }
@@ -515,7 +515,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             settings::g_mainTabSettings.show_fg_mode.SetValue(show_fg_mode);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Shows DLSS Frame Generation mode (OFF / 2x / 3x / 4x) in the performance overlay.%s",
+            imgui.SetTooltipEx("Shows DLSS Frame Generation mode (OFF / 2x / 3x / 4x) on the OSD.%s",
                                dlss_ngx_seen ? "" : " Requires a game that uses DLSS/NGX.");
         }
         imgui.NextColumn();
@@ -525,7 +525,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             settings::g_mainTabSettings.show_dlss_status.SetValue(show_dlss_status);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Shows DLSS on/off status in the performance overlay.");
+            imgui.SetTooltipEx("Shows DLSS on/off status on the OSD.");
         }
         imgui.NextColumn();
 
@@ -536,8 +536,8 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
-                "Shows DLSS quality preset (Performance, Balanced, Quality, Ultra Performance, Ultra Quality, DLAA) in "
-                "the performance overlay.");
+                "Shows DLSS quality preset (Performance, Balanced, Quality, Ultra Performance, Ultra Quality, DLAA) on "
+                "the OSD.");
         }
         imgui.NextColumn();
 
@@ -582,7 +582,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             settings::g_mainTabSettings.show_overlay_vram.SetValue(show_overlay_vram);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Shows GPU video memory used / budget (MiB) in the performance overlay (DXGI adapter).");
+            imgui.SetTooltipEx("Shows GPU video memory used / budget (MiB) on the OSD (DXGI adapter).");
         }
         imgui.NextColumn();
 
@@ -592,7 +592,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
-                "Shows system RAM in use and this process working set (MiB) in the performance overlay "
+                "Shows system RAM in use and this process working set (MiB) on the OSD "
                 "(GlobalMemoryStatusEx, GetProcessMemoryInfo).");
         }
         imgui.NextColumn();
@@ -697,7 +697,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
-                "Vertical offset of the performance overlay in the ReShade overlay (pixels from the top). "
+                "Vertical offset of the OSD in the ReShade overlay (pixels from the top). "
                 "0 aligns the window top edge with the top of the overlay area. "
                 "Positive moves down, negative moves up (e.g. to clear other on-screen text).");
         }
@@ -706,7 +706,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
-                "Horizontal offset of the performance overlay in the ReShade overlay (pixels from the left). "
+                "Horizontal offset of the OSD in the ReShade overlay (pixels from the left). "
                 "0 aligns the window left edge with the left of the overlay area. "
                 "Positive moves right, negative moves left.");
         }

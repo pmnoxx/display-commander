@@ -370,13 +370,13 @@ void InitializeHotkeyDefinitions() {
              oss << "Display Commander UI " << (new_state ? "enabled" : "disabled") << " via hotkey";
              LogInfo(oss.str().c_str());
          }},
-        {"performance_overlay", "Performance Overlay Toggle", "ctrl shift o", "Toggle the performance overlay",
+        {"performance_overlay", "OSD Toggle", "ctrl shift o", "Toggle the OSD",
          []() {
              bool current_state = settings::g_mainTabSettings.show_performance_overlay.GetValue();
              bool new_state = !current_state;
              settings::g_mainTabSettings.show_performance_overlay.SetValue(new_state);
              std::ostringstream oss;
-             oss << "Performance overlay " << (new_state ? "enabled" : "disabled") << " via hotkey";
+             oss << "OSD " << (new_state ? "enabled" : "disabled") << " via hotkey";
              LogInfo(oss.str().c_str());
          }},
         {"win_down", "Win+Down (Minimize)", "win down",

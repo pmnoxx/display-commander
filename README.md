@@ -54,7 +54,7 @@ Note: Applying window operations from the main thread can crash some apps. This 
 
 - **Per-process volume**: Control game volume independently
 - **Mute options**: Manual mute, mute in background, conditional background mute
-- **Per-channel VU meters**: Main tab and performance overlay
+- **Per-channel VU meters**: Main tab and OSD
 - **Hotkeys**: Volume up/down, brightness up/down (configurable step)
 
 ### Latency
@@ -71,7 +71,7 @@ Note: Applying window operations from the main thread can crash some apps. This 
 ### DLSS & upscaling
 
 - **DLSS information**: Status, quality preset, scaling ratio, internal/output resolution on Main and Swapchain tabs
-- **Frame Generation (FG)**: FG mode display in performance overlay when DLSS-G is active
+- **Frame Generation (FG)**: FG mode display in the OSD when DLSS-G is active
 - **DLSS overrides**: Preset overrides, internal resolution scale, M–Z presets; optional hide DLSS-G from ReShade
 - **VRR status**: DXGI and NVAPI VRR state (enabled/requested/possible) on Swapchain tab
 

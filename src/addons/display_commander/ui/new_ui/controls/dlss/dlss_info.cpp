@@ -80,7 +80,7 @@ void DrawDLSSInfo_IndicatorSection(display_commander::ui::IImGuiWrapper& imgui) 
 
 }  // namespace
 
-// Draw DLSS information (same format as performance overlay). Caller must pass pre-fetched summary.
+// Draw DLSS information (same format as OSD). Caller must pass pre-fetched summary.
 void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummary& dlssg_summary) {
     (void)imgui;
     CALL_GUARD_NO_TS();
@@ -168,7 +168,7 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
         }
     }
 
-    // DLSS Internal Resolution (same format as performance overlay: internal -> output -> backbuffer)
+    // DLSS Internal Resolution (same format as OSD: internal -> output -> backbuffer)
     if (any_dlss_active && dlssg_summary.internal_resolution != "N/A") {
         std::string res_text = dlssg_summary.internal_resolution;
         const int bb_w = g_game_render_width.load();

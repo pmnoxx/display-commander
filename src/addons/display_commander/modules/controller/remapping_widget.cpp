@@ -141,7 +141,7 @@ void RemappingWidget::DrawRemappingSettings(display_commander::ui::IImGuiWrapper
                 "- Home + D-Pad Up: Increase Volume\n"
                 "- Home + D-Pad Down: Decrease Volume\n"
                 "- Home + Right Shoulder: Mute/Unmute Audio\n"
-                "- Home + Menu: Toggle Performance Overlay\n"
+                "- Home + Menu: Toggle OSD\n"
                 "- Home + View: Take Screenshot\n\n"
                 "These chords are added to the input remapping system and can be customized.");
         }

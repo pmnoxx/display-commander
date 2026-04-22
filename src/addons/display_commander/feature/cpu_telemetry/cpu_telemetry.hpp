@@ -3,7 +3,7 @@
 
 namespace display_commander::feature::cpu_telemetry {
 
-// Performance overlay request signals (frame-id based), set while row is enabled.
+// OSD request signals (frame-id based), set while row is enabled.
 void RequestProcessCpuLoadFromOverlay(bool enabled);
 void RequestSystemCpuLoadFromOverlay(bool enabled);
 

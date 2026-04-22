@@ -13,7 +13,7 @@ enum class FrameTimeMode : std::uint8_t {
     kDisplayTiming = 2   // Display Timing (record when frames are actually displayed based on GPU completion)
 };
 
-/** Performance overlay text: no prefixes, short tokens, or full phrases (Main tab > Performance overlay). */
+/** OSD text: no prefixes, short tokens, or full phrases (Main tab > OSD). */
 enum class OverlayLabelMode : std::uint8_t {
     kNone = 0,
     kShort = 1,

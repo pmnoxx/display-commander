@@ -67,7 +67,7 @@ Notes:
 
 ### 3) Overlay value display
 
-Add an optional scalar row to performance overlay:
+Add an optional scalar row to the OSD:
 
 - **Short label**: `Late%`
 - **Full label**: `FPS limiter late time`

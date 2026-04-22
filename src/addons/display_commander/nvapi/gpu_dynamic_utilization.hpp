@@ -2,7 +2,7 @@
 
 namespace nvapi {
 
-// Performance overlay: set request to current g_global_frame_id while enabled, or clear when disabled.
+// OSD: set request to current g_global_frame_id while enabled, or clear when disabled.
 void RequestGpuDynamicUtilizationFromOverlay(bool enabled);
 
 // Continuous monitoring: service overlay request (NVAPI) under frame-based freshness and spacing rules.

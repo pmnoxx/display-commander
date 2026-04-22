@@ -62,7 +62,7 @@ bool AccumulateLatencyMetricsFromParams(const NV_LATENCY_RESULT_PARAMS_V1& param
     return true;
 }
 
-/** Same formula as performance overlay "Lat." row (including DLSS-G FG term). */
+/** Same formula as OSD "Lat." row (including DLSS-G FG term). */
 bool ComputeOsdLatencyEstimateMs(const NvapiFrameReport& fr, int dlss_fg_mode, double& out_ms) {
     if (fr.frameID == 0) {
         return false;

@@ -136,8 +136,8 @@ void InputRemapper::add_default_chord_type(DefaultChordType chord_type) {
             break;
         case DefaultChordType::PerformanceOverlay:
             button = XINPUT_GAMEPAD_START;
-            action_name = "performance overlay toggle";
-            log_name = "Home + Menu = Toggle Performance Overlay";
+            action_name = "osd toggle";
+            log_name = "Home + Menu = Toggle OSD";
             break;
         case DefaultChordType::Screenshot:
             button = XINPUT_GAMEPAD_BACK;
@@ -984,14 +984,13 @@ void InputRemapper::execute_action(const std::string& action_name) {
                 LogError("InputRemapper::execute_action() - No screenshot mechanism available");
             }
         }
-    } else if (action_name == "performance overlay toggle") {
-        // Toggle performance overlay
+    } else if (action_name == "osd toggle" || action_name == "performance overlay toggle") {
+        // Toggle OSD (legacy action id: performance overlay toggle)
         bool current_state = settings::g_mainTabSettings.show_performance_overlay.GetValue();
         bool new_state = !current_state;
         settings::g_mainTabSettings.show_performance_overlay.SetValue(new_state);
-        trigger_action_notification("Performance Overlay " + std::string(new_state ? "On" : "Off"));
-        LogInfo("InputRemapper::execute_action() - Performance overlay %s via action",
-                new_state ? "enabled" : "disabled");
+        trigger_action_notification("OSD " + std::string(new_state ? "On" : "Off"));
+        LogInfo("InputRemapper::execute_action() - OSD %s via action", new_state ? "enabled" : "disabled");
     } else if (modules::TriggerEnabledModuleActionById(action_name)) {
         trigger_action_notification(action_name);
         LogInfo("InputRemapper::execute_action() - Module action triggered: %s", action_name.c_str());
@@ -1028,7 +1027,7 @@ std::string get_remap_type_name(RemapType type) {
 
 std::vector<std::string> get_available_actions() {
     std::vector<std::string> actions = {"screenshot",
-                                        "performance overlay toggle",
+                                        "osd toggle",
                                         "display commander ui toggle",
                                         "adhd toggle"};
     const std::vector<modules::RegisteredModuleAction> module_actions = modules::GetEnabledModuleActions();

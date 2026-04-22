@@ -600,20 +600,20 @@ extern std::atomic<uint64_t> g_global_frame_id;
 // stuck log.
 extern std::atomic<LONGLONG> g_global_frame_id_last_updated_ns;
 
-/** Monotonic ns (`get_now_ns`) before the in-game performance overlay may draw. 0 until the first
+/** Monotonic ns (`get_now_ns`) before the in-game OSD may draw. 0 until the first
  *  `g_global_frame_id` increment on the present path; then set to (that moment + kPerformanceOverlayPostFirstFrameDelayNs). */
 extern std::atomic<LONGLONG> g_performance_overlay_allowed_after_ns;
 inline constexpr LONGLONG kPerformanceOverlayPostFirstFrameDelayNs = 2'000'000'000LL;
 
-/** `g_global_frame_id` when the performance overlay last requested an NVAPI GPU util sample; 0 = no active request. */
+/** `g_global_frame_id` when the OSD last requested an NVAPI GPU util sample; 0 = no active request. */
 extern std::atomic<uint64_t> g_nvapi_gpu_util_request_frame_id;
 /** `g_global_frame_id` when `NvAPI_GPU_GetDynamicPstatesInfoEx` was last run for overlay GPU util. */
 extern std::atomic<uint64_t> g_nvapi_gpu_util_last_query_frame_id;
-/** `g_global_frame_id` when the performance overlay last requested an NVAPI GPU temperature sample; 0 = no active request. */
+/** `g_global_frame_id` when the OSD last requested an NVAPI GPU temperature sample; 0 = no active request. */
 extern std::atomic<uint64_t> g_nvapi_gpu_temp_request_frame_id;
 /** `g_global_frame_id` when `NvAPI_GPU_GetThermalSettings` was last run for overlay GPU temperature. */
 extern std::atomic<uint64_t> g_nvapi_gpu_temp_last_query_frame_id;
-/** `g_global_frame_id` when the performance overlay last requested CPU telemetry sample; 0 = no active request. */
+/** `g_global_frame_id` when the OSD last requested CPU telemetry sample; 0 = no active request. */
 extern std::atomic<uint64_t> g_cpu_telemetry_request_frame_id;
 /** `g_global_frame_id` when process/system CPU telemetry was last sampled for overlay rows. */
 extern std::atomic<uint64_t> g_cpu_telemetry_last_query_frame_id;

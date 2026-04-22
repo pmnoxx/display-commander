@@ -29,13 +29,13 @@ void DrawFrameTimeGraph(display_commander::ui::IImGuiWrapper& imgui);
 void DrawNativeFrameTimeGraph(display_commander::ui::IImGuiWrapper& imgui);
 // Draw single-frame timeline bar (Simulation, Render Submit, Present, etc. segments)
 void DrawFrameTimelineBar(display_commander::ui::IImGuiWrapper& imgui);
-// Compact frame timeline bar for performance overlay
+// Compact frame timeline bar for OSD
 void DrawFrameTimelineBarOverlay(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips = false);
 
 // Draw compact frame time graph for overlay (fixed width)
 void DrawFrameTimeGraphOverlay(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips = false);
 void DrawNativeFrameTimeGraphOverlay(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips = false);
-// Draw performance overlay content (clock, FPS, VRR, VRAM, flip, DLSS, volume, graphs, etc.).
+// Draw OSD content (clock, FPS, VRR, VRAM, flip, DLSS, volume, graphs, etc.).
 // Use with IImGuiWrapper (ReShade or standalone). device_api used for flip status; pass GraphicsApi::Unknown when no
 // device.
 void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,

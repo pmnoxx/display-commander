@@ -103,7 +103,7 @@ void DrawDxgiOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui) {
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
-            "Shows DXGI-based VRR status in the performance overlay (RefreshRateMonitor heuristic: rate spread / "
+            "Shows DXGI-based VRR status on the OSD (RefreshRateMonitor heuristic: rate spread / "
             "samples below threshold). Enable \"DXGI refresh rate / VRR detection\" in the Debug DXGI refresh tab "
             "(-DebugTabs build) or via addon config for data.");
     }
@@ -115,7 +115,7 @@ void DrawDxgiOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui) {
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
-            "Shows DXGI refresh rate (Hz) in the performance overlay from swap chain GetFrameStatistics. "
+            "Shows DXGI refresh rate (Hz) on the OSD from swap chain GetFrameStatistics. "
             "Enable \"DXGI refresh rate / VRR detection\" in the Debug DXGI refresh tab (-DebugTabs build) or via addon "
             "config for data.");
     }
@@ -178,7 +178,7 @@ void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
-            "Shows whether Variable Refresh Rate (VRR) is active in the performance overlay. "
+            "Shows whether Variable Refresh Rate (VRR) is active on the OSD. "
             "Uses NVAPI (NVIDIA only; may cause occasional hiccups).");
     }
     imgui.NextColumn();
@@ -190,7 +190,7 @@ void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
-            "Shows detailed VRR debugging in the performance overlay: Fixed Hz, Threshold, Samples, and NVAPI "
+            "Shows detailed VRR debugging on the OSD: Fixed Hz, Threshold, Samples, and NVAPI "
             "fields from NvAPI_Disp_GetVRRInfo (NV_GET_VRR_INFO):\n"
             "  enabled: VRR is enabled for the display (driver/app has enabled it).\n"
             "  req: VRR has been requested (e.g. by the application or swap chain).\n"
@@ -227,7 +227,7 @@ void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
-            "Shows NVIDIA Reflex NVAPI latency stats (PC latency and GPU frame time) in the performance overlay.\n"
+            "Shows NVIDIA Reflex NVAPI latency stats (PC latency and GPU frame time) on the OSD.\n"
             "Requires a D3D11/D3D12 device with Reflex latency reporting available. Uses NvAPI_D3D_GetLatency, "
             "which may add minor overhead when enabled.");
     }
@@ -264,13 +264,13 @@ void ShowMainTabTopWarnings(display_commander::ui::IImGuiWrapper& imgui) {
 
 }  // anonymous namespace
 
-// Performance overlay / graphs / timeline implementations were extracted into:
+// OSD / graphs / timeline implementations were extracted into:
 // `ui/new_ui/controls/performance_overlay/*.cpp`
 
 // DLSS UI was extracted into:
 // `ui/new_ui/controls/dlss/dlss_info.*`
 
-// Performance overlay / graphs implementations were extracted into:
+// OSD / graphs implementations were extracted into:
 // `ui/new_ui/controls/performance_overlay/*.cpp`
 
 void InitMainNewTab() {
@@ -747,7 +747,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
 
     g_rendering_ui_section.store("ui:tab:main_new:performance_overlay", std::memory_order_release);
     ui::colors::PushHeaderColors(&imgui);
-    const bool performance_overlay_open = imgui.CollapsingHeader("Performance Overlay", ImGuiTreeNodeFlags_None);
+    const bool performance_overlay_open = imgui.CollapsingHeader("OSD", ImGuiTreeNodeFlags_None);
     ui::colors::PopCollapsingHeaderColors(&imgui);
     if (performance_overlay_open) {
         imgui.Indent();

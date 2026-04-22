@@ -34,7 +34,7 @@ void DrawMainTabOptionalPanelsAdvancedSettingsUi(display_commander::ui::IImGuiWr
     imgui.TextUnformatted("Main tab optional panels");
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
-            "Show or hide collapsible sections on the Main tab (drawn after Advanced Settings). "
+            "Show or hide collapsible sections on the Main tab (drawn after the Modules section). "
             "All default off. Enable \"Show All Tabs\" or this section's panels as needed.");
     }
     imgui.Indent();

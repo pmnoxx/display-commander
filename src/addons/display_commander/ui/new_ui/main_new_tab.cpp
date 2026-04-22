@@ -403,7 +403,7 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
     const std::vector<modules::ModuleDescriptor> modules_list = modules::GetModules();
     if (!modules_list.empty()) {
         imgui.Spacing();
-        imgui.Text("Module Features:");
+        imgui.Text("Modules:");
         imgui.Indent();
         for (const modules::ModuleDescriptor& module : modules_list) {
             bool enabled = module.enabled;
@@ -602,7 +602,8 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                           runtime_count);
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
-                "More than one swapchain/runtime is active. Some features may target only the first runtime. "
+                "More than one swapchain/runtime is active. Some Display Commander options may target only the first "
+                "runtime. "
                 "This can happen with multi-window or multi-context games.");
         }
         imgui.Spacing();
@@ -771,9 +772,9 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         imgui.Unindent();
     }
     imgui.Spacing();
-    g_rendering_ui_section.store("ui:tab:main_new:advanced_settings", std::memory_order_release);
+    g_rendering_ui_section.store("ui:tab:main_new:modules", std::memory_order_release);
     ui::colors::PushHeaderColors(&imgui);
-    const bool advanced_settings_open = imgui.CollapsingHeader("Features", ImGuiTreeNodeFlags_None);
+    const bool advanced_settings_open = imgui.CollapsingHeader("Modules", ImGuiTreeNodeFlags_None);
     ui::colors::PopCollapsingHeaderColors(&imgui);
     if (advanced_settings_open) {
         imgui.Indent();

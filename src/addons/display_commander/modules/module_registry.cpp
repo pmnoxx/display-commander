@@ -149,7 +149,7 @@ void RegisterPublicModules() {
         spec.on_enabled_fn = &audio::OnEnabled;
         spec.draw_tab_fn = &audio::DrawTab;
         spec.draw_overlay_fn = &audio::DrawOverlay;
-        // Main-tab "Audio Control" is drawn only from optional panels (Show Audio Control), not beside Features.
+        // Main-tab "Audio Control" is drawn only from optional panels (Show Audio Control), not beside Modules.
         audio::FillHotkeys(&spec.hotkeys);
         audio::FillActions(&spec.actions);
 
@@ -466,7 +466,7 @@ void DrawModuleTabById(std::string_view module_id, display_commander::ui::IImGui
         return;
     }
     if (!entry->descriptor.enabled) {
-        imgui.TextDisabled("%s is disabled in Main tab > Features.", entry->descriptor.display_name.c_str());
+        imgui.TextDisabled("%s is disabled in Main tab > Modules.", entry->descriptor.display_name.c_str());
         return;
     }
     if (entry->draw_tab_fn != nullptr) {

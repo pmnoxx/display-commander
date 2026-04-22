@@ -7,7 +7,7 @@
 namespace modules::reshade_addons {
 
 /**
- * ReShade add-ons / paths UI. Disabling this module (Main > Features) hides the ReShade tab only;
+ * ReShade add-ons / paths UI. Disabling this module (Main > Modules) hides the ReShade tab only;
  * Display Commander still applies ReShade.ini overrides from main_entry and other settings when configured.
  */
 void Initialize(ModuleConfigApi* config_api);

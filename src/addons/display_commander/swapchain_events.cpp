@@ -1,6 +1,7 @@
 #include "config/display_commander_config.hpp"
 #include "display/display_initial_state.hpp"
 #include "features/auto_windows_hdr/auto_windows_hdr.hpp"
+#include "features/smooth_motion/smooth_motion.hpp"
 #include "display/hdr_control.hpp"
 #if !defined(DC_LITE)
 #include "features/presentmon/presentmon_minimal_etw.hpp"
@@ -1858,7 +1859,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     // Enqueue GPU completion measurement using this swapchain's private data (command_queue from
     // DCDxgiSwapchainData). Optional (default on) via Advanced tab. Skip when Smooth Motion (nvpresent) is
     // loaded - frame generation makes GPU completion timing misleading.
-    const bool smooth_motion_loaded = ::g_smooth_motion_dll_loaded.load(std::memory_order_relaxed);
+    const bool smooth_motion_loaded = display_commander::features::smooth_motion::IsSmoothMotionLoaded();
     if ((idx_dx12 || dx_dx11) && settings::g_advancedTabSettings.enqueue_gpu_completion.GetValue()
         && !smooth_motion_loaded) {
         perf_timer.pause();

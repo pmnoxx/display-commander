@@ -16,6 +16,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include "../globals.hpp"
+#include "../features/smooth_motion/smooth_motion.hpp"
 #include "../settings/streamline_tab_settings.hpp"
 #include "../utils/detour_call_tracker.hpp"
 #include "../utils/general_utils.hpp"  // GetDefaultDlssOverrideFolder, GetCallingDLL
@@ -1686,13 +1687,7 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     }
 
     // NVIDIA Smooth Motion (nvpresent64.dll / nvpresent32.dll)
-    {
-        std::wstring filename = std::filesystem::path(moduleName).filename().wstring();
-        std::transform(filename.begin(), filename.end(), filename.begin(), ::towlower);
-        if (filename == L"nvpresent64.dll" || filename == L"nvpresent32.dll") {
-            g_smooth_motion_dll_loaded.store(true, std::memory_order_relaxed);
-        }
-    }
+    display_commander::features::smooth_motion::OnModuleLoaded(moduleName);
 
     if (lowerModuleName.find(L"sl.interposer.dll") != std::wstring::npos) {
         if (InstallStreamlineHooks(hModule)) {

@@ -1,6 +1,7 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 // Headers <Display Commander>
 #include "performance_overlay_internal.hpp"
+#include "features/smooth_motion/smooth_motion.hpp"
 #include "hooks/nvidia/ngx_hooks.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "nvapi/gpu_dynamic_utilization.hpp"
@@ -596,7 +597,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         }
         imgui.NextColumn();
 
-        const bool smooth_motion_latency = g_smooth_motion_dll_loaded.load(std::memory_order_relaxed);
+        const bool smooth_motion_latency = display_commander::features::smooth_motion::IsSmoothMotionLoaded();
         if (smooth_motion_latency) {
             imgui.BeginDisabled();
         }

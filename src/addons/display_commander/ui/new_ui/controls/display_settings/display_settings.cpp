@@ -1,5 +1,6 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "display_settings_internal.hpp"
+#include "features/smooth_motion/smooth_motion.hpp"
 
 namespace ui::new_ui {
 
@@ -14,7 +15,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
     // Show graphics/API libraries loaded by the host (game), not by Display Commander or ReShade
     if (enabled_experimental_features) {
         std::string traffic_apis = display_commanderhooks::GetPresentTrafficApisString();
-        const bool smooth_motion_loaded = g_smooth_motion_dll_loaded.load(std::memory_order_relaxed);
+        const bool smooth_motion_loaded = display_commander::features::smooth_motion::IsSmoothMotionLoaded();
         if (smooth_motion_loaded) {
             if (!traffic_apis.empty()) traffic_apis += ", ";
             traffic_apis += "Smooth Motion";

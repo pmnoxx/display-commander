@@ -26,7 +26,8 @@ Planned:
 - Show override from NPI for DLSS presets. @adap
 
 ## v0.14.9
-- [new feature] [ui] **CPU process/system load in OSD** - Added optional `CPU process` and `CPU system` overlay metrics sourced from Windows CPU telemetry APIs.
+- [new feature] [ui] **CPU process/system load in OSD** - Added optional `CPU process` and `CPU system` overlay metrics.
+- [cleanup] [hooks] **Smooth Motion feature slice** - Moved Smooth Motion DLL tracking and loaded-state checks into `features/smooth_motion` so hook and UI code use one shared feature API instead of a standalone global.
 
 ## v0.14.8
 - [new feature] [ui] **GPU temperature in OSD** - Added new entry.

@@ -1,4 +1,5 @@
 #include "dxgi_present_hooks.hpp"
+#include "../../features/smooth_motion/smooth_motion.hpp"
 #include "../../globals.hpp"
 #include "../../latent_sync/refresh_rate_monitor_integration.hpp"
 #include "../../performance_types.hpp"
@@ -381,7 +382,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
     CALL_GUARD_NO_TS();
     if (settings::g_advancedTabSettings.flush_command_queue_before_sleep.GetValue()) {
         // don't do it if smooth motion is enabled
-        const bool smooth_motion_loaded = ::g_smooth_motion_dll_loaded.load(std::memory_order_relaxed);
+        const bool smooth_motion_loaded = display_commander::features::smooth_motion::IsSmoothMotionLoaded();
         if (!smooth_motion_loaded && data.command_queue != nullptr) {
             data.command_queue->flush_immediate_command_list();
         }
@@ -457,7 +458,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
     // Flush command queue before present when we have it from this swapchain's private data (optional, default on)
     if (settings::g_advancedTabSettings.flush_command_queue_before_sleep.GetValue()) {
         // don't do it if smooth motion is enabled
-        const bool smooth_motion_loaded = ::g_smooth_motion_dll_loaded.load(std::memory_order_relaxed);
+        const bool smooth_motion_loaded = display_commander::features::smooth_motion::IsSmoothMotionLoaded();
         if (!smooth_motion_loaded && data.command_queue != nullptr) {
             data.command_queue->flush_immediate_command_list();
         }

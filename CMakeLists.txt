@@ -39,10 +39,12 @@ option(DEBUG_TABS "Enable debug-only UI tabs" OFF)
 option(DC_EXTERNAL_MODULES "Enable private external modules from external/display-commander2-modules" OFF)
 option(DC_INTERNAL_MODULES "Register built-in modules (audio, controller, ReShade add-ons tab)" ON)
 option(DC_LITE "Display Commander Lite: no built-in modules registry, no external modules (forces DC_INTERNAL_MODULES and DC_EXTERNAL_MODULES OFF)" OFF)
+# CI/local alias: same effect as DC_LITE=ON but CMake cache key avoids -DDC_LITE=ON in scripts.
+option(DC_BUILD_LITE "Same as DC_LITE (Display Commander Lite); prefer in CI" OFF)
 
-if(DC_LITE)
-  set(DC_INTERNAL_MODULES OFF CACHE BOOL "Disabled by DC_LITE" FORCE)
-  set(DC_EXTERNAL_MODULES OFF CACHE BOOL "Disabled by DC_LITE" FORCE)
+if(DC_LITE OR DC_BUILD_LITE)
+  set(DC_INTERNAL_MODULES OFF CACHE BOOL "Disabled by Display Commander Lite" FORCE)
+  set(DC_EXTERNAL_MODULES OFF CACHE BOOL "Disabled by Display Commander Lite" FORCE)
 endif()
 
 set(CMAKE_CXX_STANDARD 20)

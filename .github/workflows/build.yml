@@ -77,7 +77,7 @@ jobs:
           if-no-files-found: error
 
   build-lite:
-    name: Build Lite DC_LITE (${{ matrix.arch }})
+    name: Build Lite (${{ matrix.arch }})
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -106,24 +106,24 @@ jobs:
         with:
           arch: ${{ matrix.devcmd_arch }}
 
-      - name: Configure (DC_LITE)
+      - name: Configure (Lite)
         shell: bash
         run: |
-          cmake -S . -B build-lite -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DGIT_COMMIT_COUNT=${{ github.run_number }} -DDC_LITE=ON
+          cmake -S . -B build-lite -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel -DGIT_COMMIT_COUNT=${{ github.run_number }} -DDC_BUILD_LITE=ON
 
-      - name: Build Lite
+      - name: Build (Lite)
         shell: bash
         run: |
           cmake --build build-lite --config MinSizeRel --parallel
 
-      - name: Collect lite artifacts
+      - name: Collect Lite artifacts
         id: collect_lite
         shell: bash
         run: |
           mkdir -p artifacts-lite
           display_commander_file=$(find build-lite -type f -name "zzz_display_commander.${{ matrix.artifact_suffix }}" | head -1)
           if [ -z "$display_commander_file" ]; then
-            echo "Display Commander lite addon file not found; listing build-lite dir:" >&2
+            echo "Display Commander Lite addon file not found; listing build-lite dir for debugging:" >&2
             find build-lite -type f -name "*.${{ matrix.artifact_suffix }}" || true
             ls -la build-lite || true
             exit 1
@@ -131,7 +131,7 @@ jobs:
           cp "$display_commander_file" "artifacts-lite/${{ matrix.artifact_name }}"
           echo "artifact_dir=artifacts-lite" >> $GITHUB_OUTPUT
 
-      - name: Upload lite artifact
+      - name: Upload Lite artifact
         uses: actions/upload-artifact@v4
         with:
           name: zzz-display-commander-lite-${{ matrix.artifact_suffix }}
@@ -234,13 +234,11 @@ jobs:
 
           **Commit**: ${{ github.sha }}
 
-          **Files (full — audio/controller modules)**:
+          **Files**:
           - \`zzz_display_commander.addon64\` - 64-bit version
           - \`zzz_display_commander.addon32\` - 32-bit version
-
-          **Display Commander Lite** (\`DC_LITE\`; local scripts: \`-DcLite\`): same API rename proxy exports as full build; built-in **Audio** and **Controller** modules omitted.
-          - \`zzz_display_commander_lite.addon64\` - 64-bit
-          - \`zzz_display_commander_lite.addon32\` - 32-bit
+          - \`zzz_display_commander_lite.addon64\` - 64-bit Lite (no built-in Audio/Controller modules)
+          - \`zzz_display_commander_lite.addon32\` - 32-bit Lite
 
           For scheduled development builds, see [Nightly](https://github.com/pmnoxx/display-commander/releases/tag/nightly). For stable releases, use the main [Releases](https://github.com/pmnoxx/display-commander/releases) page.
           EOF
@@ -258,13 +256,13 @@ jobs:
           name: zzz-display-commander-addon32
           path: artifacts
 
-      - name: Download lite artifacts (x64)
+      - name: Download Lite build artifacts (x64)
         uses: actions/download-artifact@v4
         with:
           name: zzz-display-commander-lite-addon64
           path: artifacts
 
-      - name: Download lite artifacts (x86)
+      - name: Download Lite build artifacts (x86)
         uses: actions/download-artifact@v4
         with:
           name: zzz-display-commander-lite-addon32

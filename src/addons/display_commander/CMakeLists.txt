@@ -15,13 +15,13 @@ file(GLOB_RECURSE DISPLAY_COMMANDER_SOURCES
 )
 
 
-# DC_LITE=ON: omit in-repo module implementations (audio/controller/reshade_addons); module_registry.cpp remains (empty
+# DC_LITE or DC_BUILD_LITE: omit in-repo module implementations (audio/controller/reshade_addons); module_registry.cpp remains (empty
 # registry + stubs via DC_INTERNAL_MODULES=0). ReShade ini overrides live under modules/reshade_addons/ and are excluded
 # here; config/override_reshade_settings_stub.cpp stays in the build (from GLOB) as a no-op OverrideReShadeSettings.
-# When DC_LITE=OFF, exclude that stub so only modules/reshade_addons/override_reshade_settings.cpp provides the symbol.
+# When not a Lite build, exclude that stub so only modules/reshade_addons/override_reshade_settings.cpp provides the symbol.
 # proxy_dll/*.cpp stay in the build so the same binary works as a renamed d3d11/dxgi/etc. proxy (full exports.def).
 # For addon-only minimal exports see proxy_dll/exports_addon_only.def (not wired by default).
-if(DC_LITE)
+if(DC_LITE OR DC_BUILD_LITE)
   list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/modules/audio/.*\\.cpp$")
   list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/modules/controller/.*\\.cpp$")
   list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/modules/reshade_addons/.*\\.cpp$")
@@ -80,8 +80,8 @@ add_library(zzz_display_commander MODULE
 )
 set(_dc_link_exports_def "${CMAKE_CURRENT_LIST_DIR}/proxy_dll/exports.def")
 target_sources(zzz_display_commander PRIVATE ${_dc_link_exports_def})
-if(DC_LITE)
-  message(STATUS "Display Commander: DC_LITE=ON — built-in modules omitted; full API proxy exports (exports.def)")
+if(DC_LITE OR DC_BUILD_LITE)
+  message(STATUS "Display Commander: Lite build — built-in modules omitted; full API proxy exports (exports.def)")
 endif()
 
 if(EXPERIMENTAL_TAB)
@@ -98,7 +98,7 @@ if(DC_INTERNAL_MODULES)
 else()
   target_compile_definitions(zzz_display_commander PRIVATE DC_INTERNAL_MODULES=0)
 endif()
-if(DC_LITE)
+if(DC_LITE OR DC_BUILD_LITE)
   target_compile_definitions(zzz_display_commander PRIVATE DC_LITE=1)
 endif()
 if(DC_EXTERNAL_MODULES)

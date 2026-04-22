@@ -25,6 +25,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.14.12
+- [hooks] **NGX GetParameters prime after export hooks** - After DC installs NGX export hooks, try D3D12, D3D11, and Vulkan `GetParameters` once through the trampoline; if NGX was already initialized, parameter vtable hooks can attach without waiting for the next game call.
+
 ## v0.14.11
 - [ui] [hooks] **Main tab NGX late-load warning** - Add a warning when DC is loaded too late, and DLSS stats aren't available. Spec: `docs/specs/main_tab_ngx_late_load_warning.md`.
 

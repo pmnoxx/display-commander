@@ -409,6 +409,8 @@ using NVSDK_NGX_VULKAN_Init_with_ProjectID_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(
     const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo, NVSDK_NGX_Version InSDKVersion);
 using NVSDK_NGX_VULKAN_Shutdown1_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(VkDevice InDevice);
 using NVSDK_NGX_VULKAN_GetParameters_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter** OutParameters);
+/** D3D11/D3D12/Vulkan GetParameters share this signature (prime vtable after Init without per-API casts at call sites). */
+using NVSDK_NGX_GetParameters_Outlet_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter** OutParameters);
 using NVSDK_NGX_VULKAN_GetCapabilityParameters_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter** OutParameters);
 using NVSDK_NGX_VULKAN_AllocateParameters_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter** OutParameters);
 using NVSDK_NGX_VULKAN_CreateFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(VkCommandBuffer InCmdList,
@@ -613,6 +615,33 @@ static void ApplyDLSSPresetParameters(NVSDK_NGX_Parameter* InParameters) {
     // Mark as initialized
     g_ngx_presets_initialized.store(true);
     LogInfo("DLSS preset parameters applied successfully");
+}
+
+// Shared path when GetParameters / GetCapabilityParameters / AllocateParameters (or Init-time prime) yields a parameter
+// object: install parameter vtable hooks (once), track last pointer, apply DLSS preset overrides.
+static void OnNGXParameterOutletSuccess(NVSDK_NGX_Parameter* params, const char* context) {
+    CALL_GUARD_NO_TS();
+    if (params == nullptr) {
+        return;
+    }
+    HookNGXParameterVTable(params, context);
+    g_last_ngx_parameter.store(params);
+    ApplyDLSSPresetParameters(params);
+}
+
+// Call NGX GetParameters via original (not detour) after successful Init so vtable hooks can install early when the
+// runtime supports it. No-op if hooks already installed or export was not hooked.
+static void TryPrimeNGXParameterHooksViaGetParameters(NVSDK_NGX_GetParameters_Outlet_pfn get_parameters_original,
+                                                      const char* context) {
+    CALL_GUARD_NO_TS();
+    if (get_parameters_original == nullptr || g_ngx_vtable_hooks_installed) {
+        return;
+    }
+    NVSDK_NGX_Parameter* params = nullptr;
+    const NVSDK_NGX_Result ret = get_parameters_original(&params);
+    if (ret == NVSDK_NGX_Result_Success && params != nullptr) {
+        OnNGXParameterOutletSuccess(params, context);
+    }
 }
 
 // Function to reset NGX preset initialization flag
@@ -1255,7 +1284,14 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_Detour(unsigned long long InApp
     LogInfo("NGX D3D12 Init called - AppId: %llu", InApplicationId);
 
     if (NVSDK_NGX_D3D12_Init_Original != nullptr) {
-        return NVSDK_NGX_D3D12_Init_Original(InApplicationId, InApplicationDataPath, InDevice, InSDKVersion);
+        const NVSDK_NGX_Result ret =
+            NVSDK_NGX_D3D12_Init_Original(InApplicationId, InApplicationDataPath, InDevice, InSDKVersion);
+        if (ret == NVSDK_NGX_Result_Success) {
+            TryPrimeNGXParameterHooksViaGetParameters(
+                reinterpret_cast<NVSDK_NGX_GetParameters_Outlet_pfn>(NVSDK_NGX_D3D12_GetParameters_Original),
+                "D3D12_Init_GetParameters_prime");
+        }
+        return ret;
     }
 
     return NVSDK_NGX_Result_Fail;
@@ -1273,8 +1309,14 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_Detour(unsigned long long InApp
     LogInfo("NGX D3D12 Init called - AppId: %llu", InApplicationId);
 
     if (NVSDK_NGX_D3D12_Init_Original != nullptr) {
-        return NVSDK_NGX_D3D12_Init_Original(InApplicationId, InApplicationDataPath, InDevice, InFeatureInfo,
-                                             InSDKVersion);
+        const NVSDK_NGX_Result ret = NVSDK_NGX_D3D12_Init_Original(InApplicationId, InApplicationDataPath, InDevice,
+                                                                   InFeatureInfo, InSDKVersion);
+        if (ret == NVSDK_NGX_Result_Success) {
+            TryPrimeNGXParameterHooksViaGetParameters(
+                reinterpret_cast<NVSDK_NGX_GetParameters_Outlet_pfn>(NVSDK_NGX_D3D12_GetParameters_Original),
+                "D3D12_Init_GetParameters_prime");
+        }
+        return ret;
     }
 
     return NVSDK_NGX_Result_Fail;
@@ -1294,8 +1336,14 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_Ext_Detour(unsigned long long I
     LogInfo("NGX D3D12 Init Ext called - AppId: %llu", InApplicationId);
 
     if (NVSDK_NGX_D3D12_Init_Ext_Original != nullptr) {
-        return NVSDK_NGX_D3D12_Init_Ext_Original(InApplicationId, InApplicationDataPath, InDevice, InSDKVersion,
-                                                 InParameters);
+        const NVSDK_NGX_Result ret = NVSDK_NGX_D3D12_Init_Ext_Original(
+            InApplicationId, InApplicationDataPath, InDevice, InSDKVersion, InParameters);
+        if (ret == NVSDK_NGX_Result_Success) {
+            TryPrimeNGXParameterHooksViaGetParameters(
+                reinterpret_cast<NVSDK_NGX_GetParameters_Outlet_pfn>(NVSDK_NGX_D3D12_GetParameters_Original),
+                "D3D12_Init_Ext_GetParameters_prime");
+        }
+        return ret;
     }
 
     return NVSDK_NGX_Result_Fail;
@@ -1314,8 +1362,14 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_with_ProjectID_Detour(
     LogInfo("NGX D3D12 Init ProjectID called - ProjectId: %s", InProjectId ? InProjectId : "null");
 
     if (NVSDK_NGX_D3D12_Init_with_ProjectID_Original != nullptr) {
-        return NVSDK_NGX_D3D12_Init_with_ProjectID_Original(InProjectId, InEngineType, InEngineVersion,
-                                                       InApplicationDataPath, InDevice, InFeatureInfo, InSDKVersion);
+        const NVSDK_NGX_Result ret = NVSDK_NGX_D3D12_Init_with_ProjectID_Original(
+            InProjectId, InEngineType, InEngineVersion, InApplicationDataPath, InDevice, InFeatureInfo, InSDKVersion);
+        if (ret == NVSDK_NGX_Result_Success) {
+            TryPrimeNGXParameterHooksViaGetParameters(
+                reinterpret_cast<NVSDK_NGX_GetParameters_Outlet_pfn>(NVSDK_NGX_D3D12_GetParameters_Original),
+                "D3D12_Init_with_ProjectID_GetParameters_prime");
+        }
+        return ret;
     }
 
     return NVSDK_NGX_Result_Fail;
@@ -1635,8 +1689,15 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_VULKAN_Init_Detour(unsigned long long InAp
     g_ngx_counters.total_count.fetch_add(1);
     LogInfo("NGX Vulkan Init called - AppId: %llu", InApplicationId);
     if (NVSDK_NGX_VULKAN_Init_Original != nullptr) {
-        return NVSDK_NGX_VULKAN_Init_Original(InApplicationId, InApplicationDataPath, InInstance, InPD, InDevice,
-                                              InGIPA, InGDPA, InFeatureInfo, InSDKVersion);
+        const NVSDK_NGX_Result ret = NVSDK_NGX_VULKAN_Init_Original(
+            InApplicationId, InApplicationDataPath, InInstance, InPD, InDevice, InGIPA, InGDPA, InFeatureInfo,
+            InSDKVersion);
+        if (ret == NVSDK_NGX_Result_Success) {
+            TryPrimeNGXParameterHooksViaGetParameters(
+                reinterpret_cast<NVSDK_NGX_GetParameters_Outlet_pfn>(NVSDK_NGX_VULKAN_GetParameters_Original),
+                "Vulkan_Init_GetParameters_prime");
+        }
+        return ret;
     }
     return NVSDK_NGX_Result_Fail;
 }
@@ -1651,9 +1712,15 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_VULKAN_Init_with_ProjectID_Detour(
     g_ngx_counters.total_count.fetch_add(1);
     LogInfo("NGX Vulkan Init ProjectID called - ProjectId: %s", InProjectId ? InProjectId : "null");
     if (NVSDK_NGX_VULKAN_Init_with_ProjectID_Original != nullptr) {
-        return NVSDK_NGX_VULKAN_Init_with_ProjectID_Original(InProjectId, InEngineType, InEngineVersion,
-                                                           InApplicationDataPath, InInstance, InPD, InDevice, InGIPA,
-                                                           InGDPA, InFeatureInfo, InSDKVersion);
+        const NVSDK_NGX_Result ret = NVSDK_NGX_VULKAN_Init_with_ProjectID_Original(
+            InProjectId, InEngineType, InEngineVersion, InApplicationDataPath, InInstance, InPD, InDevice, InGIPA,
+            InGDPA, InFeatureInfo, InSDKVersion);
+        if (ret == NVSDK_NGX_Result_Success) {
+            TryPrimeNGXParameterHooksViaGetParameters(
+                reinterpret_cast<NVSDK_NGX_GetParameters_Outlet_pfn>(NVSDK_NGX_VULKAN_GetParameters_Original),
+                "Vulkan_Init_with_ProjectID_GetParameters_prime");
+        }
+        return ret;
     }
     return NVSDK_NGX_Result_Fail;
 }
@@ -1677,9 +1744,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_VULKAN_GetParameters_Detour(NVSDK_NGX_Para
         ret = NVSDK_NGX_VULKAN_GetParameters_Original(OutParameters);
     }
     if (ret == NVSDK_NGX_Result_Success && OutParameters != nullptr && *OutParameters != nullptr) {
-        HookNGXParameterVTable(*OutParameters, "Vulkan_GetParameters");
-        g_last_ngx_parameter.store(*OutParameters);
-        ApplyDLSSPresetParameters(*OutParameters);
+        OnNGXParameterOutletSuccess(*OutParameters, "Vulkan_GetParameters");
     }
     return ret;
 }
@@ -1693,9 +1758,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_VULKAN_GetCapabilityParameters_Detour(NVSD
         ret = NVSDK_NGX_VULKAN_GetCapabilityParameters_Original(OutParameters);
     }
     if (ret == NVSDK_NGX_Result_Success && OutParameters != nullptr && *OutParameters != nullptr) {
-        HookNGXParameterVTable(*OutParameters, "Vulkan_GetCapabilityParameters");
-        g_last_ngx_parameter.store(*OutParameters);
-        ApplyDLSSPresetParameters(*OutParameters);
+        OnNGXParameterOutletSuccess(*OutParameters, "Vulkan_GetCapabilityParameters");
     }
     return ret;
 }
@@ -1709,9 +1772,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_VULKAN_AllocateParameters_Detour(NVSDK_NGX
         ret = NVSDK_NGX_VULKAN_AllocateParameters_Original(OutParameters);
     }
     if (ret == NVSDK_NGX_Result_Success && OutParameters != nullptr && *OutParameters != nullptr) {
-        HookNGXParameterVTable(*OutParameters, "Vulkan_AllocateParameters");
-        g_last_ngx_parameter.store(*OutParameters);
-        ApplyDLSSPresetParameters(*OutParameters);
+        OnNGXParameterOutletSuccess(*OutParameters, "Vulkan_AllocateParameters");
     }
     return ret;
 }
@@ -1865,7 +1926,14 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_Detour(unsigned long long InApp
     LogInfo("NGX D3D11 Init called - AppId: %llu", InApplicationId);
 
     if (NVSDK_NGX_D3D11_Init_Original != nullptr) {
-        return NVSDK_NGX_D3D11_Init_Original(InApplicationId, InApplicationDataPath, InDevice, InSDKVersion);
+        const NVSDK_NGX_Result ret =
+            NVSDK_NGX_D3D11_Init_Original(InApplicationId, InApplicationDataPath, InDevice, InSDKVersion);
+        if (ret == NVSDK_NGX_Result_Success) {
+            TryPrimeNGXParameterHooksViaGetParameters(
+                reinterpret_cast<NVSDK_NGX_GetParameters_Outlet_pfn>(NVSDK_NGX_D3D11_GetParameters_Original),
+                "D3D11_Init_GetParameters_prime");
+        }
+        return ret;
     }
 
     return NVSDK_NGX_Result_Fail;
@@ -1883,8 +1951,14 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_Detour(unsigned long long InApp
     LogInfo("NGX D3D11 Init called - AppId: %llu", InApplicationId);
 
     if (NVSDK_NGX_D3D11_Init_Original != nullptr) {
-        return NVSDK_NGX_D3D11_Init_Original(InApplicationId, InApplicationDataPath, InDevice, InFeatureInfo,
-                                             InSDKVersion);
+        const NVSDK_NGX_Result ret = NVSDK_NGX_D3D11_Init_Original(InApplicationId, InApplicationDataPath, InDevice,
+                                                                   InFeatureInfo, InSDKVersion);
+        if (ret == NVSDK_NGX_Result_Success) {
+            TryPrimeNGXParameterHooksViaGetParameters(
+                reinterpret_cast<NVSDK_NGX_GetParameters_Outlet_pfn>(NVSDK_NGX_D3D11_GetParameters_Original),
+                "D3D11_Init_GetParameters_prime");
+        }
+        return ret;
     }
 
     return NVSDK_NGX_Result_Fail;
@@ -1903,8 +1977,14 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_Ext_Detour(unsigned long long I
     LogInfo("NGX D3D11 Init Ext called - AppId: %llu", InApplicationId);
 
     if (NVSDK_NGX_D3D11_Init_Ext_Original != nullptr) {
-        return NVSDK_NGX_D3D11_Init_Ext_Original(InApplicationId, InApplicationDataPath, InDevice, InSDKVersion,
-                                                 InParameters);
+        const NVSDK_NGX_Result ret = NVSDK_NGX_D3D11_Init_Ext_Original(
+            InApplicationId, InApplicationDataPath, InDevice, InSDKVersion, InParameters);
+        if (ret == NVSDK_NGX_Result_Success) {
+            TryPrimeNGXParameterHooksViaGetParameters(
+                reinterpret_cast<NVSDK_NGX_GetParameters_Outlet_pfn>(NVSDK_NGX_D3D11_GetParameters_Original),
+                "D3D11_Init_Ext_GetParameters_prime");
+        }
+        return ret;
     }
 
     return NVSDK_NGX_Result_Fail;
@@ -2091,6 +2171,11 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_with_ProjectID_Detour(
     NVSDK_NGX_Result result = NVSDK_NGX_D3D11_Init_with_ProjectID_Original(
         InProjectId, InEngineType, InEngineVersion, InApplicationDataPath, InDevice, InFeatureInfo, InSDKVersion);
     LogInfo("NVSDK_NGX_D3D11_Init_with_ProjectID returned: 0x%08X", result);
+    if (result == NVSDK_NGX_Result_Success) {
+        TryPrimeNGXParameterHooksViaGetParameters(
+            reinterpret_cast<NVSDK_NGX_GetParameters_Outlet_pfn>(NVSDK_NGX_D3D11_GetParameters_Original),
+            "D3D11_Init_with_ProjectID_GetParameters_prime");
+    }
     return result;
 }
 
@@ -2341,11 +2426,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_GetParameters_Detour(NVSDK_NGX_Param
     }
 
     if (ret == NVSDK_NGX_Result_Success && InParameters != nullptr && *InParameters != nullptr) {
-        HookNGXParameterVTable(*InParameters, "D3D12_GetParameters");
-        // Store parameter object for direct API calls
-        g_last_ngx_parameter.store(*InParameters);
-        // Apply DLSS preset parameters during initialization
-        ApplyDLSSPresetParameters(*InParameters);
+        OnNGXParameterOutletSuccess(*InParameters, "D3D12_GetParameters");
     }
 
     return ret;
@@ -2364,9 +2445,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_GetCapabilityParameters_Detour(NVSDK
     }
 
     if (ret == NVSDK_NGX_Result_Success && InParameters != nullptr && *InParameters != nullptr) {
-        HookNGXParameterVTable(*InParameters, "D3D12_GetCapabilityParameters");
-        g_last_ngx_parameter.store(*InParameters);
-        ApplyDLSSPresetParameters(*InParameters);
+        OnNGXParameterOutletSuccess(*InParameters, "D3D12_GetCapabilityParameters");
     }
 
     return ret;
@@ -2386,11 +2465,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_AllocateParameters_Detour(NVSDK_NGX_
     }
 
     if (ret == NVSDK_NGX_Result_Success && InParameters != nullptr && *InParameters != nullptr) {
-        HookNGXParameterVTable(*InParameters, "D3D12_AllocateParameters");
-        // Store parameter object for direct API calls
-        g_last_ngx_parameter.store(*InParameters);
-        // Apply DLSS preset parameters during initialization
-        ApplyDLSSPresetParameters(*InParameters);
+        OnNGXParameterOutletSuccess(*InParameters, "D3D12_AllocateParameters");
     }
 
     return ret;
@@ -2410,11 +2485,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_GetParameters_Detour(NVSDK_NGX_Param
     }
 
     if (ret == NVSDK_NGX_Result_Success && InParameters != nullptr && *InParameters != nullptr) {
-        HookNGXParameterVTable(*InParameters, "D3D11_GetParameters");
-        // Store parameter object for direct API calls
-        g_last_ngx_parameter.store(*InParameters);
-        // Apply DLSS preset parameters during initialization
-        ApplyDLSSPresetParameters(*InParameters);
+        OnNGXParameterOutletSuccess(*InParameters, "D3D11_GetParameters");
     }
 
     return ret;
@@ -2433,9 +2504,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_GetCapabilityParameters_Detour(NVSDK
     }
 
     if (ret == NVSDK_NGX_Result_Success && InParameters != nullptr && *InParameters != nullptr) {
-        HookNGXParameterVTable(*InParameters, "D3D11_GetCapabilityParameters");
-        g_last_ngx_parameter.store(*InParameters);
-        ApplyDLSSPresetParameters(*InParameters);
+        OnNGXParameterOutletSuccess(*InParameters, "D3D11_GetCapabilityParameters");
     }
 
     return ret;
@@ -2455,11 +2524,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_AllocateParameters_Detour(NVSDK_NGX_
     }
 
     if (ret == NVSDK_NGX_Result_Success && InParameters != nullptr && *InParameters != nullptr) {
-        HookNGXParameterVTable(*InParameters, "D3D11_AllocateParameters");
-        // Store parameter object for direct API calls
-        g_last_ngx_parameter.store(*InParameters);
-        // Apply DLSS preset parameters during initialization
-        ApplyDLSSPresetParameters(*InParameters);
+        OnNGXParameterOutletSuccess(*InParameters, "D3D11_AllocateParameters");
     }
 
     return ret;
@@ -2602,8 +2667,21 @@ bool InstallNGXHooks(HMODULE ngx_dll) {
         }
     }
 
+    // If NGX was already initialized before we installed export hooks, GetParameters may succeed now and install
+    // parameter vtable hooks early (otherwise Init/GetParameters detours still prime on first use).
+    TryPrimeNGXParameterHooksViaGetParameters(
+        reinterpret_cast<NVSDK_NGX_GetParameters_Outlet_pfn>(NVSDK_NGX_D3D12_GetParameters_Original),
+        "D3D12_Install_GetParameters_prime");
+    TryPrimeNGXParameterHooksViaGetParameters(
+        reinterpret_cast<NVSDK_NGX_GetParameters_Outlet_pfn>(NVSDK_NGX_D3D11_GetParameters_Original),
+        "D3D11_Install_GetParameters_prime");
+    TryPrimeNGXParameterHooksViaGetParameters(
+        reinterpret_cast<NVSDK_NGX_GetParameters_Outlet_pfn>(NVSDK_NGX_VULKAN_GetParameters_Original),
+        "Vulkan_Install_GetParameters_prime");
+
     LogInfo("NGX initialization hooks installed successfully");
-    LogInfo("NGX Parameter vtable hooks will be installed when Parameter objects are created");
+    LogInfo("NGX Parameter vtable hooks will be installed when Parameter objects are created (or immediately if "
+            "GetParameters prime after install succeeded)");
     LogInfo("NGX Init, CreateFeature, and EvaluateFeature hooks are now active");
     LogInfo("VTable hooks are called automatically inside detour functions");
 

@@ -25,8 +25,10 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
-## v0.14.9
+## v0.14.10
 - [ui] **OSD naming** - User-facing labels, tooltips, and hotkey text now say **OSD** instead of **Performance overlay**. Saved config keys (for example `show_performance_overlay`) are unchanged.
+
+## v0.14.9
 - [new feature] [ui] **CPU process/system load in OSD** - Added optional `CPU process` and `CPU system` overlay metrics.
 - [cleanup] [hooks] **Smooth Motion feature slice** - Moved Smooth Motion DLL tracking and loaded-state checks into `features/smooth_motion` so hook and UI code use one shared feature API instead of a standalone global.
 

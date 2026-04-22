@@ -522,14 +522,11 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         imgui.TextColored(
             ui::colors::TEXT_WARNING,
             ICON_FK_WARNING
-            " Display Commander was loaded too late for NGX parameter hooks (consider loading DC as a DLL proxy).");
+            " Display Commander was loaded too late for DLSS information to be displayed (consider loading DC as a DLL proxy).");
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
-                "This is usually caused by ReShade loading Display Commander too late (e.g. _nvngx.dll was already "
-                "loaded). "
                 "Recommendation: use Display Commander as dxgi.dll, d3d12.dll, d3d11.dll, or version.dll and ReShade "
-                "as Reshade64.dll so our hooks are active before NGX loads. "
-                "Parameter overrides and DLSS preset controls may not apply until then.");
+                "as Reshade64.dll so our hooks are active before NGX loads. ");
         }
         imgui.Spacing();
     }

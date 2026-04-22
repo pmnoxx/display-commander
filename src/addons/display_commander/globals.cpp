@@ -1287,9 +1287,6 @@ bool ShouldShowDlssInformationSection() {
     if (GetDlssTrackedModule(DlssTrackedKind::DLSS).has_value()) return true;
     if (GetDlssTrackedModule(DlssTrackedKind::DLSSG).has_value()) return true;
     if (GetDlssTrackedModule(DlssTrackedKind::DLSSD).has_value()) return true;
-    if (GetModuleHandleW(L"nvngx_dlss.dll") != nullptr) return true;
-    if (GetModuleHandleW(L"nvngx_dlssg.dll") != nullptr) return true;
-    if (GetModuleHandleW(L"nvngx_dlssd.dll") != nullptr) return true;
     return false;
 }
 

@@ -25,6 +25,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.14.14
+- [bugfix] [hooks] **Late-load Streamline hook bootstrap** - Fix hooking to streamline when DC is loaded as .addon64 / .addon32.
+
 ## v0.14.13
 - [removal] [build] **Display Commander Lite (`DC_LITE`) removed** - One addon binary again; the old Lite vs full split is replaced by **modules**, which are turned off by default.
 - [removal] [ui] **Main tab ReShade LoadFromDllMain warning removed** - The banner about `[ADDON] LoadFromDllMain` in ReShade.ini is no longer shown on the Main tab.

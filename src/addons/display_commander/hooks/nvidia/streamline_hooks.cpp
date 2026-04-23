@@ -601,6 +601,7 @@ static sl::Result slDLSSGGetState_Detour(const sl::ViewportHandle& viewport, sl:
 
 struct SlGetFeatureResolvedHookEntry {
     const char* export_name;
+    sl::Feature expected_feature;
     LPVOID detour;
     LPVOID* original;
     std::atomic<bool>* installed;
@@ -629,26 +630,60 @@ static void TryInstallSlSetDataHookFromPluginModule(void* address_in_plugin) {
 
 static const SlGetFeatureResolvedHookEntry kSlGetFeatureResolvedHooks[] = {
     {.export_name = "slDLSSGGetState",
+     .expected_feature = sl::kFeatureDLSS_G,
      .detour = reinterpret_cast<LPVOID>(slDLSSGGetState_Detour),
      .original = reinterpret_cast<LPVOID*>(&slDLSSGGetState_Original),
      .installed = &g_slDLSSGGetState_hook_installed,
      .install_sl_set_data_from_plugin = false},
     {.export_name = "slDLSSGSetOptions",
+     .expected_feature = sl::kFeatureDLSS_G,
      .detour = reinterpret_cast<LPVOID>(slDLSSGSetOptions_Detour),
      .original = reinterpret_cast<LPVOID*>(&slDLSSGSetOptions_Original),
      .installed = &g_slDLSSGSetOptions_hook_installed,
      .install_sl_set_data_from_plugin = false},
     {.export_name = "slDLSSGetOptimalSettings",
+     .expected_feature = sl::kFeatureDLSS,
      .detour = reinterpret_cast<LPVOID>(slDLSSGetOptimalSettings_Detour),
      .original = reinterpret_cast<LPVOID*>(&slDLSSGetOptimalSettings_Original),
      .installed = &g_slDLSSGetOptimalSettings_hook_installed,
      .install_sl_set_data_from_plugin = false},
     {.export_name = "slDLSSSetOptions",
+     .expected_feature = sl::kFeatureDLSS,
      .detour = reinterpret_cast<LPVOID>(slDLSSSetOptions_Detour),
      .original = reinterpret_cast<LPVOID*>(&slDLSSSetOptions_Original),
      .installed = &g_slDLSSSetOptions_hook_installed,
      .install_sl_set_data_from_plugin = true},
 };
+
+static void TryInstallSlGetFeatureResolvedHook(sl::Feature feature, const char* function_name, void* function) {
+    if (function_name == nullptr || function == nullptr) {
+        return;
+    }
+
+    for (const SlGetFeatureResolvedHookEntry& e : kSlGetFeatureResolvedHooks) {
+        if (std::strcmp(function_name, e.export_name) != 0) {
+            continue;
+        }
+        if (feature != e.expected_feature) {
+            LogWarn("slGetFeatureFunction feature mismatch for %s (got=%d expected=%d)", function_name,
+                    static_cast<int>(feature), static_cast<int>(e.expected_feature));
+            return;
+        }
+        if (e.installed->exchange(true)) {
+            return;
+        }
+        if (CreateAndEnableHook(function, e.detour, e.original, e.export_name)) {
+            LogInfo("Installed %s hook", e.export_name);
+            if (e.install_sl_set_data_from_plugin) {
+                TryInstallSlSetDataHookFromPluginModule(function);
+            }
+        } else {
+            e.installed->store(false);
+            LogError("Failed to install %s hook", e.export_name);
+        }
+        return;
+    }
+}
 
 // slGetFeatureFunction detour: install hooks when game requests DLSS-G/DLSS feature functions
 static sl::Result slGetFeatureFunction_Detour(sl::Feature feature, const char* functionName, void*& function) {
@@ -659,26 +694,7 @@ static sl::Result slGetFeatureFunction_Detour(sl::Feature feature, const char* f
     if (result != sl::Result::eOk || function == nullptr) {
         return result;
     }
-    if (functionName != nullptr) {
-        for (const SlGetFeatureResolvedHookEntry& e : kSlGetFeatureResolvedHooks) {
-            if (std::strcmp(functionName, e.export_name) != 0) {
-                continue;
-            }
-            if (e.installed->exchange(true)) {
-                break;
-            }
-            if (CreateAndEnableHook(function, e.detour, e.original, e.export_name)) {
-                LogInfo("Installed %s hook", e.export_name);
-                if (e.install_sl_set_data_from_plugin) {
-                    TryInstallSlSetDataHookFromPluginModule(function);
-                }
-            } else {
-                e.installed->store(false);
-                LogError("Failed to install %s hook", e.export_name);
-            }
-            break;
-        }
-    }
+    TryInstallSlGetFeatureResolvedHook(feature, functionName, function);
     return result;
 }
 
@@ -716,6 +732,18 @@ bool InstallStreamlineHooks(HMODULE streamline_module) { // sl.interposer.dll
             LogError("Failed to create and enable %s hook", entry.name);
            // RollbackStreamlineLoaderHooks();
            // return false;
+        }
+    }
+
+    if (slGetFeatureFunction_Original != nullptr) {
+        for (const SlGetFeatureResolvedHookEntry& e : kSlGetFeatureResolvedHooks) {
+            void* resolved_function = nullptr;
+            const sl::Result resolve_result =
+                slGetFeatureFunction_Original(e.expected_feature, e.export_name, resolved_function);
+            if (resolve_result != sl::Result::eOk || resolved_function == nullptr) {
+                continue;
+            }
+            TryInstallSlGetFeatureResolvedHook(e.expected_feature, e.export_name, resolved_function);
         }
     }
 

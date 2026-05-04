@@ -207,7 +207,18 @@ void RefreshRateMonitor::ProcessFrameStatistics(DXGI_FRAME_STATISTICS& stats) {
 
 bool RefreshRateMonitor::GetCurrentVBlankTime(DXGI_FRAME_STATISTICS& stats) {
     // Take the stored swap chain so next SignalPresent will set it again
+    // Log first failure and every 100th to avoid spam (e.g. DXGI_ERROR_FRAME_STATISTICS_DISJOINT)
+    const uint64_t tried = m_get_frame_stats_tried.load(std::memory_order_relaxed);
+    const uint64_t ok = m_get_frame_stats_ok.load(std::memory_order_relaxed);
+    const uint64_t failures = (tried > ok) ? (tried - ok) : 0;
+
+    if (failures >= 10) {
+        // Too many failures, stop monitoring
+        return false;
+    }
+
     IDXGISwapChain* sc = m_dxgi_swapchain.exchange(nullptr, std::memory_order_acq_rel);
+
     if (sc == nullptr) {
         return false;
     }
@@ -219,11 +230,7 @@ bool RefreshRateMonitor::GetCurrentVBlankTime(DXGI_FRAME_STATISTICS& stats) {
         return true;
     }
     m_last_get_frame_stats_hr.store(hr, std::memory_order_release);
-    // Log first failure and every 100th to avoid spam (e.g. DXGI_ERROR_FRAME_STATISTICS_DISJOINT)
-    const uint64_t tried = m_get_frame_stats_tried.load(std::memory_order_relaxed);
-    const uint64_t ok = m_get_frame_stats_ok.load(std::memory_order_relaxed);
-    const uint64_t failures = (tried > ok) ? (tried - ok) : 0;
-    if (failures == 1 || (failures > 0 && (failures % 100 == 0))) {
+    {
         LogWarn("[RefreshRateMonitor] GetFrameStatistics failed: 0x%08X (failures so far: %llu)",
                 static_cast<unsigned>(hr), static_cast<unsigned long long>(failures));
     }

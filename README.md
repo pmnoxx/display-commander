@@ -1,5 +1,9 @@
 # Display Commander
 
+[![Build](https://github.com/pmnoxx/display-commander/actions/workflows/build.yml/badge.svg)](https://github.com/pmnoxx/display-commander/actions/workflows/build.yml) [![Nightly](https://github.com/pmnoxx/display-commander/actions/workflows/nightly.yml/badge.svg)](https://github.com/pmnoxx/display-commander/actions/workflows/nightly.yml)
+
+[![Discord](https://img.shields.io/discord/1487722129284665544?logo=discord&logoColor=%23fff&label=Discord&labelColor=%235865F2)](https://discord.gg/bzXAdDqtyY)
+
 Display Commander is a ReShade addon that provides in-game control over display, windowing, performance, and audio. It adds a simple UI inside the ReShade overlay to adjust borderless/fullscreen behavior, window size and alignment, monitor targeting, FPS limiting (including background caps), and per-process audio volume/mute.
 
 Note: Applying window operations from the main thread can crash some apps. This addon performs them on a background thread.

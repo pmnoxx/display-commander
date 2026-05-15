@@ -2,7 +2,7 @@
 
 [![Build](https://github.com/pmnoxx/display-commander/actions/workflows/build.yml/badge.svg)](https://github.com/pmnoxx/display-commander/actions/workflows/build.yml) [![Nightly](https://github.com/pmnoxx/display-commander/actions/workflows/nightly.yml/badge.svg)](https://github.com/pmnoxx/display-commander/actions/workflows/nightly.yml)
 
-[![Discord](https://img.shields.io/discord/1487722129284665544?logo=discord&logoColor=%23fff&label=Discord&labelColor=%235865F2)](https://discord.com/invite/G7a3b3Kn)
+[![Discord](https://img.shields.io/discord/1487722129284665544?logo=discord&logoColor=%23fff&label=Discord&labelColor=%235865F2)](https://discord.gg/bzXAdDqtyY)
 
 Display Commander is a ReShade addon that provides in-game control over display, windowing, performance, and audio. It adds a simple UI inside the ReShade overlay to adjust borderless/fullscreen behavior, window size and alignment, monitor targeting, FPS limiting (including background caps), and per-process audio volume/mute.
 
@@ -12,7 +12,7 @@ Note: Applying window operations from the main thread can crash some apps. This 
 
 **Latest stable release**: [Latest Release](https://github.com/pmnoxx/display-commander/releases) - Compatible with ReShade 6.6.2
 
-**Community**: [Display Commander Discord](https://discord.com/invite/G7a3b3Kn) — help, updates, and discussion.
+**Community**: [Display Commander Discord](https://discord.gg/bzXAdDqtyY) — help, updates, and discussion.
 
 
 ## 📥 Latest Builds
@@ -115,7 +115,7 @@ GitHub Actions builds x64 and x86 on pushes and PRs and uploads the resulting `.
 Need help? Check out our [Support Guide](SUPPORT.md) for detailed information on getting assistance.
 
 **Quick Support Links:**
-- **Display Commander Discord**: [discord.com/invite/G7a3b3Kn](https://discord.com/invite/G7a3b3Kn) — primary community for Display Commander (help, updates, feature discussion).
+- **Display Commander Discord**: [discord.gg/bzXAdDqtyY](https://discord.gg/bzXAdDqtyY) — primary community for Display Commander (help, updates, feature discussion).
 - **Support Thread**: [Display Commander Support](https://discord.com/channels/1487722129284665544/1488835719995723897)
 - **GitHub Issues**: [Report bugs or request features](https://github.com/pmnoxx/display-commander/issues)
 

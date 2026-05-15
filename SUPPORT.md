@@ -17,7 +17,7 @@ If you need help with the Display Commander addon, there are several ways to get
 
 The primary support channel for Display Commander is the **Display Commander Discord server**:
 
-- **Discord Server**: [Join Display Commander Discord](https://discord.com/invite/G7a3b3Kn)
+- **Discord Server**: [Join Display Commander Discord](https://discord.gg/bzXAdDqtyY)
 - **Support Channel**: [Display Commander Support Channel](https://discord.com/channels/1487722129284665544/1488835719995723897)
 
 The Display Commander Discord community is the best place to:
@@ -89,7 +89,7 @@ If you'd like to contribute to the project:
 
 - **Repository**: [GitHub](https://github.com/pmnoxx/reshade-display-commander)
 - **Releases**: [Latest Builds](https://github.com/pmnoxx/reshade-display-commander/releases)
-- **Discord**: [Display Commander Community](https://discord.com/invite/G7a3b3Kn)
+- **Discord**: [Display Commander Community](https://discord.gg/bzXAdDqtyY)
 - **Support Channel**: [Direct Link](https://discord.com/channels/1487722129284665544/1488835719995723897)
 
 ## Support the Project

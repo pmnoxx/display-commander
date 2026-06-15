@@ -634,7 +634,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
         }
         FpsLimiterPreset preset = settings::g_mainTabSettings.native_reflex_fps_preset.GetEnumValue();
 
-        PushFpsLimiterSliderColumnAlign(imgui, fps_limiter_checkbox_column_gutter, true);
+        //PushFpsLimiterSliderColumnAlign(imgui, fps_limiter_checkbox_column_gutter, true);
         imgui.SetNextItemWidth(500.f);
         if (ComboSettingEnumWrapper(settings::g_mainTabSettings.native_reflex_fps_preset, "FPS limiter preset", imgui,
                                     600.f)) {

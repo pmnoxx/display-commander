@@ -1,6 +1,6 @@
 # Display Commander
 
-[![Build](https://github.com/pmnoxx/display-commander/actions/workflows/build.yml/badge.svg)](https://github.com/pmnoxx/display-commander/actions/workflows/build.yml) [![Nightly](https://github.com/pmnoxx/display-commander/actions/workflows/nightly.yml/badge.svg)](https://github.com/pmnoxx/display-commander/actions/workflows/nightly.yml)
+[![Build](https://github.com/pmnoxx/display-commander/actions/workflows/build.yml/badge.svg)](https://github.com/pmnoxx/display-commander/actions/workflows/build.yml)
 
 [![Discord](https://img.shields.io/discord/1487722129284665544?logo=discord&logoColor=%23fff&label=Discord&labelColor=%235865F2)](https://discord.gg/bzXAdDqtyY)
 
@@ -30,8 +30,6 @@ Note: Applying window operations from the main thread can crash some apps. This 
 | **x86** | [zzz_display_commander_lite.addon32](https://github.com/pmnoxx/display-commander/releases/download/latest_build/zzz_display_commander_lite.addon32) |
 
 **🐛 Latest Debug Build**: Debug build with PDB symbols for debugging and crash analysis: [Latest Debug Build](https://github.com/pmnoxx/display-commander/releases/tag/latest_debug).
-
-**🔄 Nightly Builds**: Scheduled development builds (daily): [Nightly Releases](https://github.com/pmnoxx/display-commander/releases/tag/nightly).
 
 **🔨 Workflow artifacts**: Download from the [latest successful workflow run](https://github.com/pmnoxx/display-commander/actions/workflows/build.yml?query=branch%3Amain+is%3Asuccess) (requires GitHub account for artifact downloads).
 
@@ -108,7 +106,6 @@ GitHub Actions builds x64 and x86 on pushes and PRs and uploads the resulting `.
 
 - **Latest Build**: Every successful push to `main` updates the [Latest Build](https://github.com/pmnoxx/display-commander/releases/tag/latest_build) release (bleeding edge).
 - **Latest Debug Build**: Every successful push to `main` also updates the [Latest Debug Build](https://github.com/pmnoxx/display-commander/releases/tag/latest_debug) release (debug binaries with PDB symbols).
-- **Nightly**: A scheduled build runs daily at 2:00 AM UTC and updates the [Nightly](https://github.com/pmnoxx/display-commander/releases/tag/nightly) release.
 
 ## Support
 

@@ -180,7 +180,7 @@ jobs:
           - \`zzz_display_commander.addon32\` - 32-bit version
           - \`zzz_display_commander_lite.addon64\` / \`zzz_display_commander_lite.addon32\` - same binaries as above (legacy filenames)
 
-          For scheduled development builds, see [Nightly](https://github.com/pmnoxx/display-commander/releases/tag/nightly). For stable releases, use the main [Releases](https://github.com/pmnoxx/display-commander/releases) page.
+          For stable releases, use the main [Releases](https://github.com/pmnoxx/display-commander/releases) page.
           EOF
           sed -i 's/^          //' release_body_build.txt
 

@@ -29,6 +29,7 @@ Planned:
 ## v0.14.20
 - [new feature] **CBT service feature**
 - [cleanup] [build] **Nightly CI removed** - Dropped the scheduled GitHub Actions nightly workflow and README links; use [Latest Build](https://github.com/pmnoxx/display-commander/releases/tag/latest_build) for bleeding-edge artifacts instead.
+- [ui] **FPS limiter preset alignment** - Fixed layout alignment of the FPS limiter preset dropdown in Display Settings.
 
 ## v0.14.19
 - [ui] **Fixed alignmenty inside Display Settings**

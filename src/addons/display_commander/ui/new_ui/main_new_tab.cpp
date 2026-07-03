@@ -17,9 +17,7 @@
 #include "../../hooks/windows_hooks/window_proc_hooks.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../latency/reflex_provider.hpp"
-#include "../../latent_sync/refresh_rate_monitor_integration.hpp"
 #include "../../modules/module_registry.hpp"
-#include "../../nvapi/gpu_dynamic_utilization.hpp"
 #include "../../nvapi/nvapi_init.hpp"
 #include "../forkawesome.h"
 #include "../ui_colors.hpp"
@@ -73,80 +71,6 @@ namespace ui::new_ui {
 
 namespace {
 
-// Draw DXGI overlay subsection (show DXGI VRR status, show DXGI refresh rate). Uses RefreshRateMonitor when
-// enable_dxgi_refresh_rate_vrr_detection is on (Debug DXGI refresh tab in -DebugTabs builds, or config). Checkboxes are
-// disabled when that setting is off.
-void DrawDxgiOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui) {
-    imgui.Columns(1);
-    imgui.Separator();
-    imgui.TextUnformatted("DXGI");
-    imgui.Columns(4, "overlay_checkboxes", false);
-
-    const bool dxgi_detection_enabled =
-        settings::g_advancedTabSettings.enable_dxgi_refresh_rate_vrr_detection.GetValue();
-    if (!dxgi_detection_enabled) {
-        imgui.BeginDisabled();
-    }
-
-    bool show_dxgi_vrr_status = settings::g_mainTabSettings.show_dxgi_vrr_status.GetValue();
-    if (imgui.Checkbox("Show DXGI VRR status", &show_dxgi_vrr_status)) {
-        settings::g_mainTabSettings.show_dxgi_vrr_status.SetValue(show_dxgi_vrr_status);
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Shows DXGI-based VRR status on the OSD (RefreshRateMonitor heuristic: rate spread / "
-            "samples below threshold). Enable \"DXGI refresh rate / VRR detection\" in the Debug DXGI refresh tab "
-            "(-DebugTabs build) or via addon config for data.");
-    }
-    imgui.NextColumn();
-
-    bool show_dxgi_refresh_rate = settings::g_mainTabSettings.show_dxgi_refresh_rate.GetValue();
-    if (imgui.Checkbox("Show DXGI refresh rate", &show_dxgi_refresh_rate)) {
-        settings::g_mainTabSettings.show_dxgi_refresh_rate.SetValue(show_dxgi_refresh_rate);
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Shows DXGI refresh rate (Hz) on the OSD from swap chain GetFrameStatistics. "
-            "Enable \"DXGI refresh rate / VRR detection\" in the Debug DXGI refresh tab (-DebugTabs build) or via addon "
-            "config for data.");
-    }
-    imgui.NextColumn();
-
-    if (!dxgi_detection_enabled) {
-        imgui.EndDisabled();
-    }
-
-    imgui.Columns(1);
-
-    // Show current DXGI VRR status and refresh rate on the main tab when detection is enabled
-    if (dxgi_detection_enabled) {
-        dxgi::fps_limiter::RefreshRateStats dxgi_stats = dxgi::fps_limiter::GetRefreshRateStats();
-        double dxgi_hz = dxgi::fps_limiter::GetSmoothedRefreshRate();
-        if (dxgi_stats.is_valid || dxgi_hz > 0.0) {
-            imgui.Spacing();
-            if (dxgi_stats.is_valid) {
-                if (dxgi_stats.all_last_20_within_1s && dxgi_stats.samples_below_threshold_last_10s >= 2) {
-                    imgui.TextColored(ui::colors::TEXT_SUCCESS, "VRR: On");
-                } else {
-                    imgui.TextColored(ui::colors::TEXT_DIMMED, "VRR: Off");
-                }
-                imgui.SameLine(0.0f, imgui.GetStyle().ItemInnerSpacing.x * 2.0f);
-            }
-            if (dxgi_hz > 0.0) {
-                imgui.Text("Refresh rate: %.1f Hz (min %.1f / max %.1f)", dxgi_hz, dxgi_stats.min_rate,
-                           dxgi_stats.max_rate);
-            } else {
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "Refresh rate: -- Hz");
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx(
-                    "Current DXGI refresh rate from swap chain. Enable \"Show DXGI VRR status\" / \"Show DXGI refresh "
-                    "rate\" above to show in overlay.");
-            }
-        }
-    }
-}
-
 // Draw NVAPI stats subsection. Whole subsection is disabled when NVAPI is not initialized.
 // (Optional NVAPI overlay stats remain 64-bit build only via is_64_bit().)
 void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui) {
@@ -191,26 +115,6 @@ void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui
     }
     imgui.NextColumn();
     #endif
-
-    bool show_overlay_nvapi_gpu_util = settings::g_mainTabSettings.show_overlay_nvapi_gpu_util.GetValue();
-    if (imgui.Checkbox("GPU util", &show_overlay_nvapi_gpu_util)) {
-        settings::g_mainTabSettings.show_overlay_nvapi_gpu_util.SetValue(show_overlay_nvapi_gpu_util);
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Shows NVIDIA GPU engine busy %%.");
-    }
-    imgui.NextColumn();
-
-    bool show_overlay_nvapi_gpu_temp = settings::g_mainTabSettings.show_overlay_nvapi_gpu_temp.GetValue();
-    if (imgui.Checkbox("GPU temp", &show_overlay_nvapi_gpu_temp)) {
-        settings::g_mainTabSettings.show_overlay_nvapi_gpu_temp.SetValue(show_overlay_nvapi_gpu_temp);
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Shows NVIDIA GPU temperature (Celsius).");
-    }
-    imgui.NextColumn();
 
     bool show_nvapi_latency_stats = settings::g_mainTabSettings.show_nvapi_latency_stats.GetValue();
     if (imgui.Checkbox("Latency PCL(AV)", &show_nvapi_latency_stats)) {

@@ -7,7 +7,6 @@
 #include "hooks/windows_hooks/window_proc_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "latency/reflex_provider.hpp"
-#include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "modules/module_registry.hpp"
 #include "nvapi/reflex_manager.hpp"
 #include "performance_types.hpp"
@@ -230,10 +229,6 @@ void DoInitializationWithHwnd(HWND hwnd) {
     ui::new_ui::InitializeNewUISystem();
     LogInfo("[DoInitializationWithHwnd] before StartContinuousMonitoring");
     StartContinuousMonitoring();
-
-    // Initialize refresh rate monitoring
-    LogInfo("[DoInitializationWithHwnd] before StartRefreshRateMonitoring");
-    dxgi::fps_limiter::StartRefreshRateMonitoring();
 
     // Set up window hooks if we have a valid HWND
     if (hwnd != nullptr && IsWindow(hwnd)) {

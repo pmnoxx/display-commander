@@ -128,21 +128,11 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_frame_time_graph;
     ui::new_ui::BoolSetting show_frame_time_stats;
     ui::new_ui::BoolSetting show_native_frame_time_graph;
-    /** Show DXGI-based VRR status on the OSD (RefreshRateMonitor heuristic). Requires DXGI refresh rate /
-     * VRR detection enabled (Debug DXGI refresh tab in -DebugTabs builds, or config). */
-    ui::new_ui::BoolSetting show_dxgi_vrr_status;
-    /** Show DXGI refresh rate (Hz) on the OSD (from RefreshRateMonitor / GetFrameStatistics). Requires DXGI
-     * refresh rate / VRR detection enabled (Debug DXGI refresh tab in -DebugTabs builds, or config). */
-    ui::new_ui::BoolSetting show_dxgi_refresh_rate;
     ui::new_ui::BoolSetting show_cpu_usage;
     /** Process CPU load (%) on the OSD (GetProcessTimes + GetSystemTimes; cached by cpu_telemetry). */
     ui::new_ui::BoolSetting show_overlay_cpu_process_load;
     /** System CPU load (%) on the OSD (GetSystemTimes; cached by cpu_telemetry). */
     ui::new_ui::BoolSetting show_overlay_cpu_system_load;
-    /** NVIDIA GPU engine busy %% on the OSD (NvAPI_GPU_GetDynamicPstatesInfoEx; first physical GPU). */
-    ui::new_ui::BoolSetting show_overlay_nvapi_gpu_util;
-    /** NVIDIA GPU temperature in Celsius on the OSD (NvAPI_GPU_GetThermalSettings; first physical GPU). */
-    ui::new_ui::BoolSetting show_overlay_nvapi_gpu_temp;
     /** Show NVAPI Reflex latency stats (PC latency + GPU frame time) on the OSD. */
     ui::new_ui::BoolSetting show_nvapi_latency_stats;
     /** Overlay: rolling avg simulation phase (NVAPI sim_end − sim_start, newest frame). */

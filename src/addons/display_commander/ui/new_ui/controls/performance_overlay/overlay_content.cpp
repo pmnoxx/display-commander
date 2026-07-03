@@ -7,10 +7,7 @@
 #include "globals.hpp"
 #include "hooks/nvidia/ngx_hooks.hpp"
 #include "latency/reflex_provider.hpp"
-#include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "modules/module_registry.hpp"
-#include "nvapi/gpu_dynamic_utilization.hpp"
-#include "nvapi/gpu_temperature.hpp"
 #include "nvapi/vrr_status.hpp"
 #include "settings/swapchain_tab_settings.hpp"
 #include "swapchain_events.hpp"
@@ -107,52 +104,12 @@ void OverlayTableRow_TextColored(display_commander::ui::IImGuiWrapper& imgui, Ov
 }
 
 void DrawOverlayGpuMemoryTable(display_commander::ui::IImGuiWrapper& imgui, OverlayLabelMode label_mode,
-                               bool show_tooltips, bool show_overlay_nvapi_gpu_util, bool show_overlay_nvapi_gpu_temp,
-                               bool show_overlay_vram, bool show_overlay_ram) {
-    const bool table_any = show_overlay_nvapi_gpu_util || show_overlay_nvapi_gpu_temp || show_overlay_vram || show_overlay_ram;
+                               bool show_tooltips, bool show_overlay_vram, bool show_overlay_ram) {
+    const bool table_any = show_overlay_vram || show_overlay_ram;
     if (!table_any) {
         return;
     }
     OverlayScalarTableBegin(imgui);
-    if (show_overlay_nvapi_gpu_util) {
-        nvapi::RequestGpuDynamicUtilizationFromOverlay(true);
-        unsigned gpu_pct = 0;
-        if (nvapi::GetCachedGpuDynamicUtilizationPercent(gpu_pct)) {
-            const double raw = static_cast<double>(gpu_pct);
-            static double smoothed_nv_gpu_util = 0.0;
-            static double displayed_nv_gpu_util = 0.0;
-            static LONGLONG s_nv_gpu_util_last_display_ns = 0;
-            constexpr double k_nv_gpu_alpha = 0.1;
-            smoothed_nv_gpu_util = (1.0 - k_nv_gpu_alpha) * smoothed_nv_gpu_util + k_nv_gpu_alpha * raw;
-            const LONGLONG now_ns_nv = utils::get_now_ns();
-            constexpr LONGLONG k_nv_gpu_display_interval_ns =
-                static_cast<LONGLONG>(0.2 * static_cast<double>(utils::SEC_TO_NS));
-            if (now_ns_nv - s_nv_gpu_util_last_display_ns >= k_nv_gpu_display_interval_ns) {
-                s_nv_gpu_util_last_display_ns = now_ns_nv;
-                displayed_nv_gpu_util = smoothed_nv_gpu_util;
-            }
-            OverlayTableRow_Text(
-                imgui, label_mode, "GPU", "GPU usage", show_tooltips,
-                "NVIDIA GPU engine utilization from NvAPI_GPU_GetDynamicPstatesInfoEx (~1 s rolling average, "
-                "first physical GPU).",
-                "%.1f%%", displayed_nv_gpu_util);
-        }
-    }
-    if (show_overlay_nvapi_gpu_temp) {
-        nvapi::RequestGpuTemperatureFromOverlay(true);
-        unsigned gpu_temp_c = 0;
-        if (nvapi::GetCachedGpuTemperatureCelsius(gpu_temp_c)) {
-            OverlayTableRow_Text(
-                imgui, label_mode, "GPU T", "GPU temp", show_tooltips,
-                "NVIDIA GPU temperature from NvAPI_GPU_GetThermalSettings (first physical GPU).",
-                "%u C", gpu_temp_c);
-        } else {
-            OverlayTableRow_TextColored(
-                imgui, label_mode, "GPU T", "GPU temp", ui::colors::TEXT_DIMMED, show_tooltips,
-                "NVIDIA GPU temperature is currently unavailable from NVAPI on this system.",
-                "%s", "N/A");
-        }
-    }
     if (show_overlay_vram) {
         uint64_t vram_used = 0;
         uint64_t vram_total = 0;
@@ -266,8 +223,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
     bool show_overlay_cpu_process_load = settings::g_mainTabSettings.show_overlay_cpu_process_load.GetValue();
     bool show_overlay_cpu_system_load = settings::g_mainTabSettings.show_overlay_cpu_system_load.GetValue();
-    bool show_overlay_nvapi_gpu_util = settings::g_mainTabSettings.show_overlay_nvapi_gpu_util.GetValue();
-    bool show_overlay_nvapi_gpu_temp = settings::g_mainTabSettings.show_overlay_nvapi_gpu_temp.GetValue();
     bool show_fg_mode = settings::g_mainTabSettings.show_fg_mode.GetValue();
     bool show_overlay_resolution = settings::g_mainTabSettings.show_overlay_resolution.GetValue();
     bool show_dlss_status = settings::g_mainTabSettings.show_dlss_status.GetValue();
@@ -278,8 +233,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     bool show_fps_limiter_late_frames_pct = settings::g_mainTabSettings.show_fps_limiter_late_frames_pct.GetValue();
     bool show_overlay_vram = settings::g_mainTabSettings.show_overlay_vram.GetValue();
     bool show_overlay_ram = settings::g_mainTabSettings.show_overlay_ram.GetValue();
-    bool show_dxgi_vrr_status = settings::g_mainTabSettings.show_dxgi_vrr_status.GetValue();
-    bool show_dxgi_refresh_rate = settings::g_mainTabSettings.show_dxgi_refresh_rate.GetValue();
     bool show_overlay_nvapi_sim_duration = settings::g_mainTabSettings.show_overlay_nvapi_sim_duration.GetValue();
     bool show_overlay_nvapi_sim_end_to_rs_start =
         settings::g_mainTabSettings.show_overlay_nvapi_sim_end_to_rs_start.GetValue();
@@ -416,123 +369,38 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         imgui.EndTable();
     }
 
-    // ----- Refresh / VRR: shared cache for NVAPI table row + debug overlay -----
-    static dxgi::fps_limiter::RefreshRateStats cached_vrr_stats{};
-    static LONGLONG last_valid_vrr_sample_ns = 0;
-    const bool show_vrr_debug_mode = settings::g_mainTabSettings.vrr_debug_mode.GetValue();
-    const bool vrr_overlay_cache = show_vrr_status || show_vrr_debug_mode;
-    LONGLONG now_ns_vrr = 0;
-    bool has_recent_vrr_sample = false;
-    if (vrr_overlay_cache) {
-        now_ns_vrr = utils::get_now_ns();
-        auto shared_stats_vrr = g_cached_refresh_rate_stats.load();
-        if (shared_stats_vrr && shared_stats_vrr->is_valid && shared_stats_vrr->sample_count > 0) {
-            cached_vrr_stats = *shared_stats_vrr;
-            last_valid_vrr_sample_ns = now_ns_vrr;
-        }
-        const LONGLONG sample_timeout_ns = 1000 * utils::NS_TO_MS;
-        has_recent_vrr_sample = (now_ns_vrr - last_valid_vrr_sample_ns) < sample_timeout_ns;
-    }
-
-    dxgi::fps_limiter::RefreshRateStats dxgi_stats{};
-    const bool need_dxgi_stats = show_dxgi_refresh_rate || show_dxgi_vrr_status;
-    if (need_dxgi_stats) {
-        dxgi_stats = dxgi::fps_limiter::GetRefreshRateStats();
-    }
-
-    // ----- Table: refresh rates (DXGI measured) + VRR summary rows -----
-    bool table2_any = show_dxgi_refresh_rate || show_vrr_status || show_dxgi_vrr_status;
-    double dxgi_hz_live = 0.0;
-    if (show_dxgi_refresh_rate) {
-        dxgi_hz_live = dxgi::fps_limiter::GetSmoothedRefreshRate();
-    }
-
-    if (table2_any) {
+    // ----- Table: NVAPI VRR summary row -----
+    if (show_vrr_status) {
         OverlayScalarTableBegin(imgui);
-        if (show_dxgi_refresh_rate) {
-            if (dxgi_hz_live > 0.0) {
-                OverlayTableRow_Text(
-                    imgui, label_mode, "Hz", "Refresh Rate", show_tooltips,
-                    "From swap chain GetFrameStatistics (RefreshRateMonitor). Enable DXGI refresh rate / VRR detection "
-                    "in the Debug DXGI refresh tab (-DebugTabs build) or via addon config.",
-                    "%.1f Hz", dxgi_hz_live);
+        bool cached_nvapi_ok = vrr_status::cached_nvapi_ok.load();
+        std::shared_ptr<nvapi::VrrStatus> cached_nvapi_vrr = vrr_status::cached_nvapi_vrr.load();
+        if (cached_nvapi_ok && cached_nvapi_vrr) {
+            if (cached_nvapi_vrr->is_display_in_vrr_mode && cached_nvapi_vrr->is_vrr_enabled) {
+                OverlayTableRow_TextColored(imgui, label_mode, "NV VRR", "VRR (NVAPI)", ui::colors::TEXT_SUCCESS,
+                                            show_tooltips, nullptr, "%s", "On");
+            } else if (cached_nvapi_vrr->is_display_in_vrr_mode) {
+                OverlayTableRow_TextColored(imgui, label_mode, "NV VRR", "VRR (NVAPI)", ui::colors::TEXT_WARNING,
+                                            show_tooltips, nullptr, "%s", "Capable");
+            } else if (cached_nvapi_vrr->is_vrr_requested) {
+                OverlayTableRow_TextColored(imgui, label_mode, "NV VRR", "VRR (NVAPI)", ui::colors::TEXT_WARNING,
+                                            show_tooltips, nullptr, "%s", "Requested");
             } else {
-                OverlayTableRow_TextColored(
-                    imgui, label_mode, "Hz", "Refresh Rate", ui::colors::TEXT_DIMMED, show_tooltips,
-                    "From swap chain GetFrameStatistics (RefreshRateMonitor). Enable DXGI refresh rate / VRR detection "
-                    "in the Debug DXGI refresh tab (-DebugTabs build) or via addon config.",
-                    "%s", "-- Hz");
+                OverlayTableRow_TextColored(imgui, label_mode, "NV VRR", "VRR (NVAPI)", ui::colors::TEXT_DIMMED,
+                                            show_tooltips, nullptr, "%s", "Off");
             }
-        }
-        if (show_vrr_status) {
-            bool cached_nvapi_ok = vrr_status::cached_nvapi_ok.load();
-            std::shared_ptr<nvapi::VrrStatus> cached_nvapi_vrr = vrr_status::cached_nvapi_vrr.load();
-            if (cached_nvapi_ok && cached_nvapi_vrr) {
-                if (cached_nvapi_vrr->is_display_in_vrr_mode && cached_nvapi_vrr->is_vrr_enabled) {
-                    OverlayTableRow_TextColored(imgui, label_mode, "NV VRR", "VRR (NVAPI)", ui::colors::TEXT_SUCCESS,
-                                                show_tooltips, nullptr, "%s", "On");
-                } else if (cached_nvapi_vrr->is_display_in_vrr_mode) {
-                    OverlayTableRow_TextColored(imgui, label_mode, "NV VRR", "VRR (NVAPI)", ui::colors::TEXT_WARNING,
-                                                show_tooltips, nullptr, "%s", "Capable");
-                } else if (cached_nvapi_vrr->is_vrr_requested) {
-                    OverlayTableRow_TextColored(imgui, label_mode, "NV VRR", "VRR (NVAPI)", ui::colors::TEXT_WARNING,
-                                                show_tooltips, nullptr, "%s", "Requested");
-                } else {
-                    OverlayTableRow_TextColored(imgui, label_mode, "NV VRR", "VRR (NVAPI)", ui::colors::TEXT_DIMMED,
-                                                show_tooltips, nullptr, "%s", "Off");
-                }
-            } else {
-                if (cached_vrr_stats.all_last_20_within_1s && cached_vrr_stats.samples_below_threshold_last_10s >= 2) {
-                    OverlayTableRow_TextColored(imgui, label_mode, "NV VRR", "VRR (NVAPI)", ui::colors::TEXT_SUCCESS,
-                                                show_tooltips, nullptr, "%s", "On");
-                } else {
-                    OverlayTableRow_TextColored(imgui, label_mode, "NV VRR", "VRR (NVAPI)", ui::colors::TEXT_DIMMED,
-                                                show_tooltips, nullptr, "%s", "NO NVAPI");
-                }
-            }
-        }
-        if (show_dxgi_vrr_status) {
-            if (dxgi_stats.is_valid && dxgi_stats.all_last_20_within_1s
-                && dxgi_stats.samples_below_threshold_last_10s >= 2) {
-                OverlayTableRow_TextColored(imgui, label_mode, "VRR", "VRR", ui::colors::TEXT_SUCCESS,
-                                            show_tooltips,
-                                            "Heuristic from present timing (RefreshRateMonitor / DXGI). Enable DXGI "
-                                            "refresh rate / VRR detection in the Debug DXGI refresh tab (-DebugTabs "
-                                            "build) or via addon config.",
-                                            "%s", "On");
-            } else if (dxgi_stats.is_valid) {
-                OverlayTableRow_TextColored(
-                    imgui, label_mode, "VRR", "VRR", ui::colors::TEXT_DIMMED, show_tooltips,
-                    "Heuristic from present timing (RefreshRateMonitor / DXGI). Enable DXGI refresh rate / VRR "
-                    "detection in the Debug DXGI refresh tab (-DebugTabs build) or via addon config.",
-                    "%s", "Off");
-            } else {
-                OverlayTableRow_TextColored(
-                    imgui, label_mode, "VRR", "VRR", ui::colors::TEXT_DIMMED, show_tooltips,
-                    "Heuristic from present timing (RefreshRateMonitor / DXGI). Enable DXGI refresh rate / VRR "
-                    "detection in the Debug DXGI refresh tab (-DebugTabs build) or via addon config.",
-                    "%s", "--");
-            }
+        } else {
+            OverlayTableRow_TextColored(imgui, label_mode, "NV VRR", "VRR (NVAPI)", ui::colors::TEXT_DIMMED,
+                                        show_tooltips, nullptr, "%s", "NO NVAPI");
         }
         imgui.EndTable();
     }
 
     // ----- NVAPI VRR debug (full width, below table) -----
-    if (vrr_overlay_cache) {
+    const bool show_vrr_debug_mode = settings::g_mainTabSettings.vrr_debug_mode.GetValue();
+    if (show_vrr_status || show_vrr_debug_mode) {
         perf_measurement::ScopedTimer overlay_show_vrr_status_timer(perf_measurement::Metric::OverlayShowVrrStatus);
         bool cached_nvapi_ok = vrr_status::cached_nvapi_ok.load();
         std::shared_ptr<nvapi::VrrStatus> cached_nvapi_vrr = vrr_status::cached_nvapi_vrr.load();
-
-        if (show_vrr_debug_mode && has_recent_vrr_sample && cached_vrr_stats.is_valid) {
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "  Fixed: %.2f Hz", cached_vrr_stats.fixed_refresh_hz);
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "  Threshold: %.2f Hz", cached_vrr_stats.threshold_hz);
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "  Total samples (10s): %u",
-                              cached_vrr_stats.total_samples_last_10s);
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "  Below threshold: %u",
-                              cached_vrr_stats.samples_below_threshold_last_10s);
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "  Last 20 within 1s: %s",
-                              cached_vrr_stats.all_last_20_within_1s ? "Yes" : "No");
-        }
 
         if (show_vrr_debug_mode && cached_nvapi_vrr) {
             if (!cached_nvapi_vrr->nvapi_initialized) {
@@ -563,9 +431,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     }
 
     // ----- Table: GPU + memory -----
-    DrawOverlayGpuMemoryTable(imgui, label_mode, show_tooltips, show_overlay_nvapi_gpu_util, show_overlay_nvapi_gpu_temp,
-                             show_overlay_vram,
-                             show_overlay_ram);
+    DrawOverlayGpuMemoryTable(imgui, label_mode, show_tooltips, show_overlay_vram, show_overlay_ram);
 
     // ----- DLSS / FG (table) -----
     if (show_fg_mode || show_overlay_resolution || show_dlss_status || show_dlss_quality_preset

@@ -1244,7 +1244,5 @@ EXPORTS
 	; ReShade loader API (same names as ReShade so installer/tools work when this proxy is used as d3d11/dxgi)
 	; Display Commander addon / CLI (addon entry + rundll32 CommandLine)
 	AddonInit
-	start_service
-	CBTProc
 	; Multi-proxy state: other DC instances can query this to decide HOOKED vs PROXY_DLL_ONLY
 	GetDisplayCommanderState

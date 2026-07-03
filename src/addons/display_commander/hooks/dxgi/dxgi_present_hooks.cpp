@@ -1,7 +1,6 @@
 #include "dxgi_present_hooks.hpp"
 #include "../../features/smooth_motion/smooth_motion.hpp"
 #include "../../globals.hpp"
-#include "../../latent_sync/refresh_rate_monitor_integration.hpp"
 #include "../../performance_types.hpp"
 #include "../../settings/advanced_tab_settings.hpp"
 #include "../../settings/main_tab_settings.hpp"
@@ -414,11 +413,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
         // Handle common after logic
         HandlePresentAfter(false);
     }
-    if (settings::g_advancedTabSettings.enable_dxgi_refresh_rate_vrr_detection.GetValue()) {
-        CALL_GUARD_NO_TS();
-        IDXGISwapChain* sc_for_monitor = (data.dxgi_swapchain != nullptr) ? data.dxgi_swapchain : This;
-        ::dxgi::fps_limiter::SignalRefreshRateMonitor(sc_for_monitor);
-    }
     CALL_GUARD_NO_TS();
 
     return res;
@@ -483,10 +477,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
     if (use_fps_limiter) {
         // Handle common after logic
         HandlePresentAfter(false);
-    }
-    if (settings::g_advancedTabSettings.enable_dxgi_refresh_rate_vrr_detection.GetValue()) {
-        IDXGISwapChain* sc_for_monitor = (data.dxgi_swapchain != nullptr) ? data.dxgi_swapchain : baseSwapChain;
-        ::dxgi::fps_limiter::SignalRefreshRateMonitor(sc_for_monitor);
     }
 
     return res;

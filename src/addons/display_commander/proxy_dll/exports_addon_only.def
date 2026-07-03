@@ -5,5 +5,3 @@ EXPORTS
 	; __declspec(dllexport) in addon.cpp.
 	AddonInit
 	GetDisplayCommanderState
-	start_service
-	CBTProc

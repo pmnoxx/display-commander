@@ -7,9 +7,6 @@
 #include "hooks/windows_hooks/api_hooks.hpp"
 #include "hooks/loadlibrary_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
-#include "latent_sync/refresh_rate_monitor_integration.hpp"
-#include "nvapi/gpu_dynamic_utilization.hpp"
-#include "nvapi/gpu_temperature.hpp"
 #include "nvapi/nvapi_init.hpp"
 #include "nvapi/nvapi_loader.hpp"
 #include "nvapi/vrr_status.hpp"
@@ -43,7 +40,6 @@ constexpr bool kMonitorPerSecondEnabled = true;
 constexpr int kMonitorPerSecondIntervalSec = 1;
 constexpr bool kMonitorScreensaver = true;
 constexpr bool kMonitorFpsAggregate = true;
-constexpr bool kMonitorRefreshRate = true;
 constexpr bool kMonitorVrrStatus = true;
 constexpr bool kMonitorExclusiveKeyGroups = true;
 constexpr bool kMonitorReflexAutoConfigure = true;
@@ -317,12 +313,6 @@ static void Every1sFpsAggregate() {
     g_perf_text_shared.store(std::make_shared<const std::string>(fps_oss.str()));
 }
 
-static void Every1sRefreshRate() {
-    g_continuous_monitoring_section.store("every1s_tasks:refresh_rate", std::memory_order_release);
-    auto stats = dxgi::fps_limiter::GetRefreshRateStats();
-    g_cached_refresh_rate_stats.store(std::make_shared<const dxgi::fps_limiter::RefreshRateStats>(stats));
-}
-
 static void Every1sVrrStatus() {
     g_continuous_monitoring_section.store("every1s_tasks:vrr_status", std::memory_order_release);
     bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
@@ -375,9 +365,6 @@ void every1s_tasks() {
     }
     if (kMonitorFpsAggregate) {
         Every1sFpsAggregate();
-    }
-    if (kMonitorRefreshRate) {
-        Every1sRefreshRate();
     }
     if (kMonitorVrrStatus) {
         Every1sVrrStatus();
@@ -743,8 +730,6 @@ void ContinuousMonitoringThread() {
             // Reset keyboard frame states for next frame
             display_commanderhooks::keyboard_tracker::ResetFrame();
 
-            nvapi::ProcessGpuDynamicUtilizationRequestInContinuousMonitoring();
-            nvapi::ProcessGpuTemperatureRequestInContinuousMonitoring();
             display_commander::feature::cpu_telemetry::ProcessCpuLoadRequestsInContinuousMonitoring();
         }
         g_continuous_monitoring_section.store("after_60fps", std::memory_order_release);

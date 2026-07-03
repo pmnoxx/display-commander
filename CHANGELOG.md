@@ -27,6 +27,9 @@ Planned:
 - Show override from NPI for DLSS presets. @adap
 
 ## v0.15.1
+- [removal] [hooks] **CBT injection service removed** - Removed the WH_CBT desktop hook service (`start_service` / `CBTProc` exports), injectee minimal-guest attach path, injection whitelist (`injection_list.txt`), and related process-attach branching. Display Commander no longer installs global CBT hooks or tracks injection success via the service PID file.
+- [removal] [ui] [settings] **DXGI refresh rate monitor removed** - Removed the background RefreshRateMonitor thread that measured display Hz from swap chain GetFrameStatistics, along with DXGI refresh rate / VRR overlay rows, their checkboxes and settings, Present-hook signaling, the Debug "DXGI refresh" tab, and the `enable_dxgi_refresh_rate_vrr_detection` advanced setting. NVAPI VRR status in the overlay is unchanged.
+- [removal] [ui] [settings] **GPU utilization & temperature overlay removed** - Removed the NVAPI-based GPU engine utilization and GPU temperature readouts from the performance overlay, along with their "GPU util" / "GPU temp" checkboxes and settings. These metrics were NVIDIA-only and are better read from other tools; removing them simplifies the overlay and drops the periodic NVAPI queries.
 - [removal] [settings] [ui] **Auto enable Windows HDR removed** - Removed automatic Windows HDR on game start and revert on exit, the related `auto_enable_windows_hdr` setting, and ReShade `LoadFromDllMain` merging for early load.
 - [removal] [settings] [ui] **Override HDR metadata removed** - Removed the MaxCLL/MaxFALL HDR10 metadata override (`auto_apply_maxmdl_1000_hdr_metadata`) and swapchain `SetHDRMetaData` injection on init.
 - [removal] [ui] **Resolution HDR controls removed** - Removed Windows HDR capability status and manual Enable/Disable HDR buttons from the Resolution widget.
@@ -37,6 +40,7 @@ Planned:
 - [removal] [settings] [ui] **PresentMon minimal ETW removed** - Removed built-in Win32k ETW flip-state tracing (`presentmon_minimal_etw`), the VSync & Tearing enable checkbox, OSD flip-state line, and related settings (`present_mon_etw_enabled`, `show_overlay_presentmon_flip`). Use the optional **PresentMon** external module when `DC_EXTERNAL_MODULES` is enabled.
 - [removal] **GPU completion monitoring thread removed** - Removed the dedicated GPU-completion wait thread (`gpu_completion_monitoring`) and the OSD rows it fed (GPU Duration, Sim-to-Display Latency, GPU Late Time). The DXGI fence event that only this thread waited on is no longer created. The `gpu_measurement_enabled` setting and DXGI fence-failure status remain; the OSD Latency row now uses NVAPI Reflex only.
 - [removal] [ui] **PresentMon (NVAPI) debug tab removed** - Removed the Debug sub-tab that toggled NVAPI Reflex rolling-average OSD lines. Those overlay settings and ini keys are unchanged; use the Main tab OSD controls or config where available.
+- [removal] [ui] **Vulkan debug tab removed** - Removed the Debug **Vulkan** sub-tab (loader hook stats and extension list). Vulkan loader hooks and injected Reflex behavior are unchanged.
 
 ## v0.14.20
 - [new feature] **CBT service feature**

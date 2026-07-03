@@ -2,12 +2,10 @@
 #include "debug_tab.hpp"
 #include "../../../globals.hpp"
 #include "display_config_debug_tab.hpp"
-#include "dxgi_refresh_rate_tab.hpp"
 #include "fps_limiter_debug_tab.hpp"
 #include "ngx_counters_tab.hpp"
 #include "nvidia_profile_inspector_tab.hpp"
 #include "reflex_pclstats_tab.hpp"
-#include "vulkan_tab.hpp"
 #include "window_info_debug_tab.hpp"
 #include "window_messages_tab.hpp"
 
@@ -37,19 +35,9 @@ void DrawDebugTab(display_commander::ui::IImGuiWrapper& imgui) {
         DrawWindowInfoDebugTab(imgui);
         imgui.EndTabItem();
     }
-    if (imgui.BeginTabItem("Vulkan", nullptr, 0)) {
-        g_rendering_ui_section.store("ui:tab:debug_vulkan", std::memory_order_release);
-        DrawVulkanTab(imgui);
-        imgui.EndTabItem();
-    }
     if (imgui.BeginTabItem("DisplayConfig", nullptr, 0)) {
         g_rendering_ui_section.store("ui:tab:debug_display_config", std::memory_order_release);
         DrawDisplayConfigDebugTab(imgui);
-        imgui.EndTabItem();
-    }
-    if (imgui.BeginTabItem("DXGI refresh", nullptr, 0)) {
-        g_rendering_ui_section.store("ui:tab:debug_dxgi_refresh", std::memory_order_release);
-        DrawDxgiRefreshRateTab(imgui);
         imgui.EndTabItem();
     }
     if (imgui.BeginTabItem("FPS limiter", nullptr, 0)) {

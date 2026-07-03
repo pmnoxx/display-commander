@@ -5,7 +5,6 @@
 #include "../../hooks/dxgi/dxgi_present_hooks.hpp"
 #include "../../hooks/hook_suppression_manager.hpp"
 #include "../../hooks/present_traffic_tracking.hpp"
-#include "../../latent_sync/refresh_rate_monitor_integration.hpp"
 #include "../../settings/advanced_tab_settings.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../swapchain_events.hpp"
@@ -221,10 +220,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Streamline_Detour(IDXGISwapChai
     if (use_fps_limiter) {
         display_commanderhooks::dxgi::HandlePresentAfter(true);
     }
-    if (settings::g_advancedTabSettings.enable_dxgi_refresh_rate_vrr_detection.GetValue()) {
-        IDXGISwapChain* sc_for_monitor = (data.dxgi_swapchain != nullptr) ? data.dxgi_swapchain : This;
-        ::dxgi::fps_limiter::SignalRefreshRateMonitor(sc_for_monitor);
-    }
     CALL_GUARD_NO_TS();
     return res;
 }
@@ -280,10 +275,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Streamline_Detour(IDXGISwapCha
     LogDxgiErrorUpTo10("IDXGISwapChain1::Present1 (Streamline)", res, &s_err_count);
     if (use_fps_limiter) {
         display_commanderhooks::dxgi::HandlePresentAfter(false);
-    }
-    if (settings::g_advancedTabSettings.enable_dxgi_refresh_rate_vrr_detection.GetValue()) {
-        IDXGISwapChain* sc_for_monitor = (data.dxgi_swapchain != nullptr) ? data.dxgi_swapchain : baseSwapChain;
-        ::dxgi::fps_limiter::SignalRefreshRateMonitor(sc_for_monitor);
     }
     return res;
 }

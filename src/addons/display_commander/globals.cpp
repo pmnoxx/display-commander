@@ -196,10 +196,6 @@ std::atomic<LONGLONG> g_global_frame_id_last_updated_ns{0};
 
 std::atomic<LONGLONG> g_performance_overlay_allowed_after_ns{0};
 
-std::atomic<uint64_t> g_nvapi_gpu_util_request_frame_id{0};
-std::atomic<uint64_t> g_nvapi_gpu_util_last_query_frame_id{0};
-std::atomic<uint64_t> g_nvapi_gpu_temp_request_frame_id{0};
-std::atomic<uint64_t> g_nvapi_gpu_temp_last_query_frame_id{0};
 std::atomic<uint64_t> g_cpu_telemetry_request_frame_id{0};
 std::atomic<uint64_t> g_cpu_telemetry_last_query_frame_id{0};
 
@@ -1382,9 +1378,6 @@ std::atomic<bool> g_swapchain_wrapper_present1_called{false};
 
 // Cached frame statistics (updated in present detour, read by monitoring thread)
 std::atomic<std::shared_ptr<DXGI_FRAME_STATISTICS>> g_cached_frame_stats{nullptr};
-
-// Cached refresh rate statistics (updated in continuous monitoring thread, read by render/UI threads)
-std::atomic<std::shared_ptr<const dxgi::fps_limiter::RefreshRateStats>> g_cached_refresh_rate_stats{nullptr};
 
 // Get DLSS Model Profile
 DLSSModelProfile GetDLSSModelProfile() {

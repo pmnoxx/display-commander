@@ -59,7 +59,6 @@ enum DisplayCommanderState : int {
     DC_STATE_HOOKED = 2,      // This instance installs hooks (MinHook, etc.)
     DC_STATE_DO_NOTHING = 3,  // Do not hook; no other DC was loaded
     DC_STATE_DLL_LOADER = 4,  // Loader instance: loads DC from Dll\X.Y.Z and does not hook; stays quiet
-    DC_STATE_CBT_INJECTEE = 5 // WH_CBT hook DLL loaded only for light guest work; no addon/hooks registration
 };
 extern std::atomic<DisplayCommanderState> g_display_commander_state;
 
@@ -585,14 +584,6 @@ extern std::atomic<LONGLONG> g_global_frame_id_last_updated_ns;
 extern std::atomic<LONGLONG> g_performance_overlay_allowed_after_ns;
 inline constexpr LONGLONG kPerformanceOverlayPostFirstFrameDelayNs = 2'000'000'000LL;
 
-/** `g_global_frame_id` when the OSD last requested an NVAPI GPU util sample; 0 = no active request. */
-extern std::atomic<uint64_t> g_nvapi_gpu_util_request_frame_id;
-/** `g_global_frame_id` when `NvAPI_GPU_GetDynamicPstatesInfoEx` was last run for overlay GPU util. */
-extern std::atomic<uint64_t> g_nvapi_gpu_util_last_query_frame_id;
-/** `g_global_frame_id` when the OSD last requested an NVAPI GPU temperature sample; 0 = no active request. */
-extern std::atomic<uint64_t> g_nvapi_gpu_temp_request_frame_id;
-/** `g_global_frame_id` when `NvAPI_GPU_GetThermalSettings` was last run for overlay GPU temperature. */
-extern std::atomic<uint64_t> g_nvapi_gpu_temp_last_query_frame_id;
 /** `g_global_frame_id` when the OSD last requested CPU telemetry sample; 0 = no active request. */
 extern std::atomic<uint64_t> g_cpu_telemetry_request_frame_id;
 /** `g_global_frame_id` when process/system CPU telemetry was last sampled for overlay rows. */
@@ -1402,15 +1393,6 @@ extern std::atomic<bool> g_ngx_presets_initialized;
 
 // Cached frame statistics (updated in present detour, read by monitoring thread)
 extern std::atomic<std::shared_ptr<DXGI_FRAME_STATISTICS>> g_cached_frame_stats;
-
-// Forward declaration for refresh rate stats (full type needed for shared_ptr)
-namespace dxgi::fps_limiter {
-struct RefreshRateStats;
-}
-
-// Cached refresh rate statistics (updated in continuous monitoring thread, read by render/UI threads)
-// Note: Using forward declaration works here because shared_ptr only needs the type for storage
-extern std::atomic<std::shared_ptr<const dxgi::fps_limiter::RefreshRateStats>> g_cached_refresh_rate_stats;
 
 // Swapchain wrapper statistics
 // Frame time ring buffer capacity (must be power of 2 for efficient modulo)

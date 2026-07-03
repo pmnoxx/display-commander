@@ -8,8 +8,6 @@
 
 namespace ui::new_ui {
 
-void DrawMainTabOptionalPanelsAdvancedSettingsUi(display_commander::ui::IImGuiWrapper& imgui);
-
 void DrawMainTabOptionalPanelsInOrder(display_commander::ui::GraphicsApi api,
                                       display_commander::ui::IImGuiWrapper& imgui,
                                       reshade::api::effect_runtime* runtime);

@@ -27,6 +27,7 @@ Planned:
 - Show override from NPI for DLSS presets. @adap
 
 ## v0.15.1
+- [ui] [settings] **Main tab optional panels always shown** - Audio Control, window actions, Input Control, DLSS Control, and DXGI Control are always visible on the Main tab (Audio Control still requires the audio module). Removed Advanced Settings toggles and the related `show_main_tab_*` settings.
 - [removal] [hooks] **CBT injection service removed** - Removed the WH_CBT desktop hook service (`start_service` / `CBTProc` exports), injectee minimal-guest attach path, injection whitelist (`injection_list.txt`), and related process-attach branching. Display Commander no longer installs global CBT hooks or tracks injection success via the service PID file.
 - [removal] [ui] [settings] **DXGI refresh rate monitor removed** - Removed the background RefreshRateMonitor thread that measured display Hz from swap chain GetFrameStatistics, along with DXGI refresh rate / VRR overlay rows, their checkboxes and settings, Present-hook signaling, the Debug "DXGI refresh" tab, and the `enable_dxgi_refresh_rate_vrr_detection` advanced setting. NVAPI VRR status in the overlay is unchanged.
 - [removal] [ui] [settings] **GPU utilization & temperature overlay removed** - Removed the NVAPI-based GPU engine utilization and GPU temperature readouts from the performance overlay, along with their "GPU util" / "GPU temp" checkboxes and settings. These metrics were NVIDIA-only and are better read from other tools; removing them simplifies the overlay and drops the periodic NVAPI queries.

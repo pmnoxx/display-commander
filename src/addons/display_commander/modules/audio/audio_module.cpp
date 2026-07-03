@@ -738,9 +738,6 @@ void DrawOverlay(display_commander::ui::IImGuiWrapper& imgui) {
 
 void DrawMainTabInline(display_commander::ui::IImGuiWrapper& imgui, reshade::api::effect_runtime* runtime) {
     (void)runtime;
-    if (!settings::g_mainTabSettings.show_main_tab_audio_control.GetValue()) {
-        return;
-    }
     imgui.Spacing();
     g_rendering_ui_section.store("ui:tab:main_new:audio", std::memory_order_release);
     ui::colors::PushHeaderColors(&imgui);

@@ -211,19 +211,6 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_controller_tab;
     ui::new_ui::BoolSetting show_reshade_tab;
 
-    /** Main tab: show Texture Filtering section. Default off. */
-    ui::new_ui::BoolSetting show_main_tab_texture_filtering;
-    /** Main tab: show Audio Control section. Default off. */
-    ui::new_ui::BoolSetting show_main_tab_audio_control;
-    /** Main tab: show window action buttons (minimize, focus, close, folders, etc.). Default off. */
-    ui::new_ui::BoolSetting show_main_tab_window_action_buttons;
-    /** Main tab: show Input Control section (blocking, clip cursor, remapping toggle). Default off. */
-    ui::new_ui::BoolSetting show_main_tab_input_control;
-    /** Main tab: show DLSS Control section (status, presets, overrides, NGX hooks hint). Default off. */
-    ui::new_ui::BoolSetting show_main_tab_dlss_control;
-    /** Main tab: show DXGI Control (flip-discard upgrade, max frame latency, buffer count). Default off. */
-    ui::new_ui::BoolSetting show_main_tab_dxgi_control;
-
     /** When enabled, install NvLowLatencyVk hooks when NvLowLatencyVk.dll is loaded (Vulkan Reflex frame pacing). */
     ui::new_ui::BoolSetting vulkan_nvll_hooks_enabled;
     /** When enabled, hook vulkan-1.dll vkGetDeviceProcAddr and wrap vkSetLatencyMarkerNV (VK_NV_low_latency2) for frame

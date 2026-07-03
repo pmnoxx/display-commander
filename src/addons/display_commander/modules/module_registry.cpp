@@ -155,7 +155,7 @@ void RegisterPublicModules() {
         spec.on_enabled_fn = &audio::OnEnabled;
         spec.draw_tab_fn = &audio::DrawTab;
         spec.draw_overlay_fn = &audio::DrawOverlay;
-        // Main-tab "Audio Control" is drawn only from optional panels (Show Audio Control), not beside Modules.
+        // Main-tab "Audio Control" is drawn from the fixed optional-panels block (when audio module enabled), not beside Modules.
         audio::FillHotkeys(&spec.hotkeys);
         audio::FillActions(&spec.actions);
 

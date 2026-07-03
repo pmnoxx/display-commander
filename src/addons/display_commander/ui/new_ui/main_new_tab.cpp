@@ -335,12 +335,6 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
         }
         imgui.Unindent();
     }
-
-    imgui.Spacing();
-
-    DrawMainTabOptionalPanelsAdvancedSettingsUi(imgui);
-
-    imgui.Spacing();
 }
 
 display_commander::ui::GraphicsApi GetGraphicsApiFromRuntime(reshade::api::effect_runtime* runtime) {

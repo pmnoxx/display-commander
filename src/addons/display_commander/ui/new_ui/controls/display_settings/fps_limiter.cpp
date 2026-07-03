@@ -887,7 +887,6 @@ static void DrawDisplaySettings_FpsLimiterMiscOptions(display_commander::ui::IIm
 
     // No Render / No Present in Background
     if ((g_reshade_module != nullptr)) {
-        imgui.Spacing();
         bool no_render_in_bg = settings::g_mainTabSettings.no_render_in_background.GetValue();
         if (imgui.Checkbox("No Render in Background", &no_render_in_bg)) {
             settings::g_mainTabSettings.no_render_in_background.SetValue(no_render_in_bg);

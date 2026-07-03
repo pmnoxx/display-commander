@@ -121,13 +121,13 @@ void DrawNvapiSettings(display_commander::ui::GraphicsApi api, display_commander
         // Native Reflex Status Indicator
         bool is_native_reflex_active = IsNativeReflexActive();
         if (is_native_reflex_active) {
-            imgui.TextColored(::ui::colors::ICON_SUCCESS, ICON_FK_OK " Native Reflex: ACTIVE Limit Real Frames: ON");
+            imgui.TextColored(::ui::colors::ICON_SUCCESS, ICON_FK_OK " Native Reflex: ACTIVE");
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltipEx("The game has native Reflex support and is actively using it. ");
             }
         } else {
             imgui.TextColored(::ui::colors::TEXT_DIMMED,
-                              ICON_FK_MINUS " Native Reflex: INACTIVE Limit Real Frames: OFF");
+                              ICON_FK_MINUS " Native Reflex: INACTIVE");
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltipEx("No native Reflex activity detected. ");
             }

@@ -799,12 +799,6 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
             }
         }
     }
-
-    // Limit Real Frames indicator
-    {
-        bool limit_real = GetEffectiveLimitRealFrames();
-        imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Limit Real Frames: %s", limit_real ? "ON" : "OFF");
-    }
 }
 
 static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWrapper& imgui,
@@ -817,7 +811,7 @@ static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWr
         uint64_t now_ns = utils::get_now_ns();
 
         if (IsNativeReflexActive()) {
-            imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Native Reflex: ACTIVE Limit Real Frames: ON");
+            imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Native Reflex: ACTIVE");
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltipEx("The game has native Reflex support and is actively using it. ");
             }

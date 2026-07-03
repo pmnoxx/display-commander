@@ -83,7 +83,7 @@ struct RegisteredModuleAction {
 
 struct ModuleRegistrationSpec {
     ModuleDescriptor descriptor;
-    bool default_enabled = false;
+    bool default_enabled = true;
     bool default_show_in_overlay = false;
     bool default_show_tab = true;
     ModuleInitializeCallback initialize_fn = nullptr;

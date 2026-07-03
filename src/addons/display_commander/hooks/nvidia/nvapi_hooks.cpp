@@ -35,10 +35,7 @@ NvAPI_D3D_GetLatency_pfn NvAPI_D3D_GetLatency_Original = nullptr;
 NvAPI_D3D_GetSleepStatus_pfn NvAPI_D3D_GetSleepStatus_Original = nullptr;
 NvAPI_QueryInterface_pfn NvAPI_QueryInterface_Original = nullptr;
 
-// Function to look up NVAPI function ID from interface table
 namespace {
-// Exception to the rule, since we don't know the signature of the function.
-constexpr NvU32 NvAPI_D3D12_SetFlipConfig = 0xF3148C42u;
 
 NvU32 GetNvAPIFunctionId(const char* functionName) {
     for (int i = 0; nvapi_interface_table[i].func != nullptr; i++) {
@@ -54,14 +51,6 @@ NvU32 GetNvAPIFunctionId(const char* functionName) {
 }  // namespace
 
 void* __cdecl NvAPI_QueryInterface_Detour(NvU32 offset) {
-    if (offset == NvAPI_D3D12_SetFlipConfig) {
-        ::g_nvapi_d3d12_setflipconfig_seen.fetch_add(1, std::memory_order_relaxed);
-        if (!settings::g_mainTabSettings.allow_nvapi_d3d12_setflipconfig.GetValue()) {
-            ::g_nvapi_d3d12_setflipconfig_suppressions.fetch_add(1, std::memory_order_relaxed);
-            return nullptr;
-        }
-    }
-
     if (NvAPI_QueryInterface_Original != nullptr) {
         return NvAPI_QueryInterface_Original(offset);
     }

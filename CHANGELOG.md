@@ -27,6 +27,7 @@ Planned:
 - Show override from NPI for DLSS presets. @adap
 
 ## v0.15.1
+- [removal] [settings] [ui] [hooks] **Flip Metering NVAPI tracking removed** - Removed DXGI Control Flip Metering status, the `allow_nvapi_d3d12_setflipconfig` setting, session counters (`g_nvapi_d3d12_setflipconfig_seen` / `_suppressions`), and optional SetFlipConfig suppression in `NvAPI_QueryInterface`. NVAPI now passes through all QueryInterface IDs unchanged.
 - [removal] [settings] [ui] **Anisotropic filtering / texture filtering removed** - Removed sampler override settings (`force_anisotropic_filtering`, filter upgrade toggles, `max_anisotropy`, `force_mipmap_lod_bias`) from main and experimental tab settings, the DXGI Control **Texture Filtering** panel, and default-settings template comments. Runtime sampler hooks were already removed earlier.
 - [removal] [settings] **CPU cores affinity removed** - Removed the `cpu_cores` setting, `UpdateCpuCoresMaximum`, and continuous-monitoring logic that limited the game process to the first N CPU cores via `SetProcessAffinityMask`.
 - [removal] [settings] [ui] **Buffer count override removed** - Removed the swapchain backbuffer count combo (`buffer_count_override`), its DXGI Control UI, and create-time override logic for D3D9, DXGI, OpenGL, and Vulkan. **Enable Flip Chain** (Advanced) may still adjust buffer count when upgrading to flip model.

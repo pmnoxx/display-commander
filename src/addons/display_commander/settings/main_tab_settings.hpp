@@ -72,9 +72,6 @@ class MainTabSettings {
     // VSync & Tearing
     ui::new_ui::BoolSetting prevent_tearing;
     ui::new_ui::BoolSetting limit_real_frames;
-    /** When true, NvAPI_QueryInterface passes through SetFlipConfig (0xF3148C42). When false, returns nullptr and
-     * counts suppressions. Default true. */
-    ui::new_ui::BoolSetting allow_nvapi_d3d12_setflipconfig;
 
     // Audio Settings
     ui::new_ui::BoolSetting audio_mute;

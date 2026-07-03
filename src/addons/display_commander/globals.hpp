@@ -903,10 +903,6 @@ extern std::atomic<int> g_nvapi_marker_present_start;
 extern std::atomic<int> g_nvapi_marker_present_end;
 /** Last g_global_frame_id when NvAPI_D3D_Sleep was called (0 = not yet). For DXGI native Reflex status OK/FAIL. */
 extern std::atomic<uint64_t> g_nvapi_d3d_last_sleep_global_frame_id;
-/** Number of nvapi_QueryInterface calls with NvAPI_D3D12_SetFlipConfig ID (0xF3148C42) in this session. */
-extern std::atomic<uint32_t> g_nvapi_d3d12_setflipconfig_seen;
-/** Successful suppressions: NvAPI_QueryInterface returned nullptr for that ID (see Main tab allow checkbox). */
-extern std::atomic<uint32_t> g_nvapi_d3d12_setflipconfig_suppressions;
 
 // Unsorted TODO: Add in correct order above
 extern std::atomic<LONGLONG> g_present_start_time_ns;

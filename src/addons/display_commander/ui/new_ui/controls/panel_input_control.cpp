@@ -25,36 +25,32 @@ void DrawMainTabOptionalPanelInputControl(display_commander::ui::IImGuiWrapper& 
         imgui.Text("Suppress Gamepad");
         imgui.NextColumn();
 
-        if (ui::new_ui::ComboSettingEnumWrapper(settings::g_mainTabSettings.keyboard_input_blocking, "##Keyboard",
-                                                imgui)) {
-            if (settings::g_mainTabSettings.keyboard_input_blocking.GetValue()
-                == static_cast<int>(InputBlockingMode::kDisabled)) {
-            }
-        }
+        // setwidth for each combo
+        const float combo_width = 400;
+        imgui.SetNextItemWidth(combo_width);
+        ui::new_ui::ComboSettingEnumWrapper(settings::g_mainTabSettings.keyboard_input_blocking, "##Keyboard",
+                                                imgui);
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx("Controls keyboard input blocking behavior.");
         }
 
         imgui.NextColumn();
 
-        if (ui::new_ui::ComboSettingEnumWrapper(settings::g_mainTabSettings.mouse_input_blocking, "##Mouse", imgui)) {
-            if (settings::g_mainTabSettings.mouse_input_blocking.GetValue()
-                == static_cast<int>(InputBlockingMode::kDisabled)) {
-            }
-        }
+        imgui.SetNextItemWidth(combo_width);
+        ui::new_ui::ComboSettingEnumWrapper(settings::g_mainTabSettings.mouse_input_blocking, "##Mouse", imgui);
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx("Controls mouse input blocking behavior.");
         }
 
         imgui.NextColumn();
 
+        imgui.SetNextItemWidth(combo_width);
         ui::new_ui::ComboSettingEnumWrapper(settings::g_mainTabSettings.gamepad_input_blocking, "##Gamepad", imgui);
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx("Controls gamepad input blocking behavior.");
         }
 
         imgui.Columns(1);
-        imgui.Spacing();
 
         bool clip_cursor = settings::g_mainTabSettings.clip_cursor_enabled.GetValue();
         if (imgui.Checkbox("Clip Cursor", &clip_cursor)) {

@@ -28,7 +28,7 @@ struct ModuleDescriptor {
     std::string id;
     std::string display_name;
     std::string description;
-    bool enabled = false;
+    bool enabled = true;
     bool show_in_overlay = false;
     /** When false, the module's top-level overlay tab is hidden (module may still run if enabled). */
     bool show_tab = true;

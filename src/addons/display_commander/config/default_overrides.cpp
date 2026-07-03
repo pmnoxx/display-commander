@@ -73,7 +73,6 @@ static const KeyDisplayName k_key_display_names[] = {
     {"PreventMinimize", "Prevent Minimize"},
     {"PreventAlwaysOnTop", "Prevent Always on Top"},
     {"EnableFlipChain", "Enable Flip Chain"},
-    {"ForceFlipDiscardUpgrade", "Force Flip Discard upgrade"},
     {"AutoColorspace", "Auto color space"},
     {"WindowMode", "Window Mode"},
 };

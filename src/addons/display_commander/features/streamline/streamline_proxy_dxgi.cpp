@@ -6,7 +6,6 @@
 #include "../../hooks/hook_suppression_manager.hpp"
 #include "../../hooks/present_traffic_tracking.hpp"
 #include "../../settings/advanced_tab_settings.hpp"
-#include "../../settings/main_tab_settings.hpp"
 #include "../../swapchain_events.hpp"
 #include "../../utils/detour_call_tracker.hpp"
 #include "../../utils/general_utils.hpp"
@@ -71,12 +70,6 @@ void LogDxgiErrorUpTo10(const char* method, HRESULT hr, int* pCount) {
     if (SUCCEEDED(hr) || pCount == nullptr || *pCount >= 10) return;
     LogError("[DXGI error] %s returned 0x%08X", method, static_cast<unsigned>(hr));
     (*pCount)++;
-}
-
-int VsyncOverrideComboIndexToApiValue(int combo_index) {
-    static const int kMap[] = {-1, 1, 2, 3, 4, 0};
-    if (combo_index < 0 || combo_index > 5) return -1;
-    return kMap[combo_index];
 }
 
 bool HookStreamlineProxySwapchainImpl(IDXGISwapChain* swapchain);
@@ -181,13 +174,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Streamline_Detour(IDXGISwapChai
         }
         return This->Present(SyncInterval, PresentFlags);
     }
-    const int override_val = VsyncOverrideComboIndexToApiValue(settings::g_mainTabSettings.vsync_override.GetValue());
-    const UINT effective_interval = (override_val >= 0) ? static_cast<UINT>(override_val) : SyncInterval;
-    if (override_val >= 1) {
-        PresentFlags &= ~DXGI_PRESENT_ALLOW_TEARING;
-    } else if (override_val == 0) {
-        PresentFlags |= DXGI_PRESENT_ALLOW_TEARING;
-    }
     const LONGLONG now_ns = utils::get_now_ns();
     display_commanderhooks::g_last_dxgi_present_time_ns.store(static_cast<uint64_t>(now_ns), std::memory_order_relaxed);
     CALL_GUARD(now_ns);
@@ -212,9 +198,9 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Streamline_Detour(IDXGISwapChai
     }
     if (IDXGISwapChain_Present_Streamline_Original == nullptr) {
         LogError("IDXGISwapChain_Present_Streamline_Detour: original is null");
-        return This->Present(effective_interval, PresentFlags);
+        return This->Present(SyncInterval, PresentFlags);
     }
-    HRESULT res = IDXGISwapChain_Present_Streamline_Original(This, effective_interval, PresentFlags);
+    HRESULT res = IDXGISwapChain_Present_Streamline_Original(This, SyncInterval, PresentFlags);
     static int s_err_count = 0;
     LogDxgiErrorUpTo10("IDXGISwapChain::Present (Streamline)", res, &s_err_count);
     if (use_fps_limiter) {
@@ -234,13 +220,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Streamline_Detour(IDXGISwapCha
         display_commanderhooks::dxgi::LoadDCDxgiSwapchainData(baseSwapChain, &data);
     }
     CALL_GUARD_NO_TS();
-    const int override_val = VsyncOverrideComboIndexToApiValue(settings::g_mainTabSettings.vsync_override.GetValue());
-    const UINT effective_interval = (override_val >= 0) ? static_cast<UINT>(override_val) : SyncInterval;
-    if (override_val >= 1) {
-        PresentFlags &= ~DXGI_PRESENT_ALLOW_TEARING;
-    } else if (override_val == 0) {
-        PresentFlags |= DXGI_PRESENT_ALLOW_TEARING;
-    }
 
     if (settings::g_advancedTabSettings.flush_command_queue_before_sleep.GetValue()) {
         if (data.command_queue != nullptr) {
@@ -264,12 +243,12 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Streamline_Detour(IDXGISwapCha
     display_commanderhooks::dxgi::g_dxgi_present_nested_depth.fetch_add(1);
     if (IDXGISwapChain_Present1_Streamline_Original == nullptr) {
         LogError("IDXGISwapChain_Present1_Streamline_Detour: original is null");
-        HRESULT res = This->Present1(effective_interval, PresentFlags, pPresentParameters);
+        HRESULT res = This->Present1(SyncInterval, PresentFlags, pPresentParameters);
         display_commanderhooks::dxgi::g_dxgi_present_nested_depth.fetch_sub(1);
         return res;
     }
     HRESULT res =
-        IDXGISwapChain_Present1_Streamline_Original(This, effective_interval, PresentFlags, pPresentParameters);
+        IDXGISwapChain_Present1_Streamline_Original(This, SyncInterval, PresentFlags, pPresentParameters);
     display_commanderhooks::dxgi::g_dxgi_present_nested_depth.fetch_sub(1);
     static int s_err_count = 0;
     LogDxgiErrorUpTo10("IDXGISwapChain1::Present1 (Streamline)", res, &s_err_count);

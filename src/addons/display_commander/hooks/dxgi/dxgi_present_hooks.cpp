@@ -330,14 +330,6 @@ void HandlePresentAfter(bool frame_generation_aware) {
 
 std::atomic<int> g_dxgi_present_nested_depth{0};
 
-// VSync override: combo index 0=No override(-1), 1=Force ON(1), 2=1/2(2), 3=1/3(3), 4=1/4(4), 5=FORCED OFF(0). Returns
-// -1 if no override.
-static int VsyncOverrideComboIndexToApiValue(int combo_index) {
-    static const int kMap[] = {-1, 1, 2, 3, 4, 0};
-    if (combo_index < 0 || combo_index > 5) return -1;
-    return kMap[combo_index];
-}
-
 // Hooked IDXGISwapChain::Present function
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UINT SyncInterval, UINT PresentFlags) {
     display_commanderhooks::dxgi::DCDxgiSwapchainData data{};
@@ -354,15 +346,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
         HandleFpsLimiterFg2Pre();
     }
     CALL_GUARD_NO_TS();
-    // Apply VSync override (Main tab): -1 = no override, 0-4 = force SyncInterval
-    const int override_val = VsyncOverrideComboIndexToApiValue(settings::g_mainTabSettings.vsync_override.GetValue());
-    const UINT effective_interval = (override_val >= 0) ? static_cast<UINT>(override_val) : SyncInterval;
-    CALL_GUARD_NO_TS();
-    if (override_val >= 1) {
-        PresentFlags &= ~DXGI_PRESENT_ALLOW_TEARING;
-    } else if (override_val == 0) {
-        PresentFlags |= DXGI_PRESENT_ALLOW_TEARING;
-    }
     const LONGLONG now_ns = utils::get_now_ns();
     display_commanderhooks::g_last_dxgi_present_time_ns.store(static_cast<uint64_t>(now_ns), std::memory_order_relaxed);
     CALL_GUARD(now_ns);
@@ -397,12 +380,12 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
     CALL_GUARD_NO_TS();
     if (IDXGISwapChain_Present_Original == nullptr) {
         LogError("IDXGISwapChain_Present_Detour: IDXGISwapChain_Present_Original is null");
-        return This->Present(effective_interval, PresentFlags);
+        return This->Present(SyncInterval, PresentFlags);
     }
     CALL_GUARD_NO_TS();
 
     CALL_GUARD_NO_TS();
-    auto res = IDXGISwapChain_Present_Original(This, effective_interval, PresentFlags);
+    auto res = IDXGISwapChain_Present_Original(This, SyncInterval, PresentFlags);
     CALL_GUARD_NO_TS();
     {
         static int s_err_count = 0;
@@ -429,16 +412,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
 
     CALL_GUARD_NO_TS();
 
-    // Apply VSync override (Main tab): -1 = no override, 0-4 = force SyncInterval
-    const int override_val = VsyncOverrideComboIndexToApiValue(settings::g_mainTabSettings.vsync_override.GetValue());
-    const UINT effective_interval = (override_val >= 0) ? static_cast<UINT>(override_val) : SyncInterval;
-
-    if (override_val >= 1) {
-        PresentFlags &= ~DXGI_PRESENT_ALLOW_TEARING;
-    } else if (override_val == 0) {
-        PresentFlags |= DXGI_PRESENT_ALLOW_TEARING;
-    }
-
     // Flush command queue before present when we have it from this swapchain's private data (optional, default on)
     if (settings::g_advancedTabSettings.flush_command_queue_before_sleep.GetValue()) {
         // don't do it if smooth motion is enabled
@@ -462,13 +435,13 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
     g_dxgi_present_nested_depth.fetch_add(1);
     if (IDXGISwapChain_Present1_Original == nullptr) {
         LogError("IDXGISwapChain_Present1_Detour: IDXGISwapChain_Present1_Original is null");
-        auto res = This->Present1(effective_interval, PresentFlags, pPresentParameters);
+        auto res = This->Present1(SyncInterval, PresentFlags, pPresentParameters);
 
         g_dxgi_present_nested_depth.fetch_sub(1);
         return res;
     }
 
-    auto res = IDXGISwapChain_Present1_Original(This, effective_interval, PresentFlags, pPresentParameters);
+    auto res = IDXGISwapChain_Present1_Original(This, SyncInterval, PresentFlags, pPresentParameters);
     g_dxgi_present_nested_depth.fetch_sub(1);
     {
         static int s_err_count = 0;

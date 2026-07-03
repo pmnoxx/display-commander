@@ -65,21 +65,8 @@ MainTabSettings::MainTabSettings()
       delay_present_start_frames("delay_present_start_frames", 1.0f, 0.0f, 3.0f, "DisplayCommander"),
       safe_mode_fps_limiter("safe_mode_fps_limiter", false, "DisplayCommander"),
       selected_reshade_runtime_index("selected_reshade_runtime_index", 0, 0, 31, "DisplayCommander"),
-      vsync_override("vsync_override", 0,
-                     {"No override", "Force ON", "FORCED 1/2 (NO VRR)", "FORCED 1/3 (NO VRR)", "FORCED 1/4 (NO VRR)",
-                      "FORCED OFF"},
-                     "DisplayCommander"),
-      max_frame_latency_override(
-          "max_frame_latency_override", 0,
-          {"No override", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"},
-          "DisplayCommander"),
-      force_vsync_on("force_vsync_on", false, "DisplayCommander"),
-      force_vsync_off("force_vsync_off", false, "DisplayCommander"),
       prevent_tearing("prevent_tearing", false, "DisplayCommander"),
       limit_real_frames("limit_real_frames", true, "DisplayCommander"),
-      buffer_count_override("buffer_count_override", 0, {"No override", "1", "2", "3", "4"},
-                                "DisplayCommander"),
-      force_flip_discard_upgrade("ForceFlipDiscardUpgrade", false, "DisplayCommander"),
       allow_nvapi_d3d12_setflipconfig("allow_nvapi_d3d12_setflipconfig", true, "DisplayCommander"),
       audio_mute("audio_mute", false, "DisplayCommander"),
       mute_in_background("mute_in_background", false, "DisplayCommander"),
@@ -97,8 +84,6 @@ MainTabSettings::MainTabSettings()
       unclip_cursor_enabled("unclip_cursor_enabled", false, "DisplayCommander"),
       no_render_in_background("no_render_in_background", false, "DisplayCommander"),
       no_present_in_background("no_present_in_background", false, "DisplayCommander"),
-      cpu_cores("cpu_cores", 0, 0, 64,
-                "DisplayCommander"),  // Max will be set dynamically based on CPU count
       show_performance_overlay("show_performance_overlay", false, "DisplayCommander"),
       show_fps_counter("show_fps_counter", true, "DisplayCommander"),
       show_native_fps("show_native_fps", false, "DisplayCommander"),
@@ -176,13 +161,6 @@ MainTabSettings::MainTabSettings()
       vulkan_vk_loader_hooks_enabled("vulkan_vk_loader_hooks_enabled_don", true, "DisplayCommander"),
       vulkan_injected_reflex_enabled("VulkanInjectedReflexEnabled", false, "DisplayCommander"),
       vulkan_inject_extensions_enabled("VulkanInjectExtensionsEnabled", false, "DisplayCommander"),
-      force_anisotropic_filtering("force_anisotropic_filtering", false, "DisplayCommander"),
-      upgrade_min_mag_mip_linear("upgrade_min_mag_mip_linear", true, "DisplayCommander"),
-      upgrade_compare_min_mag_mip_linear("upgrade_compare_min_mag_mip_linear", false, "DisplayCommander"),
-      upgrade_min_mag_linear_mip_point("upgrade_min_mag_linear_mip_point", true, "DisplayCommander"),
-      upgrade_compare_min_mag_linear_mip_point("upgrade_compare_min_mag_linear_mip_point", false, "DisplayCommander"),
-      max_anisotropy("max_anisotropy", 0, 0, 16, "DisplayCommander"),
-      force_mipmap_lod_bias("force_mipmap_lod_bias", 0.0f, -5.0f, 5.0f, "DisplayCommander"),
       auto_reshade_config_backup("auto_reshade_config_backup", false, "DisplayCommander") {
     // Initialize the all_settings_ vector
     all_settings_ = {
@@ -213,14 +191,8 @@ MainTabSettings::MainTabSettings()
         &delay_present_start_frames,
         &safe_mode_fps_limiter,
         &selected_reshade_runtime_index,
-        &vsync_override,
-        &max_frame_latency_override,
-        &force_vsync_on,
-        &force_vsync_off,
         &prevent_tearing,
         &limit_real_frames,
-        &buffer_count_override,
-        &force_flip_discard_upgrade,
         &allow_nvapi_d3d12_setflipconfig,
         &audio_mute,
         &mute_in_background,
@@ -300,13 +272,6 @@ MainTabSettings::MainTabSettings()
         &vulkan_vk_loader_hooks_enabled,
         &vulkan_injected_reflex_enabled,
         &vulkan_inject_extensions_enabled,
-        &force_anisotropic_filtering,
-        &upgrade_min_mag_mip_linear,
-        &upgrade_compare_min_mag_mip_linear,
-        &upgrade_min_mag_linear_mip_point,
-        &upgrade_compare_min_mag_linear_mip_point,
-        &max_anisotropy,
-        &force_mipmap_lod_bias,
         &auto_reshade_config_backup,
     };
 }
@@ -420,9 +385,6 @@ void MainTabSettings::LoadSettings() {
         unclip_cursor_enabled.SetValue(false);
     }
 
-    // Update CPU cores maximum based on system CPU count
-    UpdateCpuCoresMaximum();
-
     // Update overlay spacing maximums based on screen dimensions
     UpdateOverlaySpacingMaximums();
 
@@ -497,19 +459,6 @@ void UpdateFpsLimitMaximums() {
 
         LogInfo("Updated FPS limit maximum %.1f->%.1f FPS (2× base cap %.1f, max monitor refresh %.1f Hz)", old_fps,
                 max_fps, base_max_fps, max_refresh_rate);
-    }
-}
-
-// Function to get CPU core count and update CPU cores setting maximum
-void UpdateCpuCoresMaximum() {
-    SYSTEM_INFO sys_info = {};
-    GetSystemInfo(&sys_info);
-    DWORD cpu_count = sys_info.dwNumberOfProcessors;
-
-    // Update the maximum value for CPU cores setting
-    if (g_mainTabSettings.cpu_cores.GetMax() != static_cast<int>(cpu_count)) {
-        g_mainTabSettings.cpu_cores.SetMax(static_cast<int>(cpu_count));
-        LogInfo("Updated CPU cores maximum to %lu cores", cpu_count);
     }
 }
 

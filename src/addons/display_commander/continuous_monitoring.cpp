@@ -651,61 +651,6 @@ void ContinuousMonitoringThread() {
             continue;
         }
 
-        // Apply CPU affinity mask if configured
-        {
-            CALL_GUARD_NO_TS();
-            static int last_cpu_cores = -1;
-            int cpu_cores = settings::g_mainTabSettings.cpu_cores.GetValue();
-
-            if (cpu_cores != last_cpu_cores) {
-                last_cpu_cores = cpu_cores;
-
-                HANDLE process_handle = GetCurrentProcess();
-                DWORD_PTR process_affinity_mask = 0;
-                DWORD_PTR system_affinity_mask = 0;
-
-                // Get current process affinity
-                if (GetProcessAffinityMask(process_handle, &process_affinity_mask, &system_affinity_mask)) {
-                    if (cpu_cores == 0) {
-                        // Default: restore system affinity (no change)
-                        if (SetProcessAffinityMask(process_handle, system_affinity_mask)) {
-                            LogInfo("CPU affinity restored to default (all available cores)");
-                        } else {
-                            LogError("Failed to restore CPU affinity to default: %lu", GetLastError());
-                        }
-                    } else {
-                        // Create affinity mask for specified number of cores
-                        SYSTEM_INFO sys_info = {};
-                        GetSystemInfo(&sys_info);
-                        DWORD max_cores = sys_info.dwNumberOfProcessors;
-
-                        if (cpu_cores > 0 && cpu_cores <= static_cast<int>(max_cores)) {
-                            // Create mask with first N cores enabled
-                            DWORD_PTR new_mask = 0;
-                            for (DWORD i = 0; i < static_cast<DWORD>(cpu_cores); ++i) {
-                                new_mask |= (static_cast<DWORD_PTR>(1) << i);
-                            }
-
-                            // Only apply if mask is valid and different from current
-                            if (new_mask != 0 && new_mask != process_affinity_mask) {
-                                if (SetProcessAffinityMask(process_handle, new_mask)) {
-                                    LogInfo("CPU affinity set to %d core(s) (mask: 0x%llx)", cpu_cores,
-                                            static_cast<unsigned long long>(new_mask));
-                                } else {
-                                    LogError("Failed to set CPU affinity to %d cores: %lu", cpu_cores, GetLastError());
-                                }
-                            }
-                        } else {
-                            LogError("Invalid CPU cores value: %d (max: %lu)", cpu_cores, max_cores);
-                        }
-                    }
-                } else {
-                    LogError("Failed to get process affinity mask: %lu", GetLastError());
-                }
-            }
-        }
-        g_continuous_monitoring_section.store("after_cpu_affinity", std::memory_order_release);
-
         // High-frequency updates (background check, ADHD, keyboard, hotkeys)
         LONGLONG now_ns = utils::get_now_ns();
         const LONGLONG high_freq_interval_ns = static_cast<LONGLONG>(kMonitorHighFreqIntervalMs) * utils::NS_TO_MS;

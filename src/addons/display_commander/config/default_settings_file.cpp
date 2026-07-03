@@ -35,10 +35,6 @@ const char* const DEFAULT_SETTINGS_TEMPLATE = R"(# Display Commander — User de
 # 2 = Borderless fullscreen, 3 = Borderless windowed.
 # window_mode2 = 1
 
-# Override max anisotropic filtering level (1–16) for samplers that already use anisotropic filtering.
-# 0 = do not override (use game’s value). Uncomment and set to 16 for best quality.
-# max_anisotropy = 16
-
 # FPS limiter: fps_limit = target FPS (0 = unlimited, 1–240 otherwise). Requires fps_limiter_enabled = true.
 # fps_limiter_mode: 0 = Default, 1 = Reflex (low latency).
 # fps_limit_background = limit when game window has no focus (0 = unlimited).

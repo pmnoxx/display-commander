@@ -6,7 +6,6 @@
 
 namespace ui::new_ui {
 
-void DrawMainTabOptionalPanelTextureFiltering(display_commander::ui::IImGuiWrapper& imgui);
 void DrawMainTabOptionalPanelAudioControl(display_commander::ui::IImGuiWrapper& imgui);
 void DrawMainTabOptionalPanelWindowButtons(display_commander::ui::IImGuiWrapper& imgui);
 void DrawMainTabOptionalPanelInputControl(display_commander::ui::IImGuiWrapper& imgui);

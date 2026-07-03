@@ -64,9 +64,6 @@ EXTERN_C const GUID IID_IDirect3DDevice9 = {
 #include <thread>
 #include <vector>
 
-// Minimum CPU cores that can be selected (excludes 1-5)
-static constexpr int MIN_CPU_CORES_SELECTABLE = 6;
-
 namespace ui::new_ui {
 
 namespace {

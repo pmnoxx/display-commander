@@ -166,9 +166,7 @@ void RefreshReShadeModuleIfNeeded() {
 // Atomic variables
 std::atomic<reshade::api::device_api> g_last_reshade_device_api{static_cast<reshade::api::device_api>(0)};
 std::atomic<uint32_t> g_last_api_version{0};
-std::atomic<std::shared_ptr<reshade::api::swapchain_desc>> g_last_swapchain_desc_pre{nullptr};
 std::atomic<std::shared_ptr<reshade::api::swapchain_desc>> g_last_swapchain_desc_post{nullptr};
-std::atomic<bool> g_force_flip_discard_upgrade_done{false};
 std::atomic<bool> g_show_auto_colorspace_fix_in_main_tab{true};
 std::atomic<HWND> g_last_swapchain_hwnd{nullptr};
 std::atomic<bool> g_shutdown{false};

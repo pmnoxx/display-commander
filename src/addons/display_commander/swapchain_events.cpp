@@ -541,15 +541,6 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             modified = true;
         }
 
-        // Override buffer count if user selected 1–4
-        const int buffer_override = settings::g_mainTabSettings.buffer_count_override.GetValue();
-        if (buffer_override >= 1 && buffer_override <= 4
-            && desc.back_buffer_count != static_cast<uint32_t>(buffer_override)) {
-            LogInfo("D3D9: Overriding buffer count from %u to %d", desc.back_buffer_count, buffer_override);
-            desc.back_buffer_count = static_cast<uint32_t>(buffer_override);
-            modified = true;
-        }
-
         // Apply FLIPEX if all requirements are met
         if (settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()
             && desc.present_mode != D3DSWAPEFFECT_FLIPEX) {
@@ -621,35 +612,10 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
         const bool is_flip = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD
                               || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
 
-        /*
-        uint32_t prev_sync_interval = UINT32_MAX;
-        BREAKING CHANGES
-        // Explicit VSYNC overrides take precedence over generic sync-interval
-        // dropdown (applies to all APIs)
-        if (settings::g_mainTabSettings.force_vsync_on.GetValue()) {
-            desc.sync_interval = 1;  // VSYNC on
-            modified = true;
-        } else if (settings::g_mainTabSettings.force_vsync_off.GetValue()) {
-            desc.sync_interval = 0;  // VSYNC off
-            modified = true;
-        }*/
-
         // DXGI-specific settings (only for D3D10/11/12)
         if (settings::g_mainTabSettings.prevent_tearing.GetValue()
             && (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) != 0) {
             desc.present_flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
-            modified = true;
-        }
-
-        // Override buffer count if user selected 1–4
-        int buffer_override_dxgi = settings::g_mainTabSettings.buffer_count_override.GetValue();
-        if (is_flip && (buffer_override_dxgi == 1)) {
-            buffer_override_dxgi = 0;
-        }
-        if (buffer_override_dxgi >= 1 && buffer_override_dxgi <= 4
-            && desc.back_buffer_count != static_cast<uint32_t>(buffer_override_dxgi)) {
-            LogInfo("Increasing buffer count from %u to %d", desc.back_buffer_count, buffer_override_dxgi);
-            desc.back_buffer_count = static_cast<uint32_t>(buffer_override_dxgi);
             modified = true;
         }
 
@@ -705,15 +671,6 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             }
             flip_oss << " to FLIP_DISCARD (flip model swap chain)";
             LogInfo("%s", flip_oss.str().c_str());
-        }
-
-        // Force Flip Discard upgrade (Main tab DXGI subsection): FLIP_SEQUENTIAL → FLIP_DISCARD only
-        if (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL
-            && settings::g_mainTabSettings.force_flip_discard_upgrade.GetValue()) {
-            desc.present_mode = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-            modified = true;
-            g_force_flip_discard_upgrade_done.store(true, std::memory_order_relaxed);
-            LogInfo("DXGI Force Flip Discard: Upgraded FLIP_SEQUENTIAL to FLIP_DISCARD");
         }
 
         // Log sync interval and present flags with detailed explanation
@@ -819,25 +776,6 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             modified = true;
         }
 
-        // Apply VSYNC overrides (applies to all APIs)
-        if (settings::g_mainTabSettings.force_vsync_on.GetValue()) {
-            desc.sync_interval = 1;  // VSYNC on
-            modified = true;
-        } else if (settings::g_mainTabSettings.force_vsync_off.GetValue()) {
-            desc.sync_interval = 0;  // VSYNC off
-            modified = true;
-        }
-
-        // Override buffer count if user selected 1–4
-        const int buffer_override_gl = settings::g_mainTabSettings.buffer_count_override.GetValue();
-        if (buffer_override_gl >= 1 && buffer_override_gl <= 4
-            && desc.back_buffer_count != static_cast<uint32_t>(buffer_override_gl)) {
-            LogInfo("OpenGL: Overriding buffer count from %u to %d", desc.back_buffer_count,
-                    buffer_override_gl);
-            desc.back_buffer_count = static_cast<uint32_t>(buffer_override_gl);
-            modified = true;
-        }
-
         // Log changes if modified
         if (modified) {
             std::ostringstream oss;
@@ -882,25 +820,6 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             modified = true;
         }
 
-        // Apply VSYNC overrides (applies to all APIs)
-        if (settings::g_mainTabSettings.force_vsync_on.GetValue()) {
-            desc.sync_interval = 1;  // VSYNC on
-            modified = true;
-        } else if (settings::g_mainTabSettings.force_vsync_off.GetValue()) {
-            desc.sync_interval = 0;  // VSYNC off
-            modified = true;
-        }
-
-        // Override buffer count if user selected 1–4
-        const int buffer_override_vk = settings::g_mainTabSettings.buffer_count_override.GetValue();
-        if (buffer_override_vk >= 1 && buffer_override_vk <= 4
-            && desc.back_buffer_count != static_cast<uint32_t>(buffer_override_vk)) {
-            LogInfo("Vulkan: Overriding buffer count from %u to %d", desc.back_buffer_count,
-                    buffer_override_vk);
-            desc.back_buffer_count = static_cast<uint32_t>(buffer_override_vk);
-            modified = true;
-        }
-
         // Log changes if modified
         if (modified) {
             std::ostringstream oss;
@@ -930,12 +849,9 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
         return false;
     }
 
-    // Store pre-upgrade desc for UI (e.g. DXGI subsection: show option only when original was FLIP_SEQUENTIAL)
-    g_last_swapchain_desc_pre.store(std::make_shared<reshade::api::swapchain_desc>(desc));
-
     auto res = OnCreateSwapchainCapture2(api, desc, hwnd);
 
-    // Store post-upgrade desc for UI display (current swapchain as created)
+    // Store post-modification desc for UI display (current swapchain as created)
     g_last_swapchain_desc_post.store(std::make_shared<reshade::api::swapchain_desc>(desc));
     return res;
 }
@@ -1667,29 +1583,6 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
                 AutoSetColorSpace(swapchain, dxgi_swapchain.Get());
                 private_data.auto_colorspace_applied = true;
                 changed = true;
-            }
-
-            // Apply SetMaximumFrameLatency override (Main tab). Track applied value in private_data so we only set
-            // when the user's choice differs from what we last applied (per swapchain).
-            const int desired_latency = settings::g_mainTabSettings.max_frame_latency_override.GetValue();
-            if (desired_latency >= 1 && desired_latency <= 16) {
-                if (private_data.applied_max_frame_latency != static_cast<uint32_t>(desired_latency)) {
-                    Microsoft::WRL::ComPtr<IDXGISwapChain2> sc2;
-                    if (SUCCEEDED(dxgi_swapchain->QueryInterface(IID_PPV_ARGS(&sc2)))) {
-                        const UINT clamped = static_cast<UINT>(desired_latency);
-                        HRESULT hr = sc2->SetMaximumFrameLatency(clamped);
-                        if (SUCCEEDED(hr)) {
-                            private_data.applied_max_frame_latency = clamped;
-                            changed = true;
-                        }
-                    }
-                }
-            } else {
-                // No override (0): clear applied so we can re-apply when user selects a value again
-                if (private_data.applied_max_frame_latency != 0) {
-                    private_data.applied_max_frame_latency = 0;
-                    changed = true;
-                }
             }
         }
     } else if (dx_d3d9) {

@@ -63,13 +63,6 @@ class ExperimentalTabSettings {
     // DirectInput device state blocking
     BoolSetting dinput_device_state_blocking;
 
-    // Anisotropic filtering upgrade settings
-    BoolSetting force_anisotropic_filtering;
-    BoolSetting upgrade_min_mag_mip_linear;
-    BoolSetting upgrade_compare_min_mag_mip_linear;
-    BoolSetting upgrade_min_mag_linear_mip_point;
-    BoolSetting upgrade_compare_min_mag_linear_mip_point;
-
     // Performance measurement (profiling) - default off
     BoolSetting performance_measurement_enabled;
     // Per-metric toggles (default on)

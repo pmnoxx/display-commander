@@ -70,20 +70,8 @@ class MainTabSettings {
     ui::new_ui::IntSetting selected_reshade_runtime_index;
 
     // VSync & Tearing
-    /** DXGI only: 0=No override, 1=Force ON, 2=FORCED 1/2, 3=FORCED 1/3, 4=FORCED 1/4 (NO VRR), 5=FORCED OFF. Applied
-     * at Present. */
-    ui::new_ui::ComboSetting vsync_override;
-    /** DXGI only: 0=No override, 1–16=SetMaximumFrameLatency value. Applied per
-     * swapchain in OnPresentUpdateBefore. */
-    ui::new_ui::ComboSetting max_frame_latency_override;
-    ui::new_ui::BoolSetting force_vsync_on;
-    ui::new_ui::BoolSetting force_vsync_off;
     ui::new_ui::BoolSetting prevent_tearing;
     ui::new_ui::BoolSetting limit_real_frames;
-    /** 0 = No override (game default), 1–4 = force buffer count at swapchain creation. Requires restart. */
-    ui::new_ui::ComboSetting buffer_count_override;
-    /** DXGI only: when game uses FLIP_SEQUENTIAL, upgrade to FLIP_DISCARD in OnCreateSwapchainCapture2. */
-    ui::new_ui::BoolSetting force_flip_discard_upgrade;
     /** When true, NvAPI_QueryInterface passes through SetFlipConfig (0xF3148C42). When false, returns nullptr and
      * counts suppressions. Default true. */
     ui::new_ui::BoolSetting allow_nvapi_d3d12_setflipconfig;
@@ -108,9 +96,6 @@ class MainTabSettings {
     // Render Blocking (Background) Settings
     ui::new_ui::BoolSetting no_render_in_background;
     ui::new_ui::BoolSetting no_present_in_background;
-
-    // CPU Settings
-    ui::new_ui::IntSetting cpu_cores;
 
     // OSD (main ReShade overlay widget)
     ui::new_ui::BoolSetting show_performance_overlay;
@@ -228,15 +213,6 @@ class MainTabSettings {
      * when the option is enabled (only if not already present). Does not set ReShade config path. Default off. */
     ui::new_ui::BoolSetting auto_reshade_config_backup;
 
-    // Sampler State Override Settings
-    ui::new_ui::BoolSetting force_anisotropic_filtering;
-    ui::new_ui::BoolSetting upgrade_min_mag_mip_linear;
-    ui::new_ui::BoolSetting upgrade_compare_min_mag_mip_linear;
-    ui::new_ui::BoolSetting upgrade_min_mag_linear_mip_point;
-    ui::new_ui::BoolSetting upgrade_compare_min_mag_linear_mip_point;
-    ui::new_ui::IntSetting max_anisotropy;
-    ui::new_ui::FloatSetting force_mipmap_lod_bias;
-
    private:
     std::vector<ui::new_ui::SettingBase*> all_settings_;
 };
@@ -261,6 +237,5 @@ void SaveGameWindowDisplayDeviceId(HWND hwnd);
 void UpdateTargetDisplayFromGameWindow();
 void UpdateFpsLimitMaximums();
 void UpdateOverlaySpacingMaximums();
-void UpdateCpuCoresMaximum();
 
 }  // namespace settings

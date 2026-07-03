@@ -19,7 +19,7 @@
 
 /*
  * IDXGISwapChain hooks — only methods where we change behavior or capture state needed for DC:
- * Present / Present1 (VSync override, FPS limiter, timing),
+ * Present / Present1 (FPS limiter, timing),
  * fullscreen state (exclusive fullscreen prevention),
  * ResizeBuffers / ResizeTarget / ResizeBuffers1 (render resolution),
  * CheckColorSpaceSupport. No stats-only / logging-only detours.
@@ -84,8 +84,6 @@ struct DCDxgiSwapchainData {
     reshade::api::device_api device_api{};
     /** Set when device_api == d3d9. Not refcounted. Cast to IDirect3DDevice9* when device_api == d3d9. */
     void* d3d9_device{nullptr};
-    /** Last value we applied via SetMaximumFrameLatency (0 = not applied by us, 1–16 = value applied). */
-    uint32_t applied_max_frame_latency{0};
     /** True after AutoSetColorSpace has been run once for this swapchain (run at most once per swapchain). */
     bool auto_colorspace_applied{false};
 };

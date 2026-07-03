@@ -45,18 +45,6 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
     if (g_reshade_create_swapchain_capture_count.load() > 0) {
         auto desc_ptr_cb = g_last_swapchain_desc_post.load();
         if (is_dxgi_pt) {
-            //PushFpsLimiterSliderColumnAlign(imgui, GetMainTabCheckboxColumnGutter(imgui), true);
-            if (ComboSettingWrapper(settings::g_mainTabSettings.vsync_override, "VSync", imgui, 300.f)) {
-                LogInfo("VSync override changed to index %d", settings::g_mainTabSettings.vsync_override.GetValue());
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx(
-                    "Override DXGI Present SyncInterval. No override = use game setting. Force ON = VSync every "
-                    "frame; 1/2-1/4 = every 2nd-4th vblank (not VRR); FORCED OFF = no VSync. Applied at runtime (no "
-                    "restart).");
-            }
-
-            imgui.SameLine();
             bool prevent_t = settings::g_mainTabSettings.prevent_tearing.GetValue();
             if (imgui.Checkbox("Prevent Tearing", &prevent_t)) {
                 settings::g_mainTabSettings.prevent_tearing.SetValue(prevent_t);
@@ -66,37 +54,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltipEx("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
             }
-        } else {
-            bool vs_on = settings::g_mainTabSettings.force_vsync_on.GetValue();
-            if (imgui.Checkbox("Force VSync ON", &vs_on)) {
-                s_restart_needed_vsync_tearing.store(true);
-                if (vs_on) {
-                    settings::g_mainTabSettings.force_vsync_off.SetValue(false);
-                }
-                settings::g_mainTabSettings.force_vsync_on.SetValue(vs_on);
-                LogInfo(vs_on ? "Force VSync ON enabled" : "Force VSync ON disabled");
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx("Forces sync interval = 1 (requires restart).");
-            }
-            imgui.SameLine();
-
-            bool vs_off = settings::g_mainTabSettings.force_vsync_off.GetValue();
-            if (imgui.Checkbox("Force VSync OFF", &vs_off)) {
-                s_restart_needed_vsync_tearing.store(true);
-                if (vs_off) {
-                    settings::g_mainTabSettings.force_vsync_on.SetValue(false);
-                }
-                settings::g_mainTabSettings.force_vsync_off.SetValue(vs_off);
-                LogInfo(vs_off ? "Force VSync OFF enabled" : "Force VSync OFF disabled");
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx("Forces sync interval = 0 (requires restart).");
-            }
-        }
-        if (is_dxgi_pt) {
         } else if (desc_ptr_cb) {
-            imgui.SameLine();
             imgui.TextColored(ui::colors::TEXT_DIMMED, "Present mode: %s",
                               GetPresentModeNameNonDxgi(static_cast<int>(current_api_pt), desc_ptr_cb->present_mode));
             if (imgui.IsItemHovered()) {
@@ -107,7 +65,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
     } else {
         if ((g_reshade_module != nullptr)) {
             imgui.TextColored(ui::colors::TEXT_WARNING,
-                              "VSYNC ON/OFF Prevent Tearing options unavailable due to reshade bug!");
+                              "VSync & Tearing options unavailable due to ReShade bug!");
         }
     }
 

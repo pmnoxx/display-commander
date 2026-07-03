@@ -328,18 +328,6 @@ std::string GetHotkeyDisplayString(const HotkeyDefinition& def) { return FormatH
 // Initialize hotkey definitions with default values
 void InitializeHotkeyDefinitions() {
     g_hotkey_definitions = {
-        {"background_toggle", "Background Toggle", "",
-         "Toggle both 'No Render in Background' and 'No Present in Background' settings",
-         []() {
-             bool new_render_state = !settings::g_mainTabSettings.no_render_in_background.GetValue();
-             bool new_present_state = new_render_state;
-             settings::g_mainTabSettings.no_render_in_background.SetValue(new_render_state);
-             settings::g_mainTabSettings.no_present_in_background.SetValue(new_present_state);
-             std::ostringstream oss;
-             oss << "Background settings toggled via hotkey - Both Render and Present: "
-                 << (new_render_state ? "disabled" : "enabled");
-             LogInfo(oss.str().c_str());
-         }},
         {"adhd_toggle", "Black curtain (other displays)", "ctrl shift d",
          "Toggle black curtain on other monitors (not the game display checkbox)",
          []() {
@@ -519,8 +507,6 @@ void InitializeHotkeyDefinitions() {
     auto& settings = settings::g_hotkeysTabSettings;
     if (g_hotkey_definitions.size() >= kHotkeyDefinitionCount) {
         // Load from config: "0x11;0x10;0x65" or legacy "ctrl+shift+m"
-        g_hotkey_definitions[static_cast<size_t>(HotkeyId::BackgroundToggle)].parsed =
-            DeserializeHotkeyFromConfigString(settings.hotkey_background_toggle.GetValue());
         g_hotkey_definitions[static_cast<size_t>(HotkeyId::AdhdToggle)].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_adhd_toggle.GetValue());
         g_hotkey_definitions[static_cast<size_t>(HotkeyId::InputBlocking)].parsed =
@@ -696,8 +682,6 @@ void SyncHotkeySettingsFromParsed() {
     }
     auto& s = settings::g_hotkeysTabSettings;
     // Store in config as "0x11;0x10;0x65" (VK list: modifiers then key)
-    s.hotkey_background_toggle.SetValue(
-        SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::BackgroundToggle)].parsed));
     s.hotkey_adhd_toggle.SetValue(
         SerializeHotkeyToConfigString(g_hotkey_definitions[static_cast<size_t>(HotkeyId::AdhdToggle)].parsed));
     s.hotkey_input_blocking.SetValue(
@@ -767,7 +751,6 @@ void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
                     settings::StringSetting* setting_ptr = nullptr;
                 const auto id = static_cast<HotkeyId>(i);
                 switch (id) {
-                    case HotkeyId::BackgroundToggle: setting_ptr = &settings.hotkey_background_toggle; break;
                     case HotkeyId::AdhdToggle: setting_ptr = &settings.hotkey_adhd_toggle; break;
                     case HotkeyId::InputBlocking: setting_ptr = &settings.hotkey_input_blocking; break;
                     case HotkeyId::DisplayCommanderUi: setting_ptr = &settings.hotkey_display_commander_ui; break;

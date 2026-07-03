@@ -40,7 +40,6 @@ AdvancedTabSettings::AdvancedTabSettings()
 
       enable_hotkeys("EnableHotkeys", true, "DisplayCommander"),
       enable_mute_unmute_shortcut("EnableMuteUnmuteShortcut", true, "DisplayCommander"),
-      enable_background_toggle_shortcut("EnableBackgroundToggleShortcut", false, "DisplayCommander"),
       enable_timeslowdown_shortcut("EnableTimeslowdownShortcut", false, "DisplayCommander"),
       enable_adhd_toggle_shortcut("EnableAdhdToggleShortcut", true, "DisplayCommander"),
       enable_input_blocking_shortcut("EnableInputBlockingShortcut", false, "DisplayCommander"),
@@ -84,8 +83,7 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
             &reflex_use_markers, &reflex_generate_markers, &reflex_enable_sleep, &reflex_logging,
             //&reflex_supress_native,
 
-            &enable_hotkeys, &enable_mute_unmute_shortcut, &enable_background_toggle_shortcut,
-            &enable_timeslowdown_shortcut, &enable_adhd_toggle_shortcut,
+            &enable_hotkeys, &enable_mute_unmute_shortcut, &enable_timeslowdown_shortcut, &enable_adhd_toggle_shortcut,
             &enable_input_blocking_shortcut, &enable_display_commander_ui_shortcut,
             &enable_performance_overlay_shortcut,
             &suppress_wgi_globally, &suppress_wgi_enabled, &suppress_wgi_for_unity, &suppress_wgi_for_non_unity_games,

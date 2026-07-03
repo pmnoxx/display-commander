@@ -90,10 +90,6 @@ class MainTabSettings {
     /** Mutually exclusive with clip_cursor_enabled: force release of cursor clipping from game ClipCursor calls. */
     ui::new_ui::BoolSetting unclip_cursor_enabled;
 
-    // Render Blocking (Background) Settings
-    ui::new_ui::BoolSetting no_render_in_background;
-    ui::new_ui::BoolSetting no_present_in_background;
-
     // OSD (main ReShade overlay widget)
     ui::new_ui::BoolSetting show_performance_overlay;
     ui::new_ui::BoolSetting show_fps_counter;

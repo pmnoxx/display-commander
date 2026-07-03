@@ -46,7 +46,6 @@ class AdvancedTabSettings {
     // Keyboard Shortcut Settings (Experimental)
     BoolSetting enable_hotkeys;
     BoolSetting enable_mute_unmute_shortcut;
-    BoolSetting enable_background_toggle_shortcut;
     BoolSetting enable_timeslowdown_shortcut;
     BoolSetting enable_adhd_toggle_shortcut;
     BoolSetting enable_input_blocking_shortcut;

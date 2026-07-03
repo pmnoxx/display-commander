@@ -884,29 +884,6 @@ static void DrawDisplaySettings_FpsLimiterMiscOptions(display_commander::ui::IIm
             settings::g_mainTabSettings.limit_real_frames.SetValue(false);
         }
     }
-
-    // No Render / No Present in Background
-    if ((g_reshade_module != nullptr)) {
-        bool no_render_in_bg = settings::g_mainTabSettings.no_render_in_background.GetValue();
-        if (imgui.Checkbox("No Render in Background", &no_render_in_bg)) {
-            settings::g_mainTabSettings.no_render_in_background.SetValue(no_render_in_bg);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Skip rendering draw calls when the game window is not in the foreground. This can save "
-                "GPU power and reduce background processing.");
-        }
-        imgui.SameLine();
-        bool no_present_in_bg = settings::g_mainTabSettings.no_present_in_background.GetValue();
-        if (imgui.Checkbox("No Present in Background", &no_present_in_bg)) {
-            settings::g_mainTabSettings.no_present_in_background.SetValue(no_present_in_bg);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Skip ReShade's on_present processing when the game window is not in the foreground. "
-                "This can save GPU power and reduce background processing.");
-        }
-    }
 }
 
 static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGuiWrapper& imgui,

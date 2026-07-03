@@ -8,7 +8,6 @@ namespace settings {
 HotkeysTabSettings::HotkeysTabSettings()
     : enable_hotkeys("EnableHotkeys", true, "DisplayCommander"),
       hotkey_mute_unmute("HotkeyMuteUnmute", "ctrl shift m", "DisplayCommander"),
-      hotkey_background_toggle("HotkeyBackgroundToggle", "", "DisplayCommander"),
       hotkey_adhd_toggle("HotkeyAdhdToggle", "ctrl shift d", "DisplayCommander"),
       hotkey_input_blocking("HotkeyInputBlocking", "", "DisplayCommander"),
       hotkey_display_commander_ui("HotkeyDisplayCommanderUi", "end", "DisplayCommander"),
@@ -43,8 +42,7 @@ void HotkeysTabSettings::SaveAll() {
 }
 
 std::vector<ui::new_ui::SettingBase*> HotkeysTabSettings::GetAllSettings() {
-    return {&enable_hotkeys, &hotkey_mute_unmute, &hotkey_background_toggle,
-            &hotkey_adhd_toggle, &hotkey_input_blocking, &hotkey_display_commander_ui,
+    return {&enable_hotkeys, &hotkey_mute_unmute, &hotkey_adhd_toggle, &hotkey_input_blocking, &hotkey_display_commander_ui,
             &hotkey_performance_overlay, &hotkey_volume_up,
             &hotkey_volume_down,
             &hotkey_system_volume_up, &hotkey_system_volume_down, &hotkey_win_down, &hotkey_win_up, &hotkey_win_left,

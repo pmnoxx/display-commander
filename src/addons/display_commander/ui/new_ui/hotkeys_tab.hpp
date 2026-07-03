@@ -21,8 +21,7 @@ using HotkeyAction = std::function<void()>;
 
 // Hotkey index enum; must match g_hotkey_definitions order in InitializeHotkeyDefinitions.
 enum class HotkeyId : int {
-    BackgroundToggle = 0,
-    AdhdToggle,
+    AdhdToggle = 0,
     InputBlocking,
     DisplayCommanderUi,
     PerformanceOverlay,

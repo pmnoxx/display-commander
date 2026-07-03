@@ -120,10 +120,6 @@ LogLevel GetMinLogLevel() { return LogLevelFromComboIndex(settings::g_mainTabSet
 
 // Input blocking in background (0.0f off, 1.0f on)
 
-// Render blocking in background
-
-// Present blocking in background
-
 // Hide HDR capabilities from applications
 
 // D3D9 to D3D9Ex upgrade

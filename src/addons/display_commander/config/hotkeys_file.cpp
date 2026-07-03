@@ -21,7 +21,6 @@ namespace {
 const char* const HOTKEY_KEYS[] = {
     "EnableHotkeys",
     "HotkeyMuteUnmute",
-    "HotkeyBackgroundToggle",
     "HotkeyTimeslowdown",
     "HotkeyAdhdToggle",
     "HotkeyInputBlocking",

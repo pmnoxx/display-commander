@@ -29,7 +29,6 @@ class HotkeysTabSettings {
 
     // Individual hotkey shortcut strings (empty = disabled)
     StringSetting hotkey_mute_unmute;
-    StringSetting hotkey_background_toggle;
     StringSetting hotkey_adhd_toggle;
     StringSetting hotkey_input_blocking;
     StringSetting hotkey_display_commander_ui;

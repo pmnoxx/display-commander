@@ -492,10 +492,6 @@ extern std::atomic<bool> g_dx9_swapchain_detected;
 // Window Management Settings
 extern std::atomic<WindowAlignment> s_window_alignment;  // Window alignment when repositioning is needed
 
-// Render blocking in background
-
-// Present blocking in background
-
 // NVAPI (e.g. restart needed after fake NVAPI toggle)
 extern std::atomic<bool> s_restart_needed_nvapi;
 
@@ -826,7 +822,6 @@ extern std::atomic<bool> s_enable_reflex_logging;
 // Shortcut settings
 extern std::atomic<bool> s_enable_hotkeys;
 extern std::atomic<bool> s_enable_mute_unmute_shortcut;
-extern std::atomic<bool> s_enable_background_toggle_shortcut;
 extern std::atomic<bool> s_enable_timeslowdown_shortcut;
 extern std::atomic<bool> s_enable_adhd_toggle_shortcut;
 extern std::atomic<bool> s_enable_display_commander_ui_shortcut;

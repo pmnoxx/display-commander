@@ -35,9 +35,7 @@ NvAPI_D3D_GetLatency_pfn NvAPI_D3D_GetLatency_Original = nullptr;
 NvAPI_D3D_GetSleepStatus_pfn NvAPI_D3D_GetSleepStatus_Original = nullptr;
 NvAPI_QueryInterface_pfn NvAPI_QueryInterface_Original = nullptr;
 
-namespace {
-
-NvU32 GetNvAPIFunctionId(const char* functionName) {
+static NvU32 GetNvAPIFunctionId(const char* functionName) {
     for (int i = 0; nvapi_interface_table[i].func != nullptr; i++) {
         if (strcmp(nvapi_interface_table[i].func, functionName) == 0) {
             return nvapi_interface_table[i].id;
@@ -47,8 +45,6 @@ NvU32 GetNvAPIFunctionId(const char* functionName) {
     LogInfo("NVAPI hooks: Function '%s' not found in interface table", functionName);
     return 0;
 }
-
-}  // namespace
 
 void* __cdecl NvAPI_QueryInterface_Detour(NvU32 offset) {
     if (NvAPI_QueryInterface_Original != nullptr) {

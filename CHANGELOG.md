@@ -27,6 +27,7 @@ Planned:
 - Show override from NPI for DLSS presets. @adap
 
 ## v0.15.2
+- [removal] [build] **Legacy lite release filenames removed** - CI and GitHub releases no longer attach duplicate `zzz_display_commander_lite.addon64` / `.addon32` copies of the main addon. Use `zzz_display_commander.addon64` / `.addon32` instead.
 - [removal] [settings] [ui] **No Render / No Present in Background removed** - Removed dead `no_render_in_background` and `no_present_in_background` settings, their FPS limiter checkboxes, and the Background Toggle hotkey. Runtime power-saving hooks were removed earlier; these options no longer had any effect.
 - [removal] [ui] **DXGI Control panel removed** - Removed the Main tab **DXGI Control** collapsible section (HDR10 / scRGB color fix checkbox). The `AutoColorspace` setting and runtime auto color-space logic are unchanged; configure via config or per-game defaults.
 - [ui] **Simplify UI** - Always show Control Panels when modules are enabled.

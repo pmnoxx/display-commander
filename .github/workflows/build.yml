@@ -23,12 +23,10 @@ jobs:
             devcmd_arch: x64
             artifact_suffix: addon64
             artifact_name: zzz_display_commander.addon64
-            lite_artifact_name: zzz_display_commander_lite.addon64
           - arch: x86
             devcmd_arch: x86
             artifact_suffix: addon32
             artifact_name: zzz_display_commander.addon32
-            lite_artifact_name: zzz_display_commander_lite.addon32
 
     steps:
       - name: Checkout
@@ -67,9 +65,7 @@ jobs:
             ls -la build || true
             exit 1
           fi
-          # Main name plus legacy *_lite name (identical binary; backward compatibility for URLs/scripts).
           cp "$display_commander_file" "artifacts/${{ matrix.artifact_name }}"
-          cp "$display_commander_file" "artifacts/${{ matrix.lite_artifact_name }}"
           echo "artifact_dir=artifacts" >> $GITHUB_OUTPUT
 
       - name: Upload artifact
@@ -178,7 +174,6 @@ jobs:
           **Files**:
           - \`zzz_display_commander.addon64\` - 64-bit version
           - \`zzz_display_commander.addon32\` - 32-bit version
-          - \`zzz_display_commander_lite.addon64\` / \`zzz_display_commander_lite.addon32\` - same binaries as above (legacy filenames)
 
           For stable releases, use the main [Releases](https://github.com/pmnoxx/display-commander/releases) page.
           EOF

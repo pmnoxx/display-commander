@@ -26,6 +26,10 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.15.2
+- [ui] **Simplify UI** - Always show Control Panels when modules are enabled.
+- [ui] **Buttons** - Move buttons such as minimize to bottom.
+
 ## v0.15.1
 - [removal] [settings] [ui] [hooks] **Flip Metering NVAPI tracking removed** - Removed DXGI Control Flip Metering status, the `allow_nvapi_d3d12_setflipconfig` setting, session counters (`g_nvapi_d3d12_setflipconfig_seen` / `_suppressions`), and optional SetFlipConfig suppression in `NvAPI_QueryInterface`. NVAPI now passes through all QueryInterface IDs unchanged.
 - [removal] [settings] [ui] **Anisotropic filtering / texture filtering removed** - Removed sampler override settings (`force_anisotropic_filtering`, filter upgrade toggles, `max_anisotropy`, `force_mipmap_lod_bias`) from main and experimental tab settings, the DXGI Control **Texture Filtering** panel, and default-settings template comments. Runtime sampler hooks were already removed earlier.

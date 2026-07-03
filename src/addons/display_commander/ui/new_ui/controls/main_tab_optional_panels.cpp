@@ -16,9 +16,9 @@ enum class MainTabOptionalSectionKind {
 };
 
 static constexpr MainTabOptionalSectionKind kMainTabOptionalPanelsDrawOrder[] = {
-    MainTabOptionalSectionKind::AudioControl, MainTabOptionalSectionKind::WindowButtons,
+    MainTabOptionalSectionKind::AudioControl,
     MainTabOptionalSectionKind::InputControl, MainTabOptionalSectionKind::DlssControl,
-    MainTabOptionalSectionKind::DxgiControl,
+    MainTabOptionalSectionKind::DxgiControl, MainTabOptionalSectionKind::WindowButtons,
 };
 
 static constexpr size_t kMainTabOptionalPanelsDrawOrderCount =

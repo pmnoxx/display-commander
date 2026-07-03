@@ -1,8 +1,5 @@
 #include "config/display_commander_config.hpp"
-#include "display/display_initial_state.hpp"
-#include "features/auto_windows_hdr/auto_windows_hdr.hpp"
 #include "features/smooth_motion/smooth_motion.hpp"
-#include "display/hdr_control.hpp"
 #include "features/presentmon/presentmon_minimal_etw.hpp"
 #include "globals.hpp"
 #include "hooks/dxgi/dxgi_gpu_completion.hpp"
@@ -110,8 +107,6 @@ void OnDestroyDevice(reshade::api::device* device) {
     if (device == nullptr) {
         return;
     }
-
-    display_commander::features::auto_windows_hdr::OnDestroyDeviceRevertAutoHdrIfNeeded();
 
     LogInfo("Device destroyed - performing cleanup operations device: %p", device);
 
@@ -232,10 +227,6 @@ void DoInitializationWithHwnd(HWND hwnd) {
     // Initialize display cache
     LogInfo("[DoInitializationWithHwnd] before display_cache::Initialize");
     display_cache::g_displayCache.Initialize();
-
-    // Capture initial display state for restoration
-    LogInfo("[DoInitializationWithHwnd] before CaptureInitialState");
-    display_initial_state::g_initialDisplayState.CaptureInitialState();
 
     // Initialize UI system (module registry runs inside; Controller module initializes input remapping)
     LogInfo("[DoInitializationWithHwnd] before InitializeNewUISystem");
@@ -963,56 +954,8 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
 void OnDestroySwapchain(reshade::api::swapchain* swapchain, bool resize) {
     CALL_GUARD_NO_TS();
     (void)resize;
-    if (swapchain == nullptr) {
-        return;
-    }
-    const HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
-    display_commander::features::auto_windows_hdr::OnSwapchainDestroyMaybeRevertAutoHdr(hwnd);
+    (void)swapchain;
 }
-
-namespace {
-
-// CTA-861-G / DXGI HDR10: chromaticity encoded as 0-50000 for 0.00000-0.50000 (0.00001 steps)
-constexpr UINT32 kHdr10ChromaticityScale = 50000u;
-
-bool ApplyHdr1000MetadataToDxgi(IDXGISwapChain4* swapchain4) {
-    if (swapchain4 == nullptr) {
-        return false;
-    }
-    DXGI_HDR_METADATA_HDR10 hdr10 = {};
-    hdr10.RedPrimary[0] = static_cast<UINT16>(std::round(0.708 * kHdr10ChromaticityScale));    // Rec. 2020 red x
-    hdr10.RedPrimary[1] = static_cast<UINT16>(std::round(0.292 * kHdr10ChromaticityScale));    // Rec. 2020 red y
-    hdr10.GreenPrimary[0] = static_cast<UINT16>(std::round(0.170 * kHdr10ChromaticityScale));  // Rec. 2020 green x
-    hdr10.GreenPrimary[1] = static_cast<UINT16>(std::round(0.797 * kHdr10ChromaticityScale));  // Rec. 2020 green y
-    hdr10.BluePrimary[0] = static_cast<UINT16>(std::round(0.131 * kHdr10ChromaticityScale));   // Rec. 2020 blue x
-    hdr10.BluePrimary[1] = static_cast<UINT16>(std::round(0.046 * kHdr10ChromaticityScale));   // Rec. 2020 blue y
-    hdr10.WhitePoint[0] = static_cast<UINT16>(std::round(0.3127 * kHdr10ChromaticityScale));   // D65 white x
-    hdr10.WhitePoint[1] = static_cast<UINT16>(std::round(0.3290 * kHdr10ChromaticityScale));   // D65 white y
-    hdr10.MaxMasteringLuminance = 1000;
-    hdr10.MinMasteringLuminance = 0;
-    hdr10.MaxContentLightLevel = 1000;
-    hdr10.MaxFrameAverageLightLevel = 100;
-    const HRESULT hr = swapchain4->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10, sizeof(hdr10), &hdr10);
-    if (SUCCEEDED(hr)) {
-        LogInfo("HDR metadata (MaxMDL 1000 nits, Rec. 2020) applied to swapchain");
-        return true;
-    }
-    return false;
-}
-
-void ApplyHdr1000MetadataToSwapchain(reshade::api::swapchain* swapchain) {
-    const auto api = swapchain->get_device()->get_api();
-    if (api != reshade::api::device_api::d3d11 && api != reshade::api::device_api::d3d12) {
-        return;
-    }
-    IUnknown* const iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
-    Microsoft::WRL::ComPtr<IDXGISwapChain4> swapchain4;
-    if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&swapchain4)))) {
-        ApplyHdr1000MetadataToDxgi(swapchain4.Get());
-    }
-}
-
-}  // namespace
 
 void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
     CALL_GUARD_NO_TS();
@@ -1074,13 +1017,6 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
 
     // needed for quick fps limit selector to work // TODO rework this later
     CalculateWindowState(hwnd, "OnInitSwapchain");
-
-    display_commander::features::auto_windows_hdr::OnSwapchainInitTryAutoEnableWindowsHdr(hwnd);
-
-    // Auto-apply MaxMDL 1000 HDR metadata when enabled (inject HDR10 metadata on swapchain init)
-    if (!resize && settings::g_mainTabSettings.auto_apply_maxmdl_1000_hdr_metadata.GetValue()) {
-        ApplyHdr1000MetadataToSwapchain(swapchain);
-    }
 
 }
 

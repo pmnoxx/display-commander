@@ -27,13 +27,3 @@
 
 // Libraries <Windows>
 #include <Windows.h>
-
-namespace ui::new_ui::performance_overlay {
-
-// Internal helpers shared between overlay translation units.
-// Keep this minimal: prefer static helpers in owning .cpp.
-
-// Updates/reads the frame timeline cache used by both full UI and overlay.
-void UpdateFrameTimelineCache();
-
-}  // namespace ui::new_ui::performance_overlay

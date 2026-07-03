@@ -480,20 +480,6 @@ struct PerfSample {
 
 // External variable declarations - centralized here to avoid duplication
 
-// Desktop Resolution Override
-extern std::atomic<int> s_selected_monitor_index;
-
-// Display Tab Enhanced Settings
-extern std::atomic<int> s_selected_resolution_index;
-extern std::atomic<int> s_selected_refresh_rate_index;
-extern std::atomic<bool> s_initial_auto_selection_done;
-
-// Auto-restore and auto-apply settings
-extern std::atomic<bool> s_auto_restore_resolution_on_close;
-extern std::atomic<bool> s_auto_apply_resolution_change;
-extern std::atomic<bool> s_auto_apply_refresh_rate_change;
-extern std::atomic<bool> s_resolution_applied_at_least_once;
-
 // Window management
 /** Current window mode from main tab settings. */
 WindowMode GetCurrentWindowMode();

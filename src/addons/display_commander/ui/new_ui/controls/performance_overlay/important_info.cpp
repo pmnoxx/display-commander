@@ -219,12 +219,6 @@ static void DrawImportantInfo_FrameTimeGraphContent(display_commander::ui::IImGu
     imgui.Separator();
     imgui.Spacing();
 
-    DrawFrameTimelineBar(imgui);
-
-    imgui.Spacing();
-    imgui.Separator();
-    imgui.Spacing();
-
     imgui.Text("Native Frame Time Graph");
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
@@ -737,17 +731,6 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             imgui.SetTooltipEx(
                 "Shows a graph of native frame times (frames shown to display via native swapchain Present) in the "
                 "overlay.\nOnly available when limit real frames is enabled.");
-        }
-        imgui.NextColumn();
-
-        bool show_frame_timeline_bar = settings::g_mainTabSettings.show_frame_timeline_bar.GetValue();
-        if (imgui.Checkbox("Show frame timeline bar", &show_frame_timeline_bar)) {
-            settings::g_mainTabSettings.show_frame_timeline_bar.SetValue(show_frame_timeline_bar);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Shows a compact frame timeline in the overlay (Simulation, Render Submit, Present, etc. as bars). "
-                "Updates every 1 s.");
         }
         imgui.NextColumn();
 

@@ -1123,9 +1123,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     if (show_native_frame_time_graph) {
         ui::new_ui::DrawNativeFrameTimeGraphOverlay(imgui, show_tooltips);
     }
-    if (settings::g_mainTabSettings.show_frame_timeline_bar.GetValue()) {
-        ui::new_ui::DrawFrameTimelineBarOverlay(imgui, show_tooltips);
-    }
 }
 
 }  // namespace ui::new_ui

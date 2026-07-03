@@ -3,10 +3,7 @@
 
 #include "config/display_commander_config.hpp"
 #include "config/override_reshade_settings.hpp"
-#include "display/display_initial_state.hpp"
-#include "features/auto_windows_hdr/auto_windows_hdr.hpp"
 #include "features/dpi/dpi_management.hpp"
-#include "features/reshade_config/load_from_dll_main.hpp"
 #include "dll_boot_logging.hpp"
 #include "globals.hpp"
 #include "hooks/loadlibrary_hooks.hpp"
@@ -40,8 +37,6 @@ void DoInitializationWithoutHwndSafe_Early(HMODULE h_module) {
     LogInfo("DLLMain (DisplayCommander) %lld h_module: 0x%p", utils::get_now_ns(),
             reinterpret_cast<uintptr_t>(h_module));
     settings::LoadAllSettingsAtStartup();
-    // docs/spec/features/auto_enable_windows_hdr.md — early DLL init (DllMain stack)
-    display_commander::features::auto_windows_hdr::OnEarlyInitTryAutoEnableWindowsHdr();
     LogBootInitWithoutHwndStage("Early after LoadAllSettingsAtStartup");
     display_commanderhooks::InstallLoadLibraryHooks();
     LogBootInitWithoutHwndStage("Early after InstallLoadLibraryHooks");
@@ -81,7 +76,6 @@ void DoInitializationWithoutHwndSafe_Early(HMODULE h_module) {
     InstallRealDXGIMinHookHooks();
     LogBootInitWithoutHwndStage("Early after InstallRealDXGIMinHookHooks");
     OverrideReShadeSettings(nullptr);
-    display_commander::features::reshade_config::MaybeMergeDisplayCommanderIntoReShadeLoadFromDllMainList(nullptr);
     LogBootInitWithoutHwndStage("Early after OverrideReShadeSettings");
 }
 
@@ -93,8 +87,7 @@ void DoInitializationWithoutHwndSafe_Late() {
     }
 
     display_cache::g_displayCache.Initialize();
-    display_initial_state::g_initialDisplayState.CaptureInitialState();
-    LogBootInitWithoutHwndStage("Late after display cache and initial state");
+    LogBootInitWithoutHwndStage("Late after display cache");
     ui::new_ui::InitializeNewUISystem();
     LogBootInitWithoutHwndStage("Late after InitializeNewUISystem");
     StartContinuousMonitoring();

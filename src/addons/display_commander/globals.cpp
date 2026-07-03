@@ -163,25 +163,6 @@ void RefreshReShadeModuleIfNeeded() {
 
 // Background feature - show black window behind game when not fullscreen
 
-// Desktop Resolution Override
-std::atomic<int> s_selected_monitor_index{0};  // Primary monitor by default
-
-// Display Tab Enhanced Settings
-std::atomic<int> s_selected_resolution_index{0};    // Default to first available resolution
-std::atomic<int> s_selected_refresh_rate_index{0};  // Default to first available refresh rate
-
-std::atomic<bool> s_initial_auto_selection_done{false};  // Track if we've done initial auto-selection
-
-// Auto-restore resolution on game close
-std::atomic<bool> s_auto_restore_resolution_on_close{true};  // Enabled by default
-
-// Auto-apply resolution and refresh rate changes
-std::atomic<bool> s_auto_apply_resolution_change{false};    // Disabled by default
-std::atomic<bool> s_auto_apply_refresh_rate_change{false};  // Disabled by default
-
-// Track if resolution was successfully applied at least once
-std::atomic<bool> s_resolution_applied_at_least_once{false};  // Disabled by default
-
 // Atomic variables
 std::atomic<reshade::api::device_api> g_last_reshade_device_api{static_cast<reshade::api::device_api>(0)};
 std::atomic<uint32_t> g_last_api_version{0};

@@ -121,7 +121,6 @@ MainTabSettings::MainTabSettings()
       show_frame_time_graph("show_frame_time_graph", true, "DisplayCommander"),
       show_frame_time_stats("show_frame_time_stats", false, "DisplayCommander"),
       show_native_frame_time_graph("show_native_frame_time_graph", false, "DisplayCommander"),
-      show_frame_timeline_bar("show_frame_timeline_bar", false, "DisplayCommander"),
       show_dxgi_vrr_status("show_dxgi_vrr_status", false, "DisplayCommander"),
       show_dxgi_refresh_rate("show_dxgi_refresh_rate", false, "DisplayCommander"),
       show_cpu_usage("show_cpu_usage", false, "DisplayCommander"),
@@ -201,9 +200,7 @@ MainTabSettings::MainTabSettings()
       upgrade_compare_min_mag_linear_mip_point("upgrade_compare_min_mag_linear_mip_point", false, "DisplayCommander"),
       max_anisotropy("max_anisotropy", 0, 0, 16, "DisplayCommander"),
       force_mipmap_lod_bias("force_mipmap_lod_bias", 0.0f, -5.0f, 5.0f, "DisplayCommander"),
-      auto_reshade_config_backup("auto_reshade_config_backup", false, "DisplayCommander"),
-      auto_enable_windows_hdr("auto_enable_windows_hdr", false, "DisplayCommander"),
-      auto_apply_maxmdl_1000_hdr_metadata("auto_apply_maxmdl_1000_hdr_metadata", false, "DisplayCommander") {
+      auto_reshade_config_backup("auto_reshade_config_backup", false, "DisplayCommander") {
     // Initialize the all_settings_ vector
     all_settings_ = {
         &window_mode,
@@ -272,7 +269,6 @@ MainTabSettings::MainTabSettings()
         &show_frame_time_graph,
         &show_frame_time_stats,
         &show_native_frame_time_graph,
-        &show_frame_timeline_bar,
         &show_dxgi_vrr_status,
         &show_dxgi_refresh_rate,
         &show_cpu_usage,
@@ -343,8 +339,6 @@ MainTabSettings::MainTabSettings()
         &max_anisotropy,
         &force_mipmap_lod_bias,
         &auto_reshade_config_backup,
-        &auto_enable_windows_hdr,
-        &auto_apply_maxmdl_1000_hdr_metadata,
     };
 }
 

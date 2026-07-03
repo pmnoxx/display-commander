@@ -26,6 +26,13 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.15.1
+- [removal] [settings] [ui] **Auto enable Windows HDR removed** - Removed automatic Windows HDR on game start and revert on exit, the related `auto_enable_windows_hdr` setting, and ReShade `LoadFromDllMain` merging for early load.
+- [removal] [settings] [ui] **Override HDR metadata removed** - Removed the MaxCLL/MaxFALL HDR10 metadata override (`auto_apply_maxmdl_1000_hdr_metadata`) and swapchain `SetHDRMetaData` injection on init.
+- [removal] [ui] **Resolution HDR controls removed** - Removed Windows HDR capability status and manual Enable/Disable HDR buttons from the Resolution widget.
+- [removal] [settings] [ui] **Frame timeline bar removed** - Removed the OSD frame timeline bar (`show_frame_timeline_bar`), its Important Info debug view, and timeline rendering code.
+- [removal] [settings] [ui] **Resolution Control removed** - Removed the Main tab Resolution Control section, display resolution/refresh apply and restore on exit, auto-apply on start, and related widget/settings/helpers code (`resolution_widget`, `display_restore`, `display_initial_state`, `resolution_helpers`).
+
 ## v0.14.20
 - [new feature] **CBT service feature**
 - [cleanup] [build] **Nightly CI removed** - Dropped the scheduled GitHub Actions nightly workflow and README links; use [Latest Build](https://github.com/pmnoxx/display-commander/releases/tag/latest_build) for bleeding-edge artifacts instead.

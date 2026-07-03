@@ -32,7 +32,6 @@
 #include "../../utils/d3d9_api_version.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
-#include "../../widgets/resolution_widget/resolution_widget.hpp"
 #include "new_ui_tabs.hpp"
 #include "settings_wrapper.hpp"
 #include "controls/main_tab_optional_panels.hpp"
@@ -305,9 +304,6 @@ void InitMainNewTab() {
         }
         s_fps_limiter_mode.store(static_cast<FpsLimiterMode>(mode_val));
         // Scanline offset and VBlank Sync Divisor are now automatically synced via IntSettingRef
-
-        // Initialize resolution widget
-        display_commander::widgets::resolution_widget::InitializeResolutionWidget();
 
         // Log level is read directly from settings::g_mainTabSettings.log_level when needed (GetMinLogLevel()).
     }
@@ -618,19 +614,6 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
     if (display_settings_open) {
         imgui.Indent();
         DrawDisplaySettings(api, imgui, runtime);
-        imgui.Unindent();
-    }
-
-    imgui.Spacing();
-
-    // Monitor/Display Resolution Settings Section
-    g_rendering_ui_section.store("ui:tab:main_new:resolution", std::memory_order_release);
-    ui::colors::PushHeaderColors(&imgui);
-    const bool resolution_control_open = imgui.CollapsingHeader("Resolution Control", ImGuiTreeNodeFlags_None);
-    ui::colors::PopCollapsingHeaderColors(&imgui);
-    if (resolution_control_open) {
-        imgui.Indent();
-        display_commander::widgets::resolution_widget::DrawResolutionWidget(imgui);
         imgui.Unindent();
     }
 

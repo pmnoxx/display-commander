@@ -27,10 +27,6 @@ void DrawAdhdMultiMonitorControls(display_commander::ui::IImGuiWrapper& imgui);
 // Draw frame time graph section
 void DrawFrameTimeGraph(display_commander::ui::IImGuiWrapper& imgui);
 void DrawNativeFrameTimeGraph(display_commander::ui::IImGuiWrapper& imgui);
-// Draw single-frame timeline bar (Simulation, Render Submit, Present, etc. segments)
-void DrawFrameTimelineBar(display_commander::ui::IImGuiWrapper& imgui);
-// Compact frame timeline bar for OSD
-void DrawFrameTimelineBarOverlay(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips = false);
 
 // Draw compact frame time graph for overlay (fixed width)
 void DrawFrameTimeGraphOverlay(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips = false);

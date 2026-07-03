@@ -132,7 +132,6 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_frame_time_graph;
     ui::new_ui::BoolSetting show_frame_time_stats;
     ui::new_ui::BoolSetting show_native_frame_time_graph;
-    ui::new_ui::BoolSetting show_frame_timeline_bar;
     /** Show DXGI-based VRR status on the OSD (RefreshRateMonitor heuristic). Requires DXGI refresh rate /
      * VRR detection enabled (Debug DXGI refresh tab in -DebugTabs builds, or config). */
     ui::new_ui::BoolSetting show_dxgi_vrr_status;
@@ -257,11 +256,6 @@ class MainTabSettings {
     /** When true, backup all .ini files from the game folder to Display_Commander\\Reshade\\Configs\\<GameName>
      * when the option is enabled (only if not already present). Does not set ReShade config path. Default off. */
     ui::new_ui::BoolSetting auto_reshade_config_backup;
-    // HDR Control (Resolution Control / auto enable Windows HDR)
-    ui::new_ui::BoolSetting auto_enable_windows_hdr;
-    // Override HDR static metadata (ignore source MaxCLL/MaxFALL): inject MaxMDL 1000 on swapchain init (DXGI
-    // SetHDRMetaData). Sony/display fix.
-    ui::new_ui::BoolSetting auto_apply_maxmdl_1000_hdr_metadata;
 
     // Sampler State Override Settings
     ui::new_ui::BoolSetting force_anisotropic_filtering;

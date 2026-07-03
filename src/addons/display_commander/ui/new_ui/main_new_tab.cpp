@@ -4,7 +4,6 @@
 #include "../../config/default_overrides.hpp"
 #include "../../config/default_settings_file.hpp"
 #include "../../config/display_commander_config.hpp"
-#include "../../display/hdr_control.hpp"
 #include "../../dlss/dlss_indicator_manager.hpp"
 #include "../../dxgi/vram_info.hpp"
 #include "../../globals.hpp"

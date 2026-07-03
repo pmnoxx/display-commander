@@ -33,6 +33,7 @@ Planned:
 - [removal] [settings] [ui] **Frame timeline bar removed** - Removed the OSD frame timeline bar (`show_frame_timeline_bar`), its Important Info debug view, and timeline rendering code.
 - [removal] [settings] [ui] **Resolution Control removed** - Removed the Main tab Resolution Control section, display resolution/refresh apply and restore on exit, auto-apply on start, and related widget/settings/helpers code (`resolution_widget`, `display_restore`, `display_initial_state`, `resolution_helpers`).
 - [removal] **Windows HDR control removed** - Removed `display/hdr_control` (manual Windows HDR on/off via DisplayConfig advanced color APIs); no remaining callers after prior HDR UI removals.
+- [removal] [settings] [ui] **Latent Sync FPS limiter removed** - Removed VBlank scanline sync limiter mode (`LatentSync`), scanline offset / vblank divisor settings, and related `latent_sync_limiter` / `vblank_monitor` code. FPS limiter modes are now Default (OnPresent sync) and Reflex only.
 
 ## v0.14.20
 - [new feature] **CBT service feature**

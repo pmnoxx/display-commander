@@ -140,7 +140,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
                                                         float fps_limiter_checkbox_column_gutter);
 static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWrapper& imgui,
                                                  const std::function<void()>& drawPclStatsCheckbox);
-static void DrawDisplaySettings_FpsLimiterLatentSync(display_commander::ui::IImGuiWrapper& imgui);
+static void DrawDisplaySettings_FpsLimiterMiscOptions(display_commander::ui::IImGuiWrapper& imgui);
 
 void DrawQuickFpsLimitChanger(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
@@ -262,12 +262,11 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
     CALL_GUARD_NO_TS();
     imgui.Spacing();
 
-    const char* mode_items[] = {"Default", "NVIDIA Reflex (DX11/DX12 only, Vulkan requires native reflex)",
-                                "Sync to Display Refresh Rate (fraction of monitor refresh rate) Non-VRR"};
+    const char* mode_items[] = {"Default", "NVIDIA Reflex (DX11/DX12 only, Vulkan requires native reflex)"};
 
     int current_item = settings::g_mainTabSettings.fps_limiter_mode.GetValue();
-    if (current_item < 0 || current_item > 2) {
-        current_item = (current_item < 0) ? 0 : 2;
+    if (current_item < 0 || current_item > 1) {
+        current_item = (current_item < 0) ? 0 : 1;
         settings::g_mainTabSettings.fps_limiter_mode.SetValue(current_item);
         s_fps_limiter_mode.store(static_cast<FpsLimiterMode>(current_item));
     }
@@ -353,7 +352,7 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
         imgui.BeginDisabled();
     }
     imgui.SetNextItemWidth(get_fps_limiter_control_width());
-    if (imgui.Combo("FPS Limiter Mode", &current_item, mode_items, 3)) {
+    if (imgui.Combo("FPS Limiter Mode", &current_item, mode_items, 2)) {
         settings::g_mainTabSettings.fps_limiter_mode.SetValue(current_item);
         s_fps_limiter_mode.store(static_cast<FpsLimiterMode>(current_item));
         FpsLimiterMode mode = s_fps_limiter_mode.load();
@@ -362,8 +361,6 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
             settings::g_advancedTabSettings.reflex_auto_configure.SetValue(true);
         } else if (mode == FpsLimiterMode::kOnPresentSync) {
             LogInfo("FPS Limiter: OnPresent Frame Synchronizer");
-        } else if (mode == FpsLimiterMode::kLatentSync) {
-            LogInfo("FPS Limiter: VBlank Scanline Sync for VSYNC-OFF or without VRR");
         }
 
         if (mode == FpsLimiterMode::kReflex && prev_item != static_cast<int>(FpsLimiterMode::kReflex)) {
@@ -375,7 +372,6 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
             "Choose limiter mode (when FPS limiter is enabled):\n"
             "Default - Various presets.\n"
             "Reflex - NVIDIA Reflex library.\n"
-            "Sync to Display Refresh Rate - synchronizes frame display time to the monitor refresh rate\n"
             "\n"
             " FPS limiter source: %s",
             GetChosenFpsLimiterSiteName());
@@ -872,85 +868,7 @@ static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWr
     }
 }
 
-static void DrawDisplaySettings_FpsLimiterLatentSync(display_commander::ui::IImGuiWrapper& imgui) {
-    // Scanline Offset (only visible if scanline mode is selected)
-    if (SliderIntSetting(settings::g_mainTabSettings.scanline_offset, "Scanline Offset", "%d", imgui)) {
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Scanline offset for latent sync (-1000 to 1000). This defines the offset from the "
-            "threshold where frame pacing is active.");
-    }
-
-    // VBlank Sync Divisor (only visible if latent sync mode is selected)
-    if (SliderIntSetting(settings::g_mainTabSettings.vblank_sync_divisor,
-                         "VBlank Sync Divisor (controls FPS limit as fraction of monitor refresh rate)", "%d", imgui)) {
-    }
-    if (imgui.IsItemHovered()) {
-        auto window_state = ::g_window_state.load();
-        double refresh_hz = 60.0;  // default fallback
-        if (window_state) {
-            refresh_hz = window_state->current_monitor_refresh_rate.ToHz();
-        }
-
-        std::ostringstream tooltip_oss;
-        tooltip_oss << "VBlank Sync Divisor (0-8). Controls frame pacing similar to VSync divisors:\n\n";
-        tooltip_oss << "  0 -> No additional wait (Off)\n";
-        for (int div = 1; div <= 8; ++div) {
-            int effective_fps = static_cast<int>(std::round(refresh_hz / div));
-            tooltip_oss << "  " << div << " -> " << effective_fps << " FPS";
-            if (div == 1) {
-                tooltip_oss << " (Full Refresh)";
-            } else if (div == 2) {
-                tooltip_oss << " (Half Refresh)";
-            } else {
-                tooltip_oss << " (1/" << div << " Refresh)";
-            }
-            tooltip_oss << "\n";
-        }
-        tooltip_oss << "\n0 = Disabled, higher values reduce effective frame rate for smoother frame pacing.";
-        imgui.SetTooltipEx("%s", tooltip_oss.str().c_str());
-    }
-
-    // VBlank Monitor Status (only visible if latent sync is enabled and FPS limit > 0)
-    if (s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync) {
-        if (dxgi::latent_sync::g_latentSyncManager) {
-            auto& latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
-            if (latent.IsVBlankMonitoringActive()) {
-                imgui.Spacing();
-                imgui.TextColored(ui::colors::STATUS_ACTIVE, "✁EVBlank Monitor: ACTIVE");
-                if (imgui.IsItemHovered()) {
-                    std::string status = latent.GetVBlankMonitorStatusString();
-                    imgui.SetTooltipEx(
-                        "VBlank monitoring thread is running and collecting scanline data for frame pacing.\n\n%s",
-                        status.c_str());
-                }
-
-                imgui.TextColored(ui::colors::STATUS_INACTIVE, "  refresh time: %.3fms",
-                                  1.0 * dxgi::fps_limiter::ns_per_refresh.load() / utils::NS_TO_MS);
-                imgui.SameLine();
-                imgui.TextColored(ui::colors::STATUS_INACTIVE, "  total_height: %llu",
-                                  dxgi::fps_limiter::g_latent_sync_total_height.load());
-                imgui.SameLine();
-                imgui.TextColored(ui::colors::STATUS_INACTIVE, "  active_height: %llu",
-                                  dxgi::fps_limiter::g_latent_sync_active_height.load());
-            } else {
-                imgui.Spacing();
-                imgui.TextColored(ui::colors::STATUS_STARTING, ICON_FK_WARNING " VBlank Monitor: STARTING...");
-                if (imgui.IsItemHovered()) {
-                    std::string status = latent.GetVBlankMonitorStatusString();
-                    imgui.SetTooltipEx(
-                        "VBlank monitoring is enabled in settings but the thread is not running yet.\n\n"
-                        "• %s\n\n"
-                        "The thread starts when the FPS limiter runs (i.e. when a frame is presented with "
-                        "VBlank Sync Divisor > 0). After start it may briefly wait for Latent Sync mode, "
-                        "then bind to the display and collect scanline data for frame pacing.",
-                        status.c_str());
-                }
-            }
-        }
-    }
-
+static void DrawDisplaySettings_FpsLimiterMiscOptions(display_commander::ui::IImGuiWrapper& imgui) {
     // Limit Real Frames (experimental; checkbox shows effective value, write updates config)
     if (enabled_experimental_features) {
         if (g_present_update_after2_called.load(std::memory_order_acquire)) {
@@ -1004,12 +922,11 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
     CALL_GUARD_NO_TS();
 
     int current_item = settings::g_mainTabSettings.fps_limiter_mode.GetValue();
-    if (current_item < 0 || current_item > 2) {
-        current_item = (current_item < 0) ? 0 : 2;
+    if (current_item < 0 || current_item > 1) {
+        current_item = (current_item < 0) ? 0 : 1;
     }
     bool enabled = settings::g_mainTabSettings.fps_limiter_enabled.GetValue();
-    bool fps_limit_enabled =
-        (enabled && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync) || ShouldReflexBeEnabled();
+    bool fps_limit_enabled = enabled || ShouldReflexBeEnabled();
     (void)fps_limit_enabled;
 
     auto DrawPclStatsCheckbox = [&imgui]() {
@@ -1094,7 +1011,7 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
         if (imgui.IsItemHovered()) {
             const char* context = (mode == FpsLimiterMode::kOnPresentSync) ? "On Present Sync"
                                   : (mode == FpsLimiterMode::kReflex)      ? "Reflex FPS limiter"
-                                                                           : "FPS limiter off or LatentSync";
+                                                                           : "FPS limiter off";
             std::string tooltip =
                 std::string("NVIDIA Reflex (used for ") + context + ").\n\n"
                 + "Low latency: Enables Reflex Low Latency Mode (default).\n"
@@ -1136,10 +1053,7 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
         DrawDisplaySettings_FpsLimiterReflex(imgui, DrawPclStatsCheckbox);
     }
 
-    // Latent Sync Mode
-    if (s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync) {
-        DrawDisplaySettings_FpsLimiterLatentSync(imgui);
-    }
+    DrawDisplaySettings_FpsLimiterMiscOptions(imgui);
 }
 
 }  // namespace ui::new_ui

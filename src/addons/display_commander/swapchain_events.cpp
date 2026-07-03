@@ -9,7 +9,6 @@
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "latency/gpu_completion_monitoring.hpp"
 #include "latency/reflex_provider.hpp"
-#include "latent_sync/latent_sync_limiter.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "modules/module_registry.hpp"
 #include "nvapi/reflex_manager.hpp"
@@ -1136,11 +1135,6 @@ void OnPresentUpdateAfter2(bool frame_generation_aware) {
     // GPU completion measurement is now handled by dedicated thread in gpu_completion_monitoring.cpp
     // This provides accurate completion time by waiting on the event in a blocking manner
 
-    // Mark Present end for latent sync limiter timing
-    if (dxgi::latent_sync::g_latentSyncManager) {
-        auto& latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
-        latent.OnPresentEnd();
-    }
     auto start_ns = TimerPresentPacingDelayStart();
     g_frame_data[present_slot].sleep_post_present_start_time_ns.store(start_ns);
 
@@ -1265,7 +1259,6 @@ static OnPresentReflexMode GetEffectiveReflexMode() {
             return static_cast<OnPresentReflexMode>(settings::g_mainTabSettings.onpresent_reflex_mode.GetValue());
         case FpsLimiterMode::kReflex:
             return static_cast<OnPresentReflexMode>(settings::g_mainTabSettings.reflex_limiter_reflex_mode.GetValue());
-        case FpsLimiterMode::kLatentSync:
         default:
             return static_cast<OnPresentReflexMode>(
                 settings::g_mainTabSettings.reflex_disabled_limiter_mode.GetValue());
@@ -1446,8 +1439,7 @@ void HandleFpsLimiterPre(bool from_present_detour, bool frame_generation_aware =
         g_fps_limiter_debug_frame_generation_aware.store(frame_generation_aware ? uint8_t{1} : uint8_t{0},
                                                          std::memory_order_relaxed);
     }
-    if (s_fps_limiter_enabled.load()
-        && (target_fps > 0.0f || s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync)) {
+    if (s_fps_limiter_enabled.load() && target_fps > 0.0f) {
         g_fps_limiter_debug_pre_active_count.fetch_add(1, std::memory_order_relaxed);
         CALL_GUARD(start_time_ns);
         // Note: Command queue flushing is now handled in OnPresentUpdateBefore using native DirectX APIs
@@ -1530,16 +1522,6 @@ void HandleFpsLimiterPre(bool from_present_detour, bool frame_generation_aware =
                     g_onpresent_sync_frame_time_ns.store(0);
                 }
 
-                break;
-            }
-            case FpsLimiterMode::kLatentSync: {
-                // Use latent sync manager for VBlank Scanline Sync mode
-                if (dxgi::latent_sync::g_latentSyncManager) {
-                    auto& latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
-                    if (target_fps > 0.0f) {
-                        latent.LimitFrameRate();
-                    }
-                }
                 break;
             }
         }

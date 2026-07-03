@@ -17,7 +17,6 @@
 #include "../../hooks/windows_hooks/window_proc_hooks.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../latency/reflex_provider.hpp"
-#include "../../latent_sync/latent_sync_limiter.hpp"
 #include "../../latent_sync/refresh_rate_monitor_integration.hpp"
 #include "../../modules/module_registry.hpp"
 #include "../../nvapi/gpu_dynamic_utilization.hpp"
@@ -294,15 +293,14 @@ void InitMainNewTab() {
 
         settings_loaded_once = true;
 
-        // FPS limiter: enabled checkbox + mode (0=OnPresentSync, 1=Reflex, 2=LatentSync; clamp to 0-2)
+        // FPS limiter: enabled checkbox + mode (0=OnPresentSync, 1=Reflex; clamp to 0-1)
         s_fps_limiter_enabled.store(settings::g_mainTabSettings.fps_limiter_enabled.GetValue());
         int mode_val = settings::g_mainTabSettings.fps_limiter_mode.GetValue();
-        if (mode_val < 0 || mode_val > 2) {
-            mode_val = (mode_val < 0) ? 0 : 2;
+        if (mode_val < 0 || mode_val > 1) {
+            mode_val = (mode_val < 0) ? 0 : 1;
             settings::g_mainTabSettings.fps_limiter_mode.SetValue(mode_val);
         }
         s_fps_limiter_mode.store(static_cast<FpsLimiterMode>(mode_val));
-        // Scanline offset and VBlank Sync Divisor are now automatically synced via IntSettingRef
 
         // Log level is read directly from settings::g_mainTabSettings.log_level when needed (GetMinLogLevel()).
     }

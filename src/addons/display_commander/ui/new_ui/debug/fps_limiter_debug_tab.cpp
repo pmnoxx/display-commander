@@ -40,8 +40,6 @@ const char* FpsLimiterModeLabel(FpsLimiterMode m) {
             return "OnPresentSync";
         case FpsLimiterMode::kReflex:
             return "Reflex";
-        case FpsLimiterMode::kLatentSync:
-            return "LatentSync";
         default:
             return "?";
     }

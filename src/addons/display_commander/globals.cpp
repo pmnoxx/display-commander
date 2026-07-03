@@ -185,14 +185,6 @@ std::atomic<DWORD> g_render_thread_id{0};
 // Global window state instance
 std::atomic<std::shared_ptr<GlobalWindowState>> g_window_state = std::make_shared<GlobalWindowState>();
 
-// Global Latent Sync Manager instance
-namespace dxgi::latent_sync {
-std::unique_ptr<LatentSyncManager> g_latentSyncManager = std::make_unique<LatentSyncManager>();
-}
-
-// Global DXGI Device Info Manager instance
-// std::unique_ptr<DXGIDeviceInfoManager> g_dxgiDeviceInfoManager = std::make_unique<DXGIDeviceInfoManager>();
-
 // Global Latency Manager instance
 std::unique_ptr<ReflexProvider> g_reflexProvider = std::make_unique<ReflexProvider>();
 
@@ -537,7 +529,7 @@ std::atomic<int> g_game_render_height{0};
 std::atomic<bool> g_app_in_background{false};
 std::atomic<LONGLONG> g_last_foreground_background_switch_ns{0};
 
-// FPS limiter: enabled by checkbox; mode 0 = OnPresentSync, 1 = Reflex, 2 = LatentSync (VBlank)
+// FPS limiter: enabled by checkbox; mode 0 = OnPresentSync, 1 = Reflex
 std::atomic<bool> s_fps_limiter_enabled{true};
 std::atomic<FpsLimiterMode> s_fps_limiter_mode{FpsLimiterMode::kOnPresentSync};
 

@@ -40,7 +40,7 @@ const char* const DEFAULT_SETTINGS_TEMPLATE = R"(# Display Commander — User de
 # max_anisotropy = 16
 
 # FPS limiter: fps_limit = target FPS (0 = unlimited, 1–240 otherwise). Requires fps_limiter_enabled = true.
-# fps_limiter_mode: 0 = Default, 1 = Reflex (low latency), 2 = Sync to display refresh rate.
+# fps_limiter_mode: 0 = Default, 1 = Reflex (low latency).
 # fps_limit_background = limit when game window has no focus (0 = unlimited).
 # fps_limiter_enabled = true
 # fps_limit = 60

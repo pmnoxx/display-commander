@@ -2,7 +2,6 @@
 
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "display/display_cache.hpp"
-#include "latent_sync/latent_sync_manager.hpp"
 #include "settings/advanced_tab_settings.hpp"  // IWYU pragma: export
 #include "settings/hook_suppression_settings.hpp"  // IWYU pragma: export
 #include "settings/hotkeys_tab_settings.hpp"  // IWYU pragma: export
@@ -80,7 +79,6 @@ enum class LogLevel {
 
 class SpinLock;
 class BackgroundWindowManager;
-class LatentSyncManager;
 class ReflexProvider;
 class SwapchainTrackingManager;
 
@@ -295,7 +293,7 @@ Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory();
 
 // Enums
 enum class WindowStyleMode : std::uint8_t { KEEP, BORDERLESS, OVERLAPPED_WINDOW };
-enum class FpsLimiterMode : std::uint8_t { kOnPresentSync = 0, kReflex = 1, kLatentSync = 2 };
+enum class FpsLimiterMode : std::uint8_t { kOnPresentSync = 0, kReflex = 1 };
 enum class WindowMode : std::uint8_t {
     kNoChanges = 0,                 // No changes; do not prevent exclusive fullscreen
     kFullscreen = 1,                // Borderless fullscreen (resize) + prevent exclusive fullscreen
@@ -572,11 +570,6 @@ extern std::atomic<bool> g_muted_applied;
 extern std::atomic<std::shared_ptr<GlobalWindowState>> g_window_state;
 extern BackgroundWindowManager g_backgroundWindowManager;
 
-// Latent Sync Manager
-namespace dxgi::latent_sync {
-extern std::unique_ptr<LatentSyncManager> g_latentSyncManager;
-}
-
 // Reflex (latency) provider
 extern std::unique_ptr<ReflexProvider> g_reflexProvider;
 
@@ -753,7 +746,7 @@ bool IsAppInBackground();
 // Timestamp (ns) of last foreground<->background switch; used to limit VRR/NVAPI updates to 5s after switch
 extern std::atomic<LONGLONG> g_last_foreground_background_switch_ns;
 
-// FPS limiter: enabled by checkbox (s_fps_limiter_enabled). Mode: 0 = OnPresentSync, 1 = Reflex, 2 = LatentSync
+// FPS limiter: enabled by checkbox (s_fps_limiter_enabled). Mode: 0 = OnPresentSync, 1 = Reflex
 // (VBlank).
 extern std::atomic<bool> s_fps_limiter_enabled;
 extern std::atomic<FpsLimiterMode> s_fps_limiter_mode;

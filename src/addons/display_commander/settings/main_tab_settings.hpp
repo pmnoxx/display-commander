@@ -37,8 +37,6 @@ class MainTabSettings {
     /** When true, FPS limiter is active (mode from fps_limiter_mode). When false, no limiting. Default on. */
     ui::new_ui::BoolSetting fps_limiter_enabled;
     ui::new_ui::ComboSetting fps_limiter_mode;
-    ui::new_ui::IntSetting scanline_offset;
-    ui::new_ui::IntSetting vblank_sync_divisor;
     ui::new_ui::FloatSetting fps_limit;
     ui::new_ui::FloatSetting fps_limit_background;
     /** When true, cap FPS to fps_limit_background when window is in background. When false, use same limit as
@@ -55,7 +53,7 @@ class MainTabSettings {
     ui::new_ui::ComboSettingEnum<OnPresentReflexMode> onpresent_reflex_mode;
     ui::new_ui::ComboSettingEnum<OnPresentReflexMode> reflex_limiter_reflex_mode;  // Used when FPS limiter is Reflex
     ui::new_ui::ComboSettingEnum<OnPresentReflexMode>
-        reflex_disabled_limiter_mode;  // Used when FPS limiter is off (checkbox unchecked) or mode is LatentSync
+        reflex_disabled_limiter_mode;  // Used when FPS limiter is off (checkbox unchecked)
     ui::new_ui::BoolSetting pcl_stats_enabled;
     ui::new_ui::BoolSetting use_reflex_markers_as_fps_limiter;
     /** Max queued frames when using Reflex markers as FPS limiter. 0 = game default; 1–6 = limit. */

@@ -12,13 +12,12 @@ enum class MainTabOptionalSectionKind {
     WindowButtons,
     InputControl,
     DlssControl,
-    DxgiControl,
 };
 
 static constexpr MainTabOptionalSectionKind kMainTabOptionalPanelsDrawOrder[] = {
     MainTabOptionalSectionKind::AudioControl,
     MainTabOptionalSectionKind::InputControl, MainTabOptionalSectionKind::DlssControl,
-    MainTabOptionalSectionKind::DxgiControl, MainTabOptionalSectionKind::WindowButtons,
+    MainTabOptionalSectionKind::WindowButtons,
 };
 
 static constexpr size_t kMainTabOptionalPanelsDrawOrderCount =
@@ -45,9 +44,6 @@ void DrawMainTabOptionalPanelsInOrder(display_commander::ui::GraphicsApi api,
                 break;
             case MainTabOptionalSectionKind::DlssControl:
                 DrawMainTabOptionalPanelDlssControl(api, imgui);
-                break;
-            case MainTabOptionalSectionKind::DxgiControl:
-                DrawMainTabOptionalPanelDxgiControl(api, imgui);
                 break;
         }
     }

@@ -11,7 +11,5 @@ void DrawMainTabOptionalPanelWindowButtons(display_commander::ui::IImGuiWrapper&
 void DrawMainTabOptionalPanelInputControl(display_commander::ui::IImGuiWrapper& imgui);
 void DrawMainTabOptionalPanelDlssControl(display_commander::ui::GraphicsApi api,
                                          display_commander::ui::IImGuiWrapper& imgui);
-void DrawMainTabOptionalPanelDxgiControl(display_commander::ui::GraphicsApi api,
-                                         display_commander::ui::IImGuiWrapper& imgui);
 
 }  // namespace ui::new_ui

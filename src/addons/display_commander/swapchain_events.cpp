@@ -1450,7 +1450,6 @@ static void SetSwapChainColorSpace(reshade::api::swapchain* swapchain, DXGI_COLO
                  static_cast<int>(color_space), static_cast<unsigned>(hr));
         return;
     }
-    g_show_auto_colorspace_fix_in_main_tab.store(true);
 
     // Log only when values change to avoid repeated identical log lines.
     static std::atomic<int> s_last_color_space{-1};

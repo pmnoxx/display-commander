@@ -484,10 +484,6 @@ WindowMode GetCurrentWindowMode();
 inline bool ShouldPreventExclusiveFullscreen() { return GetCurrentWindowMode() != WindowMode::kNoChanges; }
 extern std::atomic<AspectRatioType> s_aspect_index;
 
-// HDR10 / scRGB color fix setting (10-bit and 16-bit FP back buffer)
-
-// Hide HDR capabilities from applications
-
 // D3D9 to D3D9Ex upgrade
 extern std::atomic<bool> s_d3d9e_upgrade_successful;
 extern std::atomic<bool> g_used_flipex;
@@ -555,8 +551,6 @@ extern std::atomic<reshade::api::device_api> g_last_reshade_device_api;
 extern std::atomic<uint32_t> g_last_api_version;  // Store API version/feature level (e.g., D3D_FEATURE_LEVEL_11_1)
 /** Swapchain desc after OnCreateSwapchainCapture2 modifications (actual create). */
 extern std::atomic<std::shared_ptr<reshade::api::swapchain_desc>> g_last_swapchain_desc_post;
-/** When true, show the "HDR10 / scRGB color fix" checkbox in the main tab. Default true. */
-extern std::atomic<bool> g_show_auto_colorspace_fix_in_main_tab;
 extern std::atomic<HWND> g_last_swapchain_hwnd;
 extern std::atomic<bool> g_shutdown;
 extern std::atomic<bool> g_muted_applied;

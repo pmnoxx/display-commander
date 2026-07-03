@@ -27,6 +27,7 @@ Planned:
 - Show override from NPI for DLSS presets. @adap
 
 ## v0.15.2
+- [removal] [ui] **DXGI Control panel removed** - Removed the Main tab **DXGI Control** collapsible section (HDR10 / scRGB color fix checkbox). The `AutoColorspace` setting and runtime auto color-space logic are unchanged; configure via config or per-game defaults.
 - [ui] **Simplify UI** - Always show Control Panels when modules are enabled.
 - [ui] **Buttons** - Move buttons such as minimize to bottom.
 

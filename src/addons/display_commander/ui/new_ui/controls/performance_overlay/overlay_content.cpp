@@ -3,7 +3,6 @@
 #include "performance_overlay_internal.hpp"
 #include "dxgi/vram_info.hpp"
 #include "features/nvidia_profile_inspector/nvidia_profile_inspector.hpp"
-#include "features/presentmon/presentmon_minimal_etw.hpp"
 #include "feature/cpu_telemetry/cpu_telemetry.hpp"
 #include "globals.hpp"
 #include "hooks/nvidia/ngx_hooks.hpp"
@@ -270,7 +269,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     bool show_overlay_nvapi_gpu_util = settings::g_mainTabSettings.show_overlay_nvapi_gpu_util.GetValue();
     bool show_overlay_nvapi_gpu_temp = settings::g_mainTabSettings.show_overlay_nvapi_gpu_temp.GetValue();
     bool show_fg_mode = settings::g_mainTabSettings.show_fg_mode.GetValue();
-    bool show_overlay_presentmon_flip = settings::g_mainTabSettings.show_overlay_presentmon_flip.GetValue();
     bool show_overlay_resolution = settings::g_mainTabSettings.show_overlay_resolution.GetValue();
     bool show_dlss_status = settings::g_mainTabSettings.show_dlss_status.GetValue();
     bool show_dlss_quality_preset = settings::g_mainTabSettings.show_dlss_quality_preset.GetValue();
@@ -334,9 +332,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         table1_any = true;
     }
     if (show_flip_status) {
-        table1_any = true;
-    }
-    if (show_overlay_presentmon_flip) {
         table1_any = true;
     }
 
@@ -416,49 +411,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                                             show_tooltips,
                                             "No swapchain descriptor has been captured yet for this process.", "%s",
                                             "N/A");
-            }
-        }
-        if (show_overlay_presentmon_flip) {
-            const bool etw_on = settings::g_mainTabSettings.present_mon_etw_enabled.GetValue();
-            if (!etw_on) {
-                OverlayTableRow_TextColored(
-                    imgui, label_mode, "Flip", "PresentMon flip", ui::colors::TEXT_DIMMED, show_tooltips,
-                    "Enable PresentMon ETW (flip state) under Display Settings → VSync & Tearing to collect Win32k "
-                    "composition events for this process.",
-                    "%s", "Off");
-            } else {
-                display_commander::features::presentmon::EnsurePresentMonEtwStarted();
-                const display_commander::features::presentmon::PresentMonStateSnapshot snapshot =
-                    display_commander::features::presentmon::GetPresentMonStateSnapshot();
-                if (snapshot.session_failed) {
-                    OverlayTableRow_TextColored(imgui, label_mode, "Flip", "PresentMon flip", ui::colors::TEXT_ERROR,
-                                                show_tooltips,
-                                                "PresentMon ETW session failed or provider access was denied.", "%s",
-                                                "ETW unavailable");
-                } else if (snapshot.has_data) {
-                    const char* mode_str =
-                        display_commander::features::presentmon::PresentMonModeToString(snapshot.mode);
-                    const char* suffix = snapshot.is_live ? "" : " (stale)";
-                    char value_buf[96];
-                    (void)snprintf(value_buf, sizeof(value_buf), "%s%s", mode_str, suffix);
-                    char tooltip_buf[320];
-                    (void)snprintf(tooltip_buf, sizeof(tooltip_buf),
-                                   "Last update age: %llu ms.\n"
-                                   "Win32k composition state for this process (PresentMon minimal ETW). "
-                                   "Not the same as Presentation model (swapchain API).",
-                                   static_cast<unsigned long long>(snapshot.age_ms));
-                    const ImVec4 row_color =
-                        snapshot.is_live ? ui::colors::TEXT_SUCCESS : ui::colors::TEXT_WARNING;
-                    OverlayTableRow_TextColored(imgui, label_mode, "PM", "PresentMon flip", row_color, show_tooltips,
-                                                tooltip_buf, "%s", value_buf);
-                } else if (snapshot.session_running) {
-                    OverlayTableRow_TextColored(
-                        imgui, label_mode, "PM", "PresentMon flip", ui::colors::TEXT_DIMMED, show_tooltips,
-                        "Waiting for current-process Win32k composition events.", "%s", "Waiting");
-                } else {
-                    OverlayTableRow_TextColored(imgui, label_mode, "PM", "PresentMon flip", ui::colors::TEXT_DIMMED,
-                                                show_tooltips, nullptr, "%s", "Unknown");
-                }
             }
         }
         imgui.EndTable();
@@ -774,11 +726,9 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         OverlayScalarTableBegin(imgui);
 
         if (show_gpu_measurement) {
-            bool shown = false;
             if (have_nv_latency_params) {
                 ReflexProvider::NvapiLatencyMetrics metrics{};
                 if (ReflexProvider::MetricsFromLatencyParams(nv_latency_params, metrics)) {
-                    shown = true;
                     double pcl_latency_ms_estimate = metrics.pc_latency_ms + metrics.gpu_frame_time_ms / 2.0;
                     const DLSSGSummaryLite dlss_lite = GetDLSSGSummaryLite();
                     const int fg_mode = dlss_lite.fg_mode;
@@ -789,14 +739,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                         imgui, label_mode, "Lat.", "Latency", show_tooltips,
                         "PC latency from NVAPI Reflex (input sample to GPU render end) and GPU frame time.", "%.1f ms",
                         pcl_latency_ms_estimate);
-                }
-            }
-            if (!shown) {
-                LONGLONG latency_ns = ::g_sim_to_display_latency_ns.load();
-                if (latency_ns > 0) {
-                    double latency_ms = (1.0 * latency_ns / utils::NS_TO_MS);
-                    OverlayTableRow_Text(imgui, label_mode, "Lat.", "Latency", show_tooltips, nullptr, "%.1f ms",
-                                         latency_ms);
                 }
             }
         }

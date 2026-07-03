@@ -48,14 +48,6 @@ void DrawFrameTimeGraph(display_commander::ui::IImGuiWrapper& imgui) {
 
     std::string overlay_text = "Frame Time: " + std::to_string(frame_times.back()).substr(0, 4) + " ms";
 
-    if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0 && ::g_sim_to_display_latency_ns.load() > 0) {
-        double sim_to_display_ms = (1.0 * ::g_sim_to_display_latency_ns.load() / utils::NS_TO_MS);
-        overlay_text += " | Sim-to-Display Lat: " + std::to_string(sim_to_display_ms).substr(0, 4) + " ms";
-
-        double gpu_late_ms = (1.0 * ::g_gpu_late_time_ns.load() / utils::NS_TO_MS);
-        overlay_text += " | GPU Late: " + std::to_string(gpu_late_ms).substr(0, 4) + " ms";
-    }
-
     ImVec2 graph_size = ImVec2(-1.0f, 200.0f);
     float scale_min = 0.0f;
     float scale_max = avg_frame_time * 4.f;

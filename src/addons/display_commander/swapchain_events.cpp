@@ -1,13 +1,11 @@
 #include "config/display_commander_config.hpp"
 #include "features/smooth_motion/smooth_motion.hpp"
-#include "features/presentmon/presentmon_minimal_etw.hpp"
 #include "globals.hpp"
 #include "hooks/dxgi/dxgi_gpu_completion.hpp"
 #include "hooks/dxgi/dxgi_present_hooks.hpp"
 #include "hooks/nvidia/ngx_hooks.hpp"
 #include "hooks/windows_hooks/window_proc_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
-#include "latency/gpu_completion_monitoring.hpp"
 #include "latency/reflex_provider.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "modules/module_registry.hpp"
@@ -232,9 +230,6 @@ void DoInitializationWithHwnd(HWND hwnd) {
     ui::new_ui::InitializeNewUISystem();
     LogInfo("[DoInitializationWithHwnd] before StartContinuousMonitoring");
     StartContinuousMonitoring();
-    LogInfo("[DoInitializationWithHwnd] before StartGPUCompletionMonitoring");
-    StartGPUCompletionMonitoring();
-    LogInfo("[DoInitializationWithHwnd] after StartGPUCompletionMonitoring");
 
     // Initialize refresh rate monitoring
     LogInfo("[DoInitializationWithHwnd] before StartRefreshRateMonitoring");
@@ -1095,31 +1090,8 @@ void OnPresentUpdateAfter2(bool frame_generation_aware) {
         }
     }
 
-    // Sim-to-display latency measurement
-    // Track that OnPresentUpdateAfter2 was called
-    LONGLONG sim_start_for_measurement = g_sim_start_ns_for_measurement.load();
-    if (sim_start_for_measurement > 0) {
-        g_present_update_after2_called.store(true);
-        g_present_update_after2_time_ns.store(start_time_ns);
-
-        // If GPU completion callback was already finished, we're finishing second
-        if (g_gpu_completion_callback_finished.load()) {
-            // Calculate sim-to-display latency
-            LONGLONG latency_new_ns = start_time_ns - sim_start_for_measurement;
-
-            // Smooth the latency with exponential moving average
-            LONGLONG old_latency = g_sim_to_display_latency_ns.load();
-            LONGLONG smoothed_latency = UpdateRollingAverage(latency_new_ns, old_latency);
-
-            g_sim_to_display_latency_ns.store(smoothed_latency);
-
-            // Record frame time for Display Timing mode (Present finished second, this is actual display time)
-            RecordFrameTime(FrameTimeMode::kDisplayTiming);
-
-            // Calculate GPU late time - in this case, GPU finished first, so late time is 0
-            g_gpu_late_time_ns.store(0);
-        }
-    }
+    // Track that OnPresentUpdateAfter2 was called (used for FG detection gating).
+    g_present_update_after2_called.store(true);
 
     LONGLONG g_present_duration_new_ns =
         (start_time_ns - g_present_start_time_ns.load());  // Convert QPC ticks to seconds (QPC
@@ -1130,10 +1102,6 @@ void OnPresentUpdateAfter2(bool frame_generation_aware) {
     const size_t present_slot = static_cast<size_t>(current_frame_id_for_slot % kFrameDataBufferSize);
     g_frame_data[present_slot].present_end_time_ns.store(start_time_ns);
     g_frame_data[present_slot].present_update_after2_time_ns.store(start_time_ns);
-
-    // GPU completion measurement (non-blocking check)
-    // GPU completion measurement is now handled by dedicated thread in gpu_completion_monitoring.cpp
-    // This provides accurate completion time by waiting on the event in a blocking manner
 
     auto start_ns = TimerPresentPacingDelayStart();
     g_frame_data[present_slot].sleep_post_present_start_time_ns.store(start_ns);
@@ -1669,10 +1637,6 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
                          first_runtime, hwnd);
         return;
     }
-    if (settings::g_mainTabSettings.present_mon_etw_enabled.GetValue()) {
-        display_commander::features::presentmon::EnsurePresentMonEtwStarted();
-    }
-
     hookToSwapChain(swapchain);
 
     // Per-swapchain private data: load at start, update when we have DXGI swapchain, save at end if changed

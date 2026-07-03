@@ -87,8 +87,6 @@ class MainTabSettings {
     /** When true, NvAPI_QueryInterface passes through SetFlipConfig (0xF3148C42). When false, returns nullptr and
      * counts suppressions. Default true. */
     ui::new_ui::BoolSetting allow_nvapi_d3d12_setflipconfig;
-    /** When true, start minimal Win32k ETW for PresentMon-style flip state (VSync & Tearing). Default off. */
-    ui::new_ui::BoolSetting present_mon_etw_enabled;
 
     // Audio Settings
     ui::new_ui::BoolSetting audio_mute;
@@ -177,8 +175,6 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_driver_dlss_sr_preset;
     /** Overlay: merged DLSS-RR render preset (DRS override vs DC combo). */
     ui::new_ui::BoolSetting show_driver_dlss_rr_preset;
-    /** Overlay: Win32k ETW PresentMon-style flip/composition line. Requires present_mon_etw_enabled. */
-    ui::new_ui::BoolSetting show_overlay_presentmon_flip;
     /** Show FPS limiter source (e.g. reflex_marker, dxgi_swapchain) on the OSD. */
     ui::new_ui::BoolSetting show_fps_limiter_src;
     /** Show percentage of recent frames where OnPresentSync FPS limiter started late. */

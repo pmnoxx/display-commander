@@ -247,45 +247,6 @@ static void DrawImportantInfo_FrameTimeGraphContent(display_commander::ui::IImGu
     imgui.SameLine();
     imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
 
-    if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0 && ::g_gpu_duration_ns.load() > 0) {
-        oss.str("");
-        oss.clear();
-        oss << "GPU Duration: " << std::fixed << std::setprecision(3)
-            << (1.0 * ::g_gpu_duration_ns.load() / utils::NS_TO_MS) << " ms";
-        imgui.TextUnformatted(oss.str().c_str());
-        imgui.SameLine();
-        imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Time from Present call to GPU completion (D3D11 only, requires Windows 10+)");
-        }
-
-        if (::g_sim_to_display_latency_ns.load() > 0) {
-            oss.str("");
-            oss.clear();
-            oss << "Sim-to-Display Latency: " << std::fixed << std::setprecision(3)
-                << (1.0 * ::g_sim_to_display_latency_ns.load() / utils::NS_TO_MS) << " ms";
-            imgui.TextUnformatted(oss.str().c_str());
-            imgui.SameLine();
-            imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx("Time from simulation start to frame displayed (includes GPU work and present)");
-            }
-
-            oss.str("");
-            oss.clear();
-            oss << "GPU Late Time: " << std::fixed << std::setprecision(3)
-                << (1.0 * ::g_gpu_late_time_ns.load() / utils::NS_TO_MS) << " ms";
-            imgui.TextUnformatted(oss.str().c_str());
-            imgui.SameLine();
-            imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx(
-                    "How much later GPU completion finishes compared to Present\n0 ms = GPU finished before "
-                    "Present\n>0 ms = GPU finished after Present (GPU is late)");
-            }
-        }
-    }
-
     oss.str("");
     oss.clear();
     oss << "Simulation Duration: " << std::fixed << std::setprecision(3)
@@ -445,25 +406,6 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             imgui.SetTooltipEx(
                 "Shows current swapchain presentation model on the OSD "
                 "(Flip/BitBlt for DXGI, FLIPEX for D3D9, Vulkan/OpenGL present mode where available).");
-        }
-        imgui.NextColumn();
-
-        const bool present_mon_etw_on = settings::g_mainTabSettings.present_mon_etw_enabled.GetValue();
-        if (!present_mon_etw_on) {
-            imgui.BeginDisabled();
-        }
-        bool show_overlay_presentmon_flip = settings::g_mainTabSettings.show_overlay_presentmon_flip.GetValue();
-        if (imgui.Checkbox("Flip state", &show_overlay_presentmon_flip)) {
-            settings::g_mainTabSettings.show_overlay_presentmon_flip.SetValue(show_overlay_presentmon_flip);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Shows Win32k ETW composition/flip classification on the OSD (same source as Flip state "
-                "under VSync & Tearing). This is not the same as Presentation model, which reads the swapchain API. "
-                "Enable PresentMon ETW (flip state) under Display Settings → VSync & Tearing for live data.");
-        }
-        if (!present_mon_etw_on) {
-            imgui.EndDisabled();
         }
         imgui.NextColumn();
 

@@ -132,8 +132,6 @@ void EnqueueGPUCompletionD3D11(IDXGISwapChain* swapchain) {
         return;
     }
 
-    // Store the event handle for external threads to wait on
-    g_gpu_completion_event.store(g_gpu_state.event_handle);
     g_gpu_fence_failure_reason.store(nullptr);  // Clear failure reason on success
 }
 
@@ -200,8 +198,6 @@ void EnqueueGPUCompletionD3D12(IDXGISwapChain* swapchain, ID3D12CommandQueue* co
         return;
     }
 
-    // Store the event handle for external threads to wait on
-    g_gpu_completion_event.store(g_gpu_state.event_handle);
     g_gpu_fence_failure_reason.store(nullptr);  // Clear failure reason on success
 }
 
@@ -211,11 +207,8 @@ void EnqueueGPUCompletionInternal(IDXGISwapChain* swapchain, ID3D12CommandQueue*
         g_gpu_fence_failure_reason.store("Failed to get device from swapchain");
         return;
     }
-    // Capture g_sim_start_ns for sim-to-display latency measurement
-    // Reset tracking flags for this frame
-    g_sim_start_ns_for_measurement.store(g_sim_start_ns.load());
+    // Reset FG-detection tracking flag for this frame
     g_present_update_after2_called.store(false);
-    g_gpu_completion_callback_finished.store(false);
 
     // Try D3D12 first
 
@@ -247,9 +240,6 @@ void CleanupGPUMeasurementState() {
             CloseHandle(g_gpu_state.event_handle);
             g_gpu_state.event_handle = nullptr;
         }
-
-        // Clear the atomic event handle so monitoring thread stops waiting on invalid handle
-        g_gpu_completion_event.store(nullptr);
 
         // Reset state flags
         g_gpu_state.fence_value.store(0);

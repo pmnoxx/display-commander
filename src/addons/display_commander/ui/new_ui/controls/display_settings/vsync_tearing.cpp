@@ -1,6 +1,5 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "display_settings_internal.hpp"
-#include "presentmon_minimal_flip_state_row.hpp"
 #include "vsync_tearing.hpp"
 
 namespace ui::new_ui {
@@ -421,7 +420,6 @@ void DrawDisplaySettings_VSyncAndTearing(display_commander::ui::IImGuiWrapper& i
 
         VSyncTearingTooltipContext tooltip_ctx;
         bool status_hovered = DrawDisplaySettings_VSyncAndTearing_PresentModeLine(imgui, &tooltip_ctx);
-        DrawPresentMonMinimalFlipStateRow(imgui);
         g_rendering_ui_section.store("ui:tab:main_new:vsync_tearing:present_mode_line", std::memory_order_release);
         if (status_hovered && tooltip_ctx.desc != nullptr) {
             imgui.BeginTooltip();

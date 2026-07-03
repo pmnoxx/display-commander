@@ -1,7 +1,6 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "opengl_hooks.hpp"
 #include "../../globals.hpp"
-#include "../../latency/gpu_completion_monitoring.hpp"
 #include "../../performance_types.hpp"
 #include "../../swapchain_events.hpp"
 #include "../../utils/detour_call_tracker.hpp"
@@ -44,7 +43,6 @@ BOOL WINAPI wglSwapBuffers_Detour(HDC hdc) {
     if (use_fps_limiter) {
         display_commanderhooks::dxgi::HandlePresentAfter(false);
     }
-    HandleOpenGLGPUCompletion();
     OnPresentUpdateAfter2(false);
 
     return result;

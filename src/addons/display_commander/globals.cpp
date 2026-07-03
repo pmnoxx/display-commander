@@ -636,23 +636,12 @@ std::atomic<uint64_t> g_fps_limiter_debug_pre_entry_count{0};
 std::atomic<uint64_t> g_fps_limiter_debug_pre_active_count{0};
 std::atomic<uint64_t> g_fps_limiter_debug_post_entry_count{0};
 
-// GPU completion measurement using EnqueueSetEvent
-std::atomic<HANDLE> g_gpu_completion_event{nullptr};  // Event handle for GPU completion measurement
-std::atomic<LONGLONG> g_gpu_duration_ns{0};           // Last measured GPU duration (smoothed)
-
 // GPU completion failure tracking
 std::atomic<const char*> g_gpu_fence_failure_reason{
     nullptr};  // Reason why GPU fence creation/usage failed (nullptr if no failure)
 
-// Sim-start-to-display latency measurement
-std::atomic<LONGLONG> g_sim_start_ns_for_measurement{0};  // g_sim_start_ns captured when EnqueueGPUCompletion is called
-std::atomic<bool> g_present_update_after2_called{false};  // Tracks if OnPresentUpdateAfter2 was called
-std::atomic<bool> g_gpu_completion_callback_finished{false};  // Tracks if GPU completion callback finished
-std::atomic<LONGLONG> g_sim_to_display_latency_ns{0};         // Measured sim-start-to-display latency (smoothed)
-
-// GPU late time measurement (how much later GPU finishes compared to OnPresentUpdateAfter2)
-std::atomic<LONGLONG> g_present_update_after2_time_ns{0};  // Time when OnPresentUpdateAfter2 was called
-std::atomic<LONGLONG> g_gpu_late_time_ns{0};  // GPU late time (0 if GPU finished first, otherwise difference)
+// Tracks if OnPresentUpdateAfter2 was called (used for DLSS-FG detection gating)
+std::atomic<bool> g_present_update_after2_called{false};
 
 // Frame data cyclic buffer (see docs/FRAME_DATA_CYCLIC_BUFFER.md). Not populated yet.
 FrameData g_frame_data[kFrameDataBufferSize] = {};

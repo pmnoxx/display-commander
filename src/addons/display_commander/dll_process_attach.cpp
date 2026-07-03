@@ -12,7 +12,6 @@
 #include "hooks/windows_hooks/api_hooks.hpp"
 #include "hooks/windows_hooks/window_proc_hooks.hpp"
 #include "init_without_hwnd.hpp"
-#include "latency/gpu_completion_monitoring.hpp"
 #include "latency/reflex_provider.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "reshade_addon_handlers.hpp"
@@ -680,7 +679,6 @@ void OnProcessDetach(HMODULE h_module) {
     UninstallNvLowLatencyVkHooks();
 
     StopContinuousMonitoring();
-    StopGPUCompletionMonitoring();
 
     dxgi::fps_limiter::StopRefreshRateMonitoring();
 

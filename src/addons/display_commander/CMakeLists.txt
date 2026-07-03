@@ -15,10 +15,9 @@ file(GLOB_RECURSE DISPLAY_COMMANDER_SOURCES
 )
 
 
-# Exclude Lite-only stubs so the real modules provide OverrideReShadeSettings, audio inline panel, and PresentMon ETW.
+# Exclude Lite-only stubs so the real modules provide OverrideReShadeSettings and audio inline panel.
 list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/config/override_reshade_settings_stub\\.cpp$")
 list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/config/audio_draw_main_tab_inline_lite_stub\\.cpp$")
-list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/features/presentmon/presentmon_minimal_etw_stub\\.cpp$")
 
 if(DC_EXTERNAL_MODULES)
   set(_dc_external_modules_src_dir "${_dc_external_modules_root}/src/nmodules")

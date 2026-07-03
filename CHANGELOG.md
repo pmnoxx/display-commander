@@ -34,6 +34,8 @@ Planned:
 - [removal] [settings] [ui] **Resolution Control removed** - Removed the Main tab Resolution Control section, display resolution/refresh apply and restore on exit, auto-apply on start, and related widget/settings/helpers code (`resolution_widget`, `display_restore`, `display_initial_state`, `resolution_helpers`).
 - [removal] **Windows HDR control removed** - Removed `display/hdr_control` (manual Windows HDR on/off via DisplayConfig advanced color APIs); no remaining callers after prior HDR UI removals.
 - [removal] [settings] [ui] **Latent Sync FPS limiter removed** - Removed VBlank scanline sync limiter mode (`LatentSync`), scanline offset / vblank divisor settings, and related `latent_sync_limiter` / `vblank_monitor` code. FPS limiter modes are now Default (OnPresent sync) and Reflex only.
+- [removal] [settings] [ui] **PresentMon minimal ETW removed** - Removed built-in Win32k ETW flip-state tracing (`presentmon_minimal_etw`), the VSync & Tearing enable checkbox, OSD flip-state line, and related settings (`present_mon_etw_enabled`, `show_overlay_presentmon_flip`). Use the optional **PresentMon** external module when `DC_EXTERNAL_MODULES` is enabled.
+- [removal] **GPU completion monitoring thread removed** - Removed the dedicated GPU-completion wait thread (`gpu_completion_monitoring`) and the OSD rows it fed (GPU Duration, Sim-to-Display Latency, GPU Late Time). The DXGI fence event that only this thread waited on is no longer created. The `gpu_measurement_enabled` setting and DXGI fence-failure status remain; the OSD Latency row now uses NVAPI Reflex only.
 
 ## v0.14.20
 - [new feature] **CBT service feature**

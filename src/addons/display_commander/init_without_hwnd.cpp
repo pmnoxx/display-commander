@@ -9,7 +9,6 @@
 #include "hooks/loadlibrary_hooks.hpp"
 #include "hooks/windows_hooks/api_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
-#include "latency/gpu_completion_monitoring.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "process_exit_hooks.hpp"
 #include "proxy_dll/dxgi_proxy_init.hpp"
@@ -91,9 +90,8 @@ void DoInitializationWithoutHwndSafe_Late() {
     ui::new_ui::InitializeNewUISystem();
     LogBootInitWithoutHwndStage("Late after InitializeNewUISystem");
     StartContinuousMonitoring();
-    StartGPUCompletionMonitoring();
     dxgi::fps_limiter::StartRefreshRateMonitoring();
-    LogBootInitWithoutHwndStage("Late after start monitoring (continuous, GPU, refresh rate)");
+    LogBootInitWithoutHwndStage("Late after start monitoring (continuous, refresh rate)");
     display_commanderhooks::keyboard_tracker::Initialize();
     LogInfo("Keyboard tracking system initialized");
     LogBootInitWithoutHwndStage("Late after keyboard_tracker::Initialize");

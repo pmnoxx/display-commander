@@ -6,7 +6,6 @@
 #include "fps_limiter_debug_tab.hpp"
 #include "ngx_counters_tab.hpp"
 #include "nvidia_profile_inspector_tab.hpp"
-#include "presentmon_debug_tab.hpp"
 #include "reflex_pclstats_tab.hpp"
 #include "vulkan_tab.hpp"
 #include "window_info_debug_tab.hpp"
@@ -61,11 +60,6 @@ void DrawDebugTab(display_commander::ui::IImGuiWrapper& imgui) {
     if (imgui.BeginTabItem("Reflex / PCLStats", nullptr, 0)) {
         g_rendering_ui_section.store("ui:tab:debug_reflex_pclstats", std::memory_order_release);
         DrawReflexPclstatsTab(imgui);
-        imgui.EndTabItem();
-    }
-    if (imgui.BeginTabItem("PresentMon (NVAPI)", nullptr, 0)) {
-        g_rendering_ui_section.store("ui:tab:debug_presentmon_nvapi", std::memory_order_release);
-        DrawPresentMonDebugTab(imgui);
         imgui.EndTabItem();
     }
     if (imgui.BeginTabItem("NGX", nullptr, 0)) {

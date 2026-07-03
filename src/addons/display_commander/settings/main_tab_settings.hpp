@@ -145,25 +145,25 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_overlay_nvapi_gpu_temp;
     /** Show NVAPI Reflex latency stats (PC latency + GPU frame time) on the OSD. */
     ui::new_ui::BoolSetting show_nvapi_latency_stats;
-    /** Overlay: rolling avg simulation phase (NVAPI sim_end − sim_start, newest frame). Debug PresentMon tab. */
+    /** Overlay: rolling avg simulation phase (NVAPI sim_end − sim_start, newest frame). */
     ui::new_ui::BoolSetting show_overlay_nvapi_sim_duration;
-    /** Overlay: rolling avg sim end → render submit start (NVAPI newest frame). Debug PresentMon tab only. */
+    /** Overlay: rolling avg sim end → render submit start (NVAPI newest frame). */
     ui::new_ui::BoolSetting show_overlay_nvapi_sim_end_to_rs_start;
-    /** Overlay: rolling avg render submit start → end (NVAPI newest frame). Debug PresentMon tab. */
+    /** Overlay: rolling avg render submit start → end (NVAPI newest frame). */
     ui::new_ui::BoolSetting show_overlay_nvapi_rs_submit_duration;
-    /** Overlay: rolling avg render submit start → present start (NVAPI newest frame). Debug PresentMon tab. */
+    /** Overlay: rolling avg render submit start → present start (NVAPI newest frame). */
     ui::new_ui::BoolSetting show_overlay_nvapi_rs_start_to_present_start;
-    /** Overlay: rolling avg render submit end → present start (NVAPI newest frame). Debug PresentMon tab. */
+    /** Overlay: rolling avg render submit end → present start (NVAPI newest frame). */
     ui::new_ui::BoolSetting show_overlay_nvapi_rs_end_to_present_start;
-    /** Overlay: rolling avg present start → present end (NVAPI newest frame). Debug PresentMon tab. */
+    /** Overlay: rolling avg present start → present end (NVAPI newest frame). */
     ui::new_ui::BoolSetting show_overlay_nvapi_present_phase_duration;
-    /** Overlay: rolling avg present end → render submit end (NVAPI newest frame). Debug PresentMon tab. */
+    /** Overlay: rolling avg present end → render submit end (NVAPI newest frame). */
     ui::new_ui::BoolSetting show_overlay_nvapi_present_end_to_rs_end;
-    /** Overlay: rolling avg GPU active render time (NVAPI gpuActiveRenderTimeUs, newest frame). Debug PresentMon tab. */
+    /** Overlay: rolling avg GPU active render time (NVAPI gpuActiveRenderTimeUs, newest frame). */
     ui::new_ui::BoolSetting show_overlay_nvapi_gpu_active_ms;
-    /** Overlay: rolling avg |Δlatency| between consecutive OSD latency estimates (NVAPI newest frame). Debug PresentMon tab. */
+    /** Overlay: rolling avg |Δlatency| between consecutive OSD latency estimates (NVAPI newest frame). Main tab OSD. */
     ui::new_ui::BoolSetting show_overlay_nvapi_latency_jitter_abs;
-    /** Overlay: last thread ID per first 7 NvAPI_D3D_SetLatencyMarker types (detour). Debug PresentMon tab. */
+    /** Overlay: last thread ID per first 7 NvAPI_D3D_SetLatencyMarker types (detour). */
     ui::new_ui::BoolSetting show_overlay_nvapi_setlatencymarker_threads;
     ui::new_ui::BoolSetting show_fg_mode;
     /** Overlay: render resolution; DLSS on shows internal->backbuffer, else tracked swapchain/backbuffer size. Ini:

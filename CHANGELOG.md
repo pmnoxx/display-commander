@@ -36,6 +36,7 @@ Planned:
 - [removal] [settings] [ui] **Latent Sync FPS limiter removed** - Removed VBlank scanline sync limiter mode (`LatentSync`), scanline offset / vblank divisor settings, and related `latent_sync_limiter` / `vblank_monitor` code. FPS limiter modes are now Default (OnPresent sync) and Reflex only.
 - [removal] [settings] [ui] **PresentMon minimal ETW removed** - Removed built-in Win32k ETW flip-state tracing (`presentmon_minimal_etw`), the VSync & Tearing enable checkbox, OSD flip-state line, and related settings (`present_mon_etw_enabled`, `show_overlay_presentmon_flip`). Use the optional **PresentMon** external module when `DC_EXTERNAL_MODULES` is enabled.
 - [removal] **GPU completion monitoring thread removed** - Removed the dedicated GPU-completion wait thread (`gpu_completion_monitoring`) and the OSD rows it fed (GPU Duration, Sim-to-Display Latency, GPU Late Time). The DXGI fence event that only this thread waited on is no longer created. The `gpu_measurement_enabled` setting and DXGI fence-failure status remain; the OSD Latency row now uses NVAPI Reflex only.
+- [removal] [ui] **PresentMon (NVAPI) debug tab removed** - Removed the Debug sub-tab that toggled NVAPI Reflex rolling-average OSD lines. Those overlay settings and ini keys are unchanged; use the Main tab OSD controls or config where available.
 
 ## v0.14.20
 - [new feature] **CBT service feature**

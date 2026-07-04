@@ -622,13 +622,15 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
                 imgui.End();
             }
         }
-    } else {
-        // FPS limiter presets (only visible if OnPresentSync mode is selected and in sync)
+    }
+
+    // FPS limiter preset (DC fps limiter mode): always visible so the choice can be set before native Reflex sync.
+    {
         const int raw = settings::g_mainTabSettings.native_reflex_fps_preset.GetValue();
         if (raw < 0 || raw > static_cast<int>(FpsLimiterPreset::kLowLatencyNativePacingV2)) {
             settings::g_mainTabSettings.native_reflex_fps_preset.SetValue(FpsLimiterPreset::kDCPaceLockQ2);
         }
-        FpsLimiterPreset preset = settings::g_mainTabSettings.native_reflex_fps_preset.GetEnumValue();
+        const FpsLimiterPreset preset = settings::g_mainTabSettings.native_reflex_fps_preset.GetEnumValue();
 
         //PushFpsLimiterSliderColumnAlign(imgui, fps_limiter_checkbox_column_gutter, true);
         imgui.SetNextItemWidth(500.f);
@@ -639,11 +641,12 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
-                "Quick presets for FPS limiter when the game has native Reflex. DCPaceLock (q=1–3) is Display "
-                "Commander’s pacing for frame generation with lower latency. Custom allows manual configuration.");
+                "Quick presets for DC's fps limiter. DCPaceLock (q=1–3) is Display Commander’s pacing for frame "
+                "generation with lower latency. Custom allows manual configuration. Preset overrides apply when native "
+                "Reflex markers are in sync.");
         }
 
-        const bool show_custom_options = (preset == FpsLimiterPreset::kCustom);
+        const bool show_custom_options = ::IsNativeFramePacingInSync() && (preset == FpsLimiterPreset::kCustom);
         if (show_custom_options) {
             auto use_reflex_markers_as_fps_limiter = settings::g_mainTabSettings.use_reflex_markers_as_fps_limiter.GetValue();
             if (use_reflex_markers_as_fps_limiter) imgui.BeginDisabled();

@@ -26,6 +26,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.15.3
+- [bugfix] [ui] **FPS limiter preset dropdown restored** - The **FPS limiter preset** combo is visible again in **DC's fps limiter** mode even when native Reflex markers are not in sync yet, so you can choose a preset before pacing activates.
+
 ## v0.15.2
 - [settings] [ui] **Modules enabled by default** - ReShade, Audio, and Controller modules now start enabled for new configs (no saved `Modules_*` `enabled` key yet). Existing saved module toggles are unchanged.
 - [removal] [build] **Legacy lite release filenames removed** - CI and GitHub releases no longer attach duplicate `zzz_display_commander_lite.addon64` / `.addon32` copies of the main addon. Use `zzz_display_commander.addon64` / `.addon32` instead.

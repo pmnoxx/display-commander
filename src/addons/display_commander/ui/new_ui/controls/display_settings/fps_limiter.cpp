@@ -262,7 +262,7 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
     CALL_GUARD_NO_TS();
     imgui.Spacing();
 
-    const char* mode_items[] = {"Default", "NVIDIA Reflex (DX11/DX12 only, Vulkan requires native reflex)"};
+    const char* mode_items[] = {"DC's fps limiter", "NVIDIA Reflex (DX11/DX12 only, Vulkan requires native reflex)"};
 
     int current_item = settings::g_mainTabSettings.fps_limiter_mode.GetValue();
     if (current_item < 0 || current_item > 1) {

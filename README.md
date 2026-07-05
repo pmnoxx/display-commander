@@ -79,15 +79,8 @@ Note: Applying window operations from the main thread can crash some apps. This 
 - **Continue rendering in background (fake fullscreen)**: Game keeps rendering when alt-tabbed (no minimize/focus spoofing)
 - **Standalone / independent UI**: Run settings in a separate window or without ReShade (.NO_RESHADE, SetupDC)
 - **Proxy loading**: Rename the built addon (`zzz_display_commander.addon64` / `.addon32`) next to the game to one of these proxy DLL names: **dxgi.dll**, **d3d9.dll**, **d3d11.dll**, **d3d12.dll**, **ddraw.dll**, **hid.dll**, **version.dll**, **opengl32.dll**, **dbghelp.dll**, **vulkan-1.dll**, or **winmm.dll**.
-  **In the addon (DLL) folder or `%LocalAppData%\Programs\Display_Commander\`:**
-  - `.DC_CONFIG_GLOBAL` — store config and ReShade data in `%LocalAppData%\Programs\Display_Commander\Games\<game_name>\` (global per-game folder; `game_name` skips generic exe path segments like `Client` / `Binaries` / `Win64`). The empty flag file can live next to the addon **or** in the Display_Commander app data root (one place is enough).
-  - `.DC_CONFIG_IN_DLL` — store config and ReShade data in the addon folder instead of the game folder
-  - `.DC_GLOBAL_SHADERS` — force-add Display Commander global ReShade shader/texture search paths for all games (`%LocalAppData%\Programs\Display_Commander\Reshade\Shaders` and `...\Textures`) regardless of per-game checkbox/config.
-  - `.NO_RESHADE_CLOCK` — in the same app data root, makes Display Commander turn off ReShade’s overlay clock (`OVERLAY.ShowClock`) when applying ReShade config overrides.
-  See [Expert: Flag files in the game directory](docs/EXPERT_FLAG_FILES.md).
 - **Addon directory DLL loading**: From the same folder as the addon, **.dc64 / .dc32 / .dc / .asi** are loaded before ReShade; **.dc64r / .dc32r / .dcr** are loaded after ReShade (for addons that need the ReShade API). All of these DLLs are loaded in place; Windows keeps them locked while the game is running, so you may need to exit the game before overwriting them with newer builds.
 - **NVIDIA Profile (Inspector)**: View and edit driver profile for the current game; apply as administrator
-- **CPU control**: Core affinity and process priority (Main / Settings tab in standalone)
 - **Clip cursor**: Option to clip cursor to game window
 
 ## Continuous Integration
@@ -107,7 +100,6 @@ This project is distributed under the terms in [LICENSE](LICENSE). Third-party c
 - Dear ImGui (via ReShade dependencies)
 - NVIDIA NVAPI headers/libs (`external/nvapi`)
 - Additional third-party code under `external/` — see [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt)
-- **VBlank Scanline Sync**: Based on the algorithm explained by Kaldaien (Special-K creator)
 
 See `CHANGELOG.md` for version history.
 

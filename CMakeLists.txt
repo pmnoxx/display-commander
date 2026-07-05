@@ -37,7 +37,6 @@ option(EXPERIMENTAL_TAB "Enable experimental tab functionality" OFF)
 option(EXPERIMENTAL_FEATURES "Enable experimental features (e.g., autofire)" OFF)
 option(DEBUG_TABS "Enable debug-only UI tabs" OFF)
 option(DC_EXTERNAL_MODULES "Enable private external modules from external/display-commander2-modules" OFF)
-option(DC_INTERNAL_MODULES "Register built-in modules (audio, controller, ReShade add-ons tab)" ON)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

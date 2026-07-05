@@ -3,11 +3,9 @@
 
 // Source Code <Display Commander>
 #include "../config/display_commander_config.hpp"
-#if DC_INTERNAL_MODULES
 #include "audio/audio_module.hpp"
 #include "controller/controller_module.hpp"
 #include "reshade_addons/reshade_addons_module.hpp"
-#endif
 #include "../utils/srwlock_wrapper.hpp"
 #if defined(DC_EXTERNAL_MODULES)
 #include "private_modules_registration.hpp"
@@ -99,9 +97,6 @@ void AddModuleEntry(ModuleEntry&& entry) {
 }
 
 void RegisterPublicModules() {
-#if !DC_INTERNAL_MODULES
-    return;
-#else
     {
         ModuleRegistrationSpec spec{};
         spec.descriptor.id = "reshade_addons";
@@ -216,7 +211,6 @@ void RegisterPublicModules() {
         entry.actions = spec.actions;
         AddModuleEntry(std::move(entry));
     }
-#endif  // DC_INTERNAL_MODULES
 }
 
 void RegisterPrivateModules() {

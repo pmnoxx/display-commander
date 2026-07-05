@@ -19,7 +19,6 @@
 #include <dxgi.h>
 #include "swapchain_events.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
-#include "utils/d3d9_api_version.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/general_utils.hpp"
 #include "utils/logging.hpp"
@@ -51,41 +50,6 @@ bool IsInjectedReflexEnabled() { return settings::g_mainTabSettings.inject_refle
 #include <sstream>
 
 std::atomic<bool> g_initialized_with_hwnd{false};
-
-// ============================================================================
-// D3D9 to D3D9Ex Upgrade Handler
-// ============================================================================
-
-bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version) {
-    CALL_GUARD_NO_TS();
-    LogInfo("OnCreateDevice: api: %d (%s), api_version: 0x%x", static_cast<int>(api), GetDeviceApiString(api),
-            api_version);
-
-    // Only process D3D9 API
-    if (api != reshade::api::device_api::d3d9) {
-        return false;
-    }
-    if (!settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()) {
-        LogInfo("D3D9 to D3D9Ex upgrade disabled");
-        return false;
-    }
-
-    // Check if already D3D9Ex
-    if (api_version == static_cast<uint32_t>(display_commander::D3D9ApiVersion::D3D9Ex)) {
-        LogInfo("D3D9Ex already detected, no upgrade needed");
-        s_d3d9e_upgrade_successful.store(true);
-        return true;  // Return true to work around ReShade not reporting D3D9Ex; correct API behavior would be return
-                      // false
-    }
-
-    // Upgrade D3D9 to D3D9Ex
-    LogInfo("Upgrading Direct3D 9 (0x%x) to Direct3D 9Ex (0x%x)", api_version,
-            static_cast<uint32_t>(display_commander::D3D9ApiVersion::D3D9Ex));
-    api_version = static_cast<uint32_t>(display_commander::D3D9ApiVersion::D3D9Ex);
-    s_d3d9e_upgrade_successful.store(true);
-
-    return true;
-}
 
 void OnInitDevice(reshade::api::device* device) {
     CALL_GUARD_NO_TS();
@@ -513,7 +477,7 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
     const bool is_dxgi = (api == reshade::api::device_api::d3d12 || api == reshade::api::device_api::d3d11
                           || api == reshade::api::device_api::d3d10);
 
-    // D3D9 FLIPEX upgrade logic (only for D3D9)
+    // D3D9 create-swapchain handling.
     if (is_d3d9) {
         // log desc
         {
@@ -541,66 +505,6 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             modified = true;
         }
 
-        // Apply FLIPEX if all requirements are met
-        if (settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()
-            && desc.present_mode != D3DSWAPEFFECT_FLIPEX) {
-            if (desc.back_buffer_count < 3) {
-                LogInfo("D3D9 FLIPEX: Increasing back buffer count from %u to 3 (required for FLIPEX)",
-                        desc.back_buffer_count);
-                desc.back_buffer_count = 3;
-                modified = true;
-            }
-            if (!s_d3d9e_upgrade_successful.load()) {
-                LogWarn("D3D9 FLIPEX: D3D9Ex upgrade not successful, skipping FLIPEX");
-                return false;
-            }
-            assert(desc.back_buffer_count >= 2);
-            LogInfo("D3D9 FLIPEX: Upgrading swap effect from %u to FLIPEX (5)", desc.present_mode);
-            LogInfo("D3D9 FLIPEX: Full-screen: %s, Back buffers: %u", desc.fullscreen_state ? "YES" : "NO",
-                    desc.back_buffer_count);
-
-            desc.present_mode = D3DSWAPEFFECT_FLIPEX;
-            if (desc.sync_interval != D3DPRESENT_INTERVAL_IMMEDIATE) {
-                LogInfo("D3D9 FLIPEX: Setting sync interval to immediate");
-                desc.sync_interval = D3DPRESENT_INTERVAL_IMMEDIATE;
-                modified = true;
-            }
-            if ((desc.present_flags & D3DPRESENT_DONOTFLIP) != 0) {
-                LogInfo("D3D9 FLIPEX: Stripping D3DPRESENT_DONOTFLIP flag");
-                desc.present_flags &= ~D3DPRESENT_DONOTFLIP;  // only fullscreen mode is supported
-                modified = true;
-            }
-            if ((desc.present_flags & D3DPRESENTFLAG_LOCKABLE_BACKBUFFER) != 0) {
-                LogInfo("D3D9 FLIPEX: Stripping D3DPRESENTFLAG_LOCKABLE_BACKBUFFER flag");
-                desc.present_flags &= ~D3DPRESENTFLAG_LOCKABLE_BACKBUFFER;
-                modified = true;
-            }
-            if ((desc.present_flags & D3DPRESENTFLAG_DEVICECLIP) != 0) {
-                LogInfo("D3D9 FLIPEX: Stripping D3DPRESENTFLAG_DEVICECLIP flag");
-                desc.present_flags &= ~D3DPRESENTFLAG_DEVICECLIP;
-                modified = true;
-            }
-            if (desc.back_buffer.texture.samples != 1) {
-                LogInfo("D3D9 FLIPEX: Setting multisample type to 1");
-                desc.back_buffer.texture.samples = 1;
-                modified = true;
-            }
-            g_used_flipex.store(true);
-            modified = true;
-
-            static std::atomic<int> flipex_upgrade_count{0};
-            flipex_upgrade_count.fetch_add(1);
-            LogInfo("D3D9 FLIPEX: Successfully applied FLIPEX swap effect (upgrade count: %d)",
-                    flipex_upgrade_count.load());
-        } else {
-            g_used_flipex.store(false);
-            if (!settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()) {
-                LogWarn("D3D9 FLIPEX: FLIPEX upgrade is not enabled. Present mode is %u", desc.present_mode);
-            } else {
-                LogInfo("D3D9 FLIPEX: FLIPEX upgrade is not enabled. Present mode is %u", desc.present_mode);
-                // FLIPEX cannot be applied, set to false
-            }
-        }
         return modified;
     } else if (is_dxgi) {
         // Apply sync interval setting if enabled
@@ -609,68 +513,12 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
         uint32_t prev_present_flags = desc.present_flags;
         uint32_t prev_back_buffer_count = desc.back_buffer_count;
         uint32_t prev_present_mode = desc.present_mode;
-        const bool is_flip = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD
-                              || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
 
         // DXGI-specific settings (only for D3D10/11/12)
         if (settings::g_mainTabSettings.prevent_tearing.GetValue()
             && (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) != 0) {
             desc.present_flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
             modified = true;
-        }
-
-        // Skip forcing flip if another ReShade effect runtime already exists for this window
-        // (e.g. previous swapchain not yet destroyed, or multiple swapchains). Forcing flip
-        // in that case can conflict with the existing runtime.
-        struct EnumerateHwndCtx {
-            HWND hwnd = nullptr;
-            bool found = false;
-        } enum_ctx = {static_cast<HWND>(hwnd), false};
-        EnumerateReShadeRuntimes(
-            [](size_t, reshade::api::effect_runtime* rt, void* user_data) {
-                auto* ctx = static_cast<EnumerateHwndCtx*>(user_data);
-                if (rt != nullptr && rt->get_hwnd() == ctx->hwnd) {
-                    ctx->found = true;
-                    return true;
-                }
-                return false;
-            },
-            &enum_ctx);
-        bool does_another_runtime_exists_for_same_hwnd = enum_ctx.found;
-
-        // DXGI flip upgrade (Advanced: Enable flip chain) — forces flip model
-        if (!does_another_runtime_exists_for_same_hwnd && !is_flip
-            && settings::g_advancedTabSettings.enable_flip_chain.GetValue()) {
-            // Check if current present mode is NOT a flip model
-
-            if (desc.back_buffer_count < 2) {
-                LogInfo("DXGI FLIP UPGRADE: Increasing buffer count from %u to 2", desc.back_buffer_count);
-
-                desc.back_buffer_count = 2;
-                modified = true;
-            }
-            if (desc.back_buffer.texture.samples != 1) {
-                LogInfo("DXGI FLIP UPGRADE: Setting multisample type to 1");
-                desc.back_buffer.texture.samples = 1;
-                modified = true;
-            }
-            // Store original mode for logging
-            uint32_t original_mode = desc.present_mode;
-
-            // Force flip model swap chain (FLIP_DISCARD is more performant than FLIP_SEQUENTIAL)
-            desc.present_mode = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-            modified = true;
-
-            // Log the change
-            std::ostringstream flip_oss;
-            flip_oss << "DXGI FLIP UPGRADE: Changed present mode from ";
-            if (original_mode == DXGI_SWAP_EFFECT_DISCARD) {
-                flip_oss << "DISCARD";
-            } else {
-                flip_oss << "SEQUENTIAL";
-            }
-            flip_oss << " to FLIP_DISCARD (flip model swap chain)";
-            LogInfo("%s", flip_oss.str().c_str());
         }
 
         // Log sync interval and present flags with detailed explanation

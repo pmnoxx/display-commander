@@ -25,7 +25,6 @@
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../settings/swapchain_tab_settings.hpp"
-#include "../../utils/d3d9_api_version.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "new_ui_tabs.hpp"
@@ -458,11 +457,6 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         imgui.SameLine();
         if (api != static_cast<reshade::api::device_api>(0)) {
             uint32_t api_version = g_last_api_version.load();
-
-            if (api == reshade::api::device_api::d3d9 && s_d3d9e_upgrade_successful.load()) {
-                api_version =
-                    static_cast<uint32_t>(display_commander::D3D9ApiVersion::D3D9Ex);  // due to reshade's bug.
-            }
 
             // Display API with version/feature level and bitness
 #ifdef _WIN64

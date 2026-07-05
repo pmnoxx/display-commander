@@ -122,9 +122,6 @@ LogLevel GetMinLogLevel() { return LogLevelFromComboIndex(settings::g_mainTabSet
 
 // Hide HDR capabilities from applications
 
-// D3D9 to D3D9Ex upgrade
-std::atomic<bool> s_d3d9e_upgrade_successful{false};  // Track if upgrade was successful
-std::atomic<bool> g_used_flipex{false};               // Track if FLIPEX is currently being used
 std::atomic<bool> g_dx9_swapchain_detected{false};    // Set when D3D9 swapchain is detected (skip DXGI swapchain hooks)
 
 // ReShade runtimes for input blocking (multiple runtimes support)

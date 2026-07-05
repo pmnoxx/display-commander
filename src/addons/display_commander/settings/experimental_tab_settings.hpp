@@ -48,11 +48,6 @@ class ExperimentalTabSettings {
     // QPC enabled modules (comma-separated list of module names)
     StringSetting qpc_enabled_modules;
 
-    // D3D9 FLIPEX upgrade: with ReShade (OnCreateDevice / OnCreateSwapchain path)
-    BoolSetting d3d9_flipex_enabled;
-    // D3D9 FLIPEX upgrade: without ReShade (CreateDevice/CreateDeviceEx detour path)
-    BoolSetting d3d9_flipex_enabled_no_reshade;
-
     // DirectInput hook suppression settings
     BoolSetting suppress_dinput_hooks;
 
@@ -111,7 +106,7 @@ class ExperimentalTabSettings {
     IntSetting spoof_game_resolution_override_width;
     IntSetting spoof_game_resolution_override_height;
 
-    // When true, OnCreateSwapchainCapture2 applies all modifications (prevent fullscreen, FLIPEX, etc.). When false,
+    // When true, OnCreateSwapchainCapture2 applies all modifications (prevent fullscreen, etc.). When false,
     // only capture of game resolution is done.
     BoolSetting apply_changes_on_create_swapchain;
 

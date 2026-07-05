@@ -37,11 +37,7 @@ class AdvancedTabSettings {
     BoolSetting enqueue_gpu_completion;
 
     // Colorspace Settings
-    BoolSetting enable_flip_chain;
     BoolSetting auto_colorspace;
-
-    // D3D9 to D3D9Ex Upgrade
-    // BoolSettingRef enable_d3d9e_upgrade;
 
     // Keyboard Shortcut Settings (Experimental)
     BoolSetting enable_hotkeys;

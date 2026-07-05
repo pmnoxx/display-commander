@@ -484,9 +484,6 @@ WindowMode GetCurrentWindowMode();
 inline bool ShouldPreventExclusiveFullscreen() { return GetCurrentWindowMode() != WindowMode::kNoChanges; }
 extern std::atomic<AspectRatioType> s_aspect_index;
 
-// D3D9 to D3D9Ex upgrade
-extern std::atomic<bool> s_d3d9e_upgrade_successful;
-extern std::atomic<bool> g_used_flipex;
 extern std::atomic<bool> g_dx9_swapchain_detected;
 
 // Window Management Settings

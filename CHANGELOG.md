@@ -26,6 +26,10 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.15.4
+- [removal] [settings] [ui] [hooks] **Enable Flip Chain removed** - Removed the DXGI swapchain upgrade that forced legacy present modes to FLIP_DISCARD (`EnableFlipChain` setting), its VSync & Tearing checkbox, and create-time buffer-count / present-mode changes in `OnCreateSwapchainCapture2`. Games now keep the DXGI swapchain mode they request.
+- [removal] [settings] [ui] [hooks] **D3D9 FLIPEX upgrade removed** - Removed **Enable Flip State**, the D3D9-to-D3D9Ex create-device upgrade, and the create-swapchain changes that forced D3D9 games to FLIPEX. D3D9 games now keep the swap effect and device type they request.
+
 ## v0.15.3
 - [bugfix] [ui] **FPS limiter preset dropdown restored** - The **FPS limiter preset** combo is visible again in **DC's fps limiter** mode even when native Reflex markers are not in sync yet, so you can choose a preset before pacing activates.
 

@@ -69,49 +69,6 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
         }
     }
 
-    const reshade::api::device_api current_api = g_last_reshade_device_api.load();
-    const bool is_d3d9 = current_api == reshade::api::device_api::d3d9;
-    const bool is_dxgi =
-        (current_api == reshade::api::device_api::d3d10 || current_api == reshade::api::device_api::d3d11
-         || current_api == reshade::api::device_api::d3d12);
-    bool enable_flip = settings::g_advancedTabSettings.enable_flip_chain.GetValue();
-    bool is_flip = false;
-    if (is_dxgi) {
-        auto desc_for_flip = g_last_swapchain_desc_post.load();
-        if (desc_for_flip
-            && (desc_for_flip->present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD
-                || desc_for_flip->present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL)) {
-            is_flip = true;
-        }
-    }
-    static bool has_been_enabled = false;
-    has_been_enabled |= is_dxgi && (enable_flip || !is_flip);
-
-    if (has_been_enabled) {
-        imgui.SameLine();
-        if (imgui.Checkbox("Enable Flip Chain (requires restart)", &enable_flip)) {
-            settings::g_advancedTabSettings.enable_flip_chain.SetValue(enable_flip);
-            s_restart_needed_vsync_tearing.store(true);
-            LogInfo(enable_flip ? "Enable Flip Chain enabled" : "Enable Flip Chain disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Forces games to use flip model swap chains (FLIP_DISCARD) for better performance.\n"
-                "This setting requires a game restart to take effect.\n"
-                "Only works with DirectX 10/11/12 (DXGI) games.");
-        }
-    }
-
-    if (is_d3d9) {
-        imgui.SameLine();
-        bool enable_d9ex_with_flip = settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue();
-        if (imgui.Checkbox("Enable Flip State (requires restart)", &enable_d9ex_with_flip)) {
-            settings::g_experimentalTabSettings.d3d9_flipex_enabled.SetValue(enable_d9ex_with_flip);
-            LogInfo(enable_d9ex_with_flip ? "Enable D9EX with Flip Model enabled"
-                                          : "Enable D9EX with Flip Model disabled");
-        }
-    }
-
     if (s_restart_needed_vsync_tearing.load()) {
         imgui.Spacing();
         imgui.TextColored(ui::colors::TEXT_ERROR, "Game restart required to apply VSync/tearing changes.");

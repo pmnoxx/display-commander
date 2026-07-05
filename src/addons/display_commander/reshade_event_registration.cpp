@@ -15,9 +15,6 @@ void RegisterReShadeEvents(HMODULE h_module) {
     // Register reshade_overlay event for test code
     reshade::register_event<reshade::addon_event::reshade_overlay>(OnPerformanceOverlay);
 
-    // Register device creation event for D3D9 to D3D9Ex upgrade
-    reshade::register_event<reshade::addon_event::create_device>(OnCreateDevice);
-
     // Capture sync interval on swapchain creation for UI
     reshade::register_event<reshade::addon_event::create_swapchain>(OnCreateSwapchainCapture);
 

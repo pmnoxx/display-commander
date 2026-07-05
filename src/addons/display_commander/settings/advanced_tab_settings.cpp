@@ -50,8 +50,7 @@ AdvancedTabSettings::AdvancedTabSettings()
       suppress_wgi_for_non_unity_games("SuppressWgiForNonUnityGames", false, "DisplayCommander"),
       debug_break_on_severity("DebugBreakOnSeverity", false, "DisplayCommander"),
       suppress_window_changes("SuppressWindowChanges", false, "DisplayCommander.Safemode"),
-      win_up_grace_seconds("WinUpGraceSeconds", 1, 0, 61, "DisplayCommander"),
-      disable_dpi_scaling("DisableDpiScaling", true, "DisplayCommander") {}
+      win_up_grace_seconds("WinUpGraceSeconds", 1, 0, 61, "DisplayCommander") {}
 
 void AdvancedTabSettings::LoadAll() {
     // Get all settings for smart logging
@@ -86,7 +85,7 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
             &enable_performance_overlay_shortcut,
             &suppress_wgi_globally, &suppress_wgi_enabled, &suppress_wgi_for_unity, &suppress_wgi_for_non_unity_games,
             &debug_break_on_severity, &suppress_window_changes,
-            &win_up_grace_seconds, &disable_dpi_scaling};
+            &win_up_grace_seconds};
 }
 
 std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetSettingsToSave() {
@@ -100,8 +99,7 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetSettingsToSave() {
             &suppress_wgi_for_unity,
             &suppress_wgi_for_non_unity_games,
             &debug_break_on_severity,
-            &suppress_window_changes,
-            &disable_dpi_scaling};
+            &suppress_window_changes};
 }
 
 }  // namespace settings

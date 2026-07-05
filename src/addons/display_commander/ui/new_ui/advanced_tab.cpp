@@ -1,5 +1,4 @@
 #include "advanced_tab.hpp"
-#include "../../features/dpi/dpi_management.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/vulkan/nvlowlatencyvk_hooks.hpp"
 #include "../../latency/reflex_provider.hpp"

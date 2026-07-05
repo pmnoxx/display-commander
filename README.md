@@ -40,25 +40,18 @@ Note: Applying window operations from the main thread can crash some apps. This 
 - **FPS limiter**: Custom limiter with foreground and optional background caps; multiple modes (e.g. OnPresentSync, Reflex, LatentSync, Safe mode)
 - **Background FPS**: Optional separate FPS limit when game is in background (checkbox + slider)
 - **Live indicators**: Flip state (composed/independent), VRR status, present mode (DXGI/Vulkan/OpenGL)
-- **Limit real frames**: Works with frame generation (DLSS-G, etc.) to limit real frames instead of generated ones
 
 ### Audio
 
 - **Per-process volume**: Control game volume independently
 - **Mute options**: Manual mute, mute in background, conditional background mute
-- **Per-channel VU meters**: Main tab and OSD
 - **Hotkeys**: Volume up/down, brightness up/down (configurable step)
 
 ### Latency
 
 - **NVIDIA Reflex**: Low-latency mode integration for reduced input lag (native and configurable)
 - **Inject Reflex**: Optional injection of Reflex (sleep + latency markers) for games without native Reflex
-- **AntiLag II / XeLL**: AMD AntiLag 2 and XeLL support via fake NVAPI (experimental, for non-NVIDIA GPUs)
 - **PCLStats (ETW)**: Optional PCLStats event reporting for Special K–style tools
-
-### HDR & color
-
-- **HDR hiding** (experimental): Option to hide HDR modes or force SDR for compatibility
 
 ### DLSS & upscaling
 
@@ -77,7 +70,6 @@ Note: Applying window operations from the main thread can crash some apps. This 
 ### Advanced & power user
 
 - **Continue rendering in background (fake fullscreen)**: Game keeps rendering when alt-tabbed (no minimize/focus spoofing)
-- **Standalone / independent UI**: Run settings in a separate window or without ReShade (.NO_RESHADE, SetupDC)
 - **Proxy loading**: Rename the built addon (`zzz_display_commander.addon64` / `.addon32`) next to the game to one of these proxy DLL names: **dxgi.dll**, **d3d9.dll**, **d3d11.dll**, **d3d12.dll**, **ddraw.dll**, **hid.dll**, **version.dll**, **opengl32.dll**, **dbghelp.dll**, **vulkan-1.dll**, or **winmm.dll**.
 - **Addon directory DLL loading**: From the same folder as the addon, **.dc64 / .dc32 / .dc / .asi** are loaded before ReShade; **.dc64r / .dc32r / .dcr** are loaded after ReShade (for addons that need the ReShade API). All of these DLLs are loaded in place; Windows keeps them locked while the game is running, so you may need to exit the game before overwriting them with newer builds.
 - **NVIDIA Profile (Inspector)**: View and edit driver profile for the current game; apply as administrator

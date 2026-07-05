@@ -26,6 +26,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.15.5
+- [removal] [settings] **Disable DPI scaling removed** - Removed **`features/dpi/`**, the **`DisableDpiScaling`** config setting, and startup AppCompat / per-monitor DPI awareness changes.
+
 ## v0.15.4
 - [cleanup] [build] **`DC_INTERNAL_MODULES` removed** - Built-in modules (ReShade add-ons tab, Audio, Controller) are always registered; the CMake option and preprocessor guards are gone.
 - [removal] [settings] [ui] [hooks] **Enable Flip Chain removed** - Removed the DXGI swapchain upgrade that forced legacy present modes to FLIP_DISCARD (`EnableFlipChain` setting), its VSync & Tearing checkbox, and create-time buffer-count / present-mode changes in `OnCreateSwapchainCapture2`. Games now keep the DXGI swapchain mode they request.

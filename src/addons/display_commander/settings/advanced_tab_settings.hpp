@@ -80,9 +80,6 @@ class AdvancedTabSettings {
     // 61=forever.
     IntSetting win_up_grace_seconds;
 
-    // DPI scaling disable setting
-    BoolSetting disable_dpi_scaling;
-
     // All settings (for load, UI, etc.)
     std::vector<SettingBase*> GetAllSettings();
 

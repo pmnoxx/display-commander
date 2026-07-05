@@ -3,7 +3,6 @@
 
 #include "config/display_commander_config.hpp"
 #include "config/override_reshade_settings.hpp"
-#include "features/dpi/dpi_management.hpp"
 #include "dll_boot_logging.hpp"
 #include "globals.hpp"
 #include "hooks/loadlibrary_hooks.hpp"
@@ -11,7 +10,6 @@
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "process_exit_hooks.hpp"
 #include "proxy_dll/dxgi_proxy_init.hpp"
-#include "settings/advanced_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
 #include "utils/logging.hpp"
@@ -39,10 +37,6 @@ void DoInitializationWithoutHwndSafe_Early(HMODULE h_module) {
     display_commanderhooks::InstallLoadLibraryHooks();
     LogBootInitWithoutHwndStage("Early after InstallLoadLibraryHooks");
     LogCurrentLogLevel();
-    if (settings::g_advancedTabSettings.disable_dpi_scaling.GetValue()) {
-        display_commander::display::dpi::DisableDPIScaling();
-        LogInfo("DPI scaling disabled - process is now DPI-aware");
-    }
 
     bool suppress_pin_module = false;
     (void)display_commander::config::get_config_value("DisplayCommander.Safemode", "SuppressPinModule",

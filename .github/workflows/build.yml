@@ -154,30 +154,30 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Set Latest Build release body
-        id: body_build
+      - name: Set Latest release body
+        id: body_latest
         shell: bash
         run: |
           MAJOR=$(grep 'set(DISPLAY_COMMANDER_VERSION_MAJOR' src/addons/display_commander/CMakeLists.txt | sed 's/.* \([0-9]*\))$/\1/')
           MINOR=$(grep 'set(DISPLAY_COMMANDER_VERSION_MINOR' src/addons/display_commander/CMakeLists.txt | sed 's/.* \([0-9]*\))$/\1/')
           PATCH=$(grep 'set(DISPLAY_COMMANDER_VERSION_PATCH' src/addons/display_commander/CMakeLists.txt | sed 's/.* \([0-9]*\))$/\1/')
           VER="${MAJOR}.${MINOR}.${PATCH}.${{ github.run_number }}"
-          cat << EOF > release_body_build.txt
-          ## Latest Build (bleeding edge)
+          cat << EOF > release_body_latest.txt
+          ## Latest
 
-          Bleeding-edge build from the main branch. Updated on every successful push to main.
+          Release build from the main branch. Updated on every successful push to main.
 
           **Version in binaries**: ${VER}
 
           **Commit**: ${{ github.sha }}
 
           **Files**:
-          - \`zzz_display_commander.addon64\` - 64-bit version
-          - \`zzz_display_commander.addon32\` - 32-bit version
+          - \`zzz_display_commander.addon64\` - 64-bit addon
+          - \`zzz_display_commander.addon32\` - 32-bit addon
 
-          For stable releases, use the main [Releases](https://github.com/pmnoxx/display-commander/releases) page.
+          For debugging or crash analysis, use the [Latest Debug Build](https://github.com/pmnoxx/display-commander/releases/tag/latest_debug) (includes PDB symbols).
           EOF
-          sed -i 's/^          //' release_body_build.txt
+          sed -i 's/^          //' release_body_latest.txt
 
       - name: Download build artifacts (x64)
         uses: actions/download-artifact@v4
@@ -207,19 +207,10 @@ jobs:
           tag: latest
           name: Latest
           allowUpdates: true
+          omitBodyDuringUpdate: false
           artifacts: artifacts/*
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create/Update Latest Build Release (main)
-        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
-        uses: ncipollo/release-action@v1
-        with:
-          tag: latest_build
-          name: Latest Build
-          allowUpdates: true
-          artifacts: artifacts/*
-          token: ${{ secrets.GITHUB_TOKEN }}
-          bodyFile: release_body_build.txt
+          bodyFile: release_body_latest.txt
 
   release-debug:
     name: Release Debug

@@ -1,5 +1,6 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "deamon.hpp"
+#include "daemon_shared.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/srwlock_wrapper.hpp"
@@ -35,6 +36,11 @@ constexpr char kRundllEntry[] = "Daemon";
 SRWLOCK g_status_lock = SRWLOCK_INIT;
 DaemonStatus g_status;
 std::atomic<bool> g_started{false};
+HANDLE g_shared_mapping = nullptr;
+void* g_shared_view = nullptr;
+
+bool AppendLogLine(const std::wstring& log_path, const char* line);
+bool WriteLogReset(const std::wstring& log_path, const char* line);
 
 std::wstring QueryCurrentExeFullPath() {
     wchar_t buf[4096] = {};
@@ -132,6 +138,123 @@ std::wstring ExeFileNameFromPath(const std::wstring& exe_path) {
 std::wstring MakeDaemonFolderName(const std::wstring& exe_path) {
     const std::uint64_t hash = Fnv1a64Bytes(exe_path.data(), exe_path.size() * sizeof(wchar_t));
     return HashToHex16(hash) + L"_" + ExeFileNameFromPath(exe_path);
+}
+
+void FormatDaemonMappingName(DWORD pid, wchar_t* out, size_t out_count) {
+    swprintf_s(out, out_count, L"%s%lu", kDaemonMappingNamePrefix, pid);
+}
+
+void PopulateDaemonSharedState(DaemonSharedState& state) {
+    state = {};
+    state.magic = kDaemonSharedMagic;
+    state.version = kDaemonSharedVersion;
+    state.size = static_cast<std::uint32_t>(sizeof(DaemonSharedState));
+    state.restore_resolution = false;
+    state.restore_hdr = false;
+
+    DISPLAY_DEVICEW adapter = {};
+    adapter.cb = sizeof(adapter);
+    const wchar_t* screen_id_w = nullptr;
+    if (EnumDisplayDevicesW(nullptr, 0, &adapter, 0) != 0) {
+        screen_id_w = adapter.DeviceID[0] != L'\0' ? adapter.DeviceID : adapter.DeviceName;
+    }
+    if (screen_id_w != nullptr) {
+        WideCharToMultiByte(CP_UTF8, 0, screen_id_w, -1, state.screen_id, static_cast<int>(sizeof(state.screen_id)),
+                            nullptr, nullptr);
+        state.screen_id[sizeof(state.screen_id) - 1] = '\0';
+    }
+
+    DEVMODEW mode = {};
+    mode.dmSize = sizeof(mode);
+    const wchar_t* device_name = adapter.DeviceName[0] != L'\0' ? adapter.DeviceName : nullptr;
+    if (EnumDisplaySettingsW(device_name, ENUM_CURRENT_SETTINGS, &mode) != 0) {
+        state.screen_size_width = static_cast<std::int32_t>(mode.dmPelsWidth);
+        state.screen_size_height = static_cast<std::int32_t>(mode.dmPelsHeight);
+    }
+}
+
+bool CreateAndPopulateSharedMemory(DWORD pid, DWORD& error_out) {
+    error_out = 0;
+    wchar_t name[160] = {};
+    FormatDaemonMappingName(pid, name, sizeof(name) / sizeof(name[0]));
+
+    HANDLE mapping = CreateFileMappingW(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0,
+                                        static_cast<DWORD>(sizeof(DaemonSharedState)), name);
+    if (mapping == nullptr) {
+        error_out = GetLastError();
+        return false;
+    }
+    void* view = MapViewOfFile(mapping, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(DaemonSharedState));
+    if (view == nullptr) {
+        error_out = GetLastError();
+        CloseHandle(mapping);
+        return false;
+    }
+
+    auto* state = static_cast<DaemonSharedState*>(view);
+    PopulateDaemonSharedState(*state);
+    g_shared_mapping = mapping;
+    g_shared_view = view;
+
+    LogInfo("[Daemon] shared mapping created [Path] %s screen_id=%s size=%dx%d restore_resolution=%d restore_hdr=%d",
+            display_commander::utils::WideToUtf8(name).c_str(), state->screen_id, state->screen_size_width,
+            state->screen_size_height, state->restore_resolution ? 1 : 0, state->restore_hdr ? 1 : 0);
+    return true;
+}
+
+void AppendSharedStateToLog(const std::wstring& log_path, const DaemonSharedState& state) {
+    char line[256];
+    snprintf(line, sizeof(line), "shared magic=0x%08X version=%u size=%u", state.magic, state.version, state.size);
+    AppendLogLine(log_path, line);
+    snprintf(line, sizeof(line), "screen_id=%s", state.screen_id[0] != '\0' ? state.screen_id : "(empty)");
+    AppendLogLine(log_path, line);
+    snprintf(line, sizeof(line), "screen_size=%d x %d", state.screen_size_width, state.screen_size_height);
+    AppendLogLine(log_path, line);
+    snprintf(line, sizeof(line), "restore_resolution=%s", state.restore_resolution ? "true" : "false");
+    AppendLogLine(log_path, line);
+    snprintf(line, sizeof(line), "restore_hdr=%s", state.restore_hdr ? "true" : "false");
+    AppendLogLine(log_path, line);
+}
+
+void OpenAndLogSharedMemory(DWORD target_pid, const std::wstring& log_path) {
+    wchar_t name[160] = {};
+    FormatDaemonMappingName(target_pid, name, sizeof(name) / sizeof(name[0]));
+    char name_utf8[320] = {};
+    WideCharToMultiByte(CP_UTF8, 0, name, -1, name_utf8, static_cast<int>(sizeof(name_utf8)), nullptr, nullptr);
+
+    HANDLE mapping = OpenFileMappingW(FILE_MAP_READ, FALSE, name);
+    if (mapping == nullptr) {
+        char line[384];
+        snprintf(line, sizeof(line), "shared mapping open failed error=%lu name=%s", GetLastError(), name_utf8);
+        AppendLogLine(log_path, line);
+        return;
+    }
+
+    void* view = MapViewOfFile(mapping, FILE_MAP_READ, 0, 0, sizeof(DaemonSharedState));
+    if (view == nullptr) {
+        char line[384];
+        snprintf(line, sizeof(line), "shared mapping view failed error=%lu name=%s", GetLastError(), name_utf8);
+        AppendLogLine(log_path, line);
+        CloseHandle(mapping);
+        return;
+    }
+
+    DaemonSharedState state = {};
+    memcpy(&state, view, sizeof(state));
+    UnmapViewOfFile(view);
+    CloseHandle(mapping);
+
+    if (state.magic != kDaemonSharedMagic || state.version != kDaemonSharedVersion
+        || state.size < sizeof(DaemonSharedState)) {
+        char line[256];
+        snprintf(line, sizeof(line), "shared mapping invalid magic=0x%08X version=%u size=%u", state.magic,
+                 state.version, state.size);
+        AppendLogLine(log_path, line);
+        return;
+    }
+
+    AppendLogLine(log_path, name_utf8);
+    AppendSharedStateToLog(log_path, state);
 }
 
 void StoreStatus(DaemonStatus status) {
@@ -343,6 +466,11 @@ void EnsureBackgroundDaemonStarted(void* h_module) {
                 display_commander::utils::WideToUtf8(status.dll_path).c_str());
     }
 
+    DWORD shared_error = 0;
+    if (!CreateAndPopulateSharedMemory(status.target_pid, shared_error)) {
+        LogWarn("[Daemon] shared mapping create failed, error=%lu pid=%lu", shared_error, status.target_pid);
+    }
+
     DWORD daemon_pid = 0;
     DWORD start_error = 0;
     if (!StartRundll32Daemon(status.dll_path, status.target_pid, daemon_pid, start_error)) {
@@ -428,6 +556,10 @@ static void RunDaemonWatch(HINSTANCE hinst, LPSTR lpszCmdLine) {
         AppendLogLine(log_path, line);
     } else {
         LogInfo("[Daemon] %s", line);
+    }
+
+    if (!log_path.empty()) {
+        OpenAndLogSharedMemory(target_pid, log_path);
     }
 
     if (target_pid == 0) {

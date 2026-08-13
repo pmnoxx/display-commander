@@ -3,6 +3,7 @@
 #include "../../globals.hpp"
 #include "../../hooks/vulkan/nvlowlatencyvk_hooks.hpp"
 #include "../../latency/reflex_provider.hpp"
+#include "../../mit/deamon/deamon_ui.hpp"
 #include "../../mit/dpi/dpi_scaling_ui.hpp"
 #include "../../settings/advanced_tab_settings.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
@@ -54,6 +55,7 @@ void DrawAdvancedTab(display_commander::ui::GraphicsApi api, display_commander::
     }
 
     display_commander::mit::dpi::DrawDpiScalingSection(imgui);
+    display_commander::mit::deamon::DrawDaemonSection(imgui);
 
     // NVAPI Settings Section - only show if game is in NVAPI game list
     DrawNvapiSettings(api, imgui);

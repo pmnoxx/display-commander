@@ -4,4 +4,6 @@ EXPORTS
 	; ReShade addon metadata (NAME, AUTHOR, …) and GetDisplayCommanderVersion / LoadedNs are exported via
 	; __declspec(dllexport) in addon.cpp.
 	AddonInit
+	Daemon
+	DaemonW
 	GetDisplayCommanderState

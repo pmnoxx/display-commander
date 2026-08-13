@@ -26,6 +26,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.15.8
+- [new feature] [ui] **Background daemon stub** - On game start, Display Commander copies itself to `%LocalAppData%\Programs\Display_Commander\daemon\<hash>_<exe>\dc_64.dll` (or `dc_32.dll`) and starts a rundll32 watcher with the game PID. That process writes its PID to `daemon.txt`, waits until the game exits (checks every second), logs that the game terminated, then exits. Advanced tab **Daemon** shows whether it is running. This is a stub for later features.
+
 ## v0.15.7
 - [new feature] [ui] **DPI Scaling (AppCompat)** - On game start, Display Commander marks the current executable as High DPI aware in Windows (`HKCU\...\AppCompatFlags\Layers`, `HIGHDPIAWARE`) so Windows does not bitmap-scale the game. Advanced tab **DPI Scaling** shows whether that flag is set. Takes effect the next time the game launches.
 

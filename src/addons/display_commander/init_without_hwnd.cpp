@@ -8,6 +8,7 @@
 #include "hooks/loadlibrary_hooks.hpp"
 #include "hooks/windows_hooks/api_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
+#include "mit/dpi/dpi_appcompat.hpp"
 #include "process_exit_hooks.hpp"
 #include "proxy_dll/dxgi_proxy_init.hpp"
 #include "settings/main_tab_settings.hpp"
@@ -34,6 +35,8 @@ void DoInitializationWithoutHwndSafe_Early(HMODULE h_module) {
             reinterpret_cast<uintptr_t>(h_module));
     settings::LoadAllSettingsAtStartup();
     LogBootInitWithoutHwndStage("Early after LoadAllSettingsAtStartup");
+    display_commander::mit::dpi::EnsureCurrentExeHighDpiAware();
+    LogBootInitWithoutHwndStage("Early after EnsureCurrentExeHighDpiAware");
     display_commanderhooks::InstallLoadLibraryHooks();
     LogBootInitWithoutHwndStage("Early after InstallLoadLibraryHooks");
     LogCurrentLogLevel();

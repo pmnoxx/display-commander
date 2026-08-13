@@ -1,19 +1,26 @@
+// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "advanced_tab.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/vulkan/nvlowlatencyvk_hooks.hpp"
 #include "../../latency/reflex_provider.hpp"
-#include "../forkawesome.h"
-#include "../ui_colors.hpp"
+#include "../../mit/dpi/dpi_scaling_ui.hpp"
 #include "../../settings/advanced_tab_settings.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../swapchain_events.hpp"
 #include "../../ui/imgui_wrapper_base.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"
+#include "../forkawesome.h"
+#include "../ui_colors.hpp"
 #include "settings_wrapper.hpp"
 
+// Libraries <ReShade> / <imgui>
+#include <imgui.h>
+
+// Libraries <standard C++>
 #include <atomic>
 
+// Libraries <Windows.h>
 #include <windows.h>
 
 namespace ui::new_ui {
@@ -45,6 +52,8 @@ void DrawAdvancedTab(display_commander::ui::GraphicsApi api, display_commander::
     if (imgui.CollapsingHeader("Advanced Settings", wrapper_flags::TreeNodeFlags_None)) {
         DrawAdvancedTabSettingsSection(api, imgui);
     }
+
+    display_commander::mit::dpi::DrawDpiScalingSection(imgui);
 
     // NVAPI Settings Section - only show if game is in NVAPI game list
     DrawNvapiSettings(api, imgui);

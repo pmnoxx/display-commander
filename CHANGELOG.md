@@ -26,6 +26,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.15.7
+- [new feature] [ui] **DPI Scaling (AppCompat)** - On game start, Display Commander marks the current executable as High DPI aware in Windows (`HKCU\...\AppCompatFlags\Layers`, `HIGHDPIAWARE`) so Windows does not bitmap-scale the game. Advanced tab **DPI Scaling** shows whether that flag is set. Takes effect the next time the game launches.
+
 ## v0.15.6
 - [bugfix] [settings] [ui] **Fix reflex implementation** - Fix bug in reflex implementation.
 

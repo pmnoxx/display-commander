@@ -26,6 +26,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.15.9
+- [bugfix] [ui] **Hide FPS limiter preset without native Reflex** - The **FPS limiter preset** dropdown is shown only when native Reflex frame pacing is in sync, so it no longer appears in games that do not use native Reflex.
+
 ## v0.15.8
 - [cleanup] [build] **Latest release description** - The rolling [Latest](https://github.com/pmnoxx/display-commander/releases/latest) GitHub release now has the same kind of notes as Latest Debug (version, commit, file list).
 - [removal] [build] **latest_build GitHub release removed** - CI no longer publishes the rolling `latest_build` tag. Use [Latest](https://github.com/pmnoxx/display-commander/releases/latest) or workflow artifacts instead.

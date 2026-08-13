@@ -623,7 +623,8 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
         }
     }
 
-    // FPS limiter preset (DC fps limiter mode): always visible so the choice can be set before native Reflex sync.
+    // FPS limiter preset (DC fps limiter mode): only when native Reflex frame pacing is in sync.
+    if (::IsNativeFramePacingInSync())
     {
         const int raw = settings::g_mainTabSettings.native_reflex_fps_preset.GetValue();
         if (raw < 0 || raw > static_cast<int>(FpsLimiterPreset::kLowLatencyNativePacingV2)) {

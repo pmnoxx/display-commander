@@ -8,11 +8,6 @@ namespace ui::new_ui {
 void DrawNativeFrameTimeGraph(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
     CALL_GUARD_NO_TS();
-    if (!GetEffectiveLimitRealFrames()) {
-        imgui.TextColored(ui::colors::TEXT_DIMMED, "Native frame time graph requires limit real frames to be enabled.");
-        return;
-    }
-
     const uint32_t head = ::g_native_frame_time_ring.GetHead();
     const uint32_t count = ::g_native_frame_time_ring.GetCountFromHead(head);
 
@@ -63,7 +58,6 @@ void DrawNativeFrameTimeGraph(display_commander::ui::IImGuiWrapper& imgui) {
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
             "Native frame time graph showing frames actually shown to display via native swapchain Present.\n"
-            "This tracks frames when limit real frames is enabled.\n"
             "Lower values = higher FPS, smoother gameplay.\n"
             "Spikes indicate frame drops or stuttering.");
     }

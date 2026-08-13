@@ -661,7 +661,6 @@ const char* GetChosenFpsLimiterSiteName();
 bool IsNativeFramePacingInSync();
 
 /** When native Reflex is active and a non-Custom preset is selected, returns the preset override; otherwise config. */
-bool GetEffectiveLimitRealFrames();
 bool GetEffectiveUseReflexMarkersAsFpsLimiter();
 int GetEffectiveReflexFpsLimiterMaxQueuedFrames();
 bool GetEffectiveUseStreamlineProxyFpsLimiter();

@@ -71,7 +71,6 @@ class MainTabSettings {
 
     // VSync & Tearing
     ui::new_ui::BoolSetting prevent_tearing;
-    ui::new_ui::BoolSetting limit_real_frames;
 
     // Audio Settings
     ui::new_ui::BoolSetting audio_mute;
@@ -212,7 +211,6 @@ class MainTabSettings {
 
 /** Override values for FPS limiter when native Reflex is active and a non-Custom preset is selected. */
 struct NativeReflexPresetOverrides {
-    bool limit_real_frames;
     bool use_reflex_markers_as_fps_limiter;
     int reflex_fps_limiter_max_queued_frames;
     bool use_streamline_proxy_fps_limiter;

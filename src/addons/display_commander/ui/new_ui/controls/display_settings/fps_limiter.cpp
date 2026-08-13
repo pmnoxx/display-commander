@@ -140,7 +140,6 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
                                                         float fps_limiter_checkbox_column_gutter);
 static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWrapper& imgui,
                                                  const std::function<void()>& drawPclStatsCheckbox);
-static void DrawDisplaySettings_FpsLimiterMiscOptions(display_commander::ui::IImGuiWrapper& imgui);
 
 void DrawQuickFpsLimitChanger(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
@@ -827,9 +826,7 @@ static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWr
                 imgui.SetTooltipEx("Smoothed interval using rolling average. Raw: %.1f ms", raw_ns / 1000000.0);
             }
         } else {
-            bool limit_real = GetEffectiveLimitRealFrames();
-            imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Injected Reflex: ACTIVE Limit Real Frames: %s",
-                              limit_real ? "ON" : "OFF");
+            imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Injected Reflex: ACTIVE");
             double injected_ns = static_cast<double>(g_sleep_reflex_injected_ns_smooth.load());
             double calls_per_second = injected_ns <= 0 ? -1 : 1000000000.0 / injected_ns;
             imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Injected Reflex: %.2f times/sec (%.1f ms interval)",
@@ -862,30 +859,6 @@ static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWr
                 "This prevents Reflex from sleeping the CPU, which may help with certain compatibility issues.");
         }
         imgui.TreePop();
-    }
-}
-
-static void DrawDisplaySettings_FpsLimiterMiscOptions(display_commander::ui::IImGuiWrapper& imgui) {
-    // Limit Real Frames (experimental; checkbox shows effective value, write updates config)
-    if (enabled_experimental_features) {
-        if (g_present_update_after2_called.load(std::memory_order_acquire)) {
-            imgui.Spacing();
-            bool limit_real = GetEffectiveLimitRealFrames();
-            if (imgui.Checkbox("Limit Real Frames", &limit_real)) {
-                settings::g_mainTabSettings.limit_real_frames.SetValue(limit_real);
-                LogInfo(limit_real ? "Limit Real Frames enabled" : "Limit Real Frames disabled");
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx(
-                    "Limit real frames when using DLSS Frame Generation.\n"
-                    "When enabled, the FPS limiter limits the game's internal framerate (real frames)\n"
-                    "instead of generated frames. This helps maintain proper frame timing with Frame Gen enabled.");
-            }
-        }
-    } else {
-        if (settings::g_mainTabSettings.limit_real_frames.GetValue()) {
-            settings::g_mainTabSettings.limit_real_frames.SetValue(false);
-        }
     }
 }
 
@@ -1025,8 +998,6 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
     if (current_item == static_cast<int>(FpsLimiterMode::kReflex)) {
         DrawDisplaySettings_FpsLimiterReflex(imgui, DrawPclStatsCheckbox);
     }
-
-    DrawDisplaySettings_FpsLimiterMiscOptions(imgui);
 }
 
 }  // namespace ui::new_ui

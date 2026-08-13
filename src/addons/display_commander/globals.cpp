@@ -409,16 +409,6 @@ bool UsePresetOverrides() {
 }
 }  // namespace
 
-bool GetEffectiveLimitRealFrames() {
-    if (UsePresetOverrides()) {
-        settings::NativeReflexPresetOverrides out{};
-        settings::GetNativeReflexPresetOverrides(
-            static_cast<FpsLimiterPreset>(settings::g_mainTabSettings.native_reflex_fps_preset.GetValue()), out);
-        return out.limit_real_frames;
-    }
-    return settings::g_mainTabSettings.limit_real_frames.GetValue();
-}
-
 bool GetEffectiveUseReflexMarkersAsFpsLimiter() {
     if (UsePresetOverrides()) {
         settings::NativeReflexPresetOverrides out{};

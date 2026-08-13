@@ -128,8 +128,7 @@ static void DrawImportantInfo_FrameTimeGraphContent(display_commander::ui::IImGu
     imgui.Text("Native Frame Time Graph");
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
-            "Shows frame times for frames actually displayed via native swapchain Present when limit real frames "
-            "is enabled.");
+            "Shows frame times for frames actually displayed via native swapchain Present.");
     }
     imgui.Spacing();
 
@@ -577,7 +576,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
                 "Shows a graph of native frame times (frames shown to display via native swapchain Present) in the "
-                "overlay.\nOnly available when limit real frames is enabled.");
+                "overlay.");
         }
         imgui.NextColumn();
 

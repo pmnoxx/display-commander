@@ -66,7 +66,6 @@ MainTabSettings::MainTabSettings()
       safe_mode_fps_limiter("safe_mode_fps_limiter", false, "DisplayCommander"),
       selected_reshade_runtime_index("selected_reshade_runtime_index", 0, 0, 31, "DisplayCommander"),
       prevent_tearing("prevent_tearing", false, "DisplayCommander"),
-      limit_real_frames("limit_real_frames", true, "DisplayCommander"),
       audio_mute("audio_mute", false, "DisplayCommander"),
       mute_in_background("mute_in_background", false, "DisplayCommander"),
       mute_in_background_if_other_audio("mute_in_background_if_other_audio", false, "DisplayCommander"),
@@ -189,7 +188,6 @@ MainTabSettings::MainTabSettings()
         &safe_mode_fps_limiter,
         &selected_reshade_runtime_index,
         &prevent_tearing,
-        &limit_real_frames,
         &audio_mute,
         &mute_in_background,
         &mute_in_background_if_other_audio,
@@ -273,7 +271,6 @@ MainTabSettings::MainTabSettings()
 void GetNativeReflexPresetOverrides(FpsLimiterPreset preset, NativeReflexPresetOverrides& out) {
     switch (preset) {
         case FpsLimiterPreset::kLowLatencyNativePacing:
-            out.limit_real_frames = true;
             out.use_reflex_markers_as_fps_limiter = true;
             out.reflex_fps_limiter_max_queued_frames = 0;
             out.use_streamline_proxy_fps_limiter = false;
@@ -283,7 +280,6 @@ void GetNativeReflexPresetOverrides(FpsLimiterPreset preset, NativeReflexPresetO
             out.fps_limiter_fg2_enabled = false;
             break;
         case FpsLimiterPreset::kDCPaceLockQ1:
-            out.limit_real_frames = true;
             out.use_reflex_markers_as_fps_limiter = true;
             out.reflex_fps_limiter_max_queued_frames = 1;
             out.use_streamline_proxy_fps_limiter = false;
@@ -293,7 +289,6 @@ void GetNativeReflexPresetOverrides(FpsLimiterPreset preset, NativeReflexPresetO
             out.fps_limiter_fg2_enabled = false;
             break;
         case FpsLimiterPreset::kDCPaceLockQ2:
-            out.limit_real_frames = true;
             out.use_reflex_markers_as_fps_limiter = true;
             out.reflex_fps_limiter_max_queued_frames = 2;
             out.use_streamline_proxy_fps_limiter = false;
@@ -303,7 +298,6 @@ void GetNativeReflexPresetOverrides(FpsLimiterPreset preset, NativeReflexPresetO
             out.fps_limiter_fg2_enabled = false;
             break;
         case FpsLimiterPreset::kDCPaceLockQ3:
-            out.limit_real_frames = true;
             out.use_reflex_markers_as_fps_limiter = true;
             out.reflex_fps_limiter_max_queued_frames = 3;
             out.use_streamline_proxy_fps_limiter = false;
@@ -313,7 +307,6 @@ void GetNativeReflexPresetOverrides(FpsLimiterPreset preset, NativeReflexPresetO
             out.fps_limiter_fg2_enabled = false;
             break;
         case FpsLimiterPreset::kPaceGenerated:
-            out.limit_real_frames = false;
             out.use_reflex_markers_as_fps_limiter = false;
             out.reflex_fps_limiter_max_queued_frames = 0;
             out.use_streamline_proxy_fps_limiter = false;
@@ -323,7 +316,6 @@ void GetNativeReflexPresetOverrides(FpsLimiterPreset preset, NativeReflexPresetO
             out.fps_limiter_fg2_enabled = false;
             break;
         case FpsLimiterPreset::kPaceGeneratedSafe:
-            out.limit_real_frames = false;
             out.use_reflex_markers_as_fps_limiter = false;
             out.reflex_fps_limiter_max_queued_frames = 0;
             out.use_streamline_proxy_fps_limiter = false;
@@ -336,7 +328,6 @@ void GetNativeReflexPresetOverrides(FpsLimiterPreset preset, NativeReflexPresetO
             // No overrides; caller should use config values
             break;
         case FpsLimiterPreset::kLowLatencyNativePacingV2:
-            out.limit_real_frames = true;
             out.use_reflex_markers_as_fps_limiter = true;
             out.reflex_fps_limiter_max_queued_frames = 0;
             out.use_streamline_proxy_fps_limiter = false;

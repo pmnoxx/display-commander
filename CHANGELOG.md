@@ -26,6 +26,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v0.15.6
+- [bugfix] [settings] [ui] **Fix reflex implementation** - Fix bug in reflex implementation.
+
 ## v0.15.5
 - [removal] [settings] **Disable DPI scaling removed** - Removed **`features/dpi/`**, the **`DisableDpiScaling`** config setting, and startup AppCompat / per-monitor DPI awareness changes.
 

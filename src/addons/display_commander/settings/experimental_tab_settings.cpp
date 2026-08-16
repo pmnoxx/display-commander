@@ -179,6 +179,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
 void ExperimentalTabSettings::LoadAll() {
     // Load max multiplier first to ensure proper range validation for the multiplier
     timeslowdown_max_multiplier.Load();
+    timeslowdown_enabled.SetValue(false);
 
     // Set the max range for the multiplier before loading it
     timeslowdown_multiplier.SetMax(timeslowdown_max_multiplier.GetValue());

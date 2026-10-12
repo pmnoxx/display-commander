@@ -26,6 +26,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v1.0.0 final
+- Bumped version to 1.0.0
+
 ## v0.15.9
 - [bugfix] [ui] **Hide FPS limiter preset without native Reflex** - The **FPS limiter preset** dropdown is shown only when native Reflex frame pacing is in sync, so it no longer appears in games that do not use native Reflex.
 

@@ -36,6 +36,7 @@ class ExperimentalTabSettings {
 
     // Individual timer hook settings
     ComboSetting query_performance_counter_hook;
+    ComboSetting rtl_query_performance_counter_hook;
     ComboSetting get_tick_count_hook;
     ComboSetting get_tick_count64_hook;
     ComboSetting time_get_time_hook;

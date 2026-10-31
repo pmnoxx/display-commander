@@ -205,6 +205,8 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           tag: latest
+          # Commit to create the tag at if it is missing (otherwise GitHub uses the release's stored target branch).
+          commit: ${{ github.sha }}
           name: Latest
           allowUpdates: true
           omitBodyDuringUpdate: false
@@ -266,6 +268,8 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           tag: latest_debug
+          # Commit to create the tag at if it is missing (otherwise GitHub uses the release's stored target branch).
+          commit: ${{ github.sha }}
           name: Latest Debug Build
           allowUpdates: true
           artifacts: artifacts-debug/*

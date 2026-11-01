@@ -31,9 +31,9 @@ const char* const DEFAULT_SETTINGS_TEMPLATE = R"(# Display Commander — User de
 [DisplayCommander]
 # ContinueRendering = true
 
-# Window mode: 0 = No changes, 1 = Prevent exclusive fullscreen / no resize,
-# 2 = Borderless fullscreen, 3 = Borderless windowed.
-# window_mode2 = 1
+# Window mode: 0 = No changes, 1 = Borderless fullscreen, 2 = Borderless windowed (aspect ratio),
+# 3 = Prevent exclusive fullscreen / no resize.
+# WindowMode = 3
 
 # FPS limiter: fps_limit = target FPS (0 = unlimited, 1–240 otherwise). Requires fps_limiter_enabled = true.
 # fps_limiter_mode: 0 = Default, 1 = Reflex (low latency).

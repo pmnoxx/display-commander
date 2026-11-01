@@ -15,7 +15,8 @@ namespace settings {
 MainTabSettings::MainTabSettings()
     : window_mode(
           "WindowMode", static_cast<int>(WindowMode::kNoChanges),
-          {"No changes", "Prevent exclusive fullscreen / no resize", "Borderless fullscreen", "Borderless windowed"},
+          // Labels in WindowMode order (the stored value is the enum value).
+          {"No changes", "Borderless fullscreen", "Borderless windowed", "Prevent exclusive fullscreen / no resize"},
           "DisplayCommander"),
       aspect_index("aspect_index", 3, {"3:2", "4:3", "16:10", "16:9", "19:9", "19.5:9", "21:9", "21.5:9", "32:9"},
                    "DisplayCommander"),  // Default to 16:9

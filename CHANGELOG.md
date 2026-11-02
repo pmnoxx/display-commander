@@ -26,6 +26,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v1.0.2
+- [bugfix] **OpenGL frame counted twice (remaining cases)** - Completes the v1.0.1 fix: the end-of-frame step still ran twice per frame during the first second of an OpenGL game, in FPS limiter safe mode with On Present Sync, and in DXGI / Vulkan games that also have an OpenGL window. It now runs once per frame in all cases.
+
 ## v1.0.1
 - [bugfix] [ui] [settings] **Window Mode labels match the selected mode** - Since v0.12.175 the **Window Mode** dropdown labels were shifted against the stored setting: *Prevent exclusive fullscreen / no resize* selected borderless fullscreen, *Borderless fullscreen* selected aspect ratio, and *Borderless windowed* selected prevent-only. Each label now selects its own mode. The default settings template uses the same mapping and the real key name `WindowMode`.
 - [bugfix] **OpenGL frame counted twice** - In OpenGL games the end-of-frame step ran twice per `SwapBuffers`, so the frame counter advanced 2x, per-frame module work ran twice and frame-time statistics got a near-zero sample every frame. It now runs once. (The FPS cap itself was not affected.)

@@ -40,11 +40,9 @@ BOOL WINAPI wglSwapBuffers_Detour(HDC hdc) {
 
     BOOL result = wglSwapBuffers_Original(hdc);
 
-    // Chosen pacing site: end of frame through the limiter path; otherwise end of frame directly.
+    // End of frame only from the chosen pacing site; otherwise that site (e.g. the ReShade event) does it, once.
     if (use_fps_limiter) {
         display_commanderhooks::dxgi::HandlePresentAfter(false);
-    } else {
-        OnPresentUpdateAfter2(false);
     }
 
     return result;

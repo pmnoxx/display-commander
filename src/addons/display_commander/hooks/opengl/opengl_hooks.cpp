@@ -40,10 +40,12 @@ BOOL WINAPI wglSwapBuffers_Detour(HDC hdc) {
 
     BOOL result = wglSwapBuffers_Original(hdc);
 
+    // Chosen pacing site: end of frame through the limiter path; otherwise end of frame directly.
     if (use_fps_limiter) {
         display_commanderhooks::dxgi::HandlePresentAfter(false);
+    } else {
+        OnPresentUpdateAfter2(false);
     }
-    OnPresentUpdateAfter2(false);
 
     return result;
 }

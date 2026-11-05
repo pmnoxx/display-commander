@@ -114,6 +114,7 @@ private_docs
 !.clang-format
 !.clang-tidy
 !.editorconfig
+!.gitattributes
 !.gitignore
 !.gitmodules
 

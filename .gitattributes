@@ -1,0 +1,2 @@
+# Git hooks are shell scripts: keep LF so they run after being copied into .git/hooks.
+scripts/git-hooks/* text eol=lf

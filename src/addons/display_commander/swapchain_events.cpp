@@ -430,22 +430,6 @@ void RecordNativeFrameTime() {
 bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapchain_desc& desc, void* hwnd) {
     CALL_GUARD_NO_TS();
 
-    // INI-only: [CompatibilityFixes] swapchain_creation_delay (milliseconds, default 0).
-    {
-        int delay_ms = 0;
-        if (display_commander::config::DisplayCommanderConfigManager::GetInstance().GetConfigValue(
-                "CompatibilityFixes", "swapchain_creation_delay", delay_ms)) {
-            if (delay_ms > 0) {
-                constexpr int kMaxSwapchainCreationDelayMs = 600000;
-                if (delay_ms > kMaxSwapchainCreationDelayMs) delay_ms = kMaxSwapchainCreationDelayMs;
-                LogInfo("[CompatibilityFixes] swapchain_creation_delay: sleeping %d ms", delay_ms);
-                Sleep(static_cast<DWORD>(delay_ms));
-            }
-        } else {
-            display_commander::config::DisplayCommanderConfigManager::GetInstance().SetConfigValue(
-                "CompatibilityFixes", "swapchain_creation_delay", 0);
-        }
-    }
     // Don't reset counters on swapchain creation - let them accumulate throughout the session
 
     g_reshade_create_swapchain_capture_count.fetch_add(1);

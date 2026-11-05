@@ -1,6 +1,22 @@
 #!/bin/sh
 # Local pre-push: refuse push if any indexed paths match standard ignore rules
-# (tracked files that should typically not be committed). Install: scripts/install_git_hooks.sh
+# (tracked files that should typically not be committed), and refuse pushing the dc2 branch to the public
+# repo github.com/pmnoxx/display-commander (only main goes there). Copy to .git/hooks/pre-push.
+
+remote_url="$2"
+normalized_url=$(printf '%s' "$remote_url" | tr 'A-Z' 'a-z' | sed -e 's#\.git$##' -e 's#/$##')
+case "$normalized_url" in
+	*github.com/pmnoxx/display-commander | *github.com:pmnoxx/display-commander)
+		zero=0000000000000000000000000000000000000000
+		while read -r local_ref local_sha remote_ref remote_sha; do
+			# Deleting the remote branch is allowed; pushing commits to it is not.
+			if [ "$remote_ref" = "refs/heads/dc2" ] && [ "$local_sha" != "$zero" ]; then
+				echo "pre-push: blocked - dc2 must not be pushed to $remote_url (only main goes there)." >&2
+				exit 1
+			fi
+		done
+		;;
+esac
 
 if ! tracked_ignored=$(git ls-files -ic --exclude-standard 2>/dev/null); then
 	echo "pre-push: git ls-files failed; fix your repo/git and retry." >&2

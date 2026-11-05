@@ -1,7 +1,7 @@
 #!/bin/sh
-# Local pre-commit: refuse commits that add std::mutex to C/C++ sources. Games ship an older msvcp140.dll
-# and crash in std::mutex::lock; use SRWLOCK wrappers instead. Copy to .git/hooks/pre-commit.
-# Only added lines are checked; lines that are pure // comments are ignored.
+# Local pre-commit: refuse commits that add std::mutex, #include <mutex> or #include <shared_mutex> to C/C++
+# sources. Games ship an older msvcp140.dll and crash in std::mutex::lock; use SRWLOCK wrappers instead.
+# Copy to .git/hooks/pre-commit. Only added lines are checked; lines that are pure // comments are ignored.
 
 hits=$(git diff --cached -U0 --no-color --diff-filter=ACMR -- \
 	'*.c' '*.cc' '*.cpp' '*.cxx' '*.h' '*.hh' '*.hpp' '*.hxx' '*.inl' '*.ixx' |
@@ -10,14 +10,17 @@ hits=$(git diff --cached -U0 --no-color --diff-filter=ACMR -- \
 		/^@@/ { split($3, a, ","); line = substr(a[1], 2) + 0; next }
 		/^\+/ {
 			text = substr($0, 2)
-			if (text ~ /std::mutex([^A-Za-z0-9_]|$)/ && text !~ /^[ \t]*\/\//)
+			if (text !~ /^[ \t]*\/\// &&
+			    (text ~ /std::mutex([^A-Za-z0-9_]|$)/ ||
+			     text ~ /^[ \t]*#[ \t]*include[ \t]*<(mutex|shared_mutex)>/))
 				printf "%s:%d: %s\n", file, line, text
 			line++
 		}
 	')
 
 if [ -n "$hits" ]; then
-	echo "pre-commit: blocked - std::mutex is forbidden (older msvcp140.dll crashes). Use SRWLOCK wrappers:" >&2
+	echo "pre-commit: blocked - std::mutex, <mutex> and <shared_mutex> are forbidden (older msvcp140.dll crashes)." >&2
+	echo "Use SRWLOCK wrappers instead:" >&2
 	printf '%s\n' "$hits" >&2
 	exit 1
 fi

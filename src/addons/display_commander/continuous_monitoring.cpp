@@ -148,36 +148,9 @@ void check_is_background() {
                                                      std::memory_order_release);
 
         if (hwnd != nullptr) {
-            if (settings::g_mainTabSettings.clip_cursor_enabled.GetValue()) {
-                if (app_in_background) {
-                    LogInfo("Continuous monitoring: App moved to BACKGROUND");
-                    // Release cursor clipping when going to background
-                    display_commanderhooks::ReleaseOwnedClipCursor();
-
-                    // Set cursor to default arrow when moving to background
-                    display_commanderhooks::SetCursor_Direct(LoadCursor(nullptr, IDC_ARROW));
-
-                    // Hide cursor when moving to background
-                    // display_commanderhooks::ShowCursor_Direct(TRUE);
-                } else {
-                    LogInfo("Continuous monitoring: App moved to FOREGROUND");
-                    // Restore cursor clipping when coming to foreground
-                    LogInfo("Continuous monitoring: Restored cursor clipping for foreground");
-
-                    // If clip cursor feature is enabled, clip cursor to game window
-                    display_commanderhooks::ClipCursorToGameWindow();
-
-                    display_commanderhooks::RestoreClipCursor();
-                }
-            } else if (settings::g_mainTabSettings.unclip_cursor_enabled.GetValue()) {
-                display_commanderhooks::ReleaseOwnedClipCursor();
-            } else {
-                if (app_in_background) {
-                    display_commanderhooks::ReleaseOwnedClipCursor();
-                } else {
-                    display_commanderhooks::RestoreClipCursor();
-                }
-            }
+            LogInfo("Continuous monitoring: App moved to %s", app_in_background ? "BACKGROUND" : "FOREGROUND");
+            // Cursor lock release / restore for the new focus state
+            display_commanderhooks::ApplyCursorLock(app_in_background);
         }
     }
 

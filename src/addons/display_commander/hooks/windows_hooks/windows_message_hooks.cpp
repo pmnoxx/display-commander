@@ -859,6 +859,36 @@ void RestoreClipCursor() {
     }
 }
 
+static std::atomic<bool> s_reshade_overlay_open{false};
+
+void SetReShadeOverlayOpen(bool open) { s_reshade_overlay_open.store(open, std::memory_order_relaxed); }
+
+bool ReShadeControlsCursor() {
+    return s_reshade_overlay_open.load(std::memory_order_relaxed)
+           || settings::g_mainTabSettings.show_display_commander_ui.GetValue();
+}
+
+void ApplyCursorLock(bool app_in_background) {
+    if (settings::g_mainTabSettings.clip_cursor_enabled.GetValue()) {
+        if (app_in_background) {
+            ReleaseOwnedClipCursor();
+            // Set cursor to default arrow when moving to background
+            SetCursor_Direct(LoadCursor(nullptr, IDC_ARROW));
+        } else {
+            ClipCursorToGameWindow();
+            RestoreClipCursor();
+        }
+    } else if (settings::g_mainTabSettings.unclip_cursor_enabled.GetValue()) {
+        ReleaseOwnedClipCursor();
+    } else if (app_in_background) {
+        ReleaseOwnedClipCursor();
+    } else {
+        // Game default: drop a window clip we may have applied, then re-apply what the game itself asked for.
+        ReleaseOwnedClipCursor();
+        RestoreClipCursor();
+    }
+}
+
 // The clip is system-wide: with several games running, another instance may own it. Release only if the current
 // clip is ours (applied by us, the game's last rectangle, or the game window rectangle).
 void ReleaseOwnedClipCursor() {
@@ -914,10 +944,15 @@ BOOL WINAPI ClipCursor_Detour(const RECT* lpRect) {
     // Track total calls
     g_hook_stats[HOOK_ClipCursor].increment_total();
 
-    // Store the clip rectangle for reference
-    AcquireSRWLockExclusive(&s_clip_lock);
-    s_last_clip_cursor = (lpRect != nullptr) ? *lpRect : RECT{};
-    ReleaseSRWLockExclusive(&s_clip_lock);
+    // Remember what the game asked for (even when we swallow it below) so Game default / focus regain can re-apply
+    // it. While ReShade blocks the mouse (overlay or DC window open, or we asked it to via block_input_next_frame) it
+    // calls ClipCursor(nullptr) itself and rewrites the game's rectangle to nullptr; depending on hook order those calls
+    // reach this detour. A nullptr then is not the game's request, so it must not wipe the remembered rectangle.
+    if (lpRect != nullptr || !(ReShadeControlsCursor() || ShouldBlockMouseInput())) {
+        AcquireSRWLockExclusive(&s_clip_lock);
+        s_last_clip_cursor = (lpRect != nullptr) ? *lpRect : RECT{};
+        ReleaseSRWLockExclusive(&s_clip_lock);
+    }
 
     // Test setting: Block ClipCursor
     if (settings::g_experimentalTabSettings.test_block_mouse_clipcursor.GetValue()) {

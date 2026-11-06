@@ -52,41 +52,46 @@ void DrawMainTabOptionalPanelInputControl(display_commander::ui::IImGuiWrapper& 
 
         imgui.Columns(1);
 
-        bool clip_cursor = settings::g_mainTabSettings.clip_cursor_enabled.GetValue();
-        if (imgui.Checkbox("Clip Cursor", &clip_cursor)) {
-            settings::g_mainTabSettings.clip_cursor_enabled.SetValue(clip_cursor);
-            if (clip_cursor) {
-                settings::g_mainTabSettings.unclip_cursor_enabled.SetValue(false);
-                if (!g_app_in_background.load()) {
-                    display_commanderhooks::ClipCursorToGameWindow();
-                }
-            } else {
-                display_commanderhooks::ReleaseOwnedClipCursor();
-            }
-        }
+        // Cursor lock: one 3-way choice backed by the two (mutually exclusive) settings.
+        enum : int { kCursorGameDefault = 0, kCursorLockToWindow = 1, kCursorAlwaysFree = 2 };
+        int cursor_mode = settings::g_mainTabSettings.clip_cursor_enabled.GetValue()     ? kCursorLockToWindow
+                          : settings::g_mainTabSettings.unclip_cursor_enabled.GetValue() ? kCursorAlwaysFree
+                                                                                         : kCursorGameDefault;
+        const int prev_cursor_mode = cursor_mode;
+
+        imgui.TextUnformatted("Cursor lock:");
+        imgui.SameLine();
+        imgui.RadioButton("Game default", &cursor_mode, kCursorGameDefault);
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "Limits mouse movement to the game window when the game is in foreground.\n"
-                "Unlocks cursor when game is in background.\n\n"
-                "This fixes games which don't lock the mouse cursor, preventing focus switches\n"
-                "on multimonitor setups when moving the mouse and clicking.\n\n"
-                "Mutually exclusive with Unclip Cursor.");
+            imgui.SetTooltipEx("Display Commander does not touch the cursor; the game decides whether it is confined.");
         }
         imgui.SameLine();
-
-        bool unclip_cursor = settings::g_mainTabSettings.unclip_cursor_enabled.GetValue();
-        if (imgui.Checkbox("Unclip Cursor", &unclip_cursor)) {
-            settings::g_mainTabSettings.unclip_cursor_enabled.SetValue(unclip_cursor);
-            if (unclip_cursor) {
-                settings::g_mainTabSettings.clip_cursor_enabled.SetValue(false);
-                display_commanderhooks::ReleaseOwnedClipCursor();
-            }
-        }
+        imgui.RadioButton("Lock to window", &cursor_mode, kCursorLockToWindow);
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
-                "Stops the game from confining the mouse with ClipCursor (cursor can leave the window).\n"
-                "Useful on multi-monitor setups or when a game traps the cursor.\n\n"
-                "Mutually exclusive with Clip Cursor.");
+                "Keeps the mouse inside the game window while the game is in the foreground.\n"
+                "Released when the game goes to the background.\n\n"
+                "Fixes games that don't lock the cursor, which on multi-monitor setups lets\n"
+                "the mouse wander to another screen and steal focus on click.");
+        }
+        imgui.SameLine();
+        imgui.RadioButton("Always free", &cursor_mode, kCursorAlwaysFree);
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "Ignores the game's attempts to confine the mouse (ClipCursor), so the cursor\n"
+                "can always leave the window. Useful on multi-monitor setups or when a game\n"
+                "traps the cursor.");
+        }
+
+        if (cursor_mode != prev_cursor_mode) {
+            settings::g_mainTabSettings.clip_cursor_enabled.SetValue(cursor_mode == kCursorLockToWindow);
+            settings::g_mainTabSettings.unclip_cursor_enabled.SetValue(cursor_mode == kCursorAlwaysFree);
+            // Lock / unlock right away instead of waiting for the next focus change or game ClipCursor call. While the
+            // ReShade overlay or the DC window is open ReShade controls ClipCursor (keeps the cursor free);
+            // OnReShadePresent applies the new mode one frame after they close.
+            if (!display_commanderhooks::ReShadeControlsCursor()) {
+                display_commanderhooks::ApplyCursorLock(g_app_in_background.load());
+            }
         }
         imgui.Unindent();
     }

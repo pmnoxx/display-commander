@@ -219,6 +219,15 @@ BOOL ClipCursor_Direct(const RECT* lpRect);
 void RestoreClipCursor();
 void ReleaseOwnedClipCursor();
 void ClipCursorToGameWindow();
+// ReShade overlay open state, set from the reshade_open_overlay event.
+void SetReShadeOverlayOpen(bool open);
+// True while ReShade controls ClipCursor: the ReShade overlay is open, or the Display Commander window (hotkey) is
+// shown. Both make ReShade block input (the DC window calls block_input_next_frame every frame), and then ReShade keeps
+// the cursor free with ClipCursor(nullptr). Cursor lock changes are applied one frame after this turns false.
+bool ReShadeControlsCursor();
+// Bring the system cursor clip in line with the Cursor lock mode (Lock to window / Always free / Game default) for
+// the given focus state. Used on focus changes, Cursor lock changes and after the ReShade overlay / DC window closes.
+void ApplyCursorLock(bool app_in_background);
 BOOL WINAPI GetCursorPos_Detour(LPPOINT lpPoint);
 // Spoof lpPoint (screen coords) to render-space screen coords when translate-mouse-position is on
 void ApplyTranslateMousePositionToCursorPos(LPPOINT lpPoint);

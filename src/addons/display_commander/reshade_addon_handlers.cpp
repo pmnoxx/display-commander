@@ -214,6 +214,21 @@ void OnReShadePresent(reshade::api::effect_runtime* runtime) {
     if (hwnd == g_proxy_hwnd) {
         return;
     }
+    // While the ReShade overlay or the DC window (hotkey) is open, ReShade keeps the cursor free (ClipCursor(nullptr)),
+    // so a Cursor lock change made there, or a lock we applied before, is undone. Apply the current mode one frame
+    // after both are closed, so ReShade has finished handing the cursor back (its restore of the saved clip) first.
+    static bool s_ui_was_open = false;
+    static bool s_apply_cursor_lock_next_frame = false;
+    const bool ui_open = display_commanderhooks::ReShadeControlsCursor();
+    if (ui_open) {
+        s_apply_cursor_lock_next_frame = false;  // reopened before we applied: wait for the next close
+    } else if (s_apply_cursor_lock_next_frame) {
+        s_apply_cursor_lock_next_frame = false;
+        display_commanderhooks::ApplyCursorLock(g_app_in_background.load());
+    } else if (s_ui_was_open) {
+        s_apply_cursor_lock_next_frame = true;  // closed this frame: apply on the next one
+    }
+    s_ui_was_open = ui_open;
     // Never while in the background. ReShade's input blocking calls ClipCursor(nullptr) every frame
     // (block_mouse_cursor_warping), and the clip is system-wide: a background game would clear the foreground game's
     // clip on every frame. Our own message / input hooks already block input in the background.
@@ -251,6 +266,7 @@ bool OnReShadeOverlayOpen(reshade::api::effect_runtime* runtime, bool open, resh
     CALL_GUARD_NO_TS();
     (void)source;
 
+    display_commanderhooks::SetReShadeOverlayOpen(open);
     if (open) {
         LogInfo("ReShade overlay opened - Input blocking active");
         if (runtime != nullptr) {

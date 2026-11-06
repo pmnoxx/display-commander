@@ -28,6 +28,7 @@ Planned:
 - Show override from NPI for DLSS presets. @adap
 
 ## v1.0.6
+- [ui] [bugfix] **Cursor lock** - The "Clip Cursor" / "Unclip Cursor" checkboxes under Input Control are now one "Cursor lock" choice: **Game default**, **Lock to window**, **Always free** (same settings, nothing to migrate). A change applies at once; made while the ReShade overlay or the Display Commander window is open (ReShade keeps the cursor free then), it applies one frame after they close. Game default now puts back the game's own cursor clip, and opening the ReShade overlay no longer makes Display Commander forget it.
 - [settings] [cleanup] **Config keys in PascalCase** - All `snake_case` keys in `DisplayCommander.ini` are renamed to PascalCase, with dots grouping related keys (e.g. `fps_limit` -> `FpsLimiter.TargetFps`, `show_fps_counter` -> `Overlay.ShowFpsCounter`, `mute_in_background` -> `MuteInBackground`, `dlss_override_enabled` -> `DlssOverride.Enabled`), so the file no longer mixes naming styles. Module registry keys in `[Modules_<id>]` sections become `Enabled` / `ShowTab` / `ShowInOverlay`. Old keys in an existing `DisplayCommander.ini` (and the two chord keys in `chords.toml`) are renamed automatically on load, keeping their values, so no old entries are left behind. The `_doff` / `_don` / `_def_off` suffixes are dropped from key names. Same names as in the Display Commander 2 module settings.
 
 ## v1.0.5

@@ -11,6 +11,9 @@
 #include <map>
 #include <string>
 
+#include <string_view>
+#include <utility>
+
 #include <windows.h>
 
 namespace display_commander::config {
@@ -19,11 +22,26 @@ namespace {
 
 // Chord config keys stored as "Section.Key" for lookup (same as used in config API).
 const char* const CHORD_KEYS[] = {
-    "DisplayCommander.enable_default_chords",        "DisplayCommander.guide_button_solo_ui_toggle_only",
+    "DisplayCommander.DefaultChordsEnabled",        "DisplayCommander.GuideButtonSoloUiToggleOnly",
     "DisplayCommander.InputRemapping.Enabled",       "DisplayCommander.InputRemapping.BlockInputOnHomeButton",
     "DisplayCommander.InputRemapping.DefaultMethod",
 };
 constexpr size_t NUM_CHORD_KEYS = sizeof(CHORD_KEYS) / sizeof(CHORD_KEYS[0]);
+
+// TODO(remove after 2027-02-06): snake_case -> PascalCase key migration (v1.0.6), see display_commander_config.cpp.
+void RenameLegacyChordKey(std::string& key) {
+    constexpr std::string_view kOldDefault = "enable_default_chords";
+    constexpr std::string_view kOldGuide = "guide_button_solo_ui_toggle_only";
+    for (const auto& [old_name, new_name] : {std::pair<std::string_view, std::string_view>{kOldDefault, "DefaultChordsEnabled"},
+                                             {kOldGuide, "GuideButtonSoloUiToggleOnly"}}) {
+        if (key == old_name) {
+            key = new_name;
+        } else if (key.size() > old_name.size() && key.compare(key.size() - old_name.size(), old_name.size(), old_name) == 0
+                   && key[key.size() - old_name.size() - 1] == '.') {
+            key.replace(key.size() - old_name.size(), old_name.size(), new_name);
+        }
+    }
+}
 
 std::map<std::string, std::string> g_chords_cache;
 bool g_chords_loaded = false;
@@ -81,6 +99,7 @@ void TryMigrateFromGameConfig() {
             v.erase(0, v.find_first_not_of(" \t"));
             v.erase(v.find_last_not_of(" \t") + 1);
 
+            RenameLegacyChordKey(k);
             if (in_display_commander) {
                 if (!IsChordConfigKey("DisplayCommander", k.c_str())) continue;
                 if (k == "DefaultChordsEnabled" || k == "GuideButtonSoloUiToggleOnly") {
@@ -147,6 +166,7 @@ void TryMigrateFromGameConfig() {
             v = v.substr(1, v.size() - 2);
         }
 
+        RenameLegacyChordKey(k);
         if (in_display_commander) {
             if (!IsChordConfigKey("DisplayCommander", k.c_str())) continue;
             if (k == "DefaultChordsEnabled" || k == "GuideButtonSoloUiToggleOnly") {
@@ -228,6 +248,7 @@ bool LoadChordsFile() {
         if (!in_chords) continue;
         std::string k, v;
         if (ParseTomlLine(line, k, v)) {
+            RenameLegacyChordKey(k);
             if (k.find("DefaultChordsEnabled") != std::string::npos
                 || k.find("GuideButtonSoloUiToggleOnly") != std::string::npos
                 || k.find("Enabled") != std::string::npos || k.find("BlockInputOnHomeButton") != std::string::npos) {

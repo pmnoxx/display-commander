@@ -19,6 +19,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <sstream>
 #include <string_view>
 
@@ -28,6 +29,124 @@
 namespace display_commander::config {
 
 namespace {
+
+// TODO(remove after 2027-02-06): snake_case -> PascalCase key migration (v1.0.6). Delete kRenamedKeys,
+// IniFile::RenameKeys and its call in Initialize() once users have had time to upgrade (3 months).
+struct RenamedKey {
+    const char* old_key;
+    const char* new_key;
+};
+constexpr RenamedKey kRenamedKeys[] = {
+    {"aspect_index", "AspectRatio"},
+    {"aspect_width", "WindowAspectWidth"},
+    {"alignment", "Alignment"},
+    {"fps_limiter_enabled", "FpsLimiter.Enabled"},
+    {"fps_limiter_mode", "FpsLimiter.Mode"},
+    {"fps_limit", "FpsLimiter.TargetFps"},
+    {"fps_limit_background", "FpsLimiter.BackgroundTargetFps"},
+    {"background_fps_enabled", "FpsLimiter.BackgroundLimitEnabled"},
+    {"fps_limiter_fg2_enabled", "FpsLimiter.Fg2Enabled"},
+    {"fps_limiter_fg2_target_boost_percent", "FpsLimiter.Fg2TargetBoostPercent"},
+    {"suppress_reflex_sleep", "Reflex.SuppressSleep"},
+    {"inject_reflex", "Reflex.InjectionEnabled"},
+    {"onpresent_sync_low_latency_ratio", "FpsLimiter.OnPresentSyncLowLatencyRatio"},
+    {"onpresent_reflex_mode", "Reflex.OnPresentSyncMode"},
+    {"reflex_limiter_reflex_mode", "Reflex.ReflexLimiterMode"},
+    {"reflex_disabled_limiter_mode", "Reflex.LimiterOffMode"},
+    {"pcl_stats_enabled", "Reflex.PclStatsEnabled"},
+    {"use_reflex_markers_as_fps_limiter", "FpsLimiter.ReflexMarkersEnabled"},
+    {"reflex_fps_limiter_max_queued_frames", "FpsLimiter.ReflexMaxQueuedFrames"},
+    {"native_reflex_fps_preset", "FpsLimiter.NativeReflexPreset"},
+    {"use_streamline_proxy_fps_limiter", "FpsLimiter.StreamlineProxyEnabled"},
+    {"native_pacing_sim_start_only_doff", "FpsLimiter.NativePacingSimStartOnly"},
+    {"delay_present_start_after_sim_enabled_doff", "FpsLimiter.DelayPresentStartAfterSimEnabled"},
+    {"delay_present_start_frames", "FpsLimiter.DelayPresentStartFrames"},
+    {"safe_mode_fps_limiter", "FpsLimiter.SafeModeEnabled"},
+    {"selected_reshade_runtime_index", "ReShade.SelectedRuntimeIndex"},
+    {"prevent_tearing", "PreventTearing"},
+    {"audio_mute", "Mute"},
+    {"mute_in_background", "MuteInBackground"},
+    {"mute_in_background_if_other_audio", "MuteInBackgroundIfOtherAudio"},
+    {"enable_default_chords", "DefaultChordsEnabled"},
+    {"guide_button_solo_ui_toggle_only", "GuideButtonSoloUiToggleOnly"},
+    {"keyboard_input_blocking", "KeyboardBlockingMode"},
+    {"mouse_input_blocking", "MouseBlockingMode"},
+    {"gamepad_input_blocking", "GamepadBlockingMode"},
+    {"clip_cursor_enabled", "ClipCursorEnabled"},
+    {"unclip_cursor_enabled", "UnclipCursorEnabled"},
+    {"show_performance_overlay", "ShowPerformanceOverlay"},
+    {"show_fps_counter", "Overlay.ShowFpsCounter"},
+    {"show_native_fps", "Overlay.ShowNativeFps"},
+    {"show_refresh_rate", "Overlay.ShowRefreshRate"},
+    {"show_flip_status", "Overlay.ShowFlipStatus"},
+    {"show_vrr_status_def_off", "Overlay.ShowVrrStatus"},
+    {"vrr_debug_mode_def_off", "Overlay.ShowVrrDebug"},
+    {"show_display_commander_ui", "ShowDisplayCommanderUi"},
+    {"display_commander_ui_window_x", "Window.PositionXPx"},
+    {"display_commander_ui_window_y", "Window.PositionYPx"},
+    {"overlay_label_mode", "Overlay.LabelMode"},
+    {"show_clock", "Overlay.ShowClock"},
+    {"show_frame_time_graph", "Overlay.ShowFrameTimeGraph"},
+    {"show_frame_time_stats", "Overlay.ShowFrameTimeStats"},
+    {"show_native_frame_time_graph", "Overlay.ShowNativeFrameTimeGraph"},
+    {"show_cpu_usage", "Overlay.ShowCpuUsage"},
+    {"show_overlay_cpu_process_load", "Overlay.ShowCpuProcessLoad"},
+    {"show_overlay_cpu_system_load", "Overlay.ShowCpuSystemLoad"},
+    {"show_nvapi_latency_stats", "ShowNvapiLatencyStats"},
+    {"show_overlay_nvapi_sim_duration", "Overlay.ShowNvapiSimDuration"},
+    {"show_overlay_nvapi_sim_end_to_rs_start", "Overlay.ShowNvapiSimEndToRenderSubmitStart"},
+    {"show_overlay_nvapi_rs_submit_duration", "Overlay.ShowNvapiRenderSubmitDuration"},
+    {"show_overlay_nvapi_rs_start_to_present_start", "Overlay.ShowNvapiRenderSubmitStartToPresentStart"},
+    {"show_overlay_nvapi_rs_end_to_present_start", "Overlay.ShowNvapiRenderSubmitEndToPresentStart"},
+    {"show_overlay_nvapi_present_phase_duration", "Overlay.ShowNvapiPresentPhaseDuration"},
+    {"show_overlay_nvapi_present_end_to_rs_end", "Overlay.ShowNvapiPresentEndToRenderSubmitEnd"},
+    {"show_overlay_nvapi_gpu_active_ms", "Overlay.ShowNvapiGpuActiveTime"},
+    {"show_overlay_nvapi_latency_jitter_abs", "Overlay.ShowNvapiAbsoluteLatencyJitter"},
+    {"show_overlay_nvapi_setlatencymarker_threads", "Overlay.ShowNvapiSetLatencyMarkerThreads"},
+    {"show_fg_mode", "Overlay.ShowFgMode"},
+    {"show_dlss_internal_resolution", "Overlay.ShowDlssInternalResolution"},
+    {"show_dlss_status", "Overlay.ShowDlssStatus"},
+    {"show_dlss_quality_preset", "Overlay.ShowDlssQualityPreset"},
+    {"show_driver_dlss_sr_preset", "Overlay.ShowDriverDlssSuperResolutionPreset"},
+    {"show_driver_dlss_rr_preset", "Overlay.ShowDriverDlssRayReconstructionPreset"},
+    {"show_fps_limiter_src", "Overlay.ShowFpsLimiterSource"},
+    {"show_fps_limiter_late_frames_pct", "Overlay.ShowFpsLimiterLateFramesPercent"},
+    {"show_playtime", "Overlay.ShowPlaytime"},
+    {"show_overlay_vu_bars", "Overlay.ShowVuBars"},
+    {"show_overlay_vram", "Overlay.ShowVram"},
+    {"show_overlay_ram", "Overlay.ShowRam"},
+    {"overlay_background_alpha", "Overlay.BackgroundAlpha"},
+    {"overlay_chart_alpha", "Overlay.ChartAlpha"},
+    {"overlay_graph_scale", "Overlay.GraphScale"},
+    {"overlay_graph_max_scale", "Overlay.GraphMaxScale"},
+    {"overlay_vertical_spacing", "Overlay.VerticalSpacingPx"},
+    {"overlay_horizontal_spacing", "Overlay.HorizontalSpacingPx"},
+    {"gpu_measurement_enabled", "GpuMeasurementEnabled"},
+    {"target_extended_display_device_id", "TargetExtendedDisplayDeviceId"},
+    {"game_window_display_device_id", "GameWindowExtendedDisplayDeviceId"},
+    {"selected_extended_display_device_id", "SelectedExtendedDisplayDeviceId"},
+    {"adhd_single_monitor_enabled_for_game_display", "AdhdSingleMonitorEnabledForGameDisplay"},
+    {"adhd_multi_monitor_enabled", "AdhdMultiMonitorEnabled"},
+    {"screensaver_mode", "ScreensaverMode"},
+    {"frame_time_mode", "FrameTimeMode"},
+    {"advanced_settings_enabled", "AdvancedSettingsEnabled"},
+    {"log_level", "LogLevel"},
+    {"show_hotkeys_tab", "ShowHotkeysTab"},
+    {"show_advanced_tab", "ShowAdvancedTab"},
+    {"show_important_info_tab", "ShowImportantInfoTab"},
+    {"show_controller_tab", "ShowControllerTab"},
+    {"show_reshade_tab", "ShowReshadeTab"},
+    {"vulkan_nvll_hooks_enabled_don", "Vulkan.NvLowLatencyHooksEnabled"},
+    {"vulkan_vk_loader_hooks_enabled_don", "Vulkan.LoaderHooksEnabled"},
+    {"auto_reshade_config_backup", "ReShade.ConfigBackupEnabled"},
+    {"dlss_override_enabled", "DlssOverride.Enabled"},
+    {"dlss_override_subfolder", "DlssOverride.DlssSubfolder"},
+    {"dlss_override_subfolder_dlssd", "DlssOverride.DlssdSubfolder"},
+    {"dlss_override_subfolder_dlssg", "DlssOverride.DlssgSubfolder"},
+    {"dlss_override_dlss", "DlssOverride.DlssEnabled"},
+    {"dlss_override_dlss_fg", "DlssOverride.DlssgEnabled"},
+    {"dlss_override_dlss_rr", "DlssOverride.DlssdEnabled"},
+};
 
 // Keys like Remapping2.GamepadButton: sort by index numerically so Remapping10 follows Remapping9.
 bool TryParseRemappingIniKey(std::string_view key, unsigned long& out_index, std::string_view& out_suffix) {
@@ -224,6 +343,29 @@ class IniFile {
         SetValue(section, key, value_str);
     }
 
+    // Renames old keys of [DisplayCommander] to their new names in place (keeps order). When the new key already
+    // exists, the old entry is just dropped. Returns true when anything changed.
+    bool RenameKeys(const std::string& section_name, const RenamedKey* keys, size_t count) {
+        bool changed = false;
+        for (auto& s : sections_) {
+            if (s.name != section_name) continue;
+            for (size_t i = 0; i < count; ++i) {
+                auto old_it = std::find_if(s.key_values.begin(), s.key_values.end(),
+                                           [&](const auto& kv) { return kv.first == keys[i].old_key; });
+                if (old_it == s.key_values.end()) continue;
+                const bool new_exists = std::any_of(s.key_values.begin(), s.key_values.end(),
+                                                    [&](const auto& kv) { return kv.first == keys[i].new_key; });
+                if (new_exists) {
+                    s.key_values.erase(old_it);
+                } else {
+                    old_it->first = keys[i].new_key;
+                }
+                changed = true;
+            }
+        }
+        return changed;
+    }
+
    private:
     std::vector<ConfigSection> sections_;
 };
@@ -269,6 +411,10 @@ void DisplayCommanderConfigManager::Initialize(std::optional<std::wstring_view> 
     if (ini_exists) {
         if (config_file_->LoadFromFile(ini_path)) {
             LogInfo("DisplayCommanderConfigManager: Loaded config from %s", config_path_.c_str());
+            if (config_file_->RenameKeys("DisplayCommander", kRenamedKeys, std::size(kRenamedKeys))) {
+                LogInfo("DisplayCommanderConfigManager: Renamed old snake_case keys to PascalCase");
+                config_file_->SaveToFile(ini_path);
+            }
         } else {
             LogInfo("DisplayCommanderConfigManager: Opened config file at %s (load failed, using empty)",
                     config_path_.c_str());

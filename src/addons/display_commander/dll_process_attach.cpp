@@ -401,7 +401,6 @@ bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/) {
     if (!path_exists) {
         return true;
     }
-    LogBootDllMainStage("xxx1");
     HMODULE already_loaded = GetModuleHandleW(reshade_path.c_str());
     if (already_loaded != nullptr) {
         HMODULE expected = nullptr;
@@ -414,15 +413,11 @@ bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/) {
             return true;
         }
     }
-    LogBootDllMainStage("xxx2");
 
     SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
-    LogBootDllMainStage("xxx2");
     display_commanderhooks::InstallLoadLibraryHooks();
-    LogBootDllMainStage("xxx21");
     display_commanderhooks::g_hooked_before_reshade.store(true);
     HMODULE reshade_module = display_commanderhooks::LoadLibraryW_Direct(reshade_path.c_str());
-    LogBootDllMainStage("xxx22");
     if (reshade_module != nullptr) {
         HMODULE expected = nullptr;
         if (g_reshade_module.compare_exchange_strong(expected, reshade_module) || expected != nullptr) {
@@ -434,14 +429,12 @@ bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/) {
             return true;
         }
     }
-    LogBootDllMainStage("xxx3");
     DWORD error = GetLastError();
     wchar_t error_msg[512] = {0};
     DWORD msg_len = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, error,
                                    MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), error_msg,
                                    sizeof(error_msg) / sizeof(wchar_t), nullptr);
     char path_narrow[MAX_PATH];
-    LogBootDllMainStage("xxx4");
     WideCharToMultiByte(CP_ACP, 0, reshade_path.c_str(), -1, path_narrow, MAX_PATH, nullptr, nullptr);
     char msg[1024];
     if (msg_len > 0) {
@@ -455,7 +448,6 @@ bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/) {
         snprintf(msg, sizeof(msg), "Failed to load %s from Documents folder (error: %lu): %s", dll_name, error,
                  path_narrow);
     }
-    LogBootDllMainStage("xxx5");
     OutputDebugStringA(msg);
     MessageBoxA(nullptr, msg, msg, MB_OK | MB_ICONWARNING | MB_TOPMOST);
     return false;

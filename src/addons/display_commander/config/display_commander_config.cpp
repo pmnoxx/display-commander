@@ -9,7 +9,9 @@
 #include "../globals.hpp"
 #include "../utils.hpp"
 #include "../utils/display_commander_logger.hpp"
+#include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
+#include "../utils/string_utils.hpp"
 #include "../utils/srwlock_wrapper.hpp"
 
 #include <algorithm>
@@ -76,7 +78,7 @@ struct ConfigSection {
 // [section] + key = "value" lines).
 class IniFile {
    public:
-    bool LoadFromFile(const std::string& filepath) {
+    bool LoadFromFile(const std::filesystem::path& filepath) {
         std::ifstream file(filepath);
         if (!file.is_open()) return false;
 
@@ -124,8 +126,9 @@ class IniFile {
         return true;
     }
 
-    bool SaveToFile(const std::string& filepath) {
-        std::string temp_filepath = filepath + ".temp";
+    bool SaveToFile(const std::filesystem::path& filepath) {
+        std::filesystem::path temp_filepath = filepath;
+        temp_filepath += L".temp";
         std::ofstream file(temp_filepath);
         if (!file.is_open()) return false;
 
@@ -232,7 +235,7 @@ DisplayCommanderConfigManager& DisplayCommanderConfigManager::GetInstance() {
 }
 
 void DisplayCommanderConfigManager::Initialize(std::optional<std::wstring_view> config_directory) {
-    utils::SRWLockExclusive lock(config_mutex_);
+    ::utils::SRWLockExclusive lock(config_mutex_);
 
     if (initialized_) {
         return;
@@ -243,18 +246,16 @@ void DisplayCommanderConfigManager::Initialize(std::optional<std::wstring_view> 
         config_dir = std::filesystem::path(std::wstring(config_directory->data(), config_directory->size()));
     }
     if (config_dir.empty()) {
-        const std::string ini_path = GetConfigFilePath();
-        config_dir = std::filesystem::path(ini_path).parent_path();
+        config_dir = display_commander::utils::Utf8ToFilesystemPath(GetConfigFilePath()).parent_path();
     }
 
-    const std::string toml_path = (config_dir / "DisplayCommander.toml").string();
-    const std::string ini_path = (config_dir / "DisplayCommander.ini").string();
-    config_path_ = ini_path;
+    const std::filesystem::path toml_path = config_dir / L"DisplayCommander.toml";
+    const std::filesystem::path ini_path = config_dir / L"DisplayCommander.ini";
+    config_path_ = display_commander::utils::FilesystemPathToUtf8(ini_path);
     config_file_ = std::make_unique<IniFile>();
 
     // Initialize logger with DisplayCommander.log in the config directory
-    std::string log_path = (config_dir / "DisplayCommander.log").string();
-    display_commander::logger::Initialize(log_path);
+    display_commander::logger::Initialize(config_dir / L"DisplayCommander.log");
 
     // Test the logger
     display_commander::logger::LogInfo("DisplayCommander config system initializing - logger test successful");
@@ -266,22 +267,22 @@ void DisplayCommanderConfigManager::Initialize(std::optional<std::wstring_view> 
     const bool toml_exists = std::filesystem::exists(toml_path);
 
     if (ini_exists) {
-        if (config_file_->LoadFromFile(config_path_)) {
+        if (config_file_->LoadFromFile(ini_path)) {
             LogInfo("DisplayCommanderConfigManager: Loaded config from %s", config_path_.c_str());
         } else {
             LogInfo("DisplayCommanderConfigManager: Opened config file at %s (load failed, using empty)",
                     config_path_.c_str());
         }
     } else if (toml_exists) {
-        if (config_file_->LoadFromFile(toml_path) && config_file_->SaveToFile(config_path_)) {
+        if (config_file_->LoadFromFile(toml_path) && config_file_->SaveToFile(ini_path)) {
             std::error_code ec;
             std::filesystem::remove(toml_path, ec);
             LogInfo("DisplayCommanderConfigManager: Migrated config from %s to %s and removed .toml",
-                    toml_path.c_str(), config_path_.c_str());
+                    display_commander::utils::FilesystemPathToUtf8(toml_path).c_str(), config_path_.c_str());
         } else {
             LogInfo("DisplayCommanderConfigManager: Migrated config from %s to memory; save to %s failed (will retry "
                     "on next save)",
-                    toml_path.c_str(), config_path_.c_str());
+                    display_commander::utils::FilesystemPathToUtf8(toml_path).c_str(), config_path_.c_str());
         }
     } else {
         LogInfo("DisplayCommanderConfigManager: Created new config file at %s", config_path_.c_str());
@@ -305,7 +306,7 @@ bool DisplayCommanderConfigManager::GetConfigValue(const char* section, const ch
     if (section != nullptr && key != nullptr && IsChordConfigKey(section, key)) {
         return GetChordValue(section, key, value);
     }
-    utils::SRWLockExclusive lock(config_mutex_);
+    ::utils::SRWLockExclusive lock(config_mutex_);
     if (!initialized_) {
         Initialize();
     }
@@ -378,7 +379,7 @@ bool DisplayCommanderConfigManager::GetConfigValue(const char* section, const ch
 
 bool DisplayCommanderConfigManager::GetConfigValue(const char* section, const char* key,
                                                    std::vector<std::string>& values) {
-    utils::SRWLockExclusive lock(config_mutex_);
+    ::utils::SRWLockExclusive lock(config_mutex_);
     if (!initialized_) {
         Initialize();
     }
@@ -454,7 +455,7 @@ void DisplayCommanderConfigManager::SetConfigValue(const char* section, const ch
         SetChordValue(section, key, value);
         return;
     }
-    utils::SRWLockExclusive lock(config_mutex_);
+    ::utils::SRWLockExclusive lock(config_mutex_);
     if (!initialized_) {
         Initialize();
     }
@@ -470,7 +471,7 @@ void DisplayCommanderConfigManager::SetConfigValue(const char* section, const ch
         SetChordValue(section, key, value != nullptr ? value : "");
         return;
     }
-    utils::SRWLockExclusive lock(config_mutex_);
+    ::utils::SRWLockExclusive lock(config_mutex_);
     if (!initialized_) {
         Initialize();
     }
@@ -499,7 +500,7 @@ void DisplayCommanderConfigManager::SetConfigValue(const char* section, const ch
 
 void DisplayCommanderConfigManager::SetConfigValue(const char* section, const char* key,
                                                    const std::vector<std::string>& values) {
-    utils::SRWLockExclusive lock(config_mutex_);
+    ::utils::SRWLockExclusive lock(config_mutex_);
     if (!initialized_) {
         Initialize();
     }
@@ -507,13 +508,13 @@ void DisplayCommanderConfigManager::SetConfigValue(const char* section, const ch
 }
 
 void DisplayCommanderConfigManager::SaveConfig(const char* reason) {
-    utils::SRWLockExclusive lock(config_mutex_);
+    ::utils::SRWLockExclusive lock(config_mutex_);
     if (!initialized_) {
         return;
     }
 
     EnsureConfigFileExists();
-    if (config_file_->SaveToFile(config_path_)) {
+    if (config_file_->SaveToFile(display_commander::utils::Utf8ToFilesystemPath(config_path_))) {
         // Clear any previous save failure state
         g_config_save_failure_path.store(nullptr);
 
@@ -553,20 +554,27 @@ void DisplayCommanderConfigManager::EnsureConfigFileExists() {
     }
 
     // Create directory if it doesn't exist
-    std::filesystem::path config_dir = std::filesystem::path(config_path_).parent_path();
-    if (!config_dir.empty() && !std::filesystem::exists(config_dir)) {
-        std::filesystem::create_directories(config_dir);
+    const std::filesystem::path config_dir =
+        display_commander::utils::Utf8ToFilesystemPath(config_path_).parent_path();
+    if (!config_dir.empty()) {
+        std::error_code ec;
+        if (!std::filesystem::exists(config_dir, ec)) {
+            std::filesystem::create_directories(config_dir, ec);
+        }
     }
 }
 
 std::string DisplayCommanderConfigManager::GetConfigFilePath() {
-    char exe_path[MAX_PATH];
-    DWORD path_length = GetModuleFileNameA(nullptr, exe_path, MAX_PATH);
-    if (path_length == 0) {
-        GetCurrentDirectoryA(MAX_PATH, exe_path);
+    const std::wstring exe_path = GetCurrentProcessPathW();
+    if (!exe_path.empty()) {
+        return display_commander::utils::FilesystemPathToUtf8(
+            std::filesystem::path(exe_path).parent_path() / L"DisplayCommander.ini");
     }
-    std::filesystem::path exe_dir = std::filesystem::path(exe_path).parent_path();
-    return (exe_dir / "DisplayCommander.ini").string();
+    WCHAR cwd[MAX_PATH] = {};
+    if (GetCurrentDirectoryW(MAX_PATH, cwd) > 0) {
+        return display_commander::utils::FilesystemPathToUtf8(std::filesystem::path(cwd) / L"DisplayCommander.ini");
+    }
+    return "DisplayCommander.ini";
 }
 
 // Global function implementations

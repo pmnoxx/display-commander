@@ -26,6 +26,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v1.0.4
+- [bugfix] [compatibility] **Unicode game install paths** - Display Commander now loads in games installed under folders with non-ASCII names (e.g. Chinese). Boot log, config and log files are opened with wide paths instead of ANSI strings.
+
 ## v1.0.2
 - [bugfix] **OpenGL frame counted twice (remaining cases)** - Completes the v1.0.1 fix: the end-of-frame step still ran twice per frame during the first second of an OpenGL game, in FPS limiter safe mode with On Present Sync, and in DXGI / Vulkan games that also have an OpenGL window. It now runs once per frame in all cases.
 

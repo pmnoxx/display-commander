@@ -3,6 +3,7 @@
 
 // Libraries <standard C++>
 #include <algorithm>
+#include <filesystem>
 
 // Libraries <Windows.h> — before other Windows headers
 #include <Windows.h>
@@ -39,6 +40,22 @@ std::string WideToUtf8(std::wstring_view input) {
     WideCharToMultiByte(CP_UTF8, 0, input.data(), static_cast<int>(input.size()), output.data(), required_chars, nullptr,
                         nullptr);
     return output;
+}
+
+std::string FilesystemPathToUtf8(const std::filesystem::path& path) {
+#if defined(_WIN32)
+    return WideToUtf8(path.wstring());
+#else
+    return path.string();
+#endif
+}
+
+std::filesystem::path Utf8ToFilesystemPath(std::string_view utf8_path) {
+#if defined(_WIN32)
+    return std::filesystem::path(Utf8ToWide(utf8_path));
+#else
+    return std::filesystem::path(utf8_path);
+#endif
 }
 
 std::string TrimAsciiWhitespace(std::string_view value) {

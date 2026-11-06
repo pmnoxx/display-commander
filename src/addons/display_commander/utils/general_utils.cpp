@@ -17,6 +17,7 @@
 #include "detour_call_tracker.hpp"
 #include "../globals.hpp"
 #include "logging.hpp"
+#include "string_utils.hpp"
 #include "../settings/main_tab_settings.hpp"
 
 
@@ -539,10 +540,10 @@ bool IsGenericGameInstallFolderSegment(const std::wstring& seg) {
 
 }  // namespace
 
-std::string GetGameNameFromProcess() {
+std::wstring GetGameInstallFolderNameWideFromProcess() {
     WCHAR buf[MAX_PATH];
     if (::GetModuleFileNameW(nullptr, buf, MAX_PATH) == 0) {
-        return std::string();
+        return {};
     }
     const std::filesystem::path exe_path(buf);
     std::filesystem::path dir = exe_path.parent_path();
@@ -550,22 +551,27 @@ std::string GetGameNameFromProcess() {
         const std::filesystem::path par = dir.parent_path();
         const std::wstring seg = dir.filename().wstring();
         if (!seg.empty() && !IsGenericGameInstallFolderSegment(seg)) {
-            const std::string name = dir.filename().string();
-            if (!name.empty()) {
-                return name;
-            }
+            return seg;
         }
         if (par == dir) {
             break;
         }
         dir = par;
     }
-    const std::string stem = exe_path.stem().string();
+    const std::wstring stem = exe_path.stem().wstring();
     if (!stem.empty()) {
         return stem;
     }
-    const std::string parent_name = exe_path.parent_path().filename().string();
-    return parent_name.empty() ? "Game" : parent_name;
+    const std::wstring parent_name = exe_path.parent_path().filename().wstring();
+    return parent_name.empty() ? L"Game" : parent_name;
+}
+
+std::string GetGameNameFromProcess() {
+    const std::wstring wide = GetGameInstallFolderNameWideFromProcess();
+    if (wide.empty()) {
+        return {};
+    }
+    return display_commander::utils::WideToUtf8(wide);
 }
 
 std::filesystem::path GetGameInstallRootPathFromProcess() {

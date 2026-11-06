@@ -21,6 +21,7 @@
 #include "utils/helper_exe_filter.hpp"
 #include "utils/logging.hpp"
 #include "utils/reshade_load_path.hpp"
+#include "utils/string_utils.hpp"
 #include "utils/timing.hpp"
 #include "utils/version_check.hpp"
 #include "version.hpp"
@@ -31,6 +32,7 @@
 // Libraries <standard C++>
 #include <algorithm>
 #include <cstdio>
+#include <exception>
 #include <filesystem>
 #include <functional>
 #include <optional>
@@ -256,7 +258,7 @@ void ProcessAttach_LoadLocalAddonDlls(HMODULE h_module) {
         if (!product.empty() && _wcsicmp(product.c_str(), L"Display Commander") == 0) continue;
         HMODULE mod = LoadLibraryW(path_w.c_str());
         if (mod != nullptr) {
-            std::string name = path.filename().string();
+            const std::string name = display_commander::utils::WideToUtf8(path.filename().wstring());
             char msg[384];
             snprintf(msg, sizeof(msg), "[DisplayCommander] Loaded .dc64/.dc32/.dc/.asi DLL: %s\n", name.c_str());
             OutputDebugStringA(msg);
@@ -302,7 +304,7 @@ void ProcessAttach_LoadLocalAddonDllsAfterReShade(HMODULE h_module) {
         if (!product.empty() && _wcsicmp(product.c_str(), L"Display Commander") == 0) continue;
         HMODULE mod = LoadLibraryW(path_w.c_str());
         if (mod != nullptr) {
-            std::string name = path.filename().string();
+            const std::string name = display_commander::utils::WideToUtf8(path.filename().wstring());
             char msg[384];
             snprintf(msg, sizeof(msg), "[DisplayCommander] Loaded .dc64r/.dc32r/.dcr DLL (after ReShade): %s\n",
                      name.c_str());
@@ -392,10 +394,14 @@ bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/) {
     const char* dll_name = "Reshade32.dll";
 #endif
     auto path_exists = std::filesystem::exists(reshade_path);
-    LogInfo("[reshade] path_exists = %d path = %s", path_exists, reshade_path.string().c_str());
+    LogInfo("[reshade] path_exists = %d path = %s", path_exists,
+            display_commander::utils::FilesystemPathToUtf8(reshade_path).c_str());
+
+
     if (!path_exists) {
         return true;
     }
+    LogBootDllMainStage("xxx1");
     HMODULE already_loaded = GetModuleHandleW(reshade_path.c_str());
     if (already_loaded != nullptr) {
         HMODULE expected = nullptr;
@@ -408,11 +414,15 @@ bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/) {
             return true;
         }
     }
+    LogBootDllMainStage("xxx2");
 
     SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
+    LogBootDllMainStage("xxx2");
     display_commanderhooks::InstallLoadLibraryHooks();
+    LogBootDllMainStage("xxx21");
     display_commanderhooks::g_hooked_before_reshade.store(true);
     HMODULE reshade_module = display_commanderhooks::LoadLibraryW_Direct(reshade_path.c_str());
+    LogBootDllMainStage("xxx22");
     if (reshade_module != nullptr) {
         HMODULE expected = nullptr;
         if (g_reshade_module.compare_exchange_strong(expected, reshade_module) || expected != nullptr) {
@@ -424,12 +434,14 @@ bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/) {
             return true;
         }
     }
+    LogBootDllMainStage("xxx3");
     DWORD error = GetLastError();
     wchar_t error_msg[512] = {0};
     DWORD msg_len = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, error,
                                    MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), error_msg,
                                    sizeof(error_msg) / sizeof(wchar_t), nullptr);
     char path_narrow[MAX_PATH];
+    LogBootDllMainStage("xxx4");
     WideCharToMultiByte(CP_ACP, 0, reshade_path.c_str(), -1, path_narrow, MAX_PATH, nullptr, nullptr);
     char msg[1024];
     if (msg_len > 0) {
@@ -443,6 +455,7 @@ bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/) {
         snprintf(msg, sizeof(msg), "Failed to load %s from Documents folder (error: %lu): %s", dll_name, error,
                  path_narrow);
     }
+    LogBootDllMainStage("xxx5");
     OutputDebugStringA(msg);
     MessageBoxA(nullptr, msg, msg, MB_OK | MB_ICONWARNING | MB_TOPMOST);
     return false;
@@ -554,9 +567,21 @@ void OnProcessAttach(HMODULE h_module) {
         }
     } guard(set_process_attached_on_exit);
 
+    LogBootDllMainStage("PROCESS_ATTACH: before DisplayCommanderConfigManager::Initialize");
     auto dc_dir = g_dc_config_directory.load(std::memory_order_acquire);
-    display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize(
-        (dc_dir && !dc_dir->empty()) ? std::optional<std::wstring_view>(*dc_dir) : std::nullopt);
+    try {
+        display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize(
+            (dc_dir && !dc_dir->empty()) ? std::optional<std::wstring_view>(*dc_dir) : std::nullopt);
+    } catch (const std::exception& ex) {
+        char boot_msg[512];
+        snprintf(boot_msg, sizeof(boot_msg),
+                 "PROCESS_ATTACH: DisplayCommanderConfigManager::Initialize exception: %.400s", ex.what());
+        LogBootDllMainStage(boot_msg);
+        return;
+    } catch (...) {
+        LogBootDllMainStage("PROCESS_ATTACH: DisplayCommanderConfigManager::Initialize unknown exception");
+        return;
+    }
     LogBootDllMainStage("PROCESS_ATTACH: after DisplayCommanderConfigManager::Initialize");
 
     if (display_commander::utils::IsLoadedWithDLLExtension(static_cast<void*>(h_module))) {
@@ -581,65 +606,78 @@ void OnProcessAttach(HMODULE h_module) {
     ProcessAttach_LoadLocalAddonDlls(h_module);
     LogBootDllMainStage("PROCESS_ATTACH: after ReShade module detect and local addon DLL load");
 
-    std::wstring entry_point;
-    ProcessAttach_DetectEntryPoint(h_module, entry_point);
+    try {
+        std::wstring entry_point;
+        ProcessAttach_DetectEntryPoint(h_module, entry_point);
+        LogBootDllMainStage("PROCESS_ATTACH: after DetectEntryPoint");
 
-    if ((g_reshade_module == nullptr) && !g_no_reshade_mode.load()) {
-        ProcessAttach_TryLoadReShadeWhenNotLoaded(h_module);
-    }
-    if (g_reshade_module == nullptr) {
-        const bool was_no_reshade = g_no_reshade_mode.load();
-        g_no_reshade_mode.store(true);
-        if (!was_no_reshade) {
-            OutputDebugStringA("[main_entry] ReShade not found - entering no-ReShade mode.\n");
+        if ((g_reshade_module == nullptr) && !g_no_reshade_mode.load()) {
+            LogBootDllMainStage("PROCESS_ATTACH: before TryLoadReShadeWhenNotLoaded");
+            ProcessAttach_TryLoadReShadeWhenNotLoaded(h_module);
+            LogBootDllMainStage("PROCESS_ATTACH: after TryLoadReShadeWhenNotLoaded");
         }
-    }
-
-    if (g_no_reshade_mode.load()) {
-        LogInfo("[main_entry] DLL_PROCESS_ATTACH: No ReShade mode");
-        LogBootDllMainStage("PROCESS_ATTACH: entering no-ReShade mode init");
-        ProcessAttach_NoReShadeModeInit(h_module);
-        g_dll_initialization_complete.store(true);
-        reason = "NoReShadeMode: ReShade not loaded";
-        LogBootDllMainStage("PROCESS_ATTACH: no-ReShade path complete");
-        return;
-    }
-
-    if (!FinishAddonRegistration(h_module, nullptr, false)) {
-        LogBootDllMainStage("PROCESS_ATTACH: FinishAddonRegistration failed (return TRUE)");
-        CheckReShadeVersionCompatibility();
-        {
-            char msg[512];
-            snprintf(msg, sizeof(msg), "g_module handle: 0x%p", g_hmodule);
-            reshade::log::message(reshade::log::level::info, msg);
-        }
-        HMODULE modules[1024];
-        DWORD num_modules_bytes = 0;
-        if (K32EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), &num_modules_bytes) != 0) {
-            DWORD num_modules = (std::min<DWORD>)(num_modules_bytes / sizeof(HMODULE),
-                                                  static_cast<DWORD>(sizeof(modules) / sizeof(HMODULE)));
-            for (DWORD i = 0; i < num_modules; i++) {
-                char msg[512];
-                wchar_t module_name[MAX_PATH];
-                if (GetModuleFileNameW(modules[i], module_name, MAX_PATH) > 0) {
-                    snprintf(msg, sizeof(msg), "Module %lu: 0x%p %ls", i, modules[i], module_name);
-                } else {
-                    snprintf(msg, sizeof(msg), "Module %lu: 0x%p (failed to get name)", i, modules[i]);
-                }
-                reshade::log::message(reshade::log::level::info, msg);
+        if (g_reshade_module == nullptr) {
+            const bool was_no_reshade = g_no_reshade_mode.load();
+            g_no_reshade_mode.store(true);
+            if (!was_no_reshade) {
+                OutputDebugStringA("[main_entry] ReShade not found - entering no-ReShade mode.\n");
             }
         }
-        reason = "ReShade register addon failed";
-        return;
-    }
-    LogInfo("[main_entry] DLL_PROCESS_ATTACH: RegisterAndPostInit");
-    LogBootDllMainStage("PROCESS_ATTACH: before RegisterAndPostInit");
 
-    ProcessAttach_RegisterAndPostInit(h_module, entry_point);
-    LogInfo("[main_entry] DLL_PROCESS_ATTACH: RegisterAndPostInit complete");
-    g_dll_initialization_complete.store(true);
-    reason = "RegisterAndPostInit complete";
-    LogBootDllMainStage("PROCESS_ATTACH: complete (ReShade addon registered)");
+        if (g_no_reshade_mode.load()) {
+            LogInfo("[main_entry] DLL_PROCESS_ATTACH: No ReShade mode");
+            LogBootDllMainStage("PROCESS_ATTACH: entering no-ReShade mode init");
+            ProcessAttach_NoReShadeModeInit(h_module);
+            g_dll_initialization_complete.store(true);
+            reason = "NoReShadeMode: ReShade not loaded";
+            LogBootDllMainStage("PROCESS_ATTACH: no-ReShade path complete");
+            return;
+        }
+
+        LogBootDllMainStage("PROCESS_ATTACH: before FinishAddonRegistration");
+        if (!FinishAddonRegistration(h_module, nullptr, false)) {
+            LogBootDllMainStage("PROCESS_ATTACH: FinishAddonRegistration failed (return TRUE)");
+            CheckReShadeVersionCompatibility();
+            {
+                char msg[512];
+                snprintf(msg, sizeof(msg), "g_module handle: 0x%p", g_hmodule);
+                reshade::log::message(reshade::log::level::info, msg);
+            }
+            HMODULE modules[1024];
+            DWORD num_modules_bytes = 0;
+            if (K32EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), &num_modules_bytes) != 0) {
+                DWORD num_modules = (std::min<DWORD>)(num_modules_bytes / sizeof(HMODULE),
+                                                      static_cast<DWORD>(sizeof(modules) / sizeof(HMODULE)));
+                for (DWORD i = 0; i < num_modules; i++) {
+                    char msg[512];
+                    wchar_t module_name[MAX_PATH];
+                    if (GetModuleFileNameW(modules[i], module_name, MAX_PATH) > 0) {
+                        snprintf(msg, sizeof(msg), "Module %lu: 0x%p %ls", i, modules[i], module_name);
+                    } else {
+                        snprintf(msg, sizeof(msg), "Module %lu: 0x%p (failed to get name)", i, modules[i]);
+                    }
+                    reshade::log::message(reshade::log::level::info, msg);
+                }
+            }
+            reason = "ReShade register addon failed";
+            return;
+        }
+        LogBootDllMainStage("PROCESS_ATTACH: after FinishAddonRegistration");
+        LogInfo("[main_entry] DLL_PROCESS_ATTACH: RegisterAndPostInit");
+        LogBootDllMainStage("PROCESS_ATTACH: before RegisterAndPostInit");
+
+        ProcessAttach_RegisterAndPostInit(h_module, entry_point);
+        LogInfo("[main_entry] DLL_PROCESS_ATTACH: RegisterAndPostInit complete");
+        g_dll_initialization_complete.store(true);
+        reason = "RegisterAndPostInit complete";
+        LogBootDllMainStage("PROCESS_ATTACH: complete (ReShade addon registered)");
+    } catch (const std::exception& ex) {
+        char boot_msg[512];
+        snprintf(boot_msg, sizeof(boot_msg), "PROCESS_ATTACH: post-ReShade-detect exception: %.400s", ex.what());
+        LogBootDllMainStage(boot_msg);
+    } catch (...) {
+        LogBootDllMainStage("PROCESS_ATTACH: post-ReShade-detect unknown exception");
+    }
 }
 
 void OnProcessDetach(HMODULE h_module) {

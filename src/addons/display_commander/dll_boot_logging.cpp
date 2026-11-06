@@ -3,6 +3,7 @@
 
 #include "globals.hpp"
 #include "utils/general_utils.hpp"
+#include "utils/string_utils.hpp"
 
 // Libraries <standard C++>
 #include <cstdio>
@@ -28,18 +29,6 @@ bool IsLoaderModule(const wchar_t* path) {
 
 void LogBoot(const std::string& text) { AppendDisplayCommanderBootLog(text); }
 
-std::string WideToNarrowCpAcp(std::wstring_view w) {
-    if (w.empty()) return {};
-    const int len =
-        WideCharToMultiByte(CP_ACP, 0, w.data(), static_cast<int>(w.size()), nullptr, 0, nullptr, nullptr);
-    if (len <= 0) return "(wide path conversion failed)";
-    std::string out(static_cast<size_t>(len), '\0');
-    if (WideCharToMultiByte(CP_ACP, 0, w.data(), static_cast<int>(w.size()), out.data(), len, nullptr, nullptr) == 0) {
-        return "(wide path conversion failed)";
-    }
-    return out;
-}
-
 }  // namespace
 
 void ChooseAndSetDcConfigPath(HMODULE h_module) {
@@ -62,10 +51,11 @@ void ChooseAndSetDcConfigPath(HMODULE h_module) {
         if (use_global_config) {
             std::filesystem::path base = GetDisplayCommanderAppDataFolder();
             if (!base.empty()) {
-                std::string game_name = GetGameNameFromProcess();
-                if (game_name.empty()) game_name = "Game";
-                const std::filesystem::path default_global = base / L"Games" / std::filesystem::path(game_name);
-                config_path_w = default_global.wstring();
+                std::wstring game_name = GetGameInstallFolderNameWideFromProcess();
+                if (game_name.empty()) {
+                    game_name = L"Game";
+                }
+                config_path_w = (base / L"Games" / game_name).wstring();
             }
         }
         if (config_path_w.empty() &&
@@ -106,7 +96,7 @@ void CaptureDllLoadCallerPath(HMODULE h_our_module) {
             }
             if (hmod == h_our_module) continue;
             if (GetModuleFileNameW(hmod, path_buf, MAX_PATH) == 0) continue;
-            const std::string path_str = std::filesystem::path(path_buf).string();
+            const std::string path_str = display_commander::utils::WideToUtf8(path_buf);
             if (path_str != last_path) {
                 last_path = path_str;
                 if (!list_buf.empty()) list_buf += '\n';
@@ -144,20 +134,21 @@ void LogBootDcConfigPath() {
         LogBoot("[DC] config path: (not set)");
         return;
     }
-    LogBoot("[DC] config path: " + WideToNarrowCpAcp(*dc_dir));
+    LogBoot("[DC] config path: " + display_commander::utils::WideToUtf8(*dc_dir));
 }
 
 void EnsureDisplayCommanderLogWithModulePath(HMODULE h_module) {
     wchar_t module_path_buf[MAX_PATH] = {};
     if (GetModuleFileNameW(h_module, module_path_buf, MAX_PATH) == 0) return;
-    char module_path_narrow[MAX_PATH] = {};
-    if (WideCharToMultiByte(CP_ACP, 0, module_path_buf, -1, module_path_narrow,
-                            static_cast<int>(sizeof(module_path_narrow)), nullptr, nullptr)
-        == 0) {
-        return;
-    }
+
+    const std::filesystem::path log_path =
+        std::filesystem::path(module_path_buf).parent_path() / L"DisplayCommander.log";
+    g_dll_main_log_path = log_path;
+
+    const std::string module_path_utf8 = display_commander::utils::WideToUtf8(module_path_buf);
     char dbg_buf[MAX_PATH + 128];
-    int dbg_len = snprintf(dbg_buf, sizeof(dbg_buf), "[DisplayCommander] [Boot] module path: %s", module_path_narrow);
+    int dbg_len = snprintf(dbg_buf, sizeof(dbg_buf), "[DisplayCommander] [Boot] module path: %s",
+                           module_path_utf8.c_str());
     if (!g_dll_load_caller_path.empty() && dbg_len >= 0 && static_cast<size_t>(dbg_len) < sizeof(dbg_buf) - 32) {
         dbg_len += snprintf(dbg_buf + dbg_len, sizeof(dbg_buf) - static_cast<size_t>(dbg_len), " [Caller] %s",
                             g_dll_load_caller_path.c_str());
@@ -166,10 +157,8 @@ void EnsureDisplayCommanderLogWithModulePath(HMODULE h_module) {
         snprintf(dbg_buf + dbg_len, sizeof(dbg_buf) - static_cast<size_t>(dbg_len), "\n");
         OutputDebugStringA(dbg_buf);
     }
-    std::filesystem::path log_path = std::filesystem::path(module_path_buf).parent_path() / "DisplayCommander.log";
-    g_dll_main_log_path = log_path.string();
 
-    std::string module_path_line = std::string("[Boot] module path: ") + module_path_narrow;
+    std::string module_path_line = std::string("[Boot] module path: ") + module_path_utf8;
     if (!g_dll_load_caller_path.empty()) {
         module_path_line += " [Caller] " + g_dll_load_caller_path;
     }

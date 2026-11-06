@@ -65,13 +65,21 @@ HMODULE g_hmodule = nullptr;
 // Path of the module that caused this DLL to load (set during DLL_PROCESS_ATTACH).
 std::string g_dll_load_caller_path;
 std::string g_dll_load_call_stack_list;
-std::string g_dll_main_log_path;
+std::filesystem::path g_dll_main_log_path;
 
 void AppendDisplayCommanderBootLog(const std::string& text) {
     try {
         if (g_dll_main_log_path.empty()) return;
-        std::ofstream f(g_dll_main_log_path, std::ios::app);
+        std::error_code size_ec;
+        bool write_utf8_bom = true;
+        if (std::filesystem::exists(g_dll_main_log_path, size_ec) && !size_ec) {
+            write_utf8_bom = std::filesystem::file_size(g_dll_main_log_path, size_ec) == 0;
+        }
+        std::ofstream f(g_dll_main_log_path, std::ios::app | std::ios::binary);
         if (!f) return;
+        if (write_utf8_bom) {
+            f.write("\xEF\xBB\xBF", 3);
+        }
         const std::string sanitized = display_commander::log_privacy::SanitizeLogUserPaths(text);
         f << sanitized << '\n';
         f.flush();

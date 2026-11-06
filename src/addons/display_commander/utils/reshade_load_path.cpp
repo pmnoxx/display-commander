@@ -2,6 +2,7 @@
 #include "../config/display_commander_config.hpp"
 #include "general_utils.hpp"
 #include "logging.hpp"
+#include "string_utils.hpp"
 
 #include <Windows.h>
 
@@ -62,13 +63,14 @@ std::filesystem::path GetReshadeDirectoryForLoading(const std::filesystem::path&
     // 1) if Reshade64/32.dll exists next to the game exe (local), use it
     // 2) else try the global base folder: %LocalAppData%\\Programs\\Display_Commander\\Reshade\\Reshade64/32.dll
     if (!game_directory.empty() && DirectoryHasReshadeDll(game_directory)) {
-        LogInfo("[reshade] loading from local dir: %s", std::filesystem::absolute(game_directory).string().c_str());
+        LogInfo("[reshade] loading from local dir: %s",
+                FilesystemPathToUtf8(std::filesystem::absolute(game_directory)).c_str());
         return game_directory;
     }
 
     const std::filesystem::path base = GetGlobalReshadeDirectory();
     if (!base.empty() && DirectoryHasReshadeDll(base)) {
-        LogInfo("[reshade] loading from global dir: %s", std::filesystem::absolute(base).string().c_str());
+        LogInfo("[reshade] loading from global dir: %s", FilesystemPathToUtf8(std::filesystem::absolute(base)).c_str());
         return base;
     }
 

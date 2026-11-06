@@ -1035,48 +1035,6 @@ bool InstallLoadLibraryHooks() {
         return false;
     }
 
-    /*
-    // Hook LoadPackagedLibrary (Windows 8+; optional - skip if not available e.g. Windows 7)
-    HMODULE hKernel32 = GetModuleHandleW(L"kernel32.dll");
-    if (hKernel32) {
-        auto pLoadPackagedLibrary =
-            reinterpret_cast<LoadPackagedLibrary_pfn>(GetProcAddress(hKernel32, "LoadPackagedLibrary"));
-        if (pLoadPackagedLibrary != nullptr) {
-            g_LoadPackagedLibrary_target = reinterpret_cast<LPVOID>(pLoadPackagedLibrary);
-            if (!CreateAndEnableHook(g_LoadPackagedLibrary_target, LoadPackagedLibrary_Detour,
-                                     (LPVOID*)&LoadPackagedLibrary_Original, "LoadPackagedLibrary")) {
-                LogError("Failed to create and enable LoadPackagedLibrary hook");
-                g_LoadPackagedLibrary_target = nullptr;
-            }
-        } else {
-            LogInfo("LoadPackagedLibrary not available (e.g. Windows 7), skipping hook");
-        }
-
-        // Hook GetProcAddress to log when a caller requests a missing export from one of our proxy DLLs.
-        if (!CreateAndEnableHookFromModule(hKernel32, "GetProcAddress", reinterpret_cast<LPVOID>(GetProcAddress_Detour),
-                                           reinterpret_cast<LPVOID*>(&GetProcAddress_Original), "GetProcAddress")) {
-            LogError("Failed to create and enable GetProcAddress hook");
-        }
-    }
-
-    // Hook LdrLoadDll (ntdll) - catches loads that bypass kernel32
-    HMODULE hNtdll = GetModuleHandleW(L"ntdll.dll");
-    if (hNtdll != nullptr) {
-        auto pLdrLoadDll = reinterpret_cast<LdrLoadDll_pfn>(GetProcAddress(hNtdll, "LdrLoadDll"));
-        if (pLdrLoadDll != nullptr) {
-            g_LdrLoadDll_target = reinterpret_cast<LPVOID>(pLdrLoadDll);
-            if (!CreateAndEnableHook(g_LdrLoadDll_target, LdrLoadDll_Detour,
-                                     reinterpret_cast<LPVOID*>(&LdrLoadDll_Original), "LdrLoadDll")) {
-                LogError("Failed to create and enable LdrLoadDll hook");
-                g_LdrLoadDll_target = nullptr;
-            } else {
-                LogInfo("LdrLoadDll hook installed");
-            }
-        } else {
-            LogInfo("LdrLoadDll not found in ntdll, skipping hook");
-        }
-    }
-    */
 
     // Hook GetModuleHandleW / GetModuleHandleA / GetModuleHandleEx (so DLSS override handle is returned for
     // hooks/version)

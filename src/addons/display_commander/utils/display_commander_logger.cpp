@@ -4,6 +4,7 @@
 #include "srwlock_wrapper.hpp"
 #include "timing.hpp"
 #include "../globals.hpp"
+#include "string_utils.hpp"
 
 #include <cstdarg>
 #include <atomic>
@@ -43,7 +44,7 @@ DisplayCommanderLogger::DisplayCommanderLogger() {}
 
 DisplayCommanderLogger::~DisplayCommanderLogger() { Shutdown(); }
 
-void DisplayCommanderLogger::Initialize(const std::string& log_path) {
+void DisplayCommanderLogger::Initialize(const std::filesystem::path& log_path) {
     bool expected = false;
     if (!initialized_.compare_exchange_strong(expected, true)) {
         return;  // Already initialized
@@ -52,9 +53,12 @@ void DisplayCommanderLogger::Initialize(const std::string& log_path) {
     log_path_ = log_path;
 
     // Create directory if it doesn't exist
-    std::filesystem::path log_dir = std::filesystem::path(log_path_).parent_path();
-    if (!log_dir.empty() && !std::filesystem::exists(log_dir)) {
-        std::filesystem::create_directories(log_dir);
+    const std::filesystem::path log_dir = log_path_.parent_path();
+    if (!log_dir.empty()) {
+        std::error_code ec;
+        if (!std::filesystem::exists(log_dir, ec)) {
+            std::filesystem::create_directories(log_dir, ec);
+        }
     }
 
     if (!OpenLogFile()) {
@@ -70,7 +74,7 @@ void DisplayCommanderLogger::Initialize(const std::string& log_path) {
     if (HMODULE hmod = g_hmodule) {
         wchar_t path_buf[MAX_PATH] = {};
         if (GetModuleFileNameW(hmod, path_buf, MAX_PATH) > 0) {
-            dc_path_str = std::filesystem::path(path_buf).string();
+            dc_path_str = display_commander::utils::WideToUtf8(path_buf);
         }
     }
     std::string msg = "[Logger] initialized [Path] " + dc_path_str;
@@ -93,7 +97,7 @@ void DisplayCommanderLogger::Log(LogLevel level, const std::string& message) {
     std::string formatted_message = FormatMessage(level, sanitized_message);
 
     {
-        utils::SRWLockExclusive lock(queue_lock_);
+        ::utils::SRWLockExclusive lock(queue_lock_);
         if (queue_.size() >= kMaxQueueSize) {
             OutputDebugStringA("DisplayCommander: log queue full, dropping message\n");
             return;
@@ -121,7 +125,7 @@ void DisplayCommanderLogger::FlushLogs() {
     }
 
     {
-        utils::SRWLockExclusive lock(queue_lock_);
+        ::utils::SRWLockExclusive lock(queue_lock_);
         queue_.push_back(kFlushSentinel);
         WakeConditionVariable(&queue_cv_);
     }
@@ -135,7 +139,7 @@ void DisplayCommanderLogger::Shutdown() {
 
     std::string shutdown_msg = FormatMessage(LogLevel::Info, "DisplayCommander Logger shutting down");
     {
-        utils::SRWLockExclusive lock(queue_lock_);
+        ::utils::SRWLockExclusive lock(queue_lock_);
         queue_.push_back(std::move(shutdown_msg));
         shutdown_writer_.store(true);
         WakeConditionVariable(&queue_cv_);
@@ -150,7 +154,7 @@ void DisplayCommanderLogger::WriterLoop() {
     for (;;) {
         std::string msg;
         {
-            utils::SRWLockExclusive lock(queue_lock_);
+            ::utils::SRWLockExclusive lock(queue_lock_);
             while (queue_.empty() && !shutdown_writer_.load()) {
                 SleepConditionVariableSRW(&queue_cv_, &queue_lock_, INFINITE, 0);
             }
@@ -210,7 +214,7 @@ void DisplayCommanderLogger::WriteToFile(const std::string& formatted_message) {
 }
 
 std::string DisplayCommanderLogger::FormatMessage(LogLevel level, const std::string& message) {
-    const LONGLONG now = utils::get_now_ns();
+    const LONGLONG now = ::utils::get_now_ns();
     LONGLONG epoch = g_log_epoch_ns.load(std::memory_order_relaxed);
     if (epoch == 0) {
         LONGLONG expected = 0;
@@ -221,7 +225,7 @@ std::string DisplayCommanderLogger::FormatMessage(LogLevel level, const std::str
         }
     }
     const LONGLONG delta_ns = now >= epoch ? (now - epoch) : 0;
-    const double rel_sec = static_cast<double>(delta_ns) / static_cast<double>(utils::SEC_TO_NS);
+    const double rel_sec = static_cast<double>(delta_ns) / static_cast<double>(::utils::SEC_TO_NS);
     char rel_buf[32];
     (void)snprintf(rel_buf, sizeof(rel_buf), "[+%.3f]", rel_sec);
 
@@ -275,9 +279,9 @@ bool DisplayCommanderLogger::ShouldRotateLog() {
 
 void DisplayCommanderLogger::RotateLog() {
     try {
-        std::filesystem::path log_path(log_path_);
+        const std::filesystem::path& log_path = log_path_;
         std::filesystem::path old_log_path = log_path;
-        old_log_path.replace_filename(log_path.filename().string() + ".old");
+        old_log_path += L".old";
 
         // Delete old log file if it exists
         if (std::filesystem::exists(old_log_path)) {
@@ -295,7 +299,7 @@ void DisplayCommanderLogger::RotateLog() {
 }
 
 // Global convenience functions
-void Initialize(const std::string& log_path) { DisplayCommanderLogger::GetInstance().Initialize(log_path); }
+void Initialize(const std::filesystem::path& log_path) { DisplayCommanderLogger::GetInstance().Initialize(log_path); }
 
 bool IsInitialized() { return DisplayCommanderLogger::GetInstance().IsInitialized(); }
 
@@ -342,7 +346,7 @@ void Shutdown() { DisplayCommanderLogger::GetInstance().Shutdown(); }
 
 void FlushLogs() { DisplayCommanderLogger::GetInstance().FlushLogs(); }
 
-bool DisplayCommanderLogger::IsWriteLockHeld() { return utils::TryIsSRWLockHeld(queue_lock_); }
+bool DisplayCommanderLogger::IsWriteLockHeld() { return ::utils::TryIsSRWLockHeld(queue_lock_); }
 
 bool IsWriteLockHeld() { return DisplayCommanderLogger::GetInstance().IsWriteLockHeld(); }
 

@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <atomic>
 #include <deque>
+#include <filesystem>
 #include <fstream>
 #include <string>
 #include <thread>
@@ -18,7 +19,7 @@ class DisplayCommanderLogger {
     static DisplayCommanderLogger& GetInstance();
 
     // Initialize logger with log file path (opens file and starts writer thread)
-    void Initialize(const std::string& log_path);
+    void Initialize(const std::filesystem::path& log_path);
 
     // Log a message with specified level (thread-safe, enqueues; does not block on file I/O)
     void Log(LogLevel level, const std::string& message);
@@ -60,7 +61,7 @@ class DisplayCommanderLogger {
     bool ShouldRotateLog();
     void RotateLog();
 
-    std::string log_path_;
+    std::filesystem::path log_path_;
     std::ofstream log_file_;
 
     // Queue and writer thread (async I/O)
@@ -74,7 +75,7 @@ class DisplayCommanderLogger {
 };
 
 // Global convenience functions
-void Initialize(const std::string& log_path);
+void Initialize(const std::filesystem::path& log_path);
 bool IsInitialized();
 void LogDebug(const char* msg, ...);
 void LogInfo(const char* msg, ...);

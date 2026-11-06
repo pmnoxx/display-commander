@@ -16,6 +16,7 @@
 #include <array>
 #include <atomic>
 #include <cstdint>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -273,7 +274,7 @@ extern std::string g_dll_load_caller_path;
 extern std::string g_dll_load_call_stack_list;
 
 // Path to DisplayCommander.log next to the addon DLL (boot lines from DllMain).
-extern std::string g_dll_main_log_path;
+extern std::filesystem::path g_dll_main_log_path;
 
 // Append one line to DisplayCommander.log (same sink as DllMain boot lines). No-op if path is empty.
 void AppendDisplayCommanderBootLog(const std::string& text);

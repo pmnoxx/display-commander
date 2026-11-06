@@ -173,7 +173,7 @@ class IniFile {
                 value = kv.second;
 
                 // Back-compat: older INI stored integer-ish device IDs, but current code expects the extended string IDs.
-                if ((key.find("device_id") != std::string::npos || key.find("display_device_id") != std::string::npos
+                if ((key.find("DeviceId") != std::string::npos
                      || key == "target_display")
                     && !value.empty()
                     && std::all_of(value.begin(), value.end(), ::isdigit)) {
@@ -299,7 +299,7 @@ bool DisplayCommanderConfigManager::GetConfigValue(const char* section, const ch
     // Global overrides: values in global_overrides.toml override game config even when it exists
     // (auto_reshade_config_backup is not overridden globally anymore; ignore stale key in global_overrides.toml)
     if (section != nullptr && strcmp(section, "DisplayCommander") == 0 && key != nullptr
-        && strcmp(key, "auto_reshade_config_backup") != 0 && GetGlobalOverrideValue(key, value)) {
+        && strcmp(key, "ReShade.ConfigBackupEnabled") != 0 && GetGlobalOverrideValue(key, value)) {
         return true;
     }
     // Chords / gamepad remap settings are stored in chords.toml for sharing across games

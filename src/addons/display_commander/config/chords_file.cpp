@@ -83,7 +83,7 @@ void TryMigrateFromGameConfig() {
 
             if (in_display_commander) {
                 if (!IsChordConfigKey("DisplayCommander", k.c_str())) continue;
-                if (k == "enable_default_chords" || k == "guide_button_solo_ui_toggle_only") {
+                if (k == "DefaultChordsEnabled" || k == "GuideButtonSoloUiToggleOnly") {
                     v = NormalizeBoolValue(v);
                 }
                 std::string composite = "DisplayCommander." + k;
@@ -149,7 +149,7 @@ void TryMigrateFromGameConfig() {
 
         if (in_display_commander) {
             if (!IsChordConfigKey("DisplayCommander", k.c_str())) continue;
-            if (k == "enable_default_chords" || k == "guide_button_solo_ui_toggle_only") {
+            if (k == "DefaultChordsEnabled" || k == "GuideButtonSoloUiToggleOnly") {
                 v = NormalizeBoolValue(v);
             }
             std::string composite = "DisplayCommander." + k;
@@ -228,8 +228,8 @@ bool LoadChordsFile() {
         if (!in_chords) continue;
         std::string k, v;
         if (ParseTomlLine(line, k, v)) {
-            if (k.find("enable_default_chords") != std::string::npos
-                || k.find("guide_button_solo_ui_toggle_only") != std::string::npos
+            if (k.find("DefaultChordsEnabled") != std::string::npos
+                || k.find("GuideButtonSoloUiToggleOnly") != std::string::npos
                 || k.find("Enabled") != std::string::npos || k.find("BlockInputOnHomeButton") != std::string::npos) {
                 v = NormalizeBoolValue(v);
             }

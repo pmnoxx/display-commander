@@ -26,6 +26,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v1.0.6
+- [settings] [cleanup] **Config keys in PascalCase** - All `snake_case` keys in `DisplayCommander.ini` are renamed to PascalCase, with dots grouping related keys (e.g. `fps_limit` -> `FpsLimiter.TargetFps`, `show_fps_counter` -> `Overlay.ShowFpsCounter`, `mute_in_background` -> `MuteInBackground`, `dlss_override_enabled` -> `DlssOverride.Enabled`), so the file no longer mixes naming styles. Old keys are not migrated: affected settings return to their defaults once and need to be set again. The `_doff` / `_don` / `_def_off` suffixes are dropped from key names. Same names as in the Display Commander 2 module settings.
+
 ## v1.0.5
 - [bugfix] [hooks] **Clip Cursor with several games running** - Clip Cursor now holds in the foreground game while other games run. The cursor clip is system-wide. In the background game, ReShade's input blocking (asked for by Display Commander's "in background" keyboard / mouse blocking) cleared it on every frame; Display Commander no longer asks ReShade to block input in the background, its own hooks still do. Releasing the clip (focus loss, Unclip Cursor, input blocking) now only frees a clip this game still has in force, never another game's, even when the rectangles match. With Unclip Cursor on, the game's `ClipCursor` call is swallowed instead of passed on.
 

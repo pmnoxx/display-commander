@@ -13,13 +13,13 @@
 namespace settings {
 
 StreamlineTabSettings::StreamlineTabSettings()
-    : dlss_override_enabled("dlss_override_enabled", false, "DisplayCommander"),
-      dlss_override_subfolder("dlss_override_subfolder", "", "DisplayCommander"),
-      dlss_override_subfolder_dlssd("dlss_override_subfolder_dlssd", "", "DisplayCommander"),
-      dlss_override_subfolder_dlssg("dlss_override_subfolder_dlssg", "", "DisplayCommander"),
-      dlss_override_dlss("dlss_override_dlss", false, "DisplayCommander"),
-      dlss_override_dlss_fg("dlss_override_dlss_fg", false, "DisplayCommander"),
-      dlss_override_dlss_rr("dlss_override_dlss_rr", false, "DisplayCommander") {
+    : dlss_override_enabled("DlssOverride.Enabled", false, "DisplayCommander"),
+      dlss_override_subfolder("DlssOverride.DlssSubfolder", "", "DisplayCommander"),
+      dlss_override_subfolder_dlssd("DlssOverride.DlssdSubfolder", "", "DisplayCommander"),
+      dlss_override_subfolder_dlssg("DlssOverride.DlssgSubfolder", "", "DisplayCommander"),
+      dlss_override_dlss("DlssOverride.DlssEnabled", false, "DisplayCommander"),
+      dlss_override_dlss_fg("DlssOverride.DlssgEnabled", false, "DisplayCommander"),
+      dlss_override_dlss_rr("DlssOverride.DlssdEnabled", false, "DisplayCommander") {
     all_settings_ = {
         &dlss_override_enabled, &dlss_override_subfolder, &dlss_override_subfolder_dlssd, &dlss_override_subfolder_dlssg,
         &dlss_override_dlss,    &dlss_override_dlss_fg,  &dlss_override_dlss_rr,

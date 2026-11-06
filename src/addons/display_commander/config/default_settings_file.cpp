@@ -35,11 +35,11 @@ const char* const DEFAULT_SETTINGS_TEMPLATE = R"(# Display Commander — User de
 # 3 = Prevent exclusive fullscreen / no resize.
 # WindowMode = 3
 
-# FPS limiter: fps_limit = target FPS (0 = unlimited, 1–240 otherwise). Requires fps_limiter_enabled = true.
-# fps_limiter_mode: 0 = Default, 1 = Reflex (low latency).
-# fps_limit_background = limit when game window has no focus (0 = unlimited).
-# fps_limiter_enabled = true
-# fps_limit = 60
+# FPS limiter: FpsLimiter.TargetFps = target FPS (0 = unlimited, 1–240 otherwise). Requires FpsLimiter.Enabled = true.
+# FpsLimiter.Mode: 0 = Default, 1 = Reflex (low latency).
+# FpsLimiter.BackgroundTargetFps = limit when game window has no focus (0 = unlimited).
+# FpsLimiter.Enabled = true
+# FpsLimiter.TargetFps = 60
 
 # Enable Hotkeys: master toggle for all Display Commander hotkeys (Hotkeys tab). Default true.
 # EnableHotkeys = true

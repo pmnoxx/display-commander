@@ -147,6 +147,12 @@ constexpr RenamedKey kRenamedKeys[] = {
     {"dlss_override_dlss_fg", "DlssOverride.DlssgEnabled"},
     {"dlss_override_dlss_rr", "DlssOverride.DlssdEnabled"},
 };
+// Module registry keys in every [Modules_<id>] section.
+constexpr RenamedKey kRenamedModuleKeys[] = {
+    {"enabled", "Enabled"},
+    {"show_tab", "ShowTab"},
+    {"show_in_overlay", "ShowInOverlay"},
+};
 
 // Keys like Remapping2.GamepadButton: sort by index numerically so Remapping10 follows Remapping9.
 bool TryParseRemappingIniKey(std::string_view key, unsigned long& out_index, std::string_view& out_suffix) {
@@ -343,12 +349,12 @@ class IniFile {
         SetValue(section, key, value_str);
     }
 
-    // Renames old keys of [DisplayCommander] to their new names in place (keeps order). When the new key already
+    // Renames old keys of section_name (or of every section starting with it) to their new names in place (keeps order). When the new key already
     // exists, the old entry is just dropped. Returns true when anything changed.
-    bool RenameKeys(const std::string& section_name, const RenamedKey* keys, size_t count) {
+    bool RenameKeys(std::string_view section_name, bool prefix_match, const RenamedKey* keys, size_t count) {
         bool changed = false;
         for (auto& s : sections_) {
-            if (s.name != section_name) continue;
+            if (prefix_match ? s.name.compare(0, section_name.size(), section_name) != 0 : s.name != section_name) continue;
             for (size_t i = 0; i < count; ++i) {
                 auto old_it = std::find_if(s.key_values.begin(), s.key_values.end(),
                                            [&](const auto& kv) { return kv.first == keys[i].old_key; });
@@ -411,7 +417,9 @@ void DisplayCommanderConfigManager::Initialize(std::optional<std::wstring_view> 
     if (ini_exists) {
         if (config_file_->LoadFromFile(ini_path)) {
             LogInfo("DisplayCommanderConfigManager: Loaded config from %s", config_path_.c_str());
-            if (config_file_->RenameKeys("DisplayCommander", kRenamedKeys, std::size(kRenamedKeys))) {
+            const bool renamed_host = config_file_->RenameKeys("DisplayCommander", false, kRenamedKeys, std::size(kRenamedKeys));
+            const bool renamed_modules = config_file_->RenameKeys("Modules_", true, kRenamedModuleKeys, std::size(kRenamedModuleKeys));
+            if (renamed_host || renamed_modules) {
                 LogInfo("DisplayCommanderConfigManager: Renamed old snake_case keys to PascalCase");
                 config_file_->SaveToFile(ini_path);
             }

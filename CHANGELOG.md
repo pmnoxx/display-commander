@@ -20,7 +20,7 @@ Feature protosal:
 
 
 Planned:
-- TODO (after 2027-02-06, 3 months after v1.0.6): remove the snake_case -> PascalCase config key migration: `kRenamedKeys` and `IniFile::RenameKeys` (plus its call in `Initialize`) in `config/display_commander_config.cpp`, and `RenameLegacyChordKey` in `config/chords_file.cpp`.
+- TODO (after 2027-02-06, 3 months after v1.0.6): remove the snake_case -> PascalCase config key migration: `kRenamedKeys`, `kRenamedModuleKeys` and `IniFile::RenameKeys` (plus its call in `Initialize`) in `config/display_commander_config.cpp`, and `RenameLegacyChordKey` in `config/chords_file.cpp`.
 - Hotkeys default off / add UI to enabled/disable them globally.
 - Add option (UI or config only), to not conpensave for fps in cutsecnes/UI, when FG disingegaes. (bottleneck, figured out the UI for it) @maxton
 - Improve OSD, instead of (X/Y) frame rate, show text indicating what's bases fps instead.
@@ -28,7 +28,7 @@ Planned:
 - Show override from NPI for DLSS presets. @adap
 
 ## v1.0.6
-- [settings] [cleanup] **Config keys in PascalCase** - All `snake_case` keys in `DisplayCommander.ini` are renamed to PascalCase, with dots grouping related keys (e.g. `fps_limit` -> `FpsLimiter.TargetFps`, `show_fps_counter` -> `Overlay.ShowFpsCounter`, `mute_in_background` -> `MuteInBackground`, `dlss_override_enabled` -> `DlssOverride.Enabled`), so the file no longer mixes naming styles. Old keys in an existing `DisplayCommander.ini` (and the two chord keys in `chords.toml`) are renamed automatically on load, keeping their values, so no old entries are left behind. The `_doff` / `_don` / `_def_off` suffixes are dropped from key names. Same names as in the Display Commander 2 module settings.
+- [settings] [cleanup] **Config keys in PascalCase** - All `snake_case` keys in `DisplayCommander.ini` are renamed to PascalCase, with dots grouping related keys (e.g. `fps_limit` -> `FpsLimiter.TargetFps`, `show_fps_counter` -> `Overlay.ShowFpsCounter`, `mute_in_background` -> `MuteInBackground`, `dlss_override_enabled` -> `DlssOverride.Enabled`), so the file no longer mixes naming styles. Module registry keys in `[Modules_<id>]` sections become `Enabled` / `ShowTab` / `ShowInOverlay`. Old keys in an existing `DisplayCommander.ini` (and the two chord keys in `chords.toml`) are renamed automatically on load, keeping their values, so no old entries are left behind. The `_doff` / `_don` / `_def_off` suffixes are dropped from key names. Same names as in the Display Commander 2 module settings.
 
 ## v1.0.5
 - [bugfix] [hooks] **Clip Cursor with several games running** - Clip Cursor now holds in the foreground game while other games run. The cursor clip is system-wide. In the background game, ReShade's input blocking (asked for by Display Commander's "in background" keyboard / mouse blocking) cleared it on every frame; Display Commander no longer asks ReShade to block input in the background, its own hooks still do. Releasing the clip (focus loss, Unclip Cursor, input blocking) now only frees a clip this game still has in force, never another game's, even when the rectangles match. With Unclip Cursor on, the game's `ClipCursor` call is swallowed instead of passed on.

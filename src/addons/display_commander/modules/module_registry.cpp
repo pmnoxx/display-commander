@@ -115,9 +115,9 @@ void RegisterPublicModules() {
         ModuleEntry entry{};
         entry.descriptor = spec.descriptor;
         entry.config_api = std::make_unique<ModuleConfigApiImpl>(entry.descriptor.id);
-        entry.descriptor.enabled = entry.config_api->GetBool("enabled", spec.default_enabled);
-        entry.descriptor.show_in_overlay = entry.config_api->GetBool("show_in_overlay", spec.default_show_in_overlay);
-        entry.descriptor.show_tab = entry.config_api->GetBool("show_tab", spec.default_show_tab);
+        entry.descriptor.enabled = entry.config_api->GetBool("Enabled", spec.default_enabled);
+        entry.descriptor.show_in_overlay = entry.config_api->GetBool("ShowInOverlay", spec.default_show_in_overlay);
+        entry.descriptor.show_tab = entry.config_api->GetBool("ShowTab", spec.default_show_tab);
         entry.initialize_fn = spec.initialize_fn;
         entry.tick_fn = spec.tick_fn;
         entry.reshade_present_before_fn = spec.reshade_present_before_fn;
@@ -155,9 +155,9 @@ void RegisterPublicModules() {
         ModuleEntry entry{};
         entry.descriptor = spec.descriptor;
         entry.config_api = std::make_unique<ModuleConfigApiImpl>(entry.descriptor.id);
-        entry.descriptor.enabled = entry.config_api->GetBool("enabled", spec.default_enabled);
-        entry.descriptor.show_in_overlay = entry.config_api->GetBool("show_in_overlay", spec.default_show_in_overlay);
-        entry.descriptor.show_tab = entry.config_api->GetBool("show_tab", spec.default_show_tab);
+        entry.descriptor.enabled = entry.config_api->GetBool("Enabled", spec.default_enabled);
+        entry.descriptor.show_in_overlay = entry.config_api->GetBool("ShowInOverlay", spec.default_show_in_overlay);
+        entry.descriptor.show_tab = entry.config_api->GetBool("ShowTab", spec.default_show_tab);
         entry.initialize_fn = spec.initialize_fn;
         entry.tick_fn = spec.tick_fn;
         entry.reshade_present_before_fn = spec.reshade_present_before_fn;
@@ -194,9 +194,9 @@ void RegisterPublicModules() {
         ModuleEntry entry{};
         entry.descriptor = spec.descriptor;
         entry.config_api = std::make_unique<ModuleConfigApiImpl>(entry.descriptor.id);
-        entry.descriptor.enabled = entry.config_api->GetBool("enabled", spec.default_enabled);
-        entry.descriptor.show_in_overlay = entry.config_api->GetBool("show_in_overlay", spec.default_show_in_overlay);
-        entry.descriptor.show_tab = entry.config_api->GetBool("show_tab", spec.default_show_tab);
+        entry.descriptor.enabled = entry.config_api->GetBool("Enabled", spec.default_enabled);
+        entry.descriptor.show_in_overlay = entry.config_api->GetBool("ShowInOverlay", spec.default_show_in_overlay);
+        entry.descriptor.show_tab = entry.config_api->GetBool("ShowTab", spec.default_show_tab);
         entry.initialize_fn = spec.initialize_fn;
         entry.tick_fn = spec.tick_fn;
         entry.reshade_present_before_fn = spec.reshade_present_before_fn;
@@ -224,10 +224,10 @@ void RegisterPrivateModules() {
             continue;
         }
         entry.config_api = std::make_unique<ModuleConfigApiImpl>(entry.descriptor.id);
-        entry.descriptor.enabled = entry.config_api->GetBool("enabled", spec.default_enabled);
+        entry.descriptor.enabled = entry.config_api->GetBool("Enabled", spec.default_enabled);
         entry.descriptor.show_in_overlay =
-            entry.config_api->GetBool("show_in_overlay", spec.default_show_in_overlay);
-        entry.descriptor.show_tab = entry.config_api->GetBool("show_tab", spec.default_show_tab);
+            entry.config_api->GetBool("ShowInOverlay", spec.default_show_in_overlay);
+        entry.descriptor.show_tab = entry.config_api->GetBool("ShowTab", spec.default_show_tab);
         entry.initialize_fn = spec.initialize_fn;
         entry.tick_fn = spec.tick_fn;
         entry.reshade_present_before_fn = spec.reshade_present_before_fn;
@@ -355,7 +355,7 @@ bool SetModuleEnabled(std::string_view module_id, bool enabled) {
         }
         entry->descriptor.enabled = enabled;
         if (entry->config_api) {
-            entry->config_api->SetBool("enabled", enabled);
+            entry->config_api->SetBool("Enabled", enabled);
         }
         if (enabled && entry->on_enabled_fn != nullptr) {
             on_enabled_fn_after_unlock = entry->on_enabled_fn;
@@ -391,7 +391,7 @@ bool SetModuleOverlayEnabled(std::string_view module_id, bool enabled) {
     }
     entry->descriptor.show_in_overlay = enabled;
     if (entry->config_api) {
-        entry->config_api->SetBool("show_in_overlay", enabled);
+        entry->config_api->SetBool("ShowInOverlay", enabled);
     }
     return true;
 }
@@ -412,7 +412,7 @@ bool SetModuleTabShown(std::string_view module_id, bool shown) {
     }
     entry->descriptor.show_tab = shown;
     if (entry->config_api) {
-        entry->config_api->SetBool("show_tab", shown);
+        entry->config_api->SetBool("ShowTab", shown);
     }
     return true;
 }

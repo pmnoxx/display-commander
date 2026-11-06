@@ -61,7 +61,7 @@ void DrawMainTabOptionalPanelInputControl(display_commander::ui::IImGuiWrapper& 
                     display_commanderhooks::ClipCursorToGameWindow();
                 }
             } else {
-                display_commanderhooks::ClipCursor_Direct(nullptr);
+                display_commanderhooks::ReleaseOwnedClipCursor();
             }
         }
         if (imgui.IsItemHovered()) {
@@ -79,7 +79,7 @@ void DrawMainTabOptionalPanelInputControl(display_commander::ui::IImGuiWrapper& 
             settings::g_mainTabSettings.unclip_cursor_enabled.SetValue(unclip_cursor);
             if (unclip_cursor) {
                 settings::g_mainTabSettings.clip_cursor_enabled.SetValue(false);
-                display_commanderhooks::ClipCursor_Direct(nullptr);
+                display_commanderhooks::ReleaseOwnedClipCursor();
             }
         }
         if (imgui.IsItemHovered()) {

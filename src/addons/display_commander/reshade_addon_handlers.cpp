@@ -214,6 +214,12 @@ void OnReShadePresent(reshade::api::effect_runtime* runtime) {
     if (hwnd == g_proxy_hwnd) {
         return;
     }
+    // Never while in the background. ReShade's input blocking calls ClipCursor(nullptr) every frame
+    // (block_mouse_cursor_warping), and the clip is system-wide: a background game would clear the foreground game's
+    // clip on every frame. Our own message / input hooks already block input in the background.
+    if (g_app_in_background.load()) {
+        return;
+    }
     // ReShade invokes this after the overlay for this runtime; block_input_next_frame() targets the next frame.
     const bool should_block_mouse_or_keyboard = display_commanderhooks::ShouldBlockMouseInput()
                                                 || display_commanderhooks::ShouldBlockKeyboardInput();

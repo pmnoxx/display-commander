@@ -136,6 +136,36 @@ static std::atomic<bool> g_message_hooks_installed{false};
 // Cursor position tracking (similar to Reshade)
 static POINT s_last_cursor_position = {};
 static RECT s_last_clip_cursor = {};
+// The clip this instance has in force right now: set when we apply one (ClipCursorToGameWindow, RestoreClipCursor)
+// or pass the game's call through; cleared when we release it. Empty = we own no clip.
+static RECT s_applied_clip_cursor = {};
+static SRWLOCK s_clip_lock = SRWLOCK_INIT;
+
+static bool SameRect(const RECT& a, const RECT& b) {
+    return a.left == b.left && a.top == b.top && a.right == b.right && a.bottom == b.bottom;
+}
+static bool NonEmptyRect(const RECT& r) { return r.right > r.left && r.bottom > r.top; }
+
+// The whole virtual screen: what GetClipCursor reports when there is no clip.
+static RECT VirtualScreenRect() {
+    RECT screen{GetSystemMetrics(SM_XVIRTUALSCREEN), GetSystemMetrics(SM_YVIRTUALSCREEN), 0, 0};
+    screen.right = screen.left + GetSystemMetrics(SM_CXVIRTUALSCREEN);
+    screen.bottom = screen.top + GetSystemMetrics(SM_CYVIRTUALSCREEN);
+    return screen;
+}
+
+// Record the clip this instance just put in force. Windows clamps the rectangle to the virtual screen, so store the
+// clamped rectangle; otherwise ReleaseOwnedClipCursor would never match it. Not read back with GetClipCursor: right
+// after ClipCursor it can still report the old clip (seen: full screen). Caller holds s_clip_lock exclusively.
+static void RecordAppliedClipLocked(BOOL applied, const RECT* requested) {
+    const RECT screen = VirtualScreenRect();
+    RECT clamped{};
+    if (applied && requested != nullptr && IntersectRect(&clamped, requested, &screen) != FALSE) {
+        s_applied_clip_cursor = clamped;
+    } else {
+        s_applied_clip_cursor = RECT{};
+    }
+}
 
 // Hook statistics array
 std::array<HookCallStats, HOOK_COUNT> g_hook_stats;
@@ -817,12 +847,49 @@ SHORT GetAsyncKeyState_Direct(int vKey) {
 // Function to restore cursor clipping when input blocking is disabled
 void RestoreClipCursor() {
     CALL_GUARD_NO_TS();
+    AcquireSRWLockShared(&s_clip_lock);
+    const RECT rect = s_last_clip_cursor;
+    ReleaseSRWLockShared(&s_clip_lock);
     // Only restore if we have a valid clipping rectangle stored
-    if ((s_last_clip_cursor.right - s_last_clip_cursor.left) != 0
-        && (s_last_clip_cursor.bottom - s_last_clip_cursor.top) != 0) {
+    if (NonEmptyRect(rect)) {
         // Restore the previous clipping rectangle using direct call
-        ClipCursor_Direct(&s_last_clip_cursor);
+        AcquireSRWLockExclusive(&s_clip_lock);
+        RecordAppliedClipLocked(ClipCursor_Direct(&rect), &rect);
+        ReleaseSRWLockExclusive(&s_clip_lock);
     }
+}
+
+// The clip is system-wide: with several games running, another instance may own it. Release only if the current
+// clip is ours (applied by us, the game's last rectangle, or the game window rectangle).
+void ReleaseOwnedClipCursor() {
+    CALL_GUARD_NO_TS();
+    RECT current{};
+    if (!GetClipCursor(&current)) {
+        return;
+    }
+    // No clip: the rectangle is the whole virtual screen.
+    AcquireSRWLockExclusive(&s_clip_lock);
+    if (SameRect(current, VirtualScreenRect())) {
+        s_applied_clip_cursor = RECT{};
+        ReleaseSRWLockExclusive(&s_clip_lock);
+        return;
+    }
+    // Ours only if we have a clip in force and it is still the system clip. Rectangles that merely match (the game
+    // window, the game's last request) are not enough: another instance may have clipped to the same coordinates.
+    if (!NonEmptyRect(s_applied_clip_cursor) || !SameRect(current, s_applied_clip_cursor)) {
+        const RECT ours = s_applied_clip_cursor;
+        ReleaseSRWLockExclusive(&s_clip_lock);
+        LogInfo("ReleaseOwnedClipCursor: clip (%ld,%ld)-(%ld,%ld) not ours (ours (%ld,%ld)-(%ld,%ld)), not released",
+                current.left, current.top, current.right, current.bottom, ours.left, ours.top, ours.right,
+                ours.bottom);
+        return;
+    }
+    LogInfo("ReleaseOwnedClipCursor: released our clip (%ld,%ld)-(%ld,%ld)", current.left, current.top, current.right,
+            current.bottom);
+    ClipCursor_Direct(nullptr);
+    // We no longer own a clip. s_last_clip_cursor (the game's request) is kept so focus regain can restore it.
+    s_applied_clip_cursor = RECT{};
+    ReleaseSRWLockExclusive(&s_clip_lock);
 }
 
 // Function to clip cursor to game window rectangle
@@ -832,7 +899,9 @@ void ClipCursorToGameWindow() {
     if (hwnd != nullptr && IsWindow(hwnd)) {
         RECT window_rect;
         if (GetWindowRect(hwnd, &window_rect)) {
-            ClipCursor_Direct(&window_rect);
+            AcquireSRWLockExclusive(&s_clip_lock);
+            RecordAppliedClipLocked(ClipCursor_Direct(&window_rect), &window_rect);
+            ReleaseSRWLockExclusive(&s_clip_lock);
             LogInfo("ClipCursorToGameWindow: Clipped cursor to game window rect (%ld,%ld) to (%ld,%ld)",
                     window_rect.left, window_rect.top, window_rect.right, window_rect.bottom);
         }
@@ -846,7 +915,9 @@ BOOL WINAPI ClipCursor_Detour(const RECT* lpRect) {
     g_hook_stats[HOOK_ClipCursor].increment_total();
 
     // Store the clip rectangle for reference
+    AcquireSRWLockExclusive(&s_clip_lock);
     s_last_clip_cursor = (lpRect != nullptr) ? *lpRect : RECT{};
+    ReleaseSRWLockExclusive(&s_clip_lock);
 
     // Test setting: Block ClipCursor
     if (settings::g_experimentalTabSettings.test_block_mouse_clipcursor.GetValue()) {
@@ -857,15 +928,18 @@ BOOL WINAPI ClipCursor_Detour(const RECT* lpRect) {
     if (settings::g_mainTabSettings.clip_cursor_enabled.GetValue()) {
         return TRUE;
     }
-    if (ShouldBlockMouseInput()) {
-        lpRect = nullptr;
-    }
-    if (settings::g_mainTabSettings.unclip_cursor_enabled.GetValue()) {
-        lpRect = nullptr;
+    if (ShouldBlockMouseInput() || settings::g_mainTabSettings.unclip_cursor_enabled.GetValue()) {
+        // Only release a clip that is ours; another game instance may own the system-wide clip.
+        ReleaseOwnedClipCursor();
+        return TRUE;
     }
     g_hook_stats[HOOK_ClipCursor].increment_unsuppressed();
     // Call original function
-    return ClipCursor_Original != nullptr ? ClipCursor_Original(lpRect) : ClipCursor(lpRect);
+    AcquireSRWLockExclusive(&s_clip_lock);
+    const BOOL result = ClipCursor_Original != nullptr ? ClipCursor_Original(lpRect) : ClipCursor(lpRect);
+    RecordAppliedClipLocked(result, lpRect);
+    ReleaseSRWLockExclusive(&s_clip_lock);
+    return result;
 }
 
 // Hooked GetCursorPos function

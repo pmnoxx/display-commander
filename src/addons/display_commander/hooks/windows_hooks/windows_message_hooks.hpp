@@ -217,6 +217,7 @@ BOOL WINAPI GetKeyboardState_Detour(PBYTE lpKeyState);
 BOOL WINAPI ClipCursor_Detour(const RECT* lpRect);
 BOOL ClipCursor_Direct(const RECT* lpRect);
 void RestoreClipCursor();
+void ReleaseOwnedClipCursor();
 void ClipCursorToGameWindow();
 BOOL WINAPI GetCursorPos_Detour(LPPOINT lpPoint);
 // Spoof lpPoint (screen coords) to render-space screen coords when translate-mouse-position is on

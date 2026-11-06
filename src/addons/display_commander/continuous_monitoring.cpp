@@ -152,7 +152,7 @@ void check_is_background() {
                 if (app_in_background) {
                     LogInfo("Continuous monitoring: App moved to BACKGROUND");
                     // Release cursor clipping when going to background
-                    display_commanderhooks::ClipCursor_Direct(nullptr);
+                    display_commanderhooks::ReleaseOwnedClipCursor();
 
                     // Set cursor to default arrow when moving to background
                     display_commanderhooks::SetCursor_Direct(LoadCursor(nullptr, IDC_ARROW));
@@ -170,10 +170,10 @@ void check_is_background() {
                     display_commanderhooks::RestoreClipCursor();
                 }
             } else if (settings::g_mainTabSettings.unclip_cursor_enabled.GetValue()) {
-                display_commanderhooks::ClipCursor_Direct(nullptr);
+                display_commanderhooks::ReleaseOwnedClipCursor();
             } else {
                 if (app_in_background) {
-                    display_commanderhooks::ClipCursor_Direct(nullptr);
+                    display_commanderhooks::ReleaseOwnedClipCursor();
                 } else {
                     display_commanderhooks::RestoreClipCursor();
                 }

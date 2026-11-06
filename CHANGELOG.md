@@ -26,6 +26,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v1.0.5
+- [bugfix] [hooks] **Clip Cursor with several games running** - Clip Cursor now holds in the foreground game while other games run. The cursor clip is system-wide. In the background game, ReShade's input blocking (asked for by Display Commander's "in background" keyboard / mouse blocking) cleared it on every frame; Display Commander no longer asks ReShade to block input in the background, its own hooks still do. Releasing the clip (focus loss, Unclip Cursor, input blocking) now only frees a clip this game still has in force, never another game's, even when the rectangles match. With Unclip Cursor on, the game's `ClipCursor` call is swallowed instead of passed on.
+
 ## v1.0.4
 - [bugfix] [compatibility] **Unicode game install paths** - Display Commander now loads in games installed under folders with non-ASCII names (e.g. Chinese). Boot log, config and log files are opened with wide paths instead of ANSI strings.
 

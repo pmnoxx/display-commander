@@ -860,12 +860,25 @@ void RestoreClipCursor() {
 }
 
 static std::atomic<bool> s_reshade_overlay_open{false};
+// Set while the DC window is drawn in this frame's draw_gui; consumed by reshade_present.
+static std::atomic<bool> s_dc_window_drawn{false};
 
 void SetReShadeOverlayOpen(bool open) { s_reshade_overlay_open.store(open, std::memory_order_relaxed); }
 
+void NoteDcWindowDrawn() { s_dc_window_drawn.store(true, std::memory_order_relaxed); }
+
 bool ReShadeControlsCursor() {
     return s_reshade_overlay_open.load(std::memory_order_relaxed)
+           || s_dc_window_drawn.load(std::memory_order_relaxed)
            || settings::g_mainTabSettings.show_display_commander_ui.GetValue();
+}
+
+bool ConsumeReShadeBlockedThisFrame() {
+    // Not the show_display_commander_ui setting: the hotkey flips it on another thread at any point in the frame, so
+    // it can read "closed" in a frame where the window was still drawn and ReShade still blocked. What counts is
+    // whether ReShade blocked in this frame's draw_gui.
+    const bool drawn = s_dc_window_drawn.exchange(false, std::memory_order_relaxed);
+    return s_reshade_overlay_open.load(std::memory_order_relaxed) || drawn;
 }
 
 void ApplyCursorLock(bool app_in_background) {

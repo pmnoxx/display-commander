@@ -225,6 +225,11 @@ void SetReShadeOverlayOpen(bool open);
 // shown. Both make ReShade block input (the DC window calls block_input_next_frame every frame), and then ReShade keeps
 // the cursor free with ClipCursor(nullptr). Cursor lock changes are applied one frame after this turns false.
 bool ReShadeControlsCursor();
+// Called by the Display Commander window each frame it is drawn (it calls block_input_next_frame then).
+void NoteDcWindowDrawn();
+// Present thread, once per frame from reshade_present: true if ReShade blocked the cursor this frame (overlay open or
+// the DC window was drawn). Resets the drawn mark for the next frame.
+bool ConsumeReShadeBlockedThisFrame();
 // Bring the system cursor clip in line with the Cursor lock mode (Lock to window / Always free / Game default) for
 // the given focus state. Used on focus changes, Cursor lock changes and after the ReShade overlay / DC window closes.
 void ApplyCursorLock(bool app_in_background);

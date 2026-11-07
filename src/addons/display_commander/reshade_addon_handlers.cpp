@@ -216,10 +216,12 @@ void OnReShadePresent(reshade::api::effect_runtime* runtime) {
     }
     // While the ReShade overlay or the DC window (hotkey) is open, ReShade keeps the cursor free (ClipCursor(nullptr)),
     // so a Cursor lock change made there, or a lock we applied before, is undone. Apply the current mode one frame
-    // after both are closed, so ReShade has finished handing the cursor back (its restore of the saved clip) first.
+    // after the first frame in which ReShade did not block. ReShade recomputes its global "blocking cursor warping"
+    // flag in input::next_frame(), after reshade_present; until then its ClipCursor hook turns our rectangle into
+    // nullptr. One frame later that flag is clear.
     static bool s_ui_was_open = false;
     static bool s_apply_cursor_lock_next_frame = false;
-    const bool ui_open = display_commanderhooks::ReShadeControlsCursor();
+    const bool ui_open = display_commanderhooks::ConsumeReShadeBlockedThisFrame();
     if (ui_open) {
         s_apply_cursor_lock_next_frame = false;  // reopened before we applied: wait for the next close
     } else if (s_apply_cursor_lock_next_frame) {

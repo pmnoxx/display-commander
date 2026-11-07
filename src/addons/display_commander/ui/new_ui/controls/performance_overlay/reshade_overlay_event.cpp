@@ -3,6 +3,7 @@
 
 #include "config/display_commander_config.hpp"
 #include "globals.hpp"
+#include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "ui/imgui_wrapper_reshade.hpp"
 #include "ui/new_ui/main_new_tab.hpp"
@@ -104,6 +105,8 @@ void OnPerformanceOverlay_DisplayCommanderWindow(reshade::api::effect_runtime* r
         if (runtime != nullptr) {
             runtime->block_input_next_frame();
         }
+        // ReShade blocks (and frees the cursor) this frame; Cursor lock waits until a frame without the window.
+        display_commanderhooks::NoteDcWindowDrawn();
         ImVec2 current_pos = overlay_wrapper.GetWindowPos();
         if (current_pos.x != saved_x || current_pos.y != saved_y) {
             settings::g_mainTabSettings.display_commander_ui_window_x.SetValue(current_pos.x);

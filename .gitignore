@@ -76,7 +76,7 @@ external-src/
 imgui.ini
 
 # Docs not commited to the repo
-private_docs
+docs-private
 
 # whitelist
 

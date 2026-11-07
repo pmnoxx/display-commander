@@ -1385,7 +1385,7 @@ Reverted to v0.12.535
 - [bugfix] **Display_Commander folder wipe safeguard** - Post-ReShade addon temp cleanup could theoretically target the wrong path (e.g. when the Display Commander base path is empty or in edge cases). Added strict guards: (1) skip all global temp create/iterate/remove when the Display Commander base path is empty (avoids using relative path tmp\pid under current working directory). (2) Only treat a path as a safe temp dir when it has the form .../tmp/numeric_pid; refuse to create, iterate, or remove from any other path so the Display_Commander root can never be wiped. Applied in ProcessAttach_LoadLocalAddonDllsAfterReShade and CleanupPostReShadeAddonTempDir. Details: main_entry.cpp IsSafeTempSubdirPath, early return when base_dc.empty(), and try_remove_dir only when path is safe.
 
 ## v0.12.514
-- **WinMM proxy audit** - Audited winmm_proxy against official Microsoft documentation (mmiscapi.h, mmeapi.h). The header (`winmm_proxy.hpp`) is the source of truth; the .cpp matches the .hpp. Ensures consistency on both 32-bit and 64-bit. Details: private_docs/winmm_proxy_audit_mistakes.md.
+- **WinMM proxy audit** - Audited winmm_proxy against official Microsoft documentation (mmiscapi.h, mmeapi.h). The header (`winmm_proxy.hpp`) is the source of truth; the .cpp matches the .hpp. Ensures consistency on both 32-bit and 64-bit. Details: docs-private/winmm_proxy_audit_mistakes.md.
 - **WinMM proxy MMIO types (official docs)** - Updated `winmm_proxy.hpp` and `winmm_proxy.cpp` so MMIO function signatures match Microsoft docs (mmiscapi.h): error-returning MMIO APIs now use **MMRESULT** (UINT); **mmioRead**, **mmioSeek**, and **mmioWrite** use **LONG** (bytes/position); **mmioSendMessage** remains **LRESULT**. Added local `MMRESULT` typedef so the header stays independent of mmiscapi.h.
 
 ## v0.12.513
@@ -1728,7 +1728,7 @@ Reverted to v0.12.535
 - [cleanup] **OpenGL hooks moved to hooks/opengl/** - OpenGL (WGL) hook sources (opengl_hooks.cpp, opengl_hooks.hpp) are now under `hooks/opengl/` for consistency with `hooks/dxgi/`, `hooks/nvidia/`, `hooks/vulkan/`, etc. All consumer includes and docs updated.
 
 ## v0.12.429
-- [cleanup] **NVIDIA-related hooks moved to hooks/nvidia/** - NGX, NVAPI, Streamline, and PCLStats ETW hook sources (ngx_hooks, nvapi_hooks, streamline_hooks, pclstats_etw_hooks) are now under `hooks/nvidia/` for clearer structure alongside `hooks/dxgi/`, `hooks/vulkan/`, etc. All consumer includes and docs updated. Details: private_docs/feature_nvidia_hooks_folder.md.
+- [cleanup] **NVIDIA-related hooks moved to hooks/nvidia/** - NGX, NVAPI, Streamline, and PCLStats ETW hook sources (ngx_hooks, nvapi_hooks, streamline_hooks, pclstats_etw_hooks) are now under `hooks/nvidia/` for clearer structure alongside `hooks/dxgi/`, `hooks/vulkan/`, etc. All consumer includes and docs updated. Details: docs-private/feature_nvidia_hooks_folder.md.
 
 ## v0.12.428
 - [ui] [settings] **Brightness / Auto HDR section on by default** - The Brightness and Auto HDR subsection (including adding Display Commander's Shaders/Textures to ReShade's EffectSearchPaths and TextureSearchPaths) now defaults to enabled for new configs. The setting uses a new config key (`brightness_autohdr_section_enabled`) so existing users keep their current choice. Details: main_tab_settings.cpp brightness_autohdr_section_enabled (default true, key brightness_autohdr_section_enabled).
@@ -2314,7 +2314,7 @@ Reverted to v0.12.535
 
 ## v0.12.286 (2026-03-05)
 - **Max Pre-Rendered Frames options and Main tab** - The NVIDIA profile setting "Latency - Max Pre-Rendered Frames" (0x007BA09E) now has correct dropdown options: "Use the 3D application setting", 1–8 (matching NPI CustomSettingNames.xml). It is also shown on the Main tab under the NVIDIA section, after RTX HDR - Saturation. Details: `nvidia_profile_search.cpp` (`k_settings_data` option_values for PRERENDERLIMIT_ID, `GetRtxHdrSettingIds()` includes PRERENDERLIMIT_ID).
-- **NVIDIA subheader on Main tab with RTX HDR** - When NVAPI is initialized (NVIDIA GPU), the Main tab now shows a collapsible **NVIDIA** section with RTX HDR profile controls: Enable, Debanding, Allow, Contrast, Middle Grey, Peak Brightness, and Saturation. Same behavior as the NVIDIA Profile tab (combo + Default per setting; changes apply to the driver profile). If no profile exists for the current game, a "Create profile" button is shown. Details: `GetRtxHdrSettingIds()` in `nvidia_profile_search`, Main tab draw after DLSS Information block; spec: `private_docs/specs/main_tab_nvidia_subheader_rtx_hdr.md`.
+- **NVIDIA subheader on Main tab with RTX HDR** - When NVAPI is initialized (NVIDIA GPU), the Main tab now shows a collapsible **NVIDIA** section with RTX HDR profile controls: Enable, Debanding, Allow, Contrast, Middle Grey, Peak Brightness, and Saturation. Same behavior as the NVIDIA Profile tab (combo + Default per setting; changes apply to the driver profile). If no profile exists for the current game, a "Create profile" button is shown. Details: `GetRtxHdrSettingIds()` in `nvidia_profile_search`, Main tab draw after DLSS Information block; spec: `docs-private/specs/main_tab_nvidia_subheader_rtx_hdr.md`.
 
 ## v0.12.285 (2026-03-05)
 - **Simplified smooth motion controls** - In the NVIDIA Profile tab, Smooth Motion controls are simplified: "Smooth Motion (AFR) [40 series]" was removed; "Smooth Motion - Enable [50 series]" is now "Smooth Motion - Enable"; "Smooth Motion - Allowed APIs [40 series]" shows the current value and a single **Allow - All [DX11/12, VK]** button (no per-API toggles or disallow). Details: `nvidia_profile_search.cpp`, `nvidia_profile_tab_shared.cpp`, `nvpi_reference.hpp`.
@@ -2444,7 +2444,7 @@ Reverted to v0.12.535
 
 ## v0.12.247 (2026-03-03)
 
-- **Main tab: simplified Flip / PresentMon line** - The Main tab now shows a single "Flip: &lt;mode&gt;" line (Composed, Overlay, Independent Flip) when PresentMon is running; full surface and compatibility details remain in the tooltip. When PresentMon is off, the line shows "Flip: (enable PresentMon if needed)" and clicking the parenthetical enables PresentMon (same as Advanced tab). Specs added: `private_docs/specs/flip_state_main_tab.md`, `private_docs/specs/main_tab_spec.md`.
+- **Main tab: simplified Flip / PresentMon line** - The Main tab now shows a single "Flip: &lt;mode&gt;" line (Composed, Overlay, Independent Flip) when PresentMon is running; full surface and compatibility details remain in the tooltip. When PresentMon is off, the line shows "Flip: (enable PresentMon if needed)" and clicking the parenthetical enables PresentMon (same as Advanced tab). Specs added: `docs-private/specs/flip_state_main_tab.md`, `docs-private/specs/main_tab_spec.md`.
 
 ## v0.12.246 (2026-03-03)
 

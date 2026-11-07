@@ -140,12 +140,11 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
     }
 
     const bool is_unity_player = (GetModuleHandleA("UnityPlayer.dll") != nullptr);
-    const bool wgi_global = settings::g_advancedTabSettings.suppress_wgi_globally.GetValue();
     const bool wgi_master = settings::g_advancedTabSettings.suppress_wgi_enabled.GetValue();
     const bool per_game_ok =
-        (is_unity_player ? (settings::g_advancedTabSettings.suppress_wgi_for_unity.GetValue() || wgi_global)
-                         : (settings::g_advancedTabSettings.suppress_wgi_for_non_unity_games.GetValue() || wgi_global));
-    const bool wgi_suppressed = (wgi_master || wgi_global) && per_game_ok;
+        (is_unity_player ? settings::g_advancedTabSettings.suppress_wgi_for_unity.GetValue()
+                         : settings::g_advancedTabSettings.suppress_wgi_for_non_unity_games.GetValue());
+    const bool wgi_suppressed = wgi_master && per_game_ok;
 
     static bool restart_needed_to_apply_settings = false;
 

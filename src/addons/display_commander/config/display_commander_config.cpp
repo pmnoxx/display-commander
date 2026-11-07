@@ -132,7 +132,6 @@ constexpr RenamedKey kRenamedKeys[] = {
     {"advanced_settings_enabled", "AdvancedSettingsEnabled"},
     {"log_level", "LogLevel"},
     {"show_hotkeys_tab", "ShowHotkeysTab"},
-    {"show_advanced_tab", "ShowAdvancedTab"},
     {"show_important_info_tab", "ShowImportantInfoTab"},
     {"show_controller_tab", "ShowControllerTab"},
     {"show_reshade_tab", "ShowReshadeTab"},

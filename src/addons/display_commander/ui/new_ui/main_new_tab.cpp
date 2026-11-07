@@ -256,15 +256,6 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
         }
     }
 
-    if (ui::new_ui::g_tab_manager.HasTab("advanced")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_advanced_tab, "Show Advanced Tab", imgui)) {
-            LogInfo("Show Advanced tab %s",
-                    settings::g_mainTabSettings.show_advanced_tab.GetValue() ? "enabled" : "disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Shows the Advanced tab even when 'Show All Tabs' is disabled.");
-        }
-    }
 
     if (ui::new_ui::g_tab_manager.HasTab("controller")) {
         if (CheckboxSetting(settings::g_mainTabSettings.show_controller_tab, "Show Controller Tab", imgui)) {

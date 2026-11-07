@@ -27,78 +27,6 @@ const char* const GLOBAL_OVERRIDES_TEMPLATE = R"(# Display Commander — Global 
 # SuppressWgiEnabled = false
 )";
 
-// Migrate from legacy global_settings.toml if present (one-time: read old keys, write new keys to overrides file).
-void MigrateFromGlobalSettingsIfNeeded(const std::string& overrides_path) {
-    std::filesystem::path dir = std::filesystem::path(overrides_path).parent_path();
-    if (dir.empty()) return;
-    std::string legacy_path = (dir / "global_settings.toml").string();
-    if (!std::filesystem::exists(legacy_path)) return;
-
-    std::ifstream file(legacy_path);
-    if (!file.is_open()) return;
-
-    std::string line;
-    bool in_display_commander = false;
-    std::string legacy_suppress_wgi;
-
-    while (std::getline(file, line)) {
-        size_t start = line.find_first_not_of(" \t\r\n");
-        if (start == std::string::npos) continue;
-        line = line.substr(start);
-        line.erase(line.find_last_not_of(" \t\r\n") + 1);
-        if (line.empty() || line[0] == '#') continue;
-        if (line.front() == '[' && line.back() == ']') {
-            std::string sec = line.substr(1, line.size() - 2);
-            in_display_commander = (sec == "DisplayCommander");
-            continue;
-        }
-        if (!in_display_commander) continue;
-        std::string k;
-        std::string v;
-        if (ParseTomlLine(line, k, v)) {
-            if (k == "SuppressWgiGlobally") legacy_suppress_wgi = v;
-        }
-    }
-
-    if (legacy_suppress_wgi.empty()) return;
-
-    std::map<std::string, std::string> current;
-    if (std::filesystem::exists(overrides_path)) {
-        std::ifstream ov(overrides_path);
-        if (ov.is_open()) {
-            std::string ln;
-            bool in_dc = false;
-            while (std::getline(ov, ln)) {
-                size_t st = ln.find_first_not_of(" \t\r\n");
-                if (st == std::string::npos) continue;
-                ln = ln.substr(st);
-                ln.erase(ln.find_last_not_of(" \t\r\n") + 1);
-                if (ln.empty() || ln[0] == '#') continue;
-                if (ln.front() == '[' && ln.back() == ']') {
-                    in_dc = (ln.substr(1, ln.size() - 2) == "DisplayCommander");
-                    continue;
-                }
-                if (!in_dc) continue;
-                std::string kk, vv;
-                if (ParseTomlLine(ln, kk, vv)) current[kk] = vv;
-            }
-        }
-    }
-
-    if (current.find("SuppressWgiEnabled") != current.end()) return;
-    current["SuppressWgiEnabled"] = legacy_suppress_wgi;
-
-    std::ofstream out(overrides_path);
-    if (!out.is_open()) return;
-    out << "# Display Commander — Global overrides\n";
-    out << "# Keys match Display Commander config; values override game config.\n\n";
-    out << "[DisplayCommander]\n";
-    for (const auto& kv : current) {
-        out << kv.first << " = " << kv.second << "\n";
-    }
-    LogInfo("Global overrides: migrated from global_settings.toml to global_overrides.toml");
-}
-
 bool EnsureGlobalOverridesFileExists(const std::string& path) {
     if (path.empty()) return false;
     std::filesystem::path dir = std::filesystem::path(path).parent_path();
@@ -136,7 +64,6 @@ bool LoadGlobalOverridesFile() {
 
     if (!EnsureGlobalOverridesFileExists(path)) return false;
 
-    MigrateFromGlobalSettingsIfNeeded(path);
 
     g_global_overrides_cache.clear();
     std::ifstream file(path);

@@ -60,9 +60,6 @@ class AdvancedTabSettings {
     BoolSetting reflex_logging;
     //   BoolSetting reflex_supress_native;
 
-    /** Global WGI suppression (global_overrides.toml). When true, WGI suppression is on for all games. Default false.
-     */
-    OverrideBoolSetting suppress_wgi_globally;
     /** Master switch for WGI suppression (Controller tab). When false, WGI is never suppressed. Default false. */
     BoolSetting suppress_wgi_enabled;
     /** Only visible when UnityPlayer.dll is loaded. When true, suppress WGI for Unity games. Default false. */

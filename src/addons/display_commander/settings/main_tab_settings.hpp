@@ -183,7 +183,6 @@ class MainTabSettings {
 
     // Individual Tab Visibility Settings
     ui::new_ui::BoolSetting show_hotkeys_tab;
-    ui::new_ui::BoolSetting show_advanced_tab;
     ui::new_ui::BoolSetting show_important_info_tab;
     ui::new_ui::BoolSetting show_controller_tab;
     ui::new_ui::BoolSetting show_reshade_tab;

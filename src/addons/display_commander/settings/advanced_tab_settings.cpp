@@ -44,7 +44,6 @@ AdvancedTabSettings::AdvancedTabSettings()
       enable_input_blocking_shortcut("EnableInputBlockingShortcut", false, "DisplayCommander"),
       enable_display_commander_ui_shortcut("EnableDisplayCommanderUiShortcut", true, "DisplayCommander"),
       enable_performance_overlay_shortcut("EnablePerformanceOverlayShortcut", true, "DisplayCommander"),
-      suppress_wgi_globally("SuppressWgiEnabled", false, "DisplayCommander"),
       suppress_wgi_enabled("SuppressWgiEnabled", false, "DisplayCommander"),
       suppress_wgi_for_unity("SuppressWgiForUnity", false, "DisplayCommander"),
       suppress_wgi_for_non_unity_games("SuppressWgiForNonUnityGames", false, "DisplayCommander"),
@@ -83,7 +82,7 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
             &enable_hotkeys, &enable_mute_unmute_shortcut, &enable_timeslowdown_shortcut, &enable_adhd_toggle_shortcut,
             &enable_input_blocking_shortcut, &enable_display_commander_ui_shortcut,
             &enable_performance_overlay_shortcut,
-            &suppress_wgi_globally, &suppress_wgi_enabled, &suppress_wgi_for_unity, &suppress_wgi_for_non_unity_games,
+            &suppress_wgi_enabled, &suppress_wgi_for_unity, &suppress_wgi_for_non_unity_games,
             &debug_break_on_severity, &suppress_window_changes,
             &win_up_grace_seconds};
 }
@@ -94,7 +93,6 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetSettingsToSave() {
             &enqueue_gpu_completion,
             &auto_colorspace,
             &enable_hotkeys,
-            &suppress_wgi_globally,
             &suppress_wgi_enabled,
             &suppress_wgi_for_unity,
             &suppress_wgi_for_non_unity_games,

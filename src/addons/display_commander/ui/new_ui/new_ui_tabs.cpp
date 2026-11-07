@@ -7,7 +7,6 @@
 #include "../../ui/ui_scale.hpp"
 #include "../../utils/detour_call_tracker.hpp"
 #include "../../utils/logging.hpp"
-#include "advanced_tab.hpp"
 #if defined(DISPLAY_COMMANDER_DEBUG_TABS)
 #include "debug/debug_tab.hpp"
 #endif
@@ -139,8 +138,6 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime, display_commander::
             // Check individual tab setting or fall back to "Show All Tabs"
             if (tab_id == "hotkeys") {
                 tab_enabled = settings::g_mainTabSettings.show_hotkeys_tab.GetValue();
-            } else if (tab_id == "advanced") {
-                tab_enabled = settings::g_mainTabSettings.show_advanced_tab.GetValue();
             } else if (tab_id == "controller") {
                 tab_enabled = settings::g_mainTabSettings.show_controller_tab.GetValue();
             } else if (tab_id == "reshade") {
@@ -198,8 +195,6 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime, display_commander::
                     // Check individual tab setting or fall back to "Show All Tabs"
                     if (tab_id == "hotkeys") {
                         tab_enabled = settings::g_mainTabSettings.show_hotkeys_tab.GetValue();
-                    } else if (tab_id == "advanced") {
-                        tab_enabled = settings::g_mainTabSettings.show_advanced_tab.GetValue();
                     } else if (tab_id == "controller") {
                         tab_enabled = settings::g_mainTabSettings.show_controller_tab.GetValue();
                     } else if (tab_id == "reshade") {
@@ -249,7 +244,6 @@ void InitializeNewUI() {
 
     // Ensure settings for main and advanced tabs are loaded at UI init time
     ui::new_ui::InitMainNewTab();
-    ui::new_ui::InitAdvancedTab();
     ui::new_ui::InitHotkeysTab();
 
     modules::InitializeModuleRegistry();
@@ -267,25 +261,6 @@ void InitializeNewUI() {
             }
         },
         false);  // Main tab is not advanced
-
-    g_tab_manager.AddTab(
-        "Advanced", "advanced",
-        [](reshade::api::effect_runtime* runtime) {
-            try {
-                display_commander::ui::GraphicsApi api = display_commander::ui::GraphicsApi::Unknown;
-                if (runtime != nullptr && runtime->get_device() != nullptr) {
-                    api = static_cast<display_commander::ui::GraphicsApi>(
-                        static_cast<std::uint32_t>(runtime->get_device()->get_api()));
-                }
-                display_commander::ui::ImGuiWrapperReshade wrapper;
-                ui::new_ui::DrawAdvancedTab(api, wrapper);
-            } catch (const std::exception& e) {
-                LogError("Error drawing advanced tab: %s", e.what());
-            } catch (...) {
-                LogError("Unknown error drawing advanced tab");
-            }
-        },
-        true);  // Advanced tab is advanced
 
     g_tab_manager.AddTab(
         "Hotkeys", "hotkeys",

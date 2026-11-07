@@ -206,6 +206,34 @@ void InitMainNewTab() {
     }
 }
 
+// Main tab > Misc (last section): Ko-fi support button, logging level.
+void DrawMiscSection(display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_SPECIAL);
+    if (imgui.Button(ICON_FK_PLUS " Buy me a coffee on Ko-fi")) {
+        ShellExecuteA(nullptr, "open", "https://ko-fi.com/pmnox", nullptr, nullptr, SW_SHOW);
+    }
+    imgui.PopStyleColor();
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltipEx("Support Display Commander development with a coffee!");
+    }
+
+    imgui.Spacing();
+
+    if (ComboSettingEnumWrapper(settings::g_mainTabSettings.log_level, "Logging Level", imgui)) {
+        // Always log the level change (using LogCurrentLogLevel which uses LogError)
+        LogCurrentLogLevel();
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltipEx(
+            "Controls the minimum log level to display:\n\n"
+            "- Error Only: Only error messages\n"
+            "- Warning: Errors and warnings\n"
+            "- Info: Errors, warnings, and info messages\n"
+            "- Debug (Everything): All log messages (default)");
+    }
+
+    imgui.Spacing();
+}
 
 void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
@@ -222,22 +250,6 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
                 "Enable advanced settings to show advanced tabs (Advanced, Debug, etc.).\n"
                 "When disabled, advanced tabs will be hidden to simplify the interface.");
         }
-    }
-
-    imgui.Spacing();
-
-    // Logging Level Control
-    if (ComboSettingEnumWrapper(settings::g_mainTabSettings.log_level, "Logging Level", imgui)) {
-        // Always log the level change (using LogCurrentLogLevel which uses LogError)
-        LogCurrentLogLevel();
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Controls the minimum log level to display:\n\n"
-            "- Error Only: Only error messages\n"
-            "- Warning: Errors and warnings\n"
-            "- Info: Errors, warnings, and info messages\n"
-            "- Debug (Everything): All log messages (default)");
     }
 
     imgui.Spacing();
@@ -469,18 +481,6 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
 #endif
             imgui.TextColored(ui::colors::TEXT_LABEL, "| %s", bitness_label);
         }
-
-        // Ko-fi support button
-        //imgui.SameLine();
-        //imgui.TextColored(ui::colors::TEXT_LABEL, "Support the project:");
-        imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_SPECIAL);
-        if (imgui.Button(ICON_FK_PLUS " Buy me a coffee on Ko-fi")) {
-            ShellExecuteA(nullptr, "open", "https://ko-fi.com/pmnox", nullptr, nullptr, SW_SHOW);
-        }
-        imgui.PopStyleColor();
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Support Display Commander development with a coffee!");
-        }
     }
 
     // Display Settings Section
@@ -594,6 +594,18 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
     }
 
     DrawMainTabOptionalPanelsInOrder(api, imgui, runtime);
+
+    // Misc: last section of the Main tab.
+    imgui.Spacing();
+    g_rendering_ui_section.store("ui:tab:main_new:misc", std::memory_order_release);
+    ui::colors::PushHeaderColors(&imgui);
+    const bool misc_open = imgui.CollapsingHeader("Misc", ImGuiTreeNodeFlags_None);
+    ui::colors::PopCollapsingHeaderColors(&imgui);
+    if (misc_open) {
+        imgui.Indent();
+        DrawMiscSection(imgui);
+        imgui.Unindent();
+    }
 }
 
 void DrawWindowControlButtons(display_commander::ui::IImGuiWrapper& imgui) {

@@ -13,6 +13,7 @@
 #include "../utils/logging.hpp"
 #include "../utils/string_utils.hpp"
 #include "../utils/srwlock_wrapper.hpp"
+#include "../utils/symlink_safe_file.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -189,6 +190,10 @@ bool CompareIniKeysForSave(std::string_view a, std::string_view b) {
     return a < b;
 }
 
+bool WriteIniTextToPath(const std::filesystem::path& filepath, const std::string& text) {
+    return display_commander::utils::WriteTextFileReplace(filepath, text, "Config");
+}
+
 }  // namespace
 
 // Shared section representation for INI
@@ -250,11 +255,8 @@ class IniFile {
         return true;
     }
 
-    bool SaveToFile(const std::filesystem::path& filepath) {
-        std::filesystem::path temp_filepath = filepath;
-        temp_filepath += L".temp";
-        std::ofstream file(temp_filepath);
-        if (!file.is_open()) return false;
+    std::string SerializeToString() const {
+        std::ostringstream out;
 
         std::vector<size_t> section_order(sections_.size());
         for (size_t i = 0; i < section_order.size(); ++i) {
@@ -271,22 +273,18 @@ class IniFile {
                 return CompareIniKeysForSave(x.first, y.first);
             });
 
-            file << "[" << section.name << "]\n";
+            out << "[" << section.name << "]\n";
             for (const auto& kv : kvs) {
-                file << kv.first << "=" << kv.second << "\n";
+                out << kv.first << "=" << kv.second << "\n";
             }
-            file << "\n";
+            out << "\n";
         }
 
-        file.close();
+        return out.str();
+    }
 
-        try {
-            std::filesystem::rename(temp_filepath, filepath);
-            return true;
-        } catch (const std::exception&) {
-            std::filesystem::remove(temp_filepath);
-            return false;
-        }
+    bool SaveToFile(const std::filesystem::path& filepath) {
+        return WriteIniTextToPath(filepath, SerializeToString());
     }
 
     bool GetValue(const std::string& section, const std::string& key, std::string& value) const {
@@ -544,7 +542,7 @@ void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* secti
     if (!GetConfigValue(section, key, value)) {
         // Value doesn't exist, set default and save
         SetConfigValue(section, key, default_value);
-        SaveConfig("get_config_value_ensure_exists");
+        FlushConfig("get_config_value_ensure_exists");
         value = default_value;
     }
 }
@@ -554,7 +552,7 @@ void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* secti
     if (!GetConfigValue(section, key, value)) {
         // Value doesn't exist, set default and save
         SetConfigValue(section, key, default_value);
-        SaveConfig("get_config_value_ensure_exists");
+        FlushConfig("get_config_value_ensure_exists");
         value = default_value;
     }
 }
@@ -564,7 +562,7 @@ void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* secti
     if (!GetConfigValue(section, key, value)) {
         // Value doesn't exist, set default and save
         SetConfigValue(section, key, default_value);
-        SaveConfig("get_config_value_ensure_exists");
+        FlushConfig("get_config_value_ensure_exists");
         value = default_value;
     }
 }
@@ -574,7 +572,7 @@ void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* secti
     if (!GetConfigValue(section, key, value)) {
         // Value doesn't exist, set default and save
         SetConfigValue(section, key, default_value);
-        SaveConfig("get_config_value_ensure_exists");
+        FlushConfig("get_config_value_ensure_exists");
         value = default_value;
     }
 }
@@ -584,7 +582,7 @@ void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* secti
     if (!GetConfigValue(section, key, value)) {
         // Value doesn't exist, set default and save
         SetConfigValue(section, key, default_value);
-        SaveConfig("get_config_value_ensure_exists");
+        FlushConfig("get_config_value_ensure_exists");
         value = default_value;
     }
 }
@@ -594,7 +592,7 @@ void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* secti
     if (!GetConfigValue(section, key, value)) {
         // Value doesn't exist, set default and save
         SetConfigValue(section, key, default_value);
-        SaveConfig("get_config_value_ensure_exists");
+        FlushConfig("get_config_value_ensure_exists");
         value = default_value;
     }
 }
@@ -660,33 +658,13 @@ void DisplayCommanderConfigManager::SetConfigValue(const char* section, const ch
     config_file_->SetValue(section != nullptr ? section : "", key != nullptr ? key : "", values);
 }
 
-void DisplayCommanderConfigManager::SaveConfig(const char* reason) {
-    ::utils::SRWLockExclusive lock(config_mutex_);
-    if (!initialized_) {
-        return;
+bool DisplayCommanderConfigManager::SerializeLiveIniLocked(std::string& out) {
+    if (!initialized_ || config_file_ == nullptr) {
+        return false;
     }
-
     EnsureConfigFileExists();
-    if (config_file_->SaveToFile(display_commander::utils::Utf8ToFilesystemPath(config_path_))) {
-        // Clear any previous save failure state
-        g_config_save_failure_path.store(nullptr);
-
-        if (reason != nullptr && reason[0] != '\0') {
-            LogInfoThrottled(10, "Saved config to %s (reason: %s)", config_path_.c_str(), reason);
-        } else {
-            LogInfoThrottled(10, "Saved config to %s", config_path_.c_str());
-        }
-    } else {
-        // Set save failure state for UI display
-        g_config_save_failure_path.store(std::make_shared<const std::string>(config_path_));
-
-        if (reason != nullptr && reason[0] != '\0') {
-            LogError("DisplayCommanderConfigManager: Failed to save config to %s (reason: %s)", config_path_.c_str(),
-                     reason);
-        } else {
-            LogError("DisplayCommanderConfigManager: Failed to save config to %s", config_path_.c_str());
-        }
-    }
+    out = config_file_->SerializeToString();
+    return true;
 }
 
 std::string DisplayCommanderConfigManager::GetConfigPath() const { return config_path_; }
@@ -806,6 +784,16 @@ void set_config_value(const char* section, const char* key, const std::vector<st
 }
 
 void save_config(const char* reason) { DisplayCommanderConfigManager::GetInstance().SaveConfig(reason); }
+
+void save_config_immediate(const char* reason) {
+    DisplayCommanderConfigManager::GetInstance().FlushConfig(reason);
+}
+
+void flush_config_on_overlay_close() {
+    DisplayCommanderConfigManager::GetInstance().FlushConfigOnOverlayClose();
+}
+
+void flush_config_on_exit() { DisplayCommanderConfigManager::GetInstance().FlushConfigOnExit(); }
 
 void get_config_value_ensure_exists(const char* section, const char* key, std::string& value,
                                     const std::string& default_value) {

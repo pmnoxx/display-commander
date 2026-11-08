@@ -85,7 +85,7 @@ static void EnsureDcConfigMigrated() {
         use_global = (legacy == "latest" || (!legacy.empty() && legacy != "local"));
     }
     config.SetConfigValue(DC_SECTION, KEY_USE_GLOBAL, use_global ? "1" : "0");
-    config.SaveConfig("DC use_global_version migration");
+    config.FlushConfig("DC GlobalVersionEnabled migration");
 }
 
 // Fill static vectors and return pointer array for subdir (Dll or Debug). Caller must not keep pointers across calls.

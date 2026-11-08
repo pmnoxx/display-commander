@@ -224,7 +224,7 @@ void ApplyDefaultOverridesToConfig() {
         set_config_value(e.section.c_str(), e.key.c_str(), e.value);
     }
     if (!entries.empty()) {
-        save_config("Apply default overrides to config");
+        save_config_immediate("Apply default overrides to config");
         utils::SRWLockExclusive lock(g_srwlock);
         g_active_overrides.clear();
     }

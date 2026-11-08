@@ -276,6 +276,7 @@ bool OnReShadeOverlayOpen(reshade::api::effect_runtime* runtime, bool open, resh
         }
     } else {
         LogInfo("ReShade overlay closed - Input blocking inactive");
+        display_commander::config::flush_config_on_overlay_close();
     }
 
     return false;

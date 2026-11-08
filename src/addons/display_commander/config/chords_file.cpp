@@ -3,12 +3,15 @@
 #include "toml_line_parser.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
+#include "../utils/symlink_safe_file.hpp"
 
 #include <algorithm>
 #include <cctype>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <map>
+#include <sstream>
 #include <string>
 
 #include <string_view>
@@ -274,33 +277,23 @@ bool SaveChordsFile() {
         }
     }
 
-    std::string temp_path = path + ".temp";
-    std::ofstream file(temp_path);
-    if (!file.is_open()) {
-        LogError("Chords file: failed to open for write: %s", path.c_str());
-        return false;
-    }
-
-    file << "[chords]\n";
+    std::ostringstream out;
+    out << "[chords]\n";
     for (const auto& kv : g_chords_cache) {
         const std::string& v = kv.second;
-        bool is_bool = (v == "0" || v == "1");
+        const bool is_bool = (v == "0" || v == "1");
         if (is_bool) {
-            file << kv.first << " = " << (v == "1" ? "true" : "false") << "\n";
+            out << kv.first << " = " << (v == "1" ? "true" : "false") << "\n";
         } else {
-            file << kv.first << " = \"" << v << "\"\n";
+            out << kv.first << " = \"" << v << "\"\n";
         }
     }
-    file.close();
 
-    try {
-        std::filesystem::rename(temp_path, path);
-        return true;
-    } catch (const std::exception& e) {
-        LogError("Chords file: failed to rename temp to %s: %s", path.c_str(), e.what());
-        std::filesystem::remove(temp_path);
+    if (!display_commander::utils::WriteTextFileReplace(std::filesystem::path(path), out.str(), "Chords")) {
+        LogError("Chords file: failed to write: %s", path.c_str());
         return false;
     }
+    return true;
 }
 
 bool GetChordValue(const char* section, const char* key, std::string& value) {

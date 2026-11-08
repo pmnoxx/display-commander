@@ -221,6 +221,7 @@ void ReleaseOwnedClipCursor();
 void ClipCursorToGameWindow();
 // ReShade overlay open state, set from the reshade_open_overlay event.
 void SetReShadeOverlayOpen(bool open);
+bool IsReShadeOverlayOpen();
 // True while ReShade controls ClipCursor: the ReShade overlay is open, or the Display Commander window (hotkey) is
 // shown. Both make ReShade block input (the DC window calls block_input_next_frame every frame), and then ReShade keeps
 // the cursor free with ClipCursor(nullptr). Cursor lock changes are applied one frame after this turns false.

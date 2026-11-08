@@ -865,6 +865,8 @@ static std::atomic<bool> s_dc_window_drawn{false};
 
 void SetReShadeOverlayOpen(bool open) { s_reshade_overlay_open.store(open, std::memory_order_relaxed); }
 
+bool IsReShadeOverlayOpen() { return s_reshade_overlay_open.load(std::memory_order_relaxed); }
+
 void NoteDcWindowDrawn() { s_dc_window_drawn.store(true, std::memory_order_relaxed); }
 
 bool ReShadeControlsCursor() {

@@ -1,11 +1,21 @@
+// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #pragma once
 
+// Source Code <Display Commander>
+#include "../utils/srwlock_wrapper.hpp"
+
+// Libraries <standard C++>
 #include <atomic>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
+#include <thread>
 #include <vector>
-#include "../utils/srwlock_wrapper.hpp"
+
+// Libraries <Windows.h>
+#include <Windows.h>
 
 namespace display_commander::config {
 
@@ -48,8 +58,14 @@ class DisplayCommanderConfigManager {
     void SetConfigValue(const char* section, const char* key, bool value);
     void SetConfigValue(const char* section, const char* key, const std::vector<std::string>& values);
 
-    // Save configuration to file
+    // Schedule a DisplayCommander.ini snapshot write (no I/O on the caller).
     void SaveConfig(const char* reason = nullptr);
+    // Write live ini now on the config I/O thread and wait; clears any pending snapshot.
+    void FlushConfig(const char* reason = nullptr);
+    // Overlay closed: write pending then live catch-up; wait for completion.
+    void FlushConfigOnOverlayClose();
+    // Clean exit: same catch-up as overlay close, then stop and join the I/O thread.
+    void FlushConfigOnExit();
 
     // Get config file path
     std::string GetConfigPath() const;
@@ -61,6 +77,13 @@ class DisplayCommanderConfigManager {
     bool GetAutoFlushLogs() const;
 
    private:
+    enum class FlushKind : uint8_t {
+        None = 0,
+        Immediate,
+        OverlayClose,
+        Exit,
+    };
+
     DisplayCommanderConfigManager() = default;
     ~DisplayCommanderConfigManager() = default;
     DisplayCommanderConfigManager(const DisplayCommanderConfigManager&) = delete;
@@ -68,12 +91,41 @@ class DisplayCommanderConfigManager {
 
     void EnsureConfigFileExists();
     std::string GetConfigFilePath();
+    // Caller holds config_mutex_. Only the config I/O worker (config_worker.cpp) calls this.
+    bool SerializeLiveIniLocked(std::string& out);
+
+    void EnsureWriterStarted();
+    void WriterLoop();
+    void RequestFlushAndWait(FlushKind kind, const char* reason);
+    void ClearQueueLocked();
+    void ArmDeadlineLocked(LONGLONG now_ns);
+    bool WriteTextAndReport(const std::string& text, const char* reason);
+    void CompleteFlushLocked(uint64_t generation);
 
     std::unique_ptr<IniFile> config_file_;
     std::string config_path_;
     mutable SRWLOCK config_mutex_ = SRWLOCK_INIT;
     bool initialized_ = false;
     std::atomic<bool> auto_flush_logs_ = false;
+
+    // Snapshot queue (under config_mutex_). config_worker.cpp owns the thread, freeze, and disk write.
+    bool freeze_requested_ = false;
+    bool has_pending_ = false;
+    std::string pending_text_;
+    bool dirty_after_ = false;
+    bool deadline_armed_ = false;
+    LONGLONG deadline_ns_ = 0;
+    std::string latest_reason_;
+
+    FlushKind flush_request_ = FlushKind::None;
+    uint64_t flush_generation_ = 0;
+    uint64_t completed_generation_ = 0;
+    std::string flush_reason_;
+
+    CONDITION_VARIABLE writer_cv_ = CONDITION_VARIABLE_INIT;
+    std::thread writer_thread_;
+    bool writer_started_ = false;
+    bool writer_stop_ = false;
 };
 
 // Global functions that replace reshade::get_config_value and reshade::set_config_value
@@ -96,8 +148,12 @@ void set_config_value(const char* section, const char* key, double value);
 void set_config_value(const char* section, const char* key, bool value);
 void set_config_value(const char* section, const char* key, const std::vector<std::string>& values);
 
-// Save configuration to file
+// Schedule a DisplayCommander.ini snapshot (batched).
 void save_config(const char* reason = nullptr);
+// Write live DisplayCommander.ini now and wait.
+void save_config_immediate(const char* reason = nullptr);
+void flush_config_on_overlay_close();
+void flush_config_on_exit();
 
 // Get configuration value, ensuring it exists (writes default if missing)
 void get_config_value_ensure_exists(const char* section, const char* key, std::string& value,

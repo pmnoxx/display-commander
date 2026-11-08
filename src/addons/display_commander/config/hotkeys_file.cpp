@@ -3,10 +3,12 @@
 #include "toml_line_parser.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
+#include "../utils/symlink_safe_file.hpp"
 
 #include <algorithm>
 #include <cctype>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <map>
 #include <sstream>
@@ -238,33 +240,23 @@ bool SaveHotkeysFile() {
         }
     }
 
-    std::string temp_path = path + ".temp";
-    std::ofstream file(temp_path);
-    if (!file.is_open()) {
-        LogError("Hotkeys file: failed to open for write: %s", path.c_str());
-        return false;
-    }
-
-    file << "[hotkeys]\n";
+    std::ostringstream out;
+    out << "[hotkeys]\n";
     for (const auto& kv : g_hotkeys_cache) {
         const std::string& v = kv.second;
-        bool is_bool = (v == "0" || v == "1");
+        const bool is_bool = (v == "0" || v == "1");
         if (is_bool) {
-            file << kv.first << " = " << (v == "1" ? "true" : "false") << "\n";
+            out << kv.first << " = " << (v == "1" ? "true" : "false") << "\n";
         } else {
-            file << kv.first << " = \"" << v << "\"\n";
+            out << kv.first << " = \"" << v << "\"\n";
         }
     }
-    file.close();
 
-    try {
-        std::filesystem::rename(temp_path, path);
-        return true;
-    } catch (const std::exception& e) {
-        LogError("Hotkeys file: failed to rename temp to %s: %s", path.c_str(), e.what());
-        std::filesystem::remove(temp_path);
+    if (!display_commander::utils::WriteTextFileReplace(std::filesystem::path(path), out.str(), "Hotkeys")) {
+        LogError("Hotkeys file: failed to write: %s", path.c_str());
         return false;
     }
+    return true;
 }
 
 bool GetHotkeyValue(const char* key, std::string& value) {

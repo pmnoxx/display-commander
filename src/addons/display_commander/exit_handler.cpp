@@ -5,6 +5,7 @@
 #include <reshade.hpp>
 #include <sstream>
 #include <vector>
+#include "config/display_commander_config.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "utils/general_utils.hpp"
 #include "hooks/loadlibrary_hooks.hpp"
@@ -67,7 +68,7 @@ void OnHandleExit(ExitSource source, const std::string& message) {
         CopyGameIniFilesToReshadeConfigBackupFolder();
     }
 
-    //display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
+    display_commander::config::flush_config_on_exit();
     display_commander::logger::FlushLogs();
 
 #if defined(DC_EXTERNAL_MODULES)

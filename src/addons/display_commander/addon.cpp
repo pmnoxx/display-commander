@@ -38,10 +38,16 @@ extern "C" __declspec(dllexport) LONGLONG LoadedNs() { return g_dll_load_time_ns
 
 bool FinishAddonRegistration(HMODULE addon_module, HMODULE reshade_module, bool do_unregister) {
     g_module.store(addon_module, std::memory_order_release);
-    // Store ReShade module handle for unload detection (don't override if already set)
-    HMODULE expected = nullptr;
-    (void)g_reshade_module.compare_exchange_strong(expected, reshade_module);
-    LogInfo("[AddonInit] Stored ReShade module handle: 0x%p", reshade_module);
+    // Prefer the ReShade module passed by ReShade. Replace a mistaken self-handle
+    // (DC proxy also exports ReShadeRegisterAddon for MFG Unlocker).
+    if (reshade_module != nullptr && GetProcAddress(reshade_module, "GetDisplayCommanderState") == nullptr) {
+        HMODULE previous = g_reshade_module.load(std::memory_order_acquire);
+        if (previous == nullptr || previous == reshade_module
+            || GetProcAddress(previous, "GetDisplayCommanderState") != nullptr) {
+            g_reshade_module.store(reshade_module, std::memory_order_release);
+        }
+    }
+    LogInfo("[AddonInit] Stored ReShade module handle: 0x%p", g_reshade_module.load(std::memory_order_acquire));
 
     bool ok = false;
     if (do_unregister) {

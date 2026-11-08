@@ -317,6 +317,10 @@ std::vector<std::pair<std::string, std::string>> GetLoadedReShadeVersions() {
 
     DWORD module_count = num_modules / sizeof(HMODULE);
     for (DWORD i = 0; i < module_count; i++) {
+        // Skip Display Commander proxies that re-export ReShadeRegisterAddon for MFG Unlocker.
+        if (GetProcAddress(modules[i], "GetDisplayCommanderState") != nullptr) {
+            continue;
+        }
         // Check if this module has the ReShadeRegisterAddon export (used by addons)
         FARPROC register_func = GetProcAddress(modules[i], "ReShadeRegisterAddon");
         if (register_func == nullptr) {

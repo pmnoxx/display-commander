@@ -150,7 +150,13 @@ std::atomic<bool> g_is_renodx_loaded{false};
 std::atomic<bool> g_no_reshade_mode{false};
 
 void RefreshReShadeModuleIfNeeded() {
-    if (g_reshade_module.load() != nullptr) return;
+    HMODULE current = g_reshade_module.load(std::memory_order_acquire);
+    // DC proxy re-exports ReShadeRegisterAddon; never keep ourselves as the ReShade handle.
+    if (current != nullptr && GetProcAddress(current, "GetDisplayCommanderState") != nullptr) {
+        g_reshade_module.compare_exchange_strong(current, nullptr, std::memory_order_acq_rel);
+        current = g_reshade_module.load(std::memory_order_acquire);
+    }
+    if (current != nullptr) return;
     HMODULE modules[1024];
     DWORD num_modules_bytes = 0;
     if (K32EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), &num_modules_bytes) == 0) return;
@@ -158,6 +164,8 @@ void RefreshReShadeModuleIfNeeded() {
         (std::min<DWORD>)(num_modules_bytes / sizeof(HMODULE), static_cast<DWORD>(sizeof(modules) / sizeof(HMODULE)));
     for (DWORD i = 0; i < num_modules; i++) {
         if (modules[i] == nullptr) continue;
+        // Skip Display Commander proxies that re-export ReShadeRegisterAddon for MFG Unlocker.
+        if (GetProcAddress(modules[i], "GetDisplayCommanderState") != nullptr) continue;
         FARPROC register_func = GetProcAddress(modules[i], "ReShadeRegisterAddon");
         if (register_func != nullptr) {
             HMODULE expected = nullptr;

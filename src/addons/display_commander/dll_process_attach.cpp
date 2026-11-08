@@ -60,6 +60,8 @@ void ProcessAttach_DetectReShadeInModules() {
         (std::min<DWORD>)(num_modules_bytes / sizeof(HMODULE), static_cast<DWORD>(sizeof(modules) / sizeof(HMODULE)));
     for (DWORD i = 0; i < num_modules; i++) {
         if (modules[i] == nullptr) continue;
+        // Skip Display Commander proxies that re-export ReShadeRegisterAddon for MFG Unlocker.
+        if (GetProcAddress(modules[i], "GetDisplayCommanderState") != nullptr) continue;
         FARPROC register_func = GetProcAddress(modules[i], "ReShadeRegisterAddon");
         if (register_func != nullptr) {
             HMODULE expected = nullptr;

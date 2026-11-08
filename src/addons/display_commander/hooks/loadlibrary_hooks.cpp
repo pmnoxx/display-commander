@@ -1628,7 +1628,8 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
         std::wstring filename = std::filesystem::path(moduleName).filename().wstring();
         std::transform(filename.begin(), filename.end(), filename.begin(), ::towlower);
         bool is_reshade_dll = (filename == L"reshade64.dll" || filename == L"reshade32.dll");
-        if (!is_reshade_dll && GetProcAddress(hModule, "ReShadeRegisterAddon") != nullptr) {
+        // DC proxy also exports ReShadeRegisterAddon (MFG Unlocker dxgi Eligible); never treat self as ReShade.
+        if (!is_reshade_dll && !has_dc_export && GetProcAddress(hModule, "ReShadeRegisterAddon") != nullptr) {
             is_reshade_dll = true;
         }
         if (is_reshade_dll) {

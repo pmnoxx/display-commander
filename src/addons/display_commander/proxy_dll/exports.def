@@ -89,6 +89,9 @@ EXPORTS
 	CreateDXGIFactory2 PRIVATE
 	DXGIGetDebugInterface1 PRIVATE
 	DXGIDeclareAdapterRemovalSupport PRIVATE
+	; MFG Unlocker local-dxgi Eligible(): same image must export these (forward to real ReShade)
+	ReShadeRegisterAddon PRIVATE
+	ReShadeUnregisterAddon PRIVATE
 
 	; version.dll exports
     ; https://github.com/wine-mirror/wine/blob/master/dlls/version/version.spec

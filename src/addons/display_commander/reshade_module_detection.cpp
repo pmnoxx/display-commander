@@ -62,6 +62,8 @@ bool DetectMultipleReShadeVersions_EnumerateModules() {
     for (DWORD i = 0; i < num_modules / sizeof(HMODULE); ++i) {
         HMODULE module = modules[i];
         if (module == nullptr) continue;
+        // Skip Display Commander proxies that re-export ReShadeRegisterAddon for MFG Unlocker.
+        if (GetProcAddress(module, "GetDisplayCommanderState") != nullptr) continue;
         FARPROC register_func = GetProcAddress(module, "ReShadeRegisterAddon");
         FARPROC unregister_func = GetProcAddress(module, "ReShadeUnregisterAddon");
         if (register_func == nullptr || unregister_func == nullptr) continue;

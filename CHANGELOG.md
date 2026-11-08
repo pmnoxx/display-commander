@@ -28,6 +28,7 @@ Planned:
 - Show override from NPI for DLSS presets. @adap
 
 ## v1.0.9
+- [compatibility] **MFG Unlocker with DC as `dxgi.dll`** - When Display Commander is the game-folder `dxgi.dll`, it now also exports `ReShadeRegisterAddon` / `ReShadeUnregisterAddon` (forwarded to the real ReShade DLL). MFG Unlocker only treats a local `dxgi.dll` as valid for its menu if that same file looks like ReShade; without these exports its UI never attached (`mainGraphicsImports=0`). ReShade module discovery (including `reshade.hpp`'s checker and Display Commander's scans) ignores Display Commander's own DLL so API calls still bind to real ReShade.
 - [new feature] [compatibility] **DllMain attach watchdog (30s)** - When Display Commander starts loading, a background thread waits up to 30 seconds for DLL startup to finish. If startup is still running (for example stuck under Windows' loader lock), a message box warns that Display Commander is stuck and points you at `DisplayCommander.log`. Normal loads are unaffected.
 
 ## v1.0.8

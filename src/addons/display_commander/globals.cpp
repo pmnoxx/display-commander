@@ -67,6 +67,12 @@ std::string g_dll_load_caller_path;
 std::string g_dll_load_call_stack_list;
 std::filesystem::path g_dll_main_log_path;
 
+std::atomic<bool> g_dc_dllmain_process_attach_returned{false};
+
+void NotifyDllMainProcessAttachReturned() {
+    g_dc_dllmain_process_attach_returned.store(true, std::memory_order_release);
+}
+
 void AppendDisplayCommanderBootLog(const std::string& text) {
     try {
         if (g_dll_main_log_path.empty()) return;

@@ -12,3 +12,5 @@ void LogBootDllMainStage(const char* stage_message);
 void LogBootRegisterAndPostInitStage(const char* stage_message);
 void LogBootInitWithoutHwndStage(const char* stage_message);
 void LogBootDcConfigPath();
+// Logs game-folder + loaded state for common proxy DLL slots (dxgi/version/…). Safe during DllMain.
+void LogForeignProxyScanAtBoot();

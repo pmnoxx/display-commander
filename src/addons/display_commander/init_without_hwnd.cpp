@@ -42,6 +42,8 @@ void DoInitializationWithoutHwndSafe_Early(HMODULE h_module) {
     LogBootInitWithoutHwndStage("Early after EnsureBackgroundDaemonStarted");
     display_commanderhooks::InstallLoadLibraryHooks();
     LogBootInitWithoutHwndStage("Early after InstallLoadLibraryHooks");
+    LogForeignProxyScanAtBoot();
+    LogBootInitWithoutHwndStage("Early after LogForeignProxyScanAtBoot");
     LogCurrentLogLevel();
 
     bool suppress_pin_module = false;
@@ -73,8 +75,10 @@ void DoInitializationWithoutHwndSafe_Early(HMODULE h_module) {
     LogBootInitWithoutHwndStage("Early after InstallApiHooks");
     InstallRealDXGIMinHookHooks();
     LogBootInitWithoutHwndStage("Early after InstallRealDXGIMinHookHooks");
-    OverrideReShadeSettings(nullptr);
-    LogBootInitWithoutHwndStage("Early after OverrideReShadeSettings");
+    // Do NOT call OverrideReShadeSettings here. Early runs inside DLL_PROCESS_ATTACH (loader lock held).
+    // ReShade get/set_config can block forever then (seen with DS2 + MFG Unlocker version.dll: hang after
+    // OVERLAY ShowClock). OnInitEffectRuntime applies the same overrides once a runtime exists.
+    LogBootInitWithoutHwndStage("Early skip OverrideReShadeSettings (deferred to OnInitEffectRuntime)");
 }
 
 void DoInitializationWithoutHwndSafe_Late() {

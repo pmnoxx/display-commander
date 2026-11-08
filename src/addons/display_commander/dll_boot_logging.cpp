@@ -1,7 +1,9 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "dll_boot_logging.hpp"
 
+// Source Code <Display Commander>
 #include "globals.hpp"
+#include "utils/display_commander_logger.hpp"
 #include "utils/general_utils.hpp"
 #include "utils/string_utils.hpp"
 
@@ -27,9 +29,69 @@ bool IsLoaderModule(const wchar_t* path) {
            || _wcsicmp(name, L"wow64win.dll") == 0 || _wcsicmp(name, L"wow64cpu.dll") == 0;
 }
 
-void LogBoot(const std::string& text) { AppendDisplayCommanderBootLog(text); }
+// Local wall-clock prefix so boot lines correlate with MFG / ReShade logs (HH:MM:SS.mmm).
+std::string BootTimestampPrefix() {
+    SYSTEMTIME t{};
+    GetLocalTime(&t);
+    char buf[32];
+    snprintf(buf, sizeof(buf), "[%02u:%02u:%02u.%03u] ", t.wHour, t.wMinute, t.wSecond, t.wMilliseconds);
+    return buf;
+}
+
+void LogBoot(const std::string& text) {
+    const std::string line = BootTimestampPrefix() + text;
+    AppendDisplayCommanderBootLog(line);
+    // Mirror into the config-dir DisplayCommander.log once the file logger exists. During PROCESS_ATTACH
+    // that path sync-flushes (writer thread cannot run under the loader lock).
+    if (display_commander::logger::IsInitialized()) {
+        display_commander::logger::LogInfo("%s", line.c_str());
+    }
+}
+
+void LogProxySlotBootLine(const wchar_t* dll_name) {
+    WCHAR game_path[MAX_PATH] = {};
+    if (GetModuleFileNameW(nullptr, game_path, MAX_PATH) == 0) return;
+    std::filesystem::path game_dir = std::filesystem::path(game_path).parent_path();
+    const std::filesystem::path on_disk = game_dir / dll_name;
+
+    std::string line = std::string("[ProxyScan] ") + display_commander::utils::WideToUtf8(dll_name);
+
+    // No GetFileVersionInfo / LoadLibrary here: during DllMain that can deadlock when a foreign
+    // version.dll (e.g. MFG Unlocker) is already mapped under the same basename.
+    std::error_code ec;
+    if (std::filesystem::is_regular_file(on_disk, ec) && !ec) {
+        const auto size = std::filesystem::file_size(on_disk, ec);
+        line += " disk=\"" + display_commander::utils::WideToUtf8(on_disk.wstring()) + "\"";
+        if (!ec) line += " size=" + std::to_string(static_cast<unsigned long long>(size));
+    } else {
+        line += " disk=(none)";
+    }
+
+    HMODULE loaded = GetModuleHandleW(dll_name);
+    if (loaded != nullptr) {
+        WCHAR mod_path[MAX_PATH] = {};
+        if (GetModuleFileNameW(loaded, mod_path, MAX_PATH) > 0) {
+            const bool is_dc = GetProcAddress(loaded, "GetDisplayCommanderState") != nullptr;
+            line += " loaded=\"" + display_commander::utils::WideToUtf8(mod_path) + "\"";
+            line += is_dc ? " dc=1" : " dc=0";
+        } else {
+            line += " loaded=(path unavailable)";
+        }
+    } else {
+        line += " loaded=(not in process)";
+    }
+    LogBoot(line);
+}
 
 }  // namespace
+
+void LogForeignProxyScanAtBoot() {
+    // Common sideload slots that conflict when two injectors claim them (DC + MFG Unlocker, etc.).
+    static const wchar_t* kSlots[] = {L"dxgi.dll", L"version.dll", L"d3d12.dll", L"d3d11.dll", L"winmm.dll"};
+    for (const wchar_t* name : kSlots) {
+        LogProxySlotBootLine(name);
+    }
+}
 
 void ChooseAndSetDcConfigPath(HMODULE h_module) {
     std::wstring config_path_w;

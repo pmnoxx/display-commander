@@ -1,6 +1,9 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "dll_process_attach.hpp"
 
+// Source Code <Display Commander>
+#include "globals.hpp"
+
 // Libraries <Windows.h>
 #include <Windows.h>
 
@@ -10,6 +13,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     switch (fdw_reason) {
         case DLL_PROCESS_ATTACH:
             display_commander::dll_main::OnProcessAttach(h_module);
+            // Writer thread can run only after PROCESS_ATTACH returns (loader lock). Until then the logger
+            // sync-flushes on the caller; flip the flag here so queued logging resumes.
+            NotifyDllMainProcessAttachReturned();
             break;
         case DLL_PROCESS_DETACH:
             display_commander::dll_main::OnProcessDetach(h_module);

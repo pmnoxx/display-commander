@@ -279,6 +279,11 @@ extern std::filesystem::path g_dll_main_log_path;
 // Append one line to DisplayCommander.log (same sink as DllMain boot lines). No-op if path is empty.
 void AppendDisplayCommanderBootLog(const std::string& text);
 
+// False until DllMain's PROCESS_ATTACH returns. While false, the file logger writes+flushes on the caller
+// (the writer thread cannot run under the loader lock). Set via NotifyDllMainProcessAttachReturned.
+extern std::atomic<bool> g_dc_dllmain_process_attach_returned;
+void NotifyDllMainProcessAttachReturned();
+
 // Our addon DLL module handle (set in AddonInit; atomic for lock-free caller checks in hooks).
 extern std::atomic<HMODULE> g_module;
 

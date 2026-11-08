@@ -27,6 +27,10 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v1.0.8
+- [bugfix] [critical] [compatibility] **Hang at startup with MFG Unlocker (`version.dll`)** - Display Commander no longer calls ReShade config overrides from Early init inside `DllMain`. That path could deadlock under Windows' loader lock when another injector such as MFG Unlocker was loaded as `version.dll` (game process stayed alive with almost no CPU and never finished starting). The same overrides still run from `OnInitEffectRuntime` once a ReShade runtime exists.
+- [bugfix] [compatibility] **Startup log no longer stays empty under DllMain** - While Display Commander is still attaching, log lines are written and flushed on the calling thread instead of only sitting in the writer queue (that thread cannot run under the loader lock). Boot stages get a local timestamp, are mirrored into the Games-folder `DisplayCommander.log`, scan common proxy slots (`dxgi` / `version` / …), and record who called `ExitProcess`.
+
 ## v1.0.7
 - [settings] **Safer DisplayCommander.ini saves** - Settings changes no longer rewrite the ini on every toggle or slider tick. Edits stay in memory and are written a few seconds later on a background thread (or when you close the ReShade overlay / exit cleanly). A crash while the overlay is open keeps the previous file, so a bad change is less likely to stick. Symlinked ini files are updated in place instead of being replaced by a rename.
 - [settings] **Symlink-safe hotkeys/chords writes** - `hotkeys.toml` and `chords.toml` use the same rule as the ini: if the path is a symlink, Display Commander writes through the link in place instead of creating a `.temp` file and renaming over it.

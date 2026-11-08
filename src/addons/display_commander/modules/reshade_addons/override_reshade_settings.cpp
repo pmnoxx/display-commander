@@ -403,12 +403,20 @@ void OverrideReShadeSettings(reshade::api::effect_runtime* runtime) {
     if (g_reshade_module == nullptr) {
         return;  // No-ReShade mode or ReShade not loaded; skip ReShade config override
     }
+    // Still inside DLL_PROCESS_ATTACH: ReShade config APIs can deadlock under the loader lock (DS2 + MFG).
+    if (!g_dc_dllmain_process_attach_returned.load(std::memory_order_acquire)) {
+        LogWarn("[ReShadeOverride] skipped during DllMain (loader lock); will run from OnInitEffectRuntime");
+        return;
+    }
     LogInfo("Overriding ReShade settings - Setting tutorial as viewed and disabling auto updates");
 
     OverrideReShadeSettings_WindowConfig(runtime);
+    LogInfo("[ReShadeOverride] after WindowConfig");
     OverrideReShadeSettings_TutorialAndUpdates(runtime);
+    LogInfo("[ReShadeOverride] after TutorialAndUpdates");
     if (IsScreenshotPathConfigEnabled()) {
         OverrideReShadeSettings_ScreenshotPaths(runtime);
+        LogInfo("[ReShadeOverride] after ScreenshotPaths");
     } else {
         // Restore defaults when this local toggle is disabled and the config still points to .\Screenshots.
         static constexpr const char kScreenshots[] = ".\\Screenshots";
@@ -423,8 +431,10 @@ void OverrideReShadeSettings(reshade::api::effect_runtime* runtime) {
             && std::string(buf) == kScreenshots) {
             reshade::set_config_value(runtime, "SCREENSHOT", "PostSaveCommandWorkingDirectory", kGameRoot);
         }
+        LogInfo("[ReShadeOverride] after ScreenshotPaths restore-defaults");
     }
     OverrideReShadeSettings_AddDisplayCommanderPaths(runtime, IsGlobalShadersPathsConfigEnabled());
+    LogInfo("[ReShadeOverride] after AddDisplayCommanderPaths");
 
     LogInfo("ReShade settings override completed successfully");
 }

@@ -96,6 +96,26 @@ void DisplayCommanderLogger::Log(LogLevel level, const std::string& message) {
     const std::string sanitized_message = display_commander::log_privacy::SanitizeLogUserPaths(message);
     std::string formatted_message = FormatMessage(level, sanitized_message);
 
+    // During DLL_PROCESS_ATTACH the loader lock is held: the writer thread cannot run, so a queued-only
+    // path leaves DisplayCommander.log empty if init hangs/crashes before DllMain returns (seen with
+    // foreign version.dll proxies such as MFG Unlocker). Write+flush on the caller until attach returns.
+    if (!g_dc_dllmain_process_attach_returned.load(std::memory_order_acquire)) {
+        ::utils::SRWLockExclusive lock(queue_lock_);
+        while (!queue_.empty()) {
+            std::string pending = std::move(queue_.front());
+            queue_.pop_front();
+            if (pending == kFlushSentinel) {
+                continue;
+            }
+            WriteToFile(pending);
+        }
+        WriteToFile(formatted_message);
+        if (log_file_.is_open()) {
+            log_file_.flush();
+        }
+        return;
+    }
+
     {
         ::utils::SRWLockExclusive lock(queue_lock_);
         if (queue_.size() >= kMaxQueueSize) {

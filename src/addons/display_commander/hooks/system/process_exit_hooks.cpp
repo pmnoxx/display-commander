@@ -6,6 +6,7 @@
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/stack_trace.hpp"
+#include "../../utils/string_utils.hpp"
 #include "../../utils/timing.hpp"
 #include "../hook_suppression_manager.hpp"
 
@@ -36,8 +37,12 @@ static void LogExitCallerAndStackTrace(const char* exit_api_name, HMODULE caller
         wchar_t module_path[MAX_PATH] = {};
         if (GetModuleFileNameW(caller_mod, module_path, MAX_PATH) != 0) {
             LogInfo("%s caller module: %ls", exit_api_name, module_path);
+            // Always land on the game-folder boot log too (survives if the queued logger never drained).
+            AppendDisplayCommanderBootLog(std::string("[Exit] ") + exit_api_name + " caller: "
+                                          + display_commander::utils::WideToUtf8(module_path));
         } else {
             LogInfo("%s caller module: 0x%p (path unavailable)", exit_api_name, static_cast<void*>(caller_mod));
+            AppendDisplayCommanderBootLog(std::string("[Exit] ") + exit_api_name + " caller: (path unavailable)");
         }
     }
     // Mode/state data (same idea as crash report and stuck detection)

@@ -3,6 +3,7 @@
 
 // Source Code <Display Commander>
 #include "globals.hpp"
+#include "host/dll_attach_watchdog.hpp"
 
 // Libraries <Windows.h>
 #include <Windows.h>
@@ -12,12 +13,14 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     (void)lpv_reserved;
     switch (fdw_reason) {
         case DLL_PROCESS_ATTACH:
+            StartDllProcessAttachWatchdog();
             display_commander::dll_main::OnProcessAttach(h_module);
             // Writer thread can run only after PROCESS_ATTACH returns (loader lock). Until then the logger
             // sync-flushes on the caller; flip the flag here so queued logging resumes.
             NotifyDllMainProcessAttachReturned();
             break;
         case DLL_PROCESS_DETACH:
+            CancelDllProcessAttachWatchdog();
             display_commander::dll_main::OnProcessDetach(h_module);
             break;
     }

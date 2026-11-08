@@ -27,6 +27,9 @@ Planned:
 - FG rate counter
 - Show override from NPI for DLSS presets. @adap
 
+## v1.0.9
+- [new feature] [compatibility] **DllMain attach watchdog (30s)** - When Display Commander starts loading, a background thread waits up to 30 seconds for DLL startup to finish. If startup is still running (for example stuck under Windows' loader lock), a message box warns that Display Commander is stuck and points you at `DisplayCommander.log`. Normal loads are unaffected.
+
 ## v1.0.8
 - [bugfix] [critical] [compatibility] **Hang at startup with MFG Unlocker (`version.dll`)** - Display Commander no longer calls ReShade config overrides from Early init inside `DllMain`. That path could deadlock under Windows' loader lock when another injector such as MFG Unlocker was loaded as `version.dll` (game process stayed alive with almost no CPU and never finished starting). The same overrides still run from `OnInitEffectRuntime` once a ReShade runtime exists.
 - [bugfix] [compatibility] **Startup log no longer stays empty under DllMain** - While Display Commander is still attaching, log lines are written and flushed on the calling thread instead of only sitting in the writer queue (that thread cannot run under the loader lock). Boot stages get a local timestamp, are mirrored into the Games-folder `DisplayCommander.log`, scan common proxy slots (`dxgi` / `version` / …), and record who called `ExitProcess`.

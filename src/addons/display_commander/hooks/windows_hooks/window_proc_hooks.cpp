@@ -96,7 +96,11 @@ static LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, L
     // CheckMessageRateAndLogIfHigh(hwnd, uMsg, wParam, lParam);
     g_last_window_message_processed_ns.store(utils::get_real_time_ns(), std::memory_order_release);
     if (ProcessWindowMessage(hwnd, uMsg, wParam, lParam)) {
-        return 0;  // Message suppressed (skipped)
+        // Message suppressed (skipped). For WM_NCACTIVATE, 0 means "refuse the activation change": Windows then
+        // cancels activating the other window. Continue Rendering only hides deactivation from the game, so report
+        // TRUE (allow). Returning 0 broke left clicks on Arknights' web news overlay, an owned popup that must be
+        // activated to take clicks (the mouse wheel kept working because it needs no activation).
+        return uMsg == WM_NCACTIVATE ? TRUE : 0;
     }
     WNDPROC orig = nullptr;
     {

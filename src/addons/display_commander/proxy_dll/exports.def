@@ -89,9 +89,29 @@ EXPORTS
 	CreateDXGIFactory2 PRIVATE
 	DXGIGetDebugInterface1 PRIVATE
 	DXGIDeclareAdapterRemovalSupport PRIVATE
-	; MFG Unlocker local-dxgi Eligible(): same image must export these (forward to real ReShade)
+	DXGIDisableVBlankVirtualization PRIVATE
+	; ReShade add-on C API (proxy_dll/reshade_export_proxy.cpp), all forwarded to the real ReShade module.
+	; MFG Unlocker local-dxgi Eligible() needs Register/Unregister on the same image; add-ons using upstream
+	; reshade.hpp (RenoDX) bind to the first module exporting Register/Unregister, so the rest must exist too.
 	ReShadeRegisterAddon PRIVATE
 	ReShadeUnregisterAddon PRIVATE
+	ReShadeGetImGuiFunctionTable PRIVATE
+	ReShadeLogMessage PRIVATE
+	ReShadeGetBasePath PRIVATE
+	ReShadeGetConfigValue PRIVATE
+	ReShadeSetConfigValue PRIVATE
+	ReShadeSetConfigArray PRIVATE
+	ReShadeRegisterEvent PRIVATE
+	ReShadeRegisterEventForAddon PRIVATE
+	ReShadeUnregisterEvent PRIVATE
+	ReShadeUnregisterEventForAddon PRIVATE
+	ReShadeRegisterOverlay PRIVATE
+	ReShadeRegisterOverlayForAddon PRIVATE
+	ReShadeUnregisterOverlay PRIVATE
+	ReShadeUnregisterOverlayForAddon PRIVATE
+	ReShadeCreateEffectRuntime PRIVATE
+	ReShadeDestroyEffectRuntime PRIVATE
+	ReShadeUpdateAndPresentEffectRuntime PRIVATE
 
 	; version.dll exports
     ; https://github.com/wine-mirror/wine/blob/master/dlls/version/version.spec

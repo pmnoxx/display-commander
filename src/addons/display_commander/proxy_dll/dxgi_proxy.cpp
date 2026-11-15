@@ -23,6 +23,7 @@ typedef HRESULT(WINAPI* PFN_CreateDXGIFactory1)(REFIID riid, void** ppFactory);
 typedef HRESULT(WINAPI* PFN_CreateDXGIFactory2)(UINT Flags, REFIID riid, void** ppFactory);
 typedef HRESULT(WINAPI* PFN_DXGIGetDebugInterface1)(UINT Flags, REFIID riid, void** pDebug);
 typedef HRESULT(WINAPI* PFN_DXGIDeclareAdapterRemovalSupport)();
+typedef HRESULT(WINAPI* PFN_DXGIDisableVBlankVirtualization)();
 
 typedef HRESULT(WINAPI* PFN_D3D11CreateDeviceAndSwapChain)(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE DriverType,
                                                            HMODULE Software, UINT Flags,
@@ -259,6 +260,18 @@ extern "C" HRESULT WINAPI DXGIDeclareAdapterRemovalSupport() {
     auto func = reinterpret_cast<PFN_DXGIDeclareAdapterRemovalSupport>(
         GetProcAddress(g_dxgi_module, "DXGIDeclareAdapterRemovalSupport"));
     if (func == nullptr) return E_FAIL;
+
+    return func();
+}
+
+// Also probed by add-ons as a ReShade API 20+ marker on the module they bind to (RenoDX swapchain_v2 Vulkan color space).
+// Add-ons using upstream reshade.hpp bind to this proxy (it exports ReShadeRegisterAddon), so it must exist here too.
+extern "C" HRESULT WINAPI DXGIDisableVBlankVirtualization() {
+    if (!LoadRealDXGI()) return E_FAIL;
+
+    auto func = reinterpret_cast<PFN_DXGIDisableVBlankVirtualization>(
+        GetProcAddress(g_dxgi_module, "DXGIDisableVBlankVirtualization"));
+    if (func == nullptr) return E_NOTIMPL;
 
     return func();
 }

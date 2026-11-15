@@ -13,6 +13,7 @@
 #include "hooks/windows_hooks/window_proc_hooks.hpp"
 #include "init_without_hwnd.hpp"
 #include "latency/reflex_provider.hpp"
+#include "host/reshade_vulkan_layer.hpp"
 #include "reshade_addon_handlers.hpp"
 #include "reshade_module_detection.hpp"
 #include "settings/hook_suppression_settings.hpp"
@@ -384,6 +385,33 @@ void ProcessAttach_DetectEntryPoint(HMODULE h_module, std::wstring& entry_point)
 bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/) {
     OutputDebugStringA("ReShade not loaded");
     settings::g_hook_suppression_settings.LoadAll();
+    // ReShade installed as a Vulkan implicit layer: load the layer's own DLL instead of our copy. The Vulkan loader
+    // later gets the same module (a second, different ReShade would abort and the layer would fail), and ReShade
+    // hooks before our input hooks. If that load fails, fall back to our copy below.
+    {
+        host::reshade_vulkan_layer::LayerInfo layer;
+        if (host::reshade_vulkan_layer::FindEnabledReShadeLayer(&layer)) {
+            LogInfo("[reshade] ReShade Vulkan layer detected (%ls -> %ls); loading the layer's ReShade",
+                    layer.manifest_path.c_str(), layer.library_path.c_str());
+            if (HMODULE loaded = GetModuleHandleW(layer.library_path.c_str()); loaded != nullptr) {
+                HMODULE expected = nullptr;
+                g_reshade_module.compare_exchange_strong(expected, loaded);
+                return true;
+            }
+            SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
+            display_commanderhooks::InstallLoadLibraryHooks();
+            display_commanderhooks::g_hooked_before_reshade.store(true);
+            if (HMODULE layer_module = display_commanderhooks::LoadLibraryW_Direct(layer.library_path.c_str());
+                layer_module != nullptr) {
+                HMODULE expected = nullptr;
+                g_reshade_module.compare_exchange_strong(expected, layer_module);
+                LogInfo("[reshade] Loaded %ls (0x%p)", layer.library_path.c_str(), layer_module);
+                return true;
+            }
+            LogError("[reshade] Failed to load the layer's ReShade %ls (error %lu); using our own ReShade",
+                     layer.library_path.c_str(), GetLastError());
+        }
+    }
     WCHAR executable_path[MAX_PATH] = {0};
     GetModuleFileNameW(nullptr, executable_path, MAX_PATH);
     std::filesystem::path game_directory = std::filesystem::path(executable_path).parent_path();

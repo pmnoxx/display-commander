@@ -10,6 +10,9 @@
 
 // Audio management functions
 bool SetMuteForCurrentProcess(bool mute, bool trigger_notification = true);
+// Returns the Windows session mute state; any muted game session counts as muted.
+// Returns false without changing the output when sessions are unavailable or a query fails.
+bool GetMuteForCurrentProcess(bool* muted_out);
 bool SetVolumeForCurrentProcess(float volume_0_100);
 bool GetVolumeForCurrentProcess(float* volume_0_100_out);
 bool AdjustVolumeForCurrentProcess(float percent_change);

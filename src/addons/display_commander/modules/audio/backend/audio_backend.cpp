@@ -251,7 +251,9 @@ bool SetPersistedDefaultEndpointForCurrentProcess(EDataFlow flow, const std::wst
 
 }  // namespace
 
-bool SetMuteForCurrentProcess(bool mute, bool trigger_notification) {
+namespace {
+
+bool AccessMuteForCurrentProcess(bool mute, bool* muted_out) {
     const DWORD target_pid = GetCurrentProcessId();
     HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
     const bool did_init = SUCCEEDED(hr);
@@ -261,6 +263,8 @@ bool SetMuteForCurrentProcess(bool mute, bool trigger_notification) {
     }
 
     bool success = false;
+    bool failed = false;
+    bool any_muted = false;
     IMMDeviceEnumerator* device_enumerator = nullptr;
     IMMDevice* device = nullptr;
     IAudioSessionManager2* session_manager = nullptr;
@@ -277,7 +281,7 @@ bool SetMuteForCurrentProcess(bool mute, bool trigger_notification) {
         hr = session_manager->GetSessionEnumerator(&session_enumerator);
         if (FAILED(hr) || session_enumerator == nullptr) break;
         int count = 0;
-        session_enumerator->GetCount(&count);
+        if (FAILED(session_enumerator->GetCount(&count))) break;
         for (int i = 0; i < count; ++i) {
             IAudioSessionControl* session_control = nullptr;
             if (FAILED(session_enumerator->GetSession(i, &session_control)) || session_control == nullptr) continue;
@@ -285,13 +289,29 @@ bool SetMuteForCurrentProcess(bool mute, bool trigger_notification) {
             if (SUCCEEDED(session_control->QueryInterface(IID_PPV_ARGS(&session_control2)))
                 && session_control2 != nullptr) {
                 DWORD pid = 0;
-                session_control2->GetProcessId(&pid);
+                if (FAILED(session_control2->GetProcessId(&pid))) {
+                    session_control->Release();
+                    continue;
+                }
                 if (pid == target_pid) {
                     Microsoft::WRL::ComPtr<ISimpleAudioVolume> simple_volume;
                     if (SUCCEEDED(session_control->QueryInterface(IID_PPV_ARGS(&simple_volume)))
                         && simple_volume != nullptr) {
-                        simple_volume->SetMute(mute ? TRUE : FALSE, nullptr);
-                        success = true;
+                        if (muted_out != nullptr) {
+                            BOOL session_muted = FALSE;
+                            if (SUCCEEDED(simple_volume->GetMute(&session_muted))) {
+                                any_muted = any_muted || session_muted != FALSE;
+                                success = true;
+                            } else {
+                                failed = true;
+                            }
+                        } else if (SUCCEEDED(simple_volume->SetMute(mute ? TRUE : FALSE, nullptr))) {
+                            success = true;
+                        } else {
+                            failed = true;
+                        }
+                    } else {
+                        failed = true;
                     }
                 }
             }
@@ -305,6 +325,23 @@ bool SetMuteForCurrentProcess(bool mute, bool trigger_notification) {
     if (device_enumerator != nullptr) device_enumerator->Release();
     if (did_init && hr != RPC_E_CHANGED_MODE) CoUninitialize();
 
+    if (!success || failed) {
+        return false;
+    }
+    if (muted_out != nullptr) {
+        *muted_out = any_muted;
+    }
+    return true;
+}
+
+}  // namespace
+
+bool GetMuteForCurrentProcess(bool* muted_out) {
+    return muted_out != nullptr && AccessMuteForCurrentProcess(false, muted_out);
+}
+
+bool SetMuteForCurrentProcess(bool mute, bool trigger_notification) {
+    const bool success = AccessMuteForCurrentProcess(mute, nullptr);
     std::ostringstream oss;
     oss << "BackgroundMute apply mute=" << (mute ? "1" : "0") << " success=" << (success ? "1" : "0");
     LogInfo(oss.str().c_str());
@@ -695,6 +732,7 @@ void RunBackgroundAudioMonitor() {
 
     LogInfo("BackgroundAudio: Continuous monitoring ready, starting audio management");
 
+    bool mute_state_initialized = false;
     while (!g_shutdown.load()) {
         bool want_mute = false;
 
@@ -734,7 +772,7 @@ void RunBackgroundAudioMonitor() {
         }
 
         const bool applied = g_muted_applied.load();
-        if (want_mute != applied) {
+        if (!mute_state_initialized || want_mute != applied) {
             std::ostringstream oss;
             oss << "BackgroundAudio: Applying mute change from " << (applied ? "muted" : "unmuted") << " to "
                 << (want_mute ? "muted" : "unmuted")
@@ -743,6 +781,7 @@ void RunBackgroundAudioMonitor() {
 
             if (SetMuteForCurrentProcess(want_mute, false)) {  // Don't trigger notification for background auto-mute
                 g_muted_applied.store(want_mute);
+                mute_state_initialized = true;
             }
         }
 

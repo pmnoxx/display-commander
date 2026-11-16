@@ -518,7 +518,13 @@ void DrawAudioSettingsInternal(display_commander::ui::IImGuiWrapper& imgui) {
 }
 
 void HotkeyMuteToggle() {
-    bool new_mute_state = !settings::g_mainTabSettings.audio_mute.GetValue();
+    bool current_mute = settings::g_mainTabSettings.audio_mute.GetValue();
+    bool windows_mute = false;
+    // Reconcile external changes without treating our background mute as a manual mute.
+    if (::GetMuteForCurrentProcess(&windows_mute) && windows_mute != ::g_muted_applied.load()) {
+        current_mute = windows_mute;
+    }
+    const bool new_mute_state = !current_mute;
     settings::g_mainTabSettings.audio_mute.SetValue(new_mute_state);
     if (::SetMuteForCurrentProcess(new_mute_state)) {
         ::g_muted_applied.store(new_mute_state);
@@ -617,13 +623,12 @@ void HotkeySystemVolumeDown() {
 void Initialize(ModuleConfigApi* config_api) {
     (void)config_api;
     // Restore persisted manual mute after main tab settings load (InitMainNewTab runs before module registry init).
-    if (settings::g_mainTabSettings.audio_mute.GetValue()) {
-        if (::SetMuteForCurrentProcess(true)) {
-            ::g_muted_applied.store(true);
-            LogInfo("Audio mute state loaded and applied from settings");
-        } else {
-            LogWarn("Failed to apply loaded mute state");
-        }
+    const bool mute = settings::g_mainTabSettings.audio_mute.GetValue();
+    if (::SetMuteForCurrentProcess(mute, false)) {
+        ::g_muted_applied.store(mute);
+        LogInfo("Audio mute state loaded and applied from settings");
+    } else {
+        LogWarn("Failed to apply loaded mute state; background monitor will retry");
     }
 }
 
